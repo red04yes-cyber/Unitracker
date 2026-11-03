@@ -1,0 +1,1 @@
+Document target technical architecture
