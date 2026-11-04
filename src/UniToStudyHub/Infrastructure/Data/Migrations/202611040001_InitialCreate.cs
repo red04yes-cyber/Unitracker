@@ -141,5 +141,10 @@ public sealed class InitialCreate : Migration
         migrationBuilder.DropTable("CareerExams");
     }
 
-    protected override void BuildTargetModel(ModelBuilder modelBuilder) { }
+    protected override void BuildTargetModel(ModelBuilder modelBuilder)
+    {
+        modelBuilder.HasAnnotation("ProductVersion", "10.0.0");
+        modelBuilder.HasAnnotation("Relational:MaxIdentifierLength", 64);
+        StudyHubDbContext.ConfigureModel(modelBuilder);
+    }
 }
