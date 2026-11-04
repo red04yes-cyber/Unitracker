@@ -37,6 +37,19 @@ public sealed class MainViewModel : INotifyPropertyChanged
     public ObservableCollection<Exam> Exams => _data.Exams;
     public ObservableCollection<Announcement> Announcements => _data.Announcements;
     public ObservableCollection<Course> VisibleCourses { get; } = new();
+    public ObservableCollection<CalendarEvent> CalendarEvents => _data.CalendarEvents;
+    public ObservableCollection<CalendarEvent> VisibleCalendarEvents { get; } = new();
+    private DateTime _calendarDate = DateTime.Today;
+    private DateTime? _calendarEventDate = DateTime.Today;
+    private string _calendarEventTitle = string.Empty;
+    private string _calendarEventCategory = CalendarEventCategory.Personal;
+    private CalendarEvent? _selectedCalendarEvent;
+    public DateTime CalendarDate { get => _calendarDate; set { if (Set(ref _calendarDate, value)) RefreshCalendar(); } }
+    public DateTime? CalendarEventDate { get => _calendarEventDate; set => Set(ref _calendarEventDate, value); }
+    public string CalendarEventTitle { get => _calendarEventTitle; set => Set(ref _calendarEventTitle, value); }
+    public string CalendarEventCategoryInput { get => _calendarEventCategory; set => Set(ref _calendarEventCategory, value); }
+    public CalendarEvent? SelectedCalendarEvent { get => _selectedCalendarEvent; set { Set(ref _selectedCalendarEvent, value); DeleteCalendarEventCommand?.NotifyCanExecuteChanged(); } }
+    public string CalendarPeriodDisplay => CalendarDate.ToString("MMMM yyyy", CultureInfo.GetCultureInfo("it-IT"));
 
     public string CourseNameInput { get => _courseNameInput; set => Set(ref _courseNameInput, value); }
     public string CourseCfuInput { get => _courseCfuInput; set => Set(ref _courseCfuInput, value); }
@@ -133,6 +146,11 @@ public sealed class MainViewModel : INotifyPropertyChanged
     public AsyncRelayCommand PlanExamsCommand { get; }
     public AsyncRelayCommand ConnectMoodleCommand { get; }
     public AsyncRelayCommand SyncMoodleCommand { get; }
+    public AsyncRelayCommand AddCalendarEventCommand { get; }
+    public AsyncRelayCommand DeleteCalendarEventCommand { get; }
+    public AsyncRelayCommand PreviousCalendarPeriodCommand { get; }
+    public AsyncRelayCommand NextCalendarPeriodCommand { get; }
+    public AsyncRelayCommand TodayCalendarCommand { get; }
 
     public MainViewModel(IStudyDataStore store, MoodleApplicationService moodle, CareerCalculatorService calculator)
     {
@@ -144,6 +162,11 @@ public sealed class MainViewModel : INotifyPropertyChanged
         PlanExamsCommand = new AsyncRelayCommand(PlanExamsAsync);
         ConnectMoodleCommand = new AsyncRelayCommand(ConnectMoodleAsync);
         SyncMoodleCommand = new AsyncRelayCommand(SyncMoodleAsync);
+        AddCalendarEventCommand = new AsyncRelayCommand(AddCalendarEventAsync);
+        DeleteCalendarEventCommand = new AsyncRelayCommand(DeleteCalendarEventAsync, () => SelectedCalendarEvent is not null);
+        PreviousCalendarPeriodCommand = new AsyncRelayCommand(() => ChangeCalendarPeriodAsync(-1));
+        NextCalendarPeriodCommand = new AsyncRelayCommand(() => ChangeCalendarPeriodAsync(1));
+        TodayCalendarCommand = new AsyncRelayCommand(() => SetCalendarTodayAsync());
     }
 
     public async Task InitializeAsync(CancellationToken cancellationToken = default)
@@ -154,6 +177,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
         RefreshVisibleCourses();
         RefreshCareerSummary();
         RefreshExamSummary();
+        RefreshCalendar();
     }
 
     private async Task AddCourseAsync()
@@ -282,6 +306,71 @@ public sealed class MainViewModel : INotifyPropertyChanged
         {
             MoodleStatus = ex.Message;
         }
+    }
+
+    private async Task AddCalendarEventAsync()
+    {
+        if (string.IsNullOrWhiteSpace(CalendarEventTitle) || CalendarEventDate is null)
+        {
+            StatusMessage = "Inserisci un titolo e una data per l'evento.";
+            return;
+        }
+        try
+        {
+            var day = CalendarEventDate.Value.Date;
+            var start = new DateTimeOffset(day.AddHours(9), TimeZoneInfo.Local.GetUtcOffset(day.AddHours(9)));
+            var end = start.AddHours(1);
+            var item = CalendarService.CreateManualEvent(CalendarEventTitle, CalendarEventCategoryInput, start, end);
+            CalendarEvents.Add(item);
+            await SaveAsync();
+            CalendarEventTitle = string.Empty;
+            CalendarDate = day;
+            StatusMessage = "Evento aggiunto al calendario.";
+            RefreshCalendar();
+        }
+        catch (Exception ex) { StatusMessage = $"Evento non salvato: {ex.Message}"; }
+    }
+
+    private async Task DeleteCalendarEventAsync()
+    {
+        if (SelectedCalendarEvent is null) return;
+        var item = SelectedCalendarEvent;
+        CalendarEvents.Remove(item);
+        try
+        {
+            await SaveAsync();
+            SelectedCalendarEvent = null;
+            RefreshCalendar();
+            StatusMessage = "Evento eliminato.";
+        }
+        catch (Exception ex)
+        {
+            CalendarEvents.Add(item);
+            StatusMessage = $"Eliminazione non riuscita: {ex.Message}";
+        }
+    }
+
+    private async Task ChangeCalendarPeriodAsync(int months)
+    {
+        CalendarDate = CalendarDate.AddMonths(months);
+        await Task.CompletedTask;
+    }
+
+    private async Task SetCalendarTodayAsync()
+    {
+        CalendarDate = DateTime.Today;
+        CalendarEventDate = DateTime.Today;
+        await Task.CompletedTask;
+    }
+
+    private void RefreshCalendar()
+    {
+        VisibleCalendarEvents.Clear();
+        var start = new DateTimeOffset(new DateTime(CalendarDate.Year, CalendarDate.Month, 1), TimeZoneInfo.Local.GetUtcOffset(new DateTime(CalendarDate.Year, CalendarDate.Month, 1)));
+        var end = start.AddMonths(1);
+        foreach (var item in CalendarService.GetEventsInRange(CalendarEvents, start, end))
+            VisibleCalendarEvents.Add(item);
+        OnPropertyChanged(nameof(CalendarPeriodDisplay));
     }
 
     private Exam? GetNextPlannedExam() =>
