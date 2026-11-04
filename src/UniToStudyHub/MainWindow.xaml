@@ -111,11 +111,47 @@
                         </Grid>
                     </Border>
 
-                    <Border Grid.Column="1" Background="{StaticResource PageBrush}">
-                        <ContentPresenter x:Name="PART_SelectedContentHost"
-                                          ContentSource="SelectedContent"
-                                          SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}"/>
-                    </Border>
+                    <Grid Grid.Column="1">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="68"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+                        <Border Grid.Row="0" Background="{StaticResource PanelBrush}"
+                                BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1"
+                                Padding="28,0">
+                            <Grid VerticalAlignment="Center">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <StackPanel VerticalAlignment="Center">
+                                    <TextBlock Text="UNITO STUDYHUB" FontSize="9"
+                                               FontWeight="Bold" Foreground="{StaticResource MutedBrush}"/>
+                                    <TextBlock Text="Il tuo spazio personale" FontSize="13"
+                                               FontWeight="SemiBold" Foreground="{StaticResource InkBrush}"
+                                               Margin="0,3,0,0"/>
+                                </StackPanel>
+                                <StackPanel Grid.Column="1" Orientation="Horizontal"
+                                            VerticalAlignment="Center">
+                                    <Border Background="{StaticResource SubtleBrush}"
+                                            CornerRadius="7" Padding="10,7"
+                                            VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding MoodleStatus}" FontSize="10"
+                                                   Foreground="{StaticResource MutedBrush}"/>
+                                    </Border>
+                                    <Button Content="Impostazioni"
+                                            Style="{StaticResource QuietButtonStyle}"
+                                            Margin="10,0,0,0"
+                                            Click="NavigateToSettings_Click"/>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+                        <Border Grid.Row="1" Background="{StaticResource PageBrush}">
+                            <ContentPresenter x:Name="PART_SelectedContentHost"
+                                              ContentSource="SelectedContent"
+                                              SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}"/>
+                        </Border>
+                    </Grid>
                 </Grid>
             </ControlTemplate>
         </TabControl.Template>
