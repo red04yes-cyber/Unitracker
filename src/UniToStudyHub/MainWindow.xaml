@@ -884,34 +884,131 @@
                 </StackPanel>
             </TabItem.Header>
             <Grid Margin="32">
-                <Border Style="{StaticResource CardBorderStyle}" Padding="34"
-                        VerticalAlignment="Center" MaxWidth="640"
-                        HorizontalAlignment="Center">
-                    <StackPanel HorizontalAlignment="Center">
-                        <Border Width="54" Height="54" CornerRadius="16"
-                                Background="{StaticResource AiSoftBrush}">
-                            <TextBlock Text="AI" Foreground="{StaticResource AiBrush}"
-                                       FontSize="18" FontWeight="Bold"
-                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                    <StackPanel Margin="0,0,0,10">
+                        <TextBlock Text="ACCADEMIA" FontSize="10" FontWeight="Bold"
+                                   Foreground="{StaticResource AiBrush}"/>
+                        <TextBlock Text="AI &amp; PDF Intelligence" Style="{StaticResource PageTitleStyle}"
+                                   Margin="0,7,0,4"/>
+                        <TextBlock Text="Comprendi e ripassa a partire dai tuoi materiali, mantenendo ogni fonte verificabile."
+                                   Style="{StaticResource PageSubtitleStyle}" Margin="0,0,0,20"/>
+
+                        <Border Background="{StaticResource NavyBrush}" CornerRadius="14"
+                                Padding="24" Margin="0,0,0,18">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <Border Width="48" Height="48" CornerRadius="14"
+                                        Background="#3A4964" VerticalAlignment="Top">
+                                    <TextBlock Text="AI" Foreground="White" FontSize="17"
+                                               FontWeight="Bold" HorizontalAlignment="Center"
+                                               VerticalAlignment="Center"/>
+                                </Border>
+                                <StackPanel Grid.Column="1" Margin="16,0,16,0">
+                                    <TextBlock Text="Il tuo spazio per studiare dai documenti"
+                                               Foreground="White" FontSize="19"
+                                               FontWeight="SemiBold" TextWrapping="Wrap"/>
+                                    <TextBlock Text="La futura esperienza unirà libreria PDF, lettura, ricerca e un assistente che risponde mostrando documento e pagina."
+                                               Foreground="#D0DAE9" FontSize="12"
+                                               TextWrapping="Wrap" Margin="0,7,0,0"/>
+                                </StackPanel>
+                                <Border Grid.Column="2" Background="#453B67" CornerRadius="7"
+                                        Padding="10,7" VerticalAlignment="Top">
+                                    <TextBlock Text="IN PREPARAZIONE" FontSize="9"
+                                               FontWeight="Bold" Foreground="#E7DFFF"/>
+                                </Border>
+                            </Grid>
                         </Border>
-                        <TextBlock Text="Accademia" FontSize="22" FontWeight="SemiBold"
-                                   Foreground="{StaticResource InkBrush}"
-                                   HorizontalAlignment="Center" Margin="0,17,0,6"/>
-                        <TextBlock Text="Gli strumenti didattici intelligenti arriveranno in una fase dedicata."
-                                   FontSize="13" Foreground="{StaticResource MutedBrush}"
-                                   HorizontalAlignment="Center" TextAlignment="Center"/>
-                        <TextBlock Text="AI Study Director, Memory Engine, esperti didattici, simulazioni d'esame e PDF Intelligence saranno progettati con tracciabilità delle fonti e collegamento alle singole materie."
-                                   FontSize="12" Foreground="{StaticResource MutedBrush}"
-                                   TextWrapping="Wrap" TextAlignment="Center"
-                                   MaxWidth="500" Margin="0,12,0,0"/>
-                        <Border Background="{StaticResource AiSoftBrush}" CornerRadius="7"
-                                Padding="10,6" Margin="0,18,0,0">
-                            <TextBlock Text="FASE 4–5 · NON ANCORA DISPONIBILE"
-                                       FontSize="10" FontWeight="Bold"
-                                       Foreground="{StaticResource AiBrush}"/>
+
+                        <Grid Margin="0,0,0,18">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Border Grid.Column="0" Style="{StaticResource CardBorderStyle}"
+                                    Padding="18" Margin="0,0,10,0">
+                                <StackPanel>
+                                    <Border Width="36" Height="36" CornerRadius="10"
+                                            Background="{StaticResource AccentSoftBrush}"
+                                            HorizontalAlignment="Left">
+                                        <TextBlock Text="PDF" FontSize="10" FontWeight="Bold"
+                                                   Foreground="{StaticResource AccentBrush}"
+                                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    </Border>
+                                    <TextBlock Text="Libreria documenti" FontSize="14"
+                                               FontWeight="SemiBold" Foreground="{StaticResource InkBrush}"
+                                               Margin="0,12,0,5"/>
+                                    <TextBlock Text="Materiali organizzati per materia, con stato di importazione e indicizzazione."
+                                               FontSize="11" Foreground="{StaticResource MutedBrush}"
+                                               TextWrapping="Wrap"/>
+                                </StackPanel>
+                            </Border>
+                            <Border Grid.Column="1" Style="{StaticResource CardBorderStyle}"
+                                    Padding="18" Margin="5,0">
+                                <StackPanel>
+                                    <Border Width="36" Height="36" CornerRadius="10"
+                                            Background="{StaticResource SuccessSoftBrush}"
+                                            HorizontalAlignment="Left">
+                                        <TextBlock Text="01" FontSize="11" FontWeight="Bold"
+                                                   Foreground="{StaticResource SuccessBrush}"
+                                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    </Border>
+                                    <TextBlock Text="Lettore e riferimenti" FontSize="14"
+                                               FontWeight="SemiBold" Foreground="{StaticResource InkBrush}"
+                                               Margin="0,12,0,5"/>
+                                    <TextBlock Text="Consultazione delle pagine e passaggio diretto alle citazioni utilizzate."
+                                               FontSize="11" Foreground="{StaticResource MutedBrush}"
+                                               TextWrapping="Wrap"/>
+                                </StackPanel>
+                            </Border>
+                            <Border Grid.Column="2" Style="{StaticResource CardBorderStyle}"
+                                    Padding="18" Margin="10,0,0,0">
+                                <StackPanel>
+                                    <Border Width="36" Height="36" CornerRadius="10"
+                                            Background="{StaticResource AiSoftBrush}"
+                                            HorizontalAlignment="Left">
+                                        <TextBlock Text="✧" FontSize="18"
+                                                   Foreground="{StaticResource AiBrush}"
+                                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    </Border>
+                                    <TextBlock Text="Assistente con fonti" FontSize="14"
+                                               FontWeight="SemiBold" Foreground="{StaticResource InkBrush}"
+                                               Margin="0,12,0,5"/>
+                                    <TextBlock Text="Sintesi e domande basate sui documenti selezionati, con riferimenti a pagina."
+                                               FontSize="11" Foreground="{StaticResource MutedBrush}"
+                                               TextWrapping="Wrap"/>
+                                </StackPanel>
+                            </Border>
+                        </Grid>
+
+                        <Border Style="{StaticResource CardBorderStyle}" Padding="18">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <Border Width="32" Height="32" CornerRadius="9"
+                                        Background="{StaticResource AiSoftBrush}">
+                                    <TextBlock Text="i" FontSize="15" FontWeight="SemiBold"
+                                               Foreground="{StaticResource AiBrush}"
+                                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+                                <StackPanel Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center">
+                                    <TextBlock Text="Nessuna funzione AI è attiva in questa schermata."
+                                               FontSize="12" FontWeight="SemiBold"
+                                               Foreground="{StaticResource InkBrush}"/>
+                                    <TextBlock Text="Importazione PDF, analisi e richieste al provider saranno abilitate solo quando i relativi servizi, consensi e riferimenti alle fonti saranno collegati."
+                                               FontSize="11" Foreground="{StaticResource MutedBrush}"
+                                               TextWrapping="Wrap" Margin="0,4,0,0"/>
+                                </StackPanel>
+                            </Grid>
                         </Border>
                     </StackPanel>
-                </Border>
+                </ScrollViewer>
             </Grid>
         </TabItem>
 
@@ -1099,7 +1196,7 @@
                     </Border>
                     <StackPanel Margin="11,0,0,0" VerticalAlignment="Center">
                         <TextBlock Text="Impostazioni" FontSize="13" FontWeight="SemiBold"/>
-                        <TextBlock Text="Profilo e integrazioni" FontSize="10" Opacity="0.76"/>
+                        <TextBlock Text="Preferenze e dati" FontSize="10" Opacity="0.76"/>
                     </StackPanel>
                 </StackPanel>
             </TabItem.Header>
@@ -1154,6 +1251,30 @@
                                                TextWrapping="Wrap" Margin="0,5,0,0"/>
                                 </StackPanel>
                             </Border>
+                        </StackPanel>
+                    </Border>
+                    <Border Style="{StaticResource CardBorderStyle}" MaxWidth="760"
+                            HorizontalAlignment="Left" Margin="0,14,0,0">
+                        <StackPanel>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <StackPanel>
+                                    <TextBlock Text="Backup e ripristino" Style="{StaticResource SectionTitleStyle}"/>
+                                    <TextBlock Text="Centro di protezione dei dati locali"
+                                               Style="{StaticResource PageSubtitleStyle}" Margin="0,4,0,0"/>
+                                </StackPanel>
+                                <Border Grid.Column="1" Background="{StaticResource WarningSoftBrush}"
+                                        CornerRadius="7" Padding="9,6" VerticalAlignment="Center">
+                                    <TextBlock Text="INTERFACCIA IN PREPARAZIONE" FontSize="8"
+                                               FontWeight="Bold" Foreground="#8A5B1D"/>
+                                </Border>
+                            </Grid>
+                            <TextBlock Text="La schermata completa mostrerà lo storico dei backup, lo stato di integrità e il flusso guidato di ripristino. I comandi non sono ancora collegati qui."
+                                       FontSize="11" Foreground="{StaticResource MutedBrush}"
+                                       TextWrapping="Wrap" Margin="0,12,0,0"/>
                         </StackPanel>
                     </Border>
                 </StackPanel>
