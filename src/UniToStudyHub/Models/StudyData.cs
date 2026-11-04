@@ -71,9 +71,9 @@ public sealed class ExamAttemptData
 {
     public string Id { get; set; } = Guid.NewGuid().ToString("N");
     public DateTimeOffset AttemptedAt { get; set; } = DateTimeOffset.Now;
-    public string Status { get; set; } = "Completed";
-    public string Outcome { get; set; } = "Passed";
-    public string GradeDecision { get; set; } = "Accepted";
+    public string Status { get; set; } = "Scheduled";
+    public string Outcome { get; set; } = "Pending";
+    public string GradeDecision { get; set; } = "Pending";
     public int? NumericGrade { get; set; }
     public bool IsHonors { get; set; }
     public bool IsPassFail { get; set; }
