@@ -18,30 +18,75 @@ public sealed class StudyHubDbContext(DbContextOptions<StudyHubDbContext> option
 
     internal static void ConfigureModel(ModelBuilder modelBuilder)
     {
-        modelBuilder.Entity<ProfileSettingsEntity>().ToTable("ProfileSettings").HasKey(x => x.Id);
-        modelBuilder.Entity<ProfileSettingsEntity>().Property(x => x.MoodleBaseUrl).HasMaxLength(2048).IsRequired();
+        modelBuilder.Entity<ProfileSettingsEntity>(b =>
+        {
+            b.ToTable("ProfileSettings");
+            b.HasKey(x => x.Id);
+            b.Property(x => x.MoodleBaseUrl).HasMaxLength(2048).IsRequired();
+        });
 
-        modelBuilder.Entity<CourseEntity>().ToTable("Courses").HasKey(x => x.Id);
-        modelBuilder.Entity<CourseEntity>().Property(x => x.Name).IsRequired();
-        modelBuilder.Entity<CourseEntity>().Property(x => x.Code).HasDefaultValue(string.Empty).IsRequired();
-        modelBuilder.Entity<CourseEntity>().HasIndex(x => x.MoodleCourseId);
+        modelBuilder.Entity<CourseEntity>(b =>
+        {
+            b.ToTable("Courses");
+            b.HasKey(x => x.Id);
+            b.Property(x => x.Name).IsRequired();
+            b.Property(x => x.Code).HasDefaultValue(string.Empty).IsRequired();
+            b.HasIndex(x => x.MoodleCourseId);
+        });
 
-        modelBuilder.Entity<GradeEntity>().ToTable("Grades").HasKey(x => x.Id);
-        modelBuilder.Entity<GradeEntity>().HasIndex(x => x.CourseId);
+        modelBuilder.Entity<GradeEntity>(b =>
+        {
+            b.ToTable("Grades");
+            b.HasKey(x => x.Id);
+            b.HasIndex(x => x.CourseId);
+            b.HasOne<CourseEntity>().WithMany()
+                .HasForeignKey(x => x.CourseId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
 
-        modelBuilder.Entity<PlannedExamEntity>().ToTable("PlannedExams").HasKey(x => x.Id);
-        modelBuilder.Entity<PlannedExamEntity>().HasIndex(x => x.CourseId);
+        modelBuilder.Entity<PlannedExamEntity>(b =>
+        {
+            b.ToTable("PlannedExams");
+            b.HasKey(x => x.Id);
+            b.HasIndex(x => x.CourseId);
+            b.HasOne<CourseEntity>().WithMany()
+                .HasForeignKey(x => x.CourseId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
 
-        modelBuilder.Entity<AnnouncementEntity>().ToTable("Announcements").HasKey(x => x.Id);
-        modelBuilder.Entity<AnnouncementEntity>().HasIndex(x => x.SourceKey);
+        modelBuilder.Entity<AnnouncementEntity>(b =>
+        {
+            b.ToTable("Announcements");
+            b.HasKey(x => x.Id);
+            b.HasIndex(x => x.SourceKey);
+        });
 
-        modelBuilder.Entity<CareerExamEntity>().ToTable("CareerExams").HasKey(x => x.Id);
-        modelBuilder.Entity<CareerExamEntity>().HasMany(x => x.Attempts)
-            .WithOne().HasForeignKey(x => x.ExamId).OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<CareerExamEntity>(b =>
+        {
+            b.ToTable("CareerExams");
+            b.HasKey(x => x.Id);
+            b.HasIndex(x => x.CourseId).IsUnique();
+            b.HasOne<CourseEntity>().WithMany()
+                .HasForeignKey(x => x.CourseId)
+                .OnDelete(DeleteBehavior.Restrict);
+            b.HasMany(x => x.Attempts)
+                .WithOne()
+                .HasForeignKey(x => x.ExamId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
 
-        modelBuilder.Entity<ExamAttemptEntity>().ToTable("ExamAttempts").HasKey(x => x.Id);
-        modelBuilder.Entity<ExamAttemptEntity>().HasIndex(x => new { x.ExamId, x.AttemptedAt });
+        modelBuilder.Entity<ExamAttemptEntity>(b =>
+        {
+            b.ToTable("ExamAttempts");
+            b.HasKey(x => x.Id);
+            b.HasIndex(x => new { x.ExamId, x.AttemptedAt });
+        });
 
-        modelBuilder.Entity<LegacyImportEntity>().ToTable("LegacyImports").HasKey(x => x.Key);
+        modelBuilder.Entity<LegacyImportEntity>(b =>
+        {
+            b.ToTable("LegacyImports");
+            b.HasKey(x => x.Key);
+            b.Property(x => x.SourceHash).IsRequired();
+        });
     }
 }
