@@ -1,8 +1,39 @@
-<Application x:Class="UniToStudyHub.App" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" StartupUri="MainWindow.xaml">
-<Application.Resources>
-<SolidColorBrush x:Key="InkBrush" Color="#17243B"/><SolidColorBrush x:Key="MutedBrush" Color="#718096"/><SolidColorBrush x:Key="AccentBrush" Color="#3157D5"/><SolidColorBrush x:Key="PanelBrush" Color="#FFFFFF"/><SolidColorBrush x:Key="PageBrush" Color="#F3F6FB"/>
-<Style TargetType="Button"><Setter Property="Padding" Value="14,8"/><Setter Property="Margin" Value="4"/><Setter Property="Background" Value="#3157D5"/><Setter Property="Foreground" Value="White"/><Setter Property="BorderThickness" Value="0"/><Setter Property="Cursor" Value="Hand"/><Setter Property="FontWeight" Value="SemiBold"/></Style>
-<Style TargetType="TextBox"><Setter Property="Padding" Value="8,6"/><Setter Property="Margin" Value="4"/><Setter Property="BorderBrush" Value="#D8E0EB"/></Style>
-<Style TargetType="ComboBox"><Setter Property="Padding" Value="6"/><Setter Property="Margin" Value="4"/></Style>
-<Style TargetType="DataGrid"><Setter Property="Margin" Value="4"/><Setter Property="CanUserAddRows" Value="False"/><Setter Property="AutoGenerateColumns" Value="False"/><Setter Property="HeadersVisibility" Value="Column"/><Setter Property="GridLinesVisibility" Value="Horizontal"/><Setter Property="BorderBrush" Value="#E4EAF2"/><Setter Property="RowBackground" Value="White"/><Setter Property="AlternatingRowBackground" Value="#F8FAFD"/></Style>
-</Application.Resources></Application>
+<Application x:Class="UniToStudyHub.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Application.Resources>
+        <SolidColorBrush x:Key="InkBrush" Color="#17243B"/>
+        <SolidColorBrush x:Key="MutedBrush" Color="#718096"/>
+        <SolidColorBrush x:Key="AccentBrush" Color="#3157D5"/>
+        <SolidColorBrush x:Key="PanelBrush" Color="#FFFFFF"/>
+        <SolidColorBrush x:Key="PageBrush" Color="#F3F6FB"/>
+        <Style TargetType="Button">
+            <Setter Property="Padding" Value="14,8"/>
+            <Setter Property="Margin" Value="4"/>
+            <Setter Property="Background" Value="#3157D5"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+        </Style>
+        <Style TargetType="TextBox">
+            <Setter Property="Padding" Value="8,6"/>
+            <Setter Property="Margin" Value="4"/>
+            <Setter Property="BorderBrush" Value="#D8E0EB"/>
+        </Style>
+        <Style TargetType="ComboBox">
+            <Setter Property="Padding" Value="6"/>
+            <Setter Property="Margin" Value="4"/>
+        </Style>
+        <Style TargetType="DataGrid">
+            <Setter Property="Margin" Value="4"/>
+            <Setter Property="CanUserAddRows" Value="False"/>
+            <Setter Property="AutoGenerateColumns" Value="True"/>
+            <Setter Property="HeadersVisibility" Value="Column"/>
+            <Setter Property="GridLinesVisibility" Value="Horizontal"/>
+            <Setter Property="BorderBrush" Value="#E4EAF2"/>
+            <Setter Property="RowBackground" Value="White"/>
+            <Setter Property="AlternatingRowBackground" Value="#F8FAFD"/>
+        </Style>
+    </Application.Resources>
+</Application>
