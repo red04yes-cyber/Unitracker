@@ -335,7 +335,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
                 selected.StartsAt = start;
                 selected.EndsAt = end;
                 selected.UpdatedAt = DateTimeOffset.Now;
-                try { CalendarService.Validate(selected); await SaveAsync(); }
+                try { CalendarService.Validate(selected); await _calendarStore.SaveAsync(CalendarEvents); }
                 catch { selected.Title = oldTitle; selected.Category = oldCategory; selected.StartsAt = oldStart; selected.EndsAt = oldEnd; throw; }
                 SelectedCalendarEvent = null;
                 StatusMessage = "Modifiche salvate.";
@@ -344,7 +344,8 @@ public sealed class MainViewModel : INotifyPropertyChanged
             {
                 var item = CalendarService.CreateManualEvent(CalendarEventTitle, CalendarEventCategoryInput, start, end);
                 CalendarEvents.Add(item);
-                await _calendarStore.SaveAsync(CalendarEvents);
+                try { await _calendarStore.SaveAsync(CalendarEvents); }
+                catch { CalendarEvents.Remove(item); throw; }
                 StatusMessage = "Evento aggiunto al calendario.";
             }
             CalendarEventTitle = string.Empty;
