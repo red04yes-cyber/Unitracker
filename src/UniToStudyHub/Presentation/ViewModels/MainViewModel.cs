@@ -14,6 +14,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
     private readonly IStudyDataStore _store;
     private readonly MoodleApplicationService _moodle;
     private readonly CareerCalculatorService _calculator;
+    private readonly CalendarEventStore _calendarStore = new();
     private StudyData _data = new();
     private Course? _selectedGradeCourse;
     private string _courseNameInput = string.Empty;
@@ -172,6 +173,9 @@ public sealed class MainViewModel : INotifyPropertyChanged
     public async Task InitializeAsync(CancellationToken cancellationToken = default)
     {
         _data = await _store.LoadAsync(cancellationToken);
+        var savedCalendarEvents = await _calendarStore.LoadAsync(cancellationToken);
+        _data.CalendarEvents.Clear();
+        foreach (var calendarEvent in savedCalendarEvents) _data.CalendarEvents.Add(calendarEvent);
         MoodleUrlInput = _data.MoodleBaseUrl;
         RefreshCollections();
         RefreshVisibleCourses();
@@ -340,7 +344,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
             {
                 var item = CalendarService.CreateManualEvent(CalendarEventTitle, CalendarEventCategoryInput, start, end);
                 CalendarEvents.Add(item);
-                await SaveAsync();
+                await _calendarStore.SaveAsync(CalendarEvents);
                 StatusMessage = "Evento aggiunto al calendario.";
             }
             CalendarEventTitle = string.Empty;
@@ -357,7 +361,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
         CalendarEvents.Remove(item);
         try
         {
-            await SaveAsync();
+            await _calendarStore.SaveAsync(CalendarEvents);
             SelectedCalendarEvent = null;
             RefreshCalendar();
             StatusMessage = "Evento eliminato.";
