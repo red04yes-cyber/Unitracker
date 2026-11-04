@@ -28,6 +28,17 @@ public partial class MainWindow : Window
         }
     }
 
+    private void CalendarEventEdit_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is System.Windows.Controls.Button button &&
+            button.Tag is UniToStudyHub.Models.CalendarEvent calendarEvent &&
+            DataContext is MainViewModel viewModel)
+        {
+            viewModel.SelectedCalendarEvent = calendarEvent;
+            viewModel.CalendarDate = calendarEvent.StartsAt.LocalDateTime;
+        }
+    }
+
     private void NavigateToSubjects_Click(object sender, RoutedEventArgs e)
     {
         MainTabs.SelectedIndex = 1;
