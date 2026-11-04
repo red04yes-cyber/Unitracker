@@ -528,55 +528,144 @@
             <ScrollViewer VerticalScrollBarVisibility="Auto"
                           HorizontalScrollBarVisibility="Disabled">
                 <StackPanel Margin="32,30,32,36">
-                    <TextBlock Text="PIANIFICAZIONE" FontSize="10"
+                    <TextBlock Text="IL TUO TEMPO, SOTTO CONTROLLO" FontSize="10"
                                FontWeight="Bold" Foreground="{StaticResource AccentBrush}"/>
-                    <TextBlock Text="Calendario esami" Style="{StaticResource PageTitleStyle}"
-                               Margin="0,7,0,4"/>
-                    <TextBlock Text="Organizza gli esami da sostenere e tieni sotto controllo le date indicative."
-                               Style="{StaticResource PageSubtitleStyle}" Margin="0,0,0,22"/>
-
-                    <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,16">
+                    <Grid Margin="0,7,0,5">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
                         <StackPanel>
-                            <TextBlock Text="Pianificazione degli esami"
-                                       Style="{StaticResource SectionTitleStyle}"/>
-                            <TextBlock Text="Il pianificatore distribuisce gli esami nelle sessioni in base ai dati attualmente disponibili. Le date prodotte sono stime organizzative, non appelli ufficiali UniTo."
-                                       Style="{StaticResource PageSubtitleStyle}" Margin="0,7,0,14"/>
-                            <Button Content="Distribuisci gli esami nelle sessioni"
-                                    Command="{Binding PlanExamsCommand}"
-                                    HorizontalAlignment="Left"/>
-                            <TextBlock Text="{Binding StatusMessage}" FontSize="11"
-                                       Foreground="{StaticResource MutedBrush}" Margin="0,10,0,0"
-                                       TextWrapping="Wrap"/>
+                            <TextBlock Text="Calendario" Style="{StaticResource PageTitleStyle}"/>
+                            <TextBlock Text="Una panoramica chiara degli appelli e delle prossime tappe della tua carriera."
+                                       Style="{StaticResource PageSubtitleStyle}" Margin="0,4,0,0"/>
                         </StackPanel>
-                    </Border>
+                        <Border Grid.Column="1" Background="#EAF0FF" CornerRadius="10"
+                                Padding="12,8" VerticalAlignment="Center">
+                            <StackPanel Orientation="Horizontal">
+                                <Ellipse Width="7" Height="7" Fill="#3157D5" Margin="0,0,8,0"/>
+                                <TextBlock Text="PIANIFICAZIONE" FontSize="9" FontWeight="Bold"
+                                           Foreground="#3157D5" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Border>
+                    </Grid>
 
-                    <TextBlock Text="Esami pianificati" Style="{StaticResource SectionTitleStyle}"
-                               Margin="0,0,0,12"/>
+                    <Grid Margin="0,22,0,20">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="1.65*"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <Border Grid.Column="0" Style="{StaticResource CardBorderStyle}"
+                                Margin="0,0,12,0" Padding="22">
+                            <StackPanel>
+                                <TextBlock Text="PIANIFICATORE" FontSize="9" FontWeight="Bold"
+                                           Foreground="{StaticResource AccentBrush}"/>
+                                <TextBlock Text="Dai una forma alla sessione"
+                                           FontSize="19" FontWeight="SemiBold"
+                                           Foreground="{StaticResource InkBrush}" Margin="0,8,0,5"/>
+                                <TextBlock Text="Distribuisci gli esami nelle sessioni disponibili usando le informazioni della tua carriera. Le date generate sono suggerimenti organizzativi, non appelli ufficiali UniTo."
+                                           Style="{StaticResource PageSubtitleStyle}"
+                                           TextWrapping="Wrap" Margin="0,0,0,18"/>
+                                <Button Content="Aggiorna pianificazione"
+                                        Command="{Binding PlanExamsCommand}"
+                                        HorizontalAlignment="Left" Padding="18,10"/>
+                                <TextBlock Text="{Binding StatusMessage}" FontSize="11"
+                                           Foreground="{StaticResource MutedBrush}"
+                                           Margin="0,12,0,0" TextWrapping="Wrap"/>
+                            </StackPanel>
+                        </Border>
+
+                        <Border Grid.Column="1" Style="{StaticResource CardBorderStyle}" Padding="20">
+                            <StackPanel>
+                                <TextBlock Text="DA TENERE A MENTE" FontSize="9" FontWeight="Bold"
+                                           Foreground="{StaticResource MutedBrush}"/>
+                                <TextBlock Text="Le date giuste fanno la differenza."
+                                           FontSize="16" FontWeight="SemiBold"
+                                           Foreground="{StaticResource InkBrush}"
+                                           TextWrapping="Wrap" Margin="0,9,0,7"/>
+                                <TextBlock Text="Le date indicative ti aiutano a organizzarti. Prima di prenotare un esame, verifica sempre l'appello sulle fonti ufficiali."
+                                           FontSize="11" Foreground="{StaticResource MutedBrush}"
+                                           TextWrapping="Wrap" LineHeight="17"/>
+                                <Border Background="#F3F6FB" CornerRadius="8" Padding="10"
+                                        Margin="0,14,0,0">
+                                    <TextBlock Text="Lezioni, scadenze e sincronizzazione saranno aggiunte quando i relativi dati saranno disponibili."
+                                               FontSize="10" Foreground="{StaticResource MutedBrush}"
+                                               TextWrapping="Wrap"/>
+                                </Border>
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+
+                    <Grid Margin="0,0,0,12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel>
+                            <TextBlock Text="I tuoi prossimi esami"
+                                       Style="{StaticResource SectionTitleStyle}"/>
+                            <TextBlock Text="Date e sessioni attualmente presenti nella tua carriera."
+                                       FontSize="11" Foreground="{StaticResource MutedBrush}"
+                                       Margin="0,4,0,0"/>
+                        </StackPanel>
+                        <TextBlock Grid.Column="1" Text="{Binding Exams.Count, StringFormat={}{0} ESAMI}"
+                                   FontSize="9" FontWeight="Bold"
+                                   Foreground="{StaticResource MutedBrush}"
+                                   VerticalAlignment="Center"/>
+                    </Grid>
+
                     <ItemsControl ItemsSource="{Binding Exams}">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
-                                <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,10">
+                                <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,9"
+                                        Padding="0">
                                     <Grid>
                                         <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="5"/>
+                                            <ColumnDefinition Width="Auto"/>
                                             <ColumnDefinition Width="*"/>
                                             <ColumnDefinition Width="Auto"/>
                                         </Grid.ColumnDefinitions>
-                                        <StackPanel>
+                                        <Border Grid.Column="0" Background="#3157D5"
+                                                CornerRadius="10,0,0,10"/>
+                                        <Border Grid.Column="1" Background="#F3F6FB"
+                                                CornerRadius="9" Padding="12,9"
+                                                Margin="14,12">
+                                            <StackPanel HorizontalAlignment="Center">
+                                                <TextBlock Text="{Binding PlannedDate, StringFormat={}{0:MMM}, TargetNullValue=—}"
+                                                           FontSize="9" FontWeight="Bold"
+                                                           Foreground="{StaticResource AccentBrush}"
+                                                           HorizontalAlignment="Center"/>
+                                                <TextBlock Text="{Binding PlannedDate, StringFormat={}{0:dd}, TargetNullValue=—}"
+                                                           FontSize="20" FontWeight="SemiBold"
+                                                           Foreground="{StaticResource InkBrush}"
+                                                           HorizontalAlignment="Center"/>
+                                            </StackPanel>
+                                        </Border>
+                                        <StackPanel Grid.Column="2" VerticalAlignment="Center"
+                                                    Margin="2,12,12,12">
                                             <TextBlock Text="{Binding Name}" FontSize="14"
-                                                       FontWeight="SemiBold" Foreground="{StaticResource InkBrush}"/>
-                                            <TextBlock Text="{Binding CourseName}" FontSize="11"
-                                                       Foreground="{StaticResource MutedBrush}" Margin="0,4,0,0"/>
-                                            <TextBlock Text="{Binding PlannedSession}" FontSize="11"
-                                                       Foreground="{StaticResource MutedBrush}" Margin="0,3,0,0"/>
-                                        </StackPanel>
-                                        <StackPanel Grid.Column="1" VerticalAlignment="Center"
-                                                    HorizontalAlignment="Right">
-                                            <TextBlock Text="{Binding PlannedDate, StringFormat={}{0:dd MMM yyyy}, TargetNullValue='Da pianificare'}"
-                                                       FontSize="13" FontWeight="SemiBold"
+                                                       FontWeight="SemiBold"
                                                        Foreground="{StaticResource InkBrush}"/>
+                                            <TextBlock Text="{Binding CourseName}" FontSize="11"
+                                                       Foreground="{StaticResource MutedBrush}"
+                                                       Margin="0,4,0,0"/>
+                                            <TextBlock Text="{Binding PlannedSession}" FontSize="10"
+                                                       Foreground="{StaticResource MutedBrush}"
+                                                       Margin="0,3,0,0"/>
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="3" VerticalAlignment="Center"
+                                                    HorizontalAlignment="Right" Margin="8,12,18,12">
                                             <TextBlock Text="{Binding Cfu, StringFormat={}{0} CFU}"
-                                                       FontSize="10" Foreground="{StaticResource MutedBrush}"
-                                                       HorizontalAlignment="Right" Margin="0,4,0,0"/>
+                                                       FontSize="11" FontWeight="SemiBold"
+                                                       Foreground="{StaticResource InkBrush}"
+                                                       HorizontalAlignment="Right"/>
+                                            <TextBlock Text="DATA INDICATIVA" FontSize="8"
+                                                       FontWeight="Bold"
+                                                       Foreground="{StaticResource MutedBrush}"
+                                                       Margin="0,5,0,0"
+                                                       HorizontalAlignment="Right"/>
                                         </StackPanel>
                                     </Grid>
                                 </Border>
@@ -586,15 +675,20 @@
 
                     <Border Style="{StaticResource CardBorderStyle}"
                             Visibility="{Binding NoPlannedExams, Converter={StaticResource BooleanToVisibilityConverter}}"
-                            Padding="28">
+                            Padding="30" Margin="0,2,0,0">
                         <StackPanel HorizontalAlignment="Center">
-                            <TextBlock Text="Nessun esame pianificato"
-                                       FontSize="15" FontWeight="SemiBold"
-                                       Foreground="{StaticResource InkBrush}" HorizontalAlignment="Center"/>
-                            <TextBlock Text="Aggiungi le materie e usa il pianificatore per creare una prima distribuzione indicativa."
-                                       FontSize="12" Foreground="{StaticResource MutedBrush}"
-                                       TextWrapping="Wrap" TextAlignment="Center" MaxWidth="480"
-                                       Margin="0,7,0,0"/>
+                            <Border Width="44" Height="44" CornerRadius="14"
+                                    Background="#EAF0FF" HorizontalAlignment="Center">
+                                <TextBlock Text="✦" FontSize="20" Foreground="#3157D5"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <TextBlock Text="Il tuo calendario inizia da qui"
+                                       FontSize="16" FontWeight="SemiBold"
+                                       Foreground="{StaticResource InkBrush}"
+                                       HorizontalAlignment="Center" Margin="0,13,0,5"/>
+                            <TextBlock Text="Aggiungi le materie alla tua carriera e aggiorna la pianificazione per visualizzare qui gli esami previsti."
+                                       FontSize="11" Foreground="{StaticResource MutedBrush}"
+                                       TextWrapping="Wrap" TextAlignment="Center" MaxWidth="430"/>
                         </StackPanel>
                     </Border>
                 </StackPanel>
