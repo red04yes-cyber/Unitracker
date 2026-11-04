@@ -4,6 +4,7 @@ using UniToStudyHub.Domain.Enums;
 using UniToStudyHub.Domain.ValueObjects;
 using UniToStudyHub.Infrastructure.Data.Entities;
 using UniToStudyHub.Models;
+using Models = UniToStudyHub.Models;
 
 namespace UniToStudyHub.Infrastructure.Data;
 
