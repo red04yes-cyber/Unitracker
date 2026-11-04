@@ -2,12 +2,13 @@ name: Core domain Windows validation
 
 on:
   pull_request:
-    branches: [ feature/core-domain ]
+    branches: [ feature/core-domain, work/studyhub-uiux ]
   push:
     branches:
       - feature/core-domain
       - work/core-domain-correction
       - work/windows-validation-hardening
+      - work/freebuff-studyhub-features
   workflow_dispatch:
 
 permissions:

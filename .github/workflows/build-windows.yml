@@ -1,9 +1,9 @@
 name: Build Windows desktop app
 on:
   push:
-    branches: [ main ]
+    branches: [ main, work/freebuff-studyhub-features ]
   pull_request:
-    branches: [ main ]
+    branches: [ main, work/studyhub-uiux ]
   workflow_dispatch:
 permissions:
   contents: read
