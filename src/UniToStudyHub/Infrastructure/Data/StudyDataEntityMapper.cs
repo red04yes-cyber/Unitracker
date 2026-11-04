@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using Microsoft.EntityFrameworkCore;
 using UniToStudyHub.Domain.Entities;
 using UniToStudyHub.Domain.Enums;
 using UniToStudyHub.Domain.ValueObjects;
@@ -18,11 +19,11 @@ public static class StudyDataEntityMapper
         data.Exams ??= new ObservableCollection<Models.Exam>();
         data.Announcements ??= new ObservableCollection<Announcement>();
         data.CareerExams ??= new ObservableCollection<CareerExamData>();
-        MakeIdsUnique(data.Courses, x => x.Id, (x, id) => x.Id = id);
-        MakeIdsUnique(data.Grades, x => x.Id, (x, id) => x.Id = id);
-        MakeIdsUnique(data.Exams, x => x.Id, (x, id) => x.Id = id);
-        MakeIdsUnique(data.Announcements, x => x.Id, (x, id) => x.Id = id);
-        MakeIdsUnique(data.CareerExams, x => x.Id, (x, id) => x.Id = id);
+        EnsureUniqueIds(data.Courses, x => x.Id, (x, id) => x.Id = id);
+        EnsureUniqueIds(data.Grades, x => x.Id, (x, id) => x.Id = id);
+        EnsureUniqueIds(data.Exams, x => x.Id, (x, id) => x.Id = id);
+        EnsureUniqueIds(data.Announcements, x => x.Id, (x, id) => x.Id = id);
+        EnsureUniqueIds(data.CareerExams, x => x.Id, (x, id) => x.Id = id);
 
         foreach (var c in data.Courses)
         {
@@ -44,7 +45,7 @@ public static class StudyDataEntityMapper
         {
             if (string.IsNullOrWhiteSpace(exam.Name) || exam.Cfu <= 0) throw new InvalidDataException($"Career exam '{exam.Id}' has invalid name or CFU.");
             exam.Attempts ??= new ObservableCollection<ExamAttemptData>();
-            MakeIdsUnique(exam.Attempts, x => x.Id, (x, id) => x.Id = id);
+            EnsureUniqueIds(exam.Attempts, x => x.Id, (x, id) => x.Id = id);
             foreach (var attempt in exam.Attempts)
             {
                 if (!Enum.TryParse<AttemptStatus>(attempt.Status, true, out _)) throw new InvalidDataException($"Unknown attempt status '{attempt.Status}'.");
@@ -56,20 +57,25 @@ public static class StudyDataEntityMapper
                     _ = GradeValue.Restore(null, attempt.IsHonors, true);
             }
         }
+        if (data.GraduationTarget == default)
+            throw new InvalidDataException("GraduationTarget is missing or invalid.");
         if (string.IsNullOrWhiteSpace(data.MoodleBaseUrl)) data.MoodleBaseUrl = string.Empty;
+
+        // Rehydrate domain aggregates to enforce state, grade and recording invariants
+        // before data is persisted or imported.
+        _ = ToDomainExams(data.CareerExams);
     }
 
-    private static void MakeIdsUnique<T>(IEnumerable<T> items, Func<T, string> getId, Action<T, string> setId)
+    private static void EnsureUniqueIds<T>(IEnumerable<T> items, Func<T, string> getId, Action<T, string> setId)
     {
         var seen = new HashSet<string>(StringComparer.Ordinal);
         foreach (var item in items)
         {
             var id = getId(item);
-            if (string.IsNullOrWhiteSpace(id) || !seen.Add(id))
-            {
-                do { id = Guid.NewGuid().ToString("N"); } while (!seen.Add(id));
-                setId(item, id);
-            }
+            if (string.IsNullOrWhiteSpace(id))
+                throw new InvalidDataException("An imported record has an empty identifier.");
+            if (!seen.Add(id))
+                throw new InvalidDataException($"Duplicate identifier '{id}' found. The source data was not modified.");
         }
     }
 
