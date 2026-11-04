@@ -25,9 +25,7 @@ public sealed class LegacyJsonMigrator
     public LegacyJsonMigrator(IDbContextFactory<StudyHubDbContext> factory, string? legacyPath = null)
     {
         _factory = factory;
-        _legacyPath = legacyPath ?? Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "UniToStudyHub", "data.json");
+        _legacyPath = legacyPath ?? Path.Combine(StudyHubDatabase.GetDataDirectory(), "data.json");
     }
 
     public async Task<bool> MigrateAsync(CancellationToken cancellationToken = default)
