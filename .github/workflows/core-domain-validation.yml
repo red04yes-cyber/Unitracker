@@ -1,0 +1,37 @@
+name: Core domain validation
+on:
+  push:
+    branches:
+      - work/core-domain-correction
+      - feature/core-domain
+  pull_request:
+    branches:
+      - feature/core-domain
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-test:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - name: Restore application
+        run: dotnet restore src/UniToStudyHub/UniToStudyHub.csproj
+      - name: Build application
+        run: dotnet build src/UniToStudyHub/UniToStudyHub.csproj --configuration Release --no-restore
+      - name: Restore tests
+        run: dotnet restore tests/UniToStudyHub.Tests/UniToStudyHub.Tests.csproj
+      - name: Run core domain tests
+        run: dotnet test tests/UniToStudyHub.Tests/UniToStudyHub.Tests.csproj --configuration Release --no-restore --logger "trx;LogFileName=core-domain-tests.trx"
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: core-domain-test-results
+          path: tests/UniToStudyHub.Tests/TestResults/*.trx
+          if-no-files-found: ignore
