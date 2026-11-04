@@ -44,12 +44,18 @@ public sealed class MainViewModel : INotifyPropertyChanged
     private DateTime? _calendarEventDate = DateTime.Today;
     private string _calendarEventTitle = string.Empty;
     private string _calendarEventCategory = CalendarEventCategory.Personal;
+    private string _calendarEventStartTime = "09:00";
+    private string _calendarEventEndTime = "10:00";
+    private bool _calendarEventAllDay;
     private CalendarEvent? _selectedCalendarEvent;
     public DateTime CalendarDate { get => _calendarDate; set { if (_calendarDate == value) return; Set(ref _calendarDate, value); RefreshCalendar(); } }
     public DateTime? CalendarEventDate { get => _calendarEventDate; set => Set(ref _calendarEventDate, value); }
     public string CalendarEventTitle { get => _calendarEventTitle; set => Set(ref _calendarEventTitle, value); }
     public string CalendarEventCategoryInput { get => _calendarEventCategory; set => Set(ref _calendarEventCategory, value); }
-    public CalendarEvent? SelectedCalendarEvent { get => _selectedCalendarEvent; set { Set(ref _selectedCalendarEvent, value); if (value is not null) { CalendarEventTitle = value.Title; CalendarEventDate = value.StartsAt.LocalDateTime.Date; CalendarEventCategoryInput = value.Category; } DeleteCalendarEventCommand?.NotifyCanExecuteChanged(); } }
+    public string CalendarEventStartTime { get => _calendarEventStartTime; set => Set(ref _calendarEventStartTime, value); }
+    public string CalendarEventEndTime { get => _calendarEventEndTime; set => Set(ref _calendarEventEndTime, value); }
+    public bool CalendarEventAllDay { get => _calendarEventAllDay; set => Set(ref _calendarEventAllDay, value); }
+    public CalendarEvent? SelectedCalendarEvent { get => _selectedCalendarEvent; set { Set(ref _selectedCalendarEvent, value); if (value is not null) { CalendarEventTitle = value.Title; CalendarEventDate = value.StartsAt.LocalDateTime.Date; CalendarEventCategoryInput = value.Category; CalendarEventStartTime = value.StartsAt.ToLocalTime().ToString("HH:mm", CultureInfo.InvariantCulture); CalendarEventEndTime = value.EndsAt.ToLocalTime().ToString("HH:mm", CultureInfo.InvariantCulture); CalendarEventAllDay = value.IsAllDay; } DeleteCalendarEventCommand?.NotifyCanExecuteChanged(); } }
     public string CalendarPeriodDisplay => CalendarDate.ToString("MMMM yyyy", CultureInfo.GetCultureInfo("it-IT"));
 
     public string CourseNameInput { get => _courseNameInput; set => Set(ref _courseNameInput, value); }
@@ -324,8 +330,12 @@ public sealed class MainViewModel : INotifyPropertyChanged
         try
         {
             var day = CalendarEventDate.Value.Date;
-            var start = new DateTimeOffset(day.AddHours(9), TimeZoneInfo.Local.GetUtcOffset(day.AddHours(9)));
-            var end = start.AddHours(1);
+            if (!CalendarEventAllDay && (!TimeOnly.TryParse(CalendarEventStartTime, CultureInfo.CurrentCulture, out var startTime) || !TimeOnly.TryParse(CalendarEventEndTime, CultureInfo.CurrentCulture, out var endTime)))
+            { StatusMessage = "Inserisci orari validi (HH:mm)."; return; }
+            var startLocal = day.Add(CalendarEventAllDay ? TimeSpan.Zero : startTime.ToTimeSpan());
+            var endLocal = CalendarEventAllDay ? day.AddDays(1) : day.Add(endTime.ToTimeSpan());
+            var start = new DateTimeOffset(startLocal, TimeZoneInfo.Local.GetUtcOffset(startLocal));
+            var end = new DateTimeOffset(endLocal, TimeZoneInfo.Local.GetUtcOffset(endLocal));
             if (SelectedCalendarEvent is { } selected)
             {
                 var oldTitle = selected.Title;
@@ -336,6 +346,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
                 selected.Category = CalendarEventCategoryInput;
                 selected.StartsAt = start;
                 selected.EndsAt = end;
+                selected.IsAllDay = CalendarEventAllDay;
                 selected.UpdatedAt = DateTimeOffset.Now;
                 try { CalendarService.Validate(selected); await _calendarStore.SaveAsync(CalendarEvents); }
                 catch { selected.Title = oldTitle; selected.Category = oldCategory; selected.StartsAt = oldStart; selected.EndsAt = oldEnd; throw; }
@@ -344,13 +355,16 @@ public sealed class MainViewModel : INotifyPropertyChanged
             }
             else
             {
-                var item = CalendarService.CreateManualEvent(CalendarEventTitle, CalendarEventCategoryInput, start, end);
+                var item = CalendarService.CreateManualEvent(CalendarEventTitle, CalendarEventCategoryInput, start, end, CalendarEventAllDay);
                 CalendarEvents.Add(item);
                 try { await _calendarStore.SaveAsync(CalendarEvents); }
                 catch { CalendarEvents.Remove(item); throw; }
                 StatusMessage = "Evento aggiunto al calendario.";
             }
             CalendarEventTitle = string.Empty;
+            CalendarEventAllDay = false;
+            CalendarEventStartTime = "09:00";
+            CalendarEventEndTime = "10:00";
             CalendarDate = day;
             RefreshCalendar();
         }
