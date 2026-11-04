@@ -93,14 +93,11 @@
                                            FontWeight="SemiBold" Margin="2,27,0,0"/>
                             </StackPanel>
 
-                            <ScrollViewer Grid.Row="1"
-                                          VerticalScrollBarVisibility="Auto"
-                                          HorizontalScrollBarVisibility="Disabled"
-                                          Padding="12,0">
-                                <TabPanel x:Name="HeaderPanel"
-                                          IsItemsHost="True"
-                                          KeyboardNavigation.TabIndex="1"/>
-                            </ScrollViewer>
+                            <TabPanel x:Name="HeaderPanel"
+                                      Grid.Row="1"
+                                      IsItemsHost="True"
+                                      KeyboardNavigation.TabIndex="1"
+                                      Margin="12,0,12,8"/>
 
                             <StackPanel Grid.Row="2" Margin="22,12,20,22">
                                 <Border Height="1" Background="#35445B" Margin="0,0,0,14"/>
@@ -229,7 +226,7 @@
                         <Border Style="{StaticResource CardBorderStyle}">
                             <StackPanel>
                                 <TextBlock Text="VOTO DI PARTENZA" Style="{StaticResource KpiLabelStyle}"/>
-                                <TextBlock Text="{Binding BaseGradeDisplay}"
+                                <TextBlock Text="{Binding ProjectedBaseGradeValue}"
                                            FontSize="19" FontWeight="SemiBold"
                                            Foreground="{StaticResource InkBrush}"
                                            TextWrapping="Wrap" Margin="0,11,0,3"/>
@@ -392,11 +389,11 @@
                                  ToolTip="Cerca per nome o codice" MinWidth="190"/>
                         <StackPanel Grid.Column="1" Orientation="Horizontal"
                                     HorizontalAlignment="Right" VerticalAlignment="Center">
-                            <RadioButton Content="{Binding ActiveCoursesCount, StringFormat=In corso ({0})}"
+                            <RadioButton Content="{Binding ActiveCoursesCount, StringFormat='In corso ({0})'}"
                                          GroupName="CourseFilters" Tag="active"
                                          IsChecked="True" Checked="CourseFilter_Checked"
                                          Style="{StaticResource FilterRadioButtonStyle}"/>
-                            <RadioButton Content="{Binding ArchivedCoursesCount, StringFormat=Archivio ({0})}"
+                            <RadioButton Content="{Binding ArchivedCoursesCount, StringFormat='Archivio ({0})'}"
                                          GroupName="CourseFilters" Tag="archive"
                                          Checked="CourseFilter_Checked"
                                          Style="{StaticResource FilterRadioButtonStyle}"/>
@@ -435,7 +432,7 @@
                                                            Foreground="{StaticResource AccentBrush}"/>
                                             </Border>
                                         </Grid>
-                                        <TextBlock Text="{Binding Code, TargetNullValue=Codice non indicato}"
+                                        <TextBlock Text="{Binding Code, TargetNullValue='Codice non indicato'}"
                                                    FontSize="11" Foreground="{StaticResource MutedBrush}"
                                                    Margin="0,7,0,13"/>
                                         <Border x:Name="CourseStatusBorder"
@@ -531,7 +528,7 @@
                                         </StackPanel>
                                         <StackPanel Grid.Column="1" VerticalAlignment="Center"
                                                     HorizontalAlignment="Right">
-                                            <TextBlock Text="{Binding PlannedDate, StringFormat={}{0:dd MMM yyyy}, TargetNullValue=Da pianificare}"
+                                            <TextBlock Text="{Binding PlannedDate, StringFormat={}{0:dd MMM yyyy}, TargetNullValue='Da pianificare'}"
                                                        FontSize="13" FontWeight="SemiBold"
                                                        Foreground="{StaticResource InkBrush}"/>
                                             <TextBlock Text="{Binding Cfu, StringFormat={}{0} CFU}"
