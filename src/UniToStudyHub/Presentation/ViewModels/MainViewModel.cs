@@ -44,7 +44,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
     private string _calendarEventTitle = string.Empty;
     private string _calendarEventCategory = CalendarEventCategory.Personal;
     private CalendarEvent? _selectedCalendarEvent;
-    public DateTime CalendarDate { get => _calendarDate; set { if (Set(ref _calendarDate, value)) RefreshCalendar(); } }
+    public DateTime CalendarDate { get => _calendarDate; set { if (_calendarDate == value) return; Set(ref _calendarDate, value); RefreshCalendar(); } }
     public DateTime? CalendarEventDate { get => _calendarEventDate; set => Set(ref _calendarEventDate, value); }
     public string CalendarEventTitle { get => _calendarEventTitle; set => Set(ref _calendarEventTitle, value); }
     public string CalendarEventCategoryInput { get => _calendarEventCategory; set => Set(ref _calendarEventCategory, value); }
