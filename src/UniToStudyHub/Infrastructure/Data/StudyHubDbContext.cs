@@ -14,14 +14,16 @@ public sealed class StudyHubDbContext(DbContextOptions<StudyHubDbContext> option
     public DbSet<ExamAttemptEntity> ExamAttempts => Set<ExamAttemptEntity>();
     public DbSet<LegacyImportEntity> LegacyImports => Set<LegacyImportEntity>();
 
-    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    protected override void OnModelCreating(ModelBuilder modelBuilder) => ConfigureModel(modelBuilder);
+
+    internal static void ConfigureModel(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<ProfileSettingsEntity>().ToTable("ProfileSettings").HasKey(x => x.Id);
-        modelBuilder.Entity<ProfileSettingsEntity>().Property(x => x.MoodleBaseUrl).HasMaxLength(2048);
+        modelBuilder.Entity<ProfileSettingsEntity>().Property(x => x.MoodleBaseUrl).HasMaxLength(2048).IsRequired();
 
         modelBuilder.Entity<CourseEntity>().ToTable("Courses").HasKey(x => x.Id);
         modelBuilder.Entity<CourseEntity>().Property(x => x.Name).IsRequired();
-        modelBuilder.Entity<CourseEntity>().Property(x => x.Code).HasDefaultValue(string.Empty);
+        modelBuilder.Entity<CourseEntity>().Property(x => x.Code).HasDefaultValue(string.Empty).IsRequired();
         modelBuilder.Entity<CourseEntity>().HasIndex(x => x.MoodleCourseId);
 
         modelBuilder.Entity<GradeEntity>().ToTable("Grades").HasKey(x => x.Id);
