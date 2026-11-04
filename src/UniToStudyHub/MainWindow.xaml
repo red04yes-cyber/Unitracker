@@ -444,6 +444,13 @@
                                         </Border>
                                     </StackPanel>
                                 </Border>
+                                <DataTemplate.Triggers>
+                                    <DataTrigger Binding="{Binding Completed}" Value="True">
+                                        <Setter TargetName="CourseStatusBorder" Property="Background" Value="{StaticResource SuccessSoftBrush}"/>
+                                        <Setter TargetName="CourseStatusText" Property="Text" Value="SUPERATO"/>
+                                        <Setter TargetName="CourseStatusText" Property="Foreground" Value="{StaticResource SuccessBrush}"/>
+                                    </DataTrigger>
+                                </DataTemplate.Triggers>
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
