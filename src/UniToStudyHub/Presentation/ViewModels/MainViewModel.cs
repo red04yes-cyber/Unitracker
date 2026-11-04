@@ -56,7 +56,9 @@ public sealed class MainViewModel : INotifyPropertyChanged
         get => _courseSearchText;
         set
         {
-            if (!Set(ref _courseSearchText, value)) return;
+            if (string.Equals(_courseSearchText, value, StringComparison.Ordinal)) return;
+            _courseSearchText = value;
+            OnPropertyChanged();
             RefreshVisibleCourses();
         }
     }
@@ -66,7 +68,9 @@ public sealed class MainViewModel : INotifyPropertyChanged
         get => _courseFilter;
         set
         {
-            if (!Set(ref _courseFilter, value)) return;
+            if (string.Equals(_courseFilter, value, StringComparison.Ordinal)) return;
+            _courseFilter = value;
+            OnPropertyChanged();
             RefreshVisibleCourses();
         }
     }
@@ -174,6 +178,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
             StatusMessage = $"Salvataggio non riuscito: {ex.Message}";
         }
         RefreshCourseSummary();
+        RefreshVisibleCourses();
     }
 
     private async Task AddGradeAsync()
@@ -362,14 +367,6 @@ public sealed class MainViewModel : INotifyPropertyChanged
         if (propertyName == nameof(SelectedGradeCourse)) AddGradeCommand?.NotifyCanExecuteChanged();
     }
 
-    private bool Set<T>(ref T field, T value, [CallerMemberName] string? propertyName = null, bool notify = true)
-    {
-        if (EqualityComparer<T>.Default.Equals(field, value)) return false;
-        field = value;
-        if (notify) OnPropertyChanged(propertyName);
-        if (propertyName == nameof(SelectedGradeCourse)) AddGradeCommand?.NotifyCanExecuteChanged();
-        return true;
-    }
 
     private void OnPropertyChanged([CallerMemberName] string? propertyName = null) =>
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
