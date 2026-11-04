@@ -16,9 +16,24 @@ public static class StudyHubDatabase
     public const string PreliminaryRelationshipsMigrationId = "202611040002_AddCourseRelationships";
     public const string RelationshipsMigrationId = "20261104000200_AddCourseRelationships";
 
+    public const string DataDirectoryEnvironmentVariable = "UNITRACKER_DATA_DIR";
+
+    /// <summary>
+    /// Returns the profile directory used by the app. Tests and the Windows CI
+    /// smoke run can redirect it to an isolated temporary directory; normal
+    /// startup keeps using %LOCALAPPDATA%\UniToStudyHub.
+    /// </summary>
+    public static string GetDataDirectory()
+    {
+        var configured = Environment.GetEnvironmentVariable(DataDirectoryEnvironmentVariable);
+        return string.IsNullOrWhiteSpace(configured)
+            ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "UniToStudyHub")
+            : Path.GetFullPath(configured);
+    }
+
     public static string GetDatabasePath()
     {
-        var folder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "UniToStudyHub");
+        var folder = GetDataDirectory();
         Directory.CreateDirectory(folder);
         return Path.Combine(folder, "unitracker.db");
     }

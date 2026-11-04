@@ -13,6 +13,24 @@ public sealed class SqliteStudyDataStoreTests
         new(database.Factory);
 
     [Fact]
+    public async Task RuntimeSqliteVersionContainsThePatchedNativeLibrary()
+    {
+        await using var database = await SqliteTestDatabase.CreateFileAsync();
+        await using var db = database.CreateContext();
+        var connection = db.Database.GetDbConnection();
+        await connection.OpenAsync();
+        await using var command = connection.CreateCommand();
+        command.CommandText = "SELECT sqlite_version()";
+
+        var versionText = Assert.IsType<string>(await command.ExecuteScalarAsync());
+        var version = Version.Parse(versionText);
+
+        Assert.True(
+            version >= new Version(3, 50, 2),
+            $"SQLite runtime version {version} is older than the patched 3.50.2 baseline.");
+    }
+
+    [Fact]
     public async Task MigrationHistoryContainsBothVersionedMigrations()
     {
         await using var database = await SqliteTestDatabase.CreateInMemoryAsync();
@@ -57,7 +75,7 @@ public sealed class SqliteStudyDataStoreTests
 
         var loaded = await store.LoadAsync();
         Assert.Equal(2, loaded.Courses.Count);
-        Assert.Equal(1, loaded.Grades.Count);
+        Assert.Single(loaded.Grades);
     }
 
     [Fact]
