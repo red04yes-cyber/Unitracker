@@ -1,1 +1,59 @@
-<Window x:Class="UniToStudyHub.MainWindow" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Title="UniTo StudyHub" Height="780" Width="1120" WindowStartupLocation="CenterScreen"><Grid Margin="24"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions><StackPanel><TextBlock Text="UniTo StudyHub" FontSize="28" FontWeight="Bold"/><TextBlock Text="Carriera universitaria, pianificazione e Moodle" Margin="0,4,0,16"/></StackPanel><TabControl Grid.Row="1"><TabItem Header="Dashboard"><StackPanel Margin="16"><TextBlock Text="Media ponderata" FontWeight="Bold"/><TextBlock x:Name="AverageText" Text="—" FontSize="24"/><TextBlock x:Name="BaseGradeText" Text="Voto di partenza: —"/><TextBlock x:Name="CreditsText" Text="CFU completati: 0"/><TextBlock Text="Obiettivo laurea: ottobre 2027" Margin="0,8"/></StackPanel></TabItem><TabItem Header="Carriera"><StackPanel Margin="16"><WrapPanel><TextBox x:Name="CourseNameBox" Width="220" ToolTip="Nome corso"/><TextBox x:Name="CourseCfuBox" Width="70" Text="6"/><Button Content="Aggiungi corso" Click="AddCourse_Click"/></WrapPanel><DataGrid x:Name="CoursesGrid" AutoGenerateColumns="True" Height="220"/><WrapPanel><ComboBox x:Name="GradeCourseCombo" Width="220" DisplayMemberPath="Name"/><TextBox x:Name="GradeValueBox" Width="70" Text="28"/><Button Content="Registra voto" Click="AddGrade_Click"/></WrapPanel><DataGrid x:Name="GradesGrid" AutoGenerateColumns="True" Height="180"/></StackPanel></TabItem><TabItem Header="Pianificazione"><StackPanel Margin="16"><Button Content="Distribuisci esami nelle sessioni" Click="PlanExams_Click" HorizontalAlignment="Left"/><DataGrid x:Name="ExamsGrid" AutoGenerateColumns="True"/></StackPanel></TabItem><TabItem Header="Moodle"><StackPanel Margin="16"><TextBlock Text="URL Moodle"/><TextBox x:Name="MoodleUrlBox" Width="500" HorizontalAlignment="Left"/><TextBlock Text="Token Web Services"/><PasswordBox x:Name="MoodleTokenBox" Width="500" HorizontalAlignment="Left"/><WrapPanel><Button Content="Verifica e salva token" Click="ConnectMoodle_Click"/><Button Content="Sincronizza corsi" Click="SyncMoodle_Click"/></WrapPanel><TextBlock x:Name="MoodleStatusText" Text="Non collegato"/></StackPanel></TabItem></TabControl></Grid></Window>
+<Window x:Class="UniToStudyHub.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="UniTo StudyHub" Height="780" Width="1120" WindowStartupLocation="CenterScreen">
+    <Grid Margin="24">
+        <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+        <StackPanel>
+            <TextBlock Text="UniTo StudyHub" FontSize="28" FontWeight="Bold"/>
+            <TextBlock Text="Carriera universitaria, pianificazione e Moodle" Margin="0,4,0,16"/>
+        </StackPanel>
+        <TabControl Grid.Row="1">
+            <TabItem Header="Dashboard">
+                <StackPanel Margin="16">
+                    <TextBlock Text="Media ponderata" FontWeight="Bold"/>
+                    <TextBlock Text="{Binding AverageDisplay}" FontSize="24"/>
+                    <TextBlock Text="{Binding BaseGradeDisplay}"/>
+                    <TextBlock Text="{Binding CreditsDisplay}"/>
+                    <TextBlock Text="Obiettivo laurea configurato: ottobre 2027" Margin="0,8"/>
+                    <TextBlock Text="{Binding StatusMessage}" TextWrapping="Wrap" Margin="4"/>
+                </StackPanel>
+            </TabItem>
+            <TabItem Header="Carriera">
+                <StackPanel Margin="16">
+                    <WrapPanel>
+                        <TextBox Width="220" ToolTip="Nome corso" Text="{Binding CourseNameInput, UpdateSourceTrigger=PropertyChanged}"/>
+                        <TextBox Width="70" Text="{Binding CourseCfuInput, UpdateSourceTrigger=PropertyChanged}"/>
+                        <Button Content="Aggiungi corso" Command="{Binding AddCourseCommand}"/>
+                    </WrapPanel>
+                    <DataGrid ItemsSource="{Binding Courses}" Height="220"/>
+                    <WrapPanel>
+                        <ComboBox Width="220" ItemsSource="{Binding Courses}" DisplayMemberPath="Name" SelectedItem="{Binding SelectedGradeCourse}"/>
+                        <TextBox Width="70" Text="{Binding GradeValueInput, UpdateSourceTrigger=PropertyChanged}"/>
+                        <Button Content="Registra voto" Command="{Binding AddGradeCommand}"/>
+                    </WrapPanel>
+                    <DataGrid ItemsSource="{Binding Grades}" Height="180"/>
+                </StackPanel>
+            </TabItem>
+            <TabItem Header="Pianificazione">
+                <StackPanel Margin="16">
+                    <Button Content="Distribuisci esami nelle sessioni" Command="{Binding PlanExamsCommand}" HorizontalAlignment="Left"/>
+                    <DataGrid ItemsSource="{Binding Exams}"/>
+                </StackPanel>
+            </TabItem>
+            <TabItem Header="Moodle">
+                <StackPanel Margin="16">
+                    <TextBlock Text="URL Moodle"/>
+                    <TextBox Width="500" HorizontalAlignment="Left" Text="{Binding MoodleUrlInput, UpdateSourceTrigger=PropertyChanged}"/>
+                    <TextBlock Text="Token Web Services"/>
+                    <PasswordBox x:Name="MoodleTokenBox" Width="500" HorizontalAlignment="Left" PasswordChanged="MoodleTokenBox_PasswordChanged"/>
+                    <WrapPanel>
+                        <Button Content="Verifica e salva token" Command="{Binding ConnectMoodleCommand}"/>
+                        <Button Content="Sincronizza corsi" Command="{Binding SyncMoodleCommand}"/>
+                    </WrapPanel>
+                    <TextBlock Text="{Binding MoodleStatus}" TextWrapping="Wrap" Margin="4"/>
+                </StackPanel>
+            </TabItem>
+        </TabControl>
+    </Grid>
+</Window>
