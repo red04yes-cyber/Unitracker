@@ -709,36 +709,164 @@
                     </StackPanel>
                 </StackPanel>
             </TabItem.Header>
-            <Grid Margin="32">
-                <Border Style="{StaticResource CardBorderStyle}" Padding="34"
-                        VerticalAlignment="Center" MaxWidth="640"
-                        HorizontalAlignment="Center">
-                    <StackPanel HorizontalAlignment="Center">
-                        <Border Width="54" Height="54" CornerRadius="16"
-                                Background="{StaticResource AccentSoftBrush}">
-                            <TextBlock Text="04" Foreground="{StaticResource AccentBrush}"
-                                       FontSize="18" FontWeight="Bold"
-                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                <StackPanel Margin="32,30,32,36">
+                    <TextBlock Text="IL TUO SPAZIO DI STUDIO" FontSize="10" FontWeight="Bold"
+                               Foreground="{StaticResource AccentBrush}"/>
+                    <TextBlock Text="Studio Lab" Style="{StaticResource PageTitleStyle}" Margin="0,7,0,4"/>
+                    <TextBlock Text="Meno attrito. Più attenzione su ciò che conta."
+                               Style="{StaticResource PageSubtitleStyle}" Margin="0,0,0,22"/>
+
+                    <Grid Margin="0,0,0,18">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="1.55*"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Border Grid.Column="0" Style="{StaticResource CardBorderStyle}" Padding="24" Margin="0,0,12,0">
+                            <StackPanel>
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,16">
+                                    <Border Background="#EAF0FF" CornerRadius="8" Padding="9,6">
+                                        <TextBlock Text="FOCUS" FontSize="9" FontWeight="Bold" Foreground="#3157D5"/>
+                                    </Border>
+                                    <TextBlock Text="  SESSIONE DI STUDIO" FontSize="9" FontWeight="Bold"
+                                               Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center"/>
+                                </StackPanel>
+                                <TextBlock Text="Prenditi questo spazio." FontSize="21" FontWeight="SemiBold"
+                                           Foreground="{StaticResource InkBrush}" Margin="0,0,0,6"/>
+                                <TextBlock Text="Scegli un obiettivo, libera la mente e dedica il prossimo blocco di tempo a una cosa alla volta."
+                                           FontSize="12" Foreground="{StaticResource MutedBrush}"
+                                           TextWrapping="Wrap" MaxWidth="460" Margin="0,0,0,20"/>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Border Width="104" Height="104" CornerRadius="52" BorderBrush="#DCE6FF"
+                                            BorderThickness="7" Background="#F6F8FF">
+                                        <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+                                            <TextBlock Text="25:00" FontSize="23" FontWeight="SemiBold"
+                                                       Foreground="#3157D5" HorizontalAlignment="Center"/>
+                                            <TextBlock Text="POMODORO" FontSize="8" FontWeight="Bold"
+                                                       Foreground="{StaticResource MutedBrush}" HorizontalAlignment="Center"
+                                                       Margin="0,3,0,0"/>
+                                        </StackPanel>
+                                    </Border>
+                                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="18,0,0,0">
+                                        <TextBlock Text="Pronto quando lo sei tu" FontSize="14" FontWeight="SemiBold"
+                                                   Foreground="{StaticResource InkBrush}"/>
+                                        <TextBlock Text="Il timer e il salvataggio delle sessioni saranno collegati al motore di studio."
+                                                   FontSize="11" Foreground="{StaticResource MutedBrush}"
+                                                   TextWrapping="Wrap" Margin="0,5,0,0"/>
+                                        <Border Background="#F3F6FB" CornerRadius="7" Padding="8,5"
+                                                HorizontalAlignment="Left" Margin="0,10,0,0">
+                                            <TextBlock Text="ANTEPRIMA INTERFACCIA" FontSize="8" FontWeight="Bold"
+                                                       Foreground="{StaticResource MutedBrush}"/>
+                                        </Border>
+                                    </StackPanel>
+                                </Grid>
+                            </StackPanel>
                         </Border>
-                        <TextBlock Text="Studio Lab" FontSize="22" FontWeight="SemiBold"
-                                   Foreground="{StaticResource InkBrush}"
-                                   HorizontalAlignment="Center" Margin="0,17,0,6"/>
-                        <TextBlock Text="Questa sezione è in progettazione."
-                                   FontSize="13" Foreground="{StaticResource MutedBrush}"
-                                   HorizontalAlignment="Center"/>
-                        <TextBlock Text="Qui troverai timer Pomodoro, missioni, registro focus, Active Recall, schede personali e diario degli errori. Le funzioni saranno attivate solo quando avranno dati e salvataggi reali."
-                                   FontSize="12" Foreground="{StaticResource MutedBrush}"
-                                   TextWrapping="Wrap" TextAlignment="Center"
-                                   MaxWidth="500" Margin="0,12,0,0"/>
-                        <Border Background="{StaticResource SubtleBrush}" CornerRadius="7"
-                                Padding="10,6" Margin="0,18,0,0">
-                            <TextBlock Text="FASE 3 · NON ANCORA DISPONIBILE"
-                                       FontSize="10" FontWeight="Bold"
-                                       Foreground="{StaticResource MutedBrush}"/>
+
+                        <Border Grid.Column="1" Style="{StaticResource CardBorderStyle}" Padding="20">
+                            <StackPanel>
+                                <TextBlock Text="IL TUO INTENTO" FontSize="9" FontWeight="Bold"
+                                           Foreground="{StaticResource MutedBrush}"/>
+                                <TextBlock Text="Una cosa alla volta." FontSize="18" FontWeight="SemiBold"
+                                           Foreground="{StaticResource InkBrush}" Margin="0,10,0,6"/>
+                                <TextBlock Text="Ogni sessione parte da un obiettivo chiaro. Le attività e le missioni appariranno qui quando saranno disponibili."
+                                           FontSize="11" Foreground="{StaticResource MutedBrush}"
+                                           TextWrapping="Wrap" Margin="0,0,0,16"/>
+                                <Border Background="#F3F6FB" CornerRadius="9" Padding="12">
+                                    <StackPanel>
+                                        <TextBlock Text="PROSSIMO PASSO" FontSize="8" FontWeight="Bold"
+                                                   Foreground="{StaticResource AccentBrush}"/>
+                                        <TextBlock Text="Scegli una materia e definisci cosa vuoi portare a termine."
+                                                   FontSize="11" Foreground="{StaticResource InkBrush}"
+                                                   TextWrapping="Wrap" Margin="0,5,0,0"/>
+                                    </StackPanel>
+                                </Border>
+                            </StackPanel>
                         </Border>
-                    </StackPanel>
-                </Border>
-            </Grid>
+                    </Grid>
+
+                    <Grid Margin="0,0,0,12">
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                        <StackPanel>
+                            <TextBlock Text="Il tuo metodo, un passo alla volta" Style="{StaticResource SectionTitleStyle}"/>
+                            <TextBlock Text="Strumenti pensati per mantenere il ritmo e rendere visibili i progressi."
+                                       FontSize="11" Foreground="{StaticResource MutedBrush}" Margin="0,4,0,0"/>
+                        </StackPanel>
+                        <TextBlock Grid.Column="1" Text="STUDIO PERSONALE" FontSize="9" FontWeight="Bold"
+                                   Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center"/>
+                    </Grid>
+
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Border Grid.Column="0" Style="{StaticResource CardBorderStyle}" Padding="18" Margin="0,0,10,0">
+                            <StackPanel>
+                                <Border Width="34" Height="34" CornerRadius="10" Background="#EAF0FF" HorizontalAlignment="Left">
+                                    <TextBlock Text="↻" FontSize="19" Foreground="#3157D5"
+                                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+                                <TextBlock Text="Active Recall" FontSize="14" FontWeight="SemiBold"
+                                           Foreground="{StaticResource InkBrush}" Margin="0,12,0,5"/>
+                                <TextBlock Text="Richiama le idee dalla memoria, non solo rileggere."
+                                           FontSize="10" Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap"/>
+                                <TextBlock Text="RIPASSI E FLASHCARD" FontSize="8" FontWeight="Bold"
+                                           Foreground="{StaticResource AccentBrush}" Margin="0,14,0,0"/>
+                            </StackPanel>
+                        </Border>
+                        <Border Grid.Column="1" Style="{StaticResource CardBorderStyle}" Padding="18" Margin="5,0">
+                            <StackPanel>
+                                <Border Width="34" Height="34" CornerRadius="10" Background="#E8F6F3" HorizontalAlignment="Left">
+                                    <TextBlock Text="✎" FontSize="17" Foreground="#168A78"
+                                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+                                <TextBlock Text="Diario degli errori" FontSize="14" FontWeight="SemiBold"
+                                           Foreground="{StaticResource InkBrush}" Margin="0,12,0,5"/>
+                                <TextBlock Text="Trasforma gli inciampi in una strategia per la prossima volta."
+                                           FontSize="10" Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap"/>
+                                <TextBlock Text="ERRORI E CORREZIONI" FontSize="8" FontWeight="Bold"
+                                           Foreground="#168A78" Margin="0,14,0,0"/>
+                            </StackPanel>
+                        </Border>
+                        <Border Grid.Column="2" Style="{StaticResource CardBorderStyle}" Padding="18" Margin="10,0,0,0">
+                            <StackPanel>
+                                <Border Width="34" Height="34" CornerRadius="10" Background="#F2ECFF" HorizontalAlignment="Left">
+                                    <TextBlock Text="✧" FontSize="19" Foreground="#7952C7"
+                                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+                                <TextBlock Text="Energia e abitudini" FontSize="14" FontWeight="SemiBold"
+                                           Foreground="{StaticResource InkBrush}" Margin="0,12,0,5"/>
+                                <TextBlock Text="Osserva il tuo ritmo e costruisci una routine sostenibile."
+                                           FontSize="10" Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap"/>
+                                <TextBlock Text="CHECK-IN E FOCUS" FontSize="8" FontWeight="Bold"
+                                           Foreground="#7952C7" Margin="0,14,0,0"/>
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+
+                    <Border Style="{StaticResource CardBorderStyle}" Padding="18" Margin="0,18,0,0">
+                        <Grid>
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                            <Border Width="32" Height="32" CornerRadius="9" Background="#F3F6FB">
+                                <TextBlock Text="i" FontSize="15" FontWeight="SemiBold"
+                                           Foreground="{StaticResource MutedBrush}"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <StackPanel Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center">
+                                <TextBlock Text="Interfaccia in preparazione" FontSize="12" FontWeight="SemiBold"
+                                           Foreground="{StaticResource InkBrush}"/>
+                                <TextBlock Text="Questa schermata definisce la direzione visiva. Timer persistente, missioni, ripassi e diario verranno attivati quando i servizi e i dati reali saranno collegati."
+                                           FontSize="10" Foreground="{StaticResource MutedBrush}"
+                                           TextWrapping="Wrap" Margin="0,3,0,0"/>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+                </StackPanel>
+            </ScrollViewer>
         </TabItem>
 
         <TabItem>
