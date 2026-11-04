@@ -2,6 +2,8 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using UniToStudyHub.Models;
+using UniToStudyHub.Application.Mappers;
+using UniToStudyHub.Domain.Services;
 using UniToStudyHub.Presentation.Commands;
 using UniToStudyHub.Services;
 
@@ -11,6 +13,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
 {
     private readonly IStudyDataStore _store;
     private readonly MoodleApplicationService _moodle;
+    private readonly CareerCalculatorService _careerCalculator;
     private StudyData _data = new();
     private Course? _selectedGradeCourse;
     private string _courseNameInput = string.Empty;
@@ -48,10 +51,11 @@ public sealed class MainViewModel : INotifyPropertyChanged
     public AsyncRelayCommand ConnectMoodleCommand { get; }
     public AsyncRelayCommand SyncMoodleCommand { get; }
 
-    public MainViewModel(IStudyDataStore store, MoodleApplicationService moodle)
+    public MainViewModel(IStudyDataStore store, MoodleApplicationService moodle, CareerCalculatorService careerCalculator)
     {
         _store = store;
         _moodle = moodle;
+        _careerCalculator = careerCalculator;
         AddCourseCommand = new AsyncRelayCommand(AddCourseAsync);
         AddGradeCommand = new AsyncRelayCommand(AddGradeAsync, () => SelectedGradeCourse is not null);
         PlanExamsCommand = new AsyncRelayCommand(PlanExamsAsync);
@@ -103,7 +107,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
         var item = new Grade
         {
             CourseId = course.Id, CourseName = course.Name, Cfu = course.Cfu,
-            Value = grade, Date = DateTime.Today, CountsTowardAverage = true
+            Value = grade, Date = DateTime.Now, CountsTowardAverage = true
         };
         Grades.Add(item);
         var previousCompleted = course.Completed;
@@ -209,9 +213,18 @@ public sealed class MainViewModel : INotifyPropertyChanged
 
     private void RefreshCareerSummary()
     {
+        if (_data.CareerExams.Count > 0)
+        {
+            var summary = _careerCalculator.Calculate(CareerExamMapper.ToDomain(_data.CareerExams));
+            AverageDisplay = GradeCalculator.Format(summary.WeightedAverage);
+            BaseGradeDisplay = "Voto di partenza: " + GradeCalculator.Format(summary.BaseDegreeGrade);
+            CreditsDisplay = $"CFU acquisiti: {summary.AcquiredCfu}";
+            return;
+        }
+
         AverageDisplay = GradeCalculator.Format(GradeCalculator.WeightedAverage(_data.Grades));
         BaseGradeDisplay = "Voto di partenza: " + GradeCalculator.Format(GradeCalculator.ProjectedBase(_data.Grades));
-        CreditsDisplay = $"CFU completati: {GradeCalculator.AcquiredCfu(_data.Grades)}";
+        CreditsDisplay = $"CFU acquisiti: {GradeCalculator.AcquiredCfu(_data.Grades)}";
     }
 
     private void Set<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
