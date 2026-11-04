@@ -1,22 +1,8 @@
 using UniToStudyHub.Domain.Entities;
 using UniToStudyHub.Domain.ValueObjects;
+using UniToStudyHub.Domain.Rules;
 
 namespace UniToStudyHub.Domain.Services;
-
-public sealed record CareerCalculationOptions
-{
-    public decimal HonorsValue { get; init; } = 30m;
-    public int AverageDecimalPlaces { get; init; } = 4;
-    public int BaseGradeDecimalPlaces { get; init; } = 4;
-    public MidpointRounding Rounding { get; init; } = MidpointRounding.ToEven;
-
-    public void Validate()
-    {
-        if (HonorsValue is < 18m or > 30m) throw new ArgumentOutOfRangeException(nameof(HonorsValue));
-        if (AverageDecimalPlaces is < 0 or > 8) throw new ArgumentOutOfRangeException(nameof(AverageDecimalPlaces));
-        if (BaseGradeDecimalPlaces is < 0 or > 8) throw new ArgumentOutOfRangeException(nameof(BaseGradeDecimalPlaces));
-    }
-}
 
 public sealed record CareerSummary(
     decimal? WeightedAverage,
@@ -41,10 +27,10 @@ public sealed record WhatIfResult(
 
 public sealed class CareerCalculatorService
 {
-    private readonly CareerCalculationOptions _options;
-    public CareerCalculatorService(CareerCalculationOptions? options = null)
+    private readonly AcademicRules _options;
+    public CareerCalculatorService(AcademicRules? options = null)
     {
-        _options = options ?? new CareerCalculationOptions();
+        _options = options ?? new AcademicRules();
         _options.Validate();
     }
 
@@ -110,7 +96,7 @@ public sealed class CareerCalculatorService
         var averageCfu = valid.Sum(c => c.Cfu);
         decimal? average = averageCfu == 0
             ? null
-            : Math.Round(valid.Sum(c => (c.Grade!.IsHonors ? _options.HonorsValue : c.Grade.NumericValue!.Value) * c.Cfu) / averageCfu, _options.AverageDecimalPlaces, _options.Rounding);
+            : Math.Round(valid.Sum(c => (c.Grade!.IsHonors ? _options.HonorsAverageValue : c.Grade.NumericValue!.Value) * c.Cfu) / averageCfu, _options.AverageDecimalPlaces, _options.Rounding);
         decimal? baseGrade = average is null ? null : Math.Round(average.Value * 110m / 30m, _options.BaseGradeDecimalPlaces, _options.Rounding);
         return new CareerSummary(average, baseGrade, acquiredCfu, totalCfu, passedExams, Math.Max(0, contributions.Count - passedExams));
     }
