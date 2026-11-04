@@ -1,59 +1,819 @@
 <Window x:Class="UniToStudyHub.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="UniTo StudyHub" Height="780" Width="1120" WindowStartupLocation="CenterScreen">
-    <Grid Margin="24">
-        <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
-        <StackPanel>
-            <TextBlock Text="UniTo StudyHub" FontSize="28" FontWeight="Bold"/>
-            <TextBlock Text="Carriera universitaria, pianificazione e Moodle" Margin="0,4,0,16"/>
-        </StackPanel>
-        <TabControl Grid.Row="1">
-            <TabItem Header="Dashboard">
-                <StackPanel Margin="16">
-                    <TextBlock Text="Media ponderata" FontWeight="Bold"/>
-                    <TextBlock Text="{Binding AverageDisplay}" FontSize="24"/>
-                    <TextBlock Text="{Binding BaseGradeDisplay}"/>
-                    <TextBlock Text="{Binding CreditsDisplay}"/>
-                    <TextBlock Text="Obiettivo laurea configurato: ottobre 2027" Margin="0,8"/>
-                    <TextBlock Text="{Binding StatusMessage}" TextWrapping="Wrap" Margin="4"/>
+        Title="UniTo StudyHub"
+        Height="900"
+        Width="1440"
+        MinHeight="700"
+        MinWidth="1024"
+        WindowStartupLocation="CenterScreen"
+        Background="{StaticResource PageBrush}"
+        FontFamily="Segoe UI Variable"
+        UseLayoutRounding="True"
+        SnapsToDevicePixels="True">
+    <Window.Resources>
+        <Style TargetType="{x:Type TabItem}">
+            <Setter Property="Width" Value="220"/>
+            <Setter Property="Height" Value="52"/>
+            <Setter Property="Margin" Value="0,3"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Foreground" Value="#C5D1E2"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type TabItem}">
+                        <Border x:Name="TabSurface"
+                                Background="{TemplateBinding Background}"
+                                CornerRadius="9"
+                                Padding="10,4">
+                            <ContentPresenter ContentSource="Header"
+                                              HorizontalAlignment="Stretch"
+                                              VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="TabSurface" Property="Background" Value="#3157D5"/>
+                                <Setter Property="Foreground" Value="White"/>
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="TabSurface" Property="Opacity" Value="0.86"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="TabSurface" Property="Opacity" Value="0.55"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
+    <TabControl x:Name="MainTabs"
+                TabStripPlacement="Left"
+                SelectedIndex="0"
+                Background="{StaticResource PageBrush}"
+                BorderThickness="0">
+        <TabControl.Template>
+            <ControlTemplate TargetType="{x:Type TabControl}">
+                <Grid SnapsToDevicePixels="True">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="244"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <Border Grid.Column="0" Background="{StaticResource SidebarBrush}">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+
+                            <StackPanel Grid.Row="0" Margin="22,24,18,16">
+                                <StackPanel Orientation="Horizontal">
+                                    <Border Width="40" Height="40" CornerRadius="11"
+                                            Background="#3157D5" VerticalAlignment="Center">
+                                        <TextBlock Text="S" Foreground="White" FontSize="23"
+                                                   FontWeight="Bold" HorizontalAlignment="Center"
+                                                   VerticalAlignment="Center"/>
+                                    </Border>
+                                    <StackPanel Margin="11,1,0,0" VerticalAlignment="Center">
+                                        <TextBlock Text="StudyHub" Foreground="White"
+                                                   FontSize="18" FontWeight="SemiBold"/>
+                                        <TextBlock Text="UNITO WORKSPACE" Foreground="#AFC0D8"
+                                                   FontSize="9" FontWeight="SemiBold"
+                                                   Margin="0,2,0,0"/>
+                                    </StackPanel>
+                                </StackPanel>
+                                <TextBlock Text="IL TUO PERCORSO UNIVERSITARIO"
+                                           Foreground="#8094B2" FontSize="9"
+                                           FontWeight="SemiBold" Margin="2,27,0,0"/>
+                            </StackPanel>
+
+                            <TabPanel x:Name="HeaderPanel"
+                                      Grid.Row="1"
+                                      IsItemsHost="True"
+                                      KeyboardNavigation.TabIndex="1"
+                                      Margin="12,0,12,8"/>
+
+                            <StackPanel Grid.Row="2" Margin="22,12,20,22">
+                                <Border Height="1" Background="#35445B" Margin="0,0,0,14"/>
+                                <TextBlock Text="Un passo alla volta."
+                                           Foreground="#D6DFEC" FontSize="12"
+                                           FontWeight="SemiBold"/>
+                                <TextBlock Text="Il tuo spazio per imparare e crescere."
+                                           Foreground="#91A2BB" FontSize="10"
+                                           TextWrapping="Wrap" Margin="0,4,0,0"/>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+
+                    <Grid Grid.Column="1">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="68"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+                        <Border Grid.Row="0" Background="{StaticResource PanelBrush}"
+                                BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1"
+                                Padding="28,0">
+                            <Grid VerticalAlignment="Center">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <StackPanel VerticalAlignment="Center">
+                                    <TextBlock Text="UNITO STUDYHUB" FontSize="9"
+                                               FontWeight="Bold" Foreground="{StaticResource MutedBrush}"/>
+                                    <TextBlock Text="Il tuo spazio personale" FontSize="13"
+                                               FontWeight="SemiBold" Foreground="{StaticResource InkBrush}"
+                                               Margin="0,3,0,0"/>
+                                </StackPanel>
+                                <StackPanel Grid.Column="1" Orientation="Horizontal"
+                                            VerticalAlignment="Center">
+                                    <Border Background="{StaticResource SubtleBrush}"
+                                            CornerRadius="7" Padding="10,7"
+                                            VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding MoodleStatus}" FontSize="10"
+                                                   Foreground="{StaticResource MutedBrush}"/>
+                                    </Border>
+                                    <Button Content="Impostazioni"
+                                            Style="{StaticResource QuietButtonStyle}"
+                                            Margin="10,0,0,0"
+                                            Click="NavigateToSettings_Click"/>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+                        <Border Grid.Row="1" Background="{StaticResource PageBrush}">
+                            <ContentPresenter x:Name="PART_SelectedContentHost"
+                                              ContentSource="SelectedContent"
+                                              SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}"/>
+                        </Border>
+                    </Grid>
+                </Grid>
+            </ControlTemplate>
+        </TabControl.Template>
+
+        <TabItem>
+            <TabItem.Header>
+                <StackPanel Orientation="Horizontal">
+                    <Border Width="30" Height="30" CornerRadius="8" Background="#263955">
+                        <TextBlock Text="01" Foreground="#DCE7F7" FontSize="10"
+                                   FontWeight="Bold" HorizontalAlignment="Center"
+                                   VerticalAlignment="Center"/>
+                    </Border>
+                    <StackPanel Margin="11,0,0,0" VerticalAlignment="Center">
+                        <TextBlock Text="Oggi" FontSize="13" FontWeight="SemiBold"/>
+                        <TextBlock Text="La tua dashboard" FontSize="10" Opacity="0.76"/>
+                    </StackPanel>
                 </StackPanel>
-            </TabItem>
-            <TabItem Header="Carriera">
-                <StackPanel Margin="16">
-                    <WrapPanel>
-                        <TextBox Width="220" ToolTip="Nome corso" Text="{Binding CourseNameInput, UpdateSourceTrigger=PropertyChanged}"/>
-                        <TextBox Width="70" Text="{Binding CourseCfuInput, UpdateSourceTrigger=PropertyChanged}"/>
-                        <Button Content="Aggiungi corso" Command="{Binding AddCourseCommand}"/>
-                    </WrapPanel>
-                    <DataGrid ItemsSource="{Binding Courses}" Height="220"/>
-                    <WrapPanel>
-                        <ComboBox Width="220" ItemsSource="{Binding Courses}" DisplayMemberPath="Name" SelectedItem="{Binding SelectedGradeCourse}"/>
-                        <TextBox Width="70" Text="{Binding GradeValueInput, UpdateSourceTrigger=PropertyChanged}"/>
-                        <Button Content="Registra voto" Command="{Binding AddGradeCommand}"/>
-                    </WrapPanel>
-                    <DataGrid ItemsSource="{Binding Grades}" Height="180"/>
+            </TabItem.Header>
+
+            <ScrollViewer VerticalScrollBarVisibility="Auto"
+                          HorizontalScrollBarVisibility="Disabled">
+                <StackPanel Margin="32,30,32,36">
+                    <TextBlock Text="IL TUO WORKSPACE" FontSize="10"
+                               FontWeight="Bold" Foreground="{StaticResource AccentBrush}"/>
+                    <TextBlock Text="Buono studio." Style="{StaticResource PageTitleStyle}"
+                               Margin="0,7,0,4"/>
+                    <TextBlock Text="La tua carriera e le priorità universitarie, in un unico posto."
+                               Style="{StaticResource PageSubtitleStyle}" Margin="0,0,0,22"/>
+
+                    <Grid Margin="0,0,0,22">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="1.55*"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <Border Grid.Column="0" Background="{StaticResource NavyBrush}"
+                                CornerRadius="14" Padding="24" Margin="0,0,12,0">
+                            <StackPanel>
+                                <TextBlock Text="IL TUO PROSSIMO PASSO"
+                                           Foreground="#AFC5EA" FontSize="10"
+                                           FontWeight="Bold"/>
+                                <TextBlock Text="Costruiamo la tua giornata di studio."
+                                           Foreground="White" FontSize="22"
+                                           FontWeight="SemiBold" TextWrapping="Wrap"
+                                           Margin="0,9,0,7"/>
+                                <TextBlock Text="Il piano giornaliero e le sessioni di focus arriveranno con Studio Lab. Intanto puoi organizzare le materie e gli esami da preparare."
+                                           Foreground="#D0DAE9" FontSize="12"
+                                           TextWrapping="Wrap" MaxWidth="620"/>
+                                <Button Content="Apri le materie"
+                                        Style="{StaticResource SecondaryButtonStyle}"
+                                        HorizontalAlignment="Left"
+                                        Margin="0,18,0,0"
+                                        Click="NavigateToSubjects_Click"/>
+                            </StackPanel>
+                        </Border>
+
+                        <Border Grid.Column="1" Style="{StaticResource CardBorderStyle}">
+                            <StackPanel>
+                                <TextBlock Text="PROSSIMO ESAME" Style="{StaticResource KpiLabelStyle}"/>
+                                <TextBlock Text="{Binding NextExamNameDisplay}"
+                                           FontSize="18" FontWeight="SemiBold"
+                                           Foreground="{StaticResource InkBrush}"
+                                           TextWrapping="Wrap" Margin="0,12,0,5"/>
+                                <TextBlock Text="{Binding NextExamDateDisplay}"
+                                           FontSize="12" Foreground="{StaticResource MutedBrush}"
+                                           TextWrapping="Wrap"/>
+                                <Border Background="{StaticResource WarningSoftBrush}"
+                                        CornerRadius="7" Padding="9,7" Margin="0,18,0,0">
+                                    <TextBlock Text="Le date pianificate sono indicative, non appelli ufficiali."
+                                               FontSize="10" Foreground="#8A5B1D"
+                                               TextWrapping="Wrap"/>
+                                </Border>
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+
+                    <UniformGrid Columns="4" Margin="0,0,0,22">
+                        <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,10,0">
+                            <StackPanel>
+                                <TextBlock Text="CFU ACQUISITI" Style="{StaticResource KpiLabelStyle}"/>
+                                <TextBlock Text="{Binding AcquiredCreditsValue}"
+                                           FontSize="27" FontWeight="SemiBold"
+                                           Foreground="{StaticResource InkBrush}" Margin="0,8,0,2"/>
+                                <TextBlock Text="Dagli esami registrati"
+                                           FontSize="10" Foreground="{StaticResource MutedBrush}"/>
+                            </StackPanel>
+                        </Border>
+                        <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,10,0">
+                            <StackPanel>
+                                <TextBlock Text="MEDIA PONDERATA" Style="{StaticResource KpiLabelStyle}"/>
+                                <TextBlock Text="{Binding AverageDisplay}"
+                                           FontSize="27" FontWeight="SemiBold"
+                                           Foreground="{StaticResource InkBrush}" Margin="0,8,0,2"/>
+                                <TextBlock Text="In base ai CFU"
+                                           FontSize="10" Foreground="{StaticResource MutedBrush}"/>
+                            </StackPanel>
+                        </Border>
+                        <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,10,0">
+                            <StackPanel>
+                                <TextBlock Text="MEDIA ARITMETICA" Style="{StaticResource KpiLabelStyle}"/>
+                                <TextBlock Text="{Binding ArithmeticAverageDisplay}"
+                                           FontSize="27" FontWeight="SemiBold"
+                                           Foreground="{StaticResource InkBrush}" Margin="0,8,0,2"/>
+                                <TextBlock Text="Ultimo voto per materia"
+                                           FontSize="10" Foreground="{StaticResource MutedBrush}"/>
+                            </StackPanel>
+                        </Border>
+                        <Border Style="{StaticResource CardBorderStyle}">
+                            <StackPanel>
+                                <TextBlock Text="VOTO DI PARTENZA" Style="{StaticResource KpiLabelStyle}"/>
+                                <TextBlock Text="{Binding ProjectedBaseGradeValue}"
+                                           FontSize="19" FontWeight="SemiBold"
+                                           Foreground="{StaticResource InkBrush}"
+                                           TextWrapping="Wrap" Margin="0,11,0,3"/>
+                                <TextBlock Text="Proiezione basata sulla carriera"
+                                           FontSize="10" Foreground="{StaticResource MutedBrush}"/>
+                            </StackPanel>
+                        </Border>
+                    </UniformGrid>
+
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="1.25*"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Border Grid.Column="0" Style="{StaticResource CardBorderStyle}" Margin="0,0,12,0">
+                            <StackPanel>
+                                <TextBlock Text="Ultimo risultato registrato"
+                                           Style="{StaticResource SectionTitleStyle}"/>
+                                <TextBlock Text="{Binding LatestGradeDisplay}"
+                                           FontSize="13" Foreground="{StaticResource InkBrush}"
+                                           TextWrapping="Wrap" Margin="0,11,0,0"/>
+                            </StackPanel>
+                        </Border>
+                        <Border Grid.Column="1" Style="{StaticResource CardBorderStyle}">
+                            <StackPanel>
+                                <TextBlock Text="Le tue materie" Style="{StaticResource SectionTitleStyle}"/>
+                                <Grid Margin="0,12,0,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Grid.Column="0">
+                                        <TextBlock Text="{Binding ActiveCoursesCount}"
+                                                   FontSize="23" FontWeight="SemiBold"
+                                                   Foreground="{StaticResource AccentBrush}"/>
+                                        <TextBlock Text="In corso" FontSize="11"
+                                                   Foreground="{StaticResource MutedBrush}"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="1">
+                                        <TextBlock Text="{Binding ArchivedCoursesCount}"
+                                                   FontSize="23" FontWeight="SemiBold"
+                                                   Foreground="{StaticResource SuccessBrush}"/>
+                                        <TextBlock Text="In archivio" FontSize="11"
+                                                   Foreground="{StaticResource MutedBrush}"/>
+                                    </StackPanel>
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+
+                    <TextBlock Text="{Binding StatusMessage}" Foreground="{StaticResource MutedBrush}"
+                               FontSize="11" TextWrapping="Wrap" Margin="2,16,2,0"/>
                 </StackPanel>
-            </TabItem>
-            <TabItem Header="Pianificazione">
-                <StackPanel Margin="16">
-                    <Button Content="Distribuisci esami nelle sessioni" Command="{Binding PlanExamsCommand}" HorizontalAlignment="Left"/>
-                    <DataGrid ItemsSource="{Binding Exams}"/>
+            </ScrollViewer>
+        </TabItem>
+
+        <TabItem>
+            <TabItem.Header>
+                <StackPanel Orientation="Horizontal">
+                    <Border Width="30" Height="30" CornerRadius="8" Background="#263955">
+                        <TextBlock Text="02" Foreground="#DCE7F7" FontSize="10"
+                                   FontWeight="Bold" HorizontalAlignment="Center"
+                                   VerticalAlignment="Center"/>
+                    </Border>
+                    <StackPanel Margin="11,0,0,0" VerticalAlignment="Center">
+                        <TextBlock Text="Materie" FontSize="13" FontWeight="SemiBold"/>
+                        <TextBlock Text="Corsi e archivio" FontSize="10" Opacity="0.76"/>
+                    </StackPanel>
                 </StackPanel>
-            </TabItem>
-            <TabItem Header="Moodle">
-                <StackPanel Margin="16">
-                    <TextBlock Text="URL Moodle"/>
-                    <TextBox Width="500" HorizontalAlignment="Left" Text="{Binding MoodleUrlInput, UpdateSourceTrigger=PropertyChanged}"/>
-                    <TextBlock Text="Token Web Services"/>
-                    <PasswordBox x:Name="MoodleTokenBox" Width="500" HorizontalAlignment="Left" PasswordChanged="MoodleTokenBox_PasswordChanged"/>
-                    <WrapPanel>
-                        <Button Content="Verifica e salva token" Command="{Binding ConnectMoodleCommand}"/>
-                        <Button Content="Sincronizza corsi" Command="{Binding SyncMoodleCommand}"/>
-                    </WrapPanel>
-                    <TextBlock Text="{Binding MoodleStatus}" TextWrapping="Wrap" Margin="4"/>
+            </TabItem.Header>
+
+            <ScrollViewer VerticalScrollBarVisibility="Auto"
+                          HorizontalScrollBarVisibility="Disabled">
+                <StackPanel Margin="32,30,32,36">
+                    <TextBlock Text="CARRIERA UNIVERSITARIA" FontSize="10"
+                               FontWeight="Bold" Foreground="{StaticResource AccentBrush}"/>
+                    <TextBlock Text="Le tue materie" Style="{StaticResource PageTitleStyle}"
+                               Margin="0,7,0,4"/>
+                    <TextBlock Text="Tieni insieme insegnamenti da preparare, esami conclusi e risultati registrati."
+                               Style="{StaticResource PageSubtitleStyle}" Margin="0,0,0,22"/>
+
+                    <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,14">
+                        <StackPanel>
+                            <TextBlock Text="Aggiungi un insegnamento"
+                                       Style="{StaticResource SectionTitleStyle}" Margin="0,0,0,12"/>
+                            <WrapPanel>
+                                <StackPanel Width="300" Margin="0,0,10,0">
+                                    <TextBlock Text="Nome materia" Style="{StaticResource KpiLabelStyle}" Margin="0,0,0,5"/>
+                                    <TextBox Text="{Binding CourseNameInput, UpdateSourceTrigger=PropertyChanged}"
+                                             ToolTip="Nome dell'insegnamento"/>
+                                </StackPanel>
+                                <StackPanel Width="105" Margin="0,0,10,0">
+                                    <TextBlock Text="CFU" Style="{StaticResource KpiLabelStyle}" Margin="0,0,0,5"/>
+                                    <TextBox Text="{Binding CourseCfuInput, UpdateSourceTrigger=PropertyChanged}"
+                                             ToolTip="Crediti formativi"/>
+                                </StackPanel>
+                                <StackPanel VerticalAlignment="Bottom">
+                                    <TextBlock Text=" " FontSize="10" Margin="0,0,0,5"/>
+                                    <Button Content="Aggiungi materia" Command="{Binding AddCourseCommand}"/>
+                                </StackPanel>
+                            </WrapPanel>
+                            <TextBlock Text="{Binding StatusMessage}" FontSize="11"
+                                       Foreground="{StaticResource MutedBrush}" Margin="0,10,0,0"
+                                       TextWrapping="Wrap"/>
+                        </StackPanel>
+                    </Border>
+
+                    <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,14">
+                        <Expander IsExpanded="False">
+                            <Expander.Header>
+                                <TextBlock Text="Registra un voto" FontSize="13"
+                                           FontWeight="SemiBold" Foreground="{StaticResource InkBrush}"/>
+                            </Expander.Header>
+                            <StackPanel Margin="0,12,0,0">
+                                <TextBlock Text="Seleziona la materia e inserisci il voto ottenuto. La materia passerà nell'archivio."
+                                           Style="{StaticResource PageSubtitleStyle}" Margin="0,0,0,10"/>
+                                <WrapPanel>
+                                    <StackPanel Width="300" Margin="0,0,10,0">
+                                        <TextBlock Text="Materia" Style="{StaticResource KpiLabelStyle}" Margin="0,0,0,5"/>
+                                        <ComboBox ItemsSource="{Binding Courses}"
+                                                  DisplayMemberPath="Name"
+                                                  SelectedItem="{Binding SelectedGradeCourse}"/>
+                                    </StackPanel>
+                                    <StackPanel Width="105" Margin="0,0,10,0">
+                                        <TextBlock Text="Voto" Style="{StaticResource KpiLabelStyle}" Margin="0,0,0,5"/>
+                                        <TextBox Text="{Binding GradeValueInput, UpdateSourceTrigger=PropertyChanged}"/>
+                                    </StackPanel>
+                                    <StackPanel VerticalAlignment="Bottom">
+                                        <TextBlock Text=" " FontSize="10" Margin="0,0,0,5"/>
+                                        <Button Content="Registra voto" Command="{Binding AddGradeCommand}"/>
+                                    </StackPanel>
+                                </WrapPanel>
+                            </StackPanel>
+                        </Expander>
+                    </Border>
+
+                    <Grid Margin="0,0,0,12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel>
+                            <TextBlock Text="Archivio insegnamenti" Style="{StaticResource SectionTitleStyle}"/>
+                            <TextBlock Text="Le materie con un voto registrato sono raccolte nell'archivio."
+                                       Style="{StaticResource PageSubtitleStyle}" Margin="0,4,0,0"/>
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                            <TextBlock Text="{Binding AllCoursesCount, StringFormat={}{0} materie totali}"
+                                       FontSize="11" Foreground="{StaticResource MutedBrush}"
+                                       HorizontalAlignment="Right"/>
+                        </StackPanel>
+                    </Grid>
+
+                    <Grid Margin="0,0,0,14">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="2*"/>
+                            <ColumnDefinition Width="3*"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBox Grid.Column="0" Text="{Binding CourseSearchText, UpdateSourceTrigger=PropertyChanged}"
+                                 ToolTip="Cerca per nome o codice" MinWidth="190"/>
+                        <StackPanel Grid.Column="1" Orientation="Horizontal"
+                                    HorizontalAlignment="Right" VerticalAlignment="Center">
+                            <RadioButton Content="{Binding ActiveCoursesCount, StringFormat='In corso ({0})'}"
+                                         GroupName="CourseFilters" Tag="active"
+                                         IsChecked="True" Checked="CourseFilter_Checked"
+                                         Style="{StaticResource FilterRadioButtonStyle}"/>
+                            <RadioButton Content="{Binding ArchivedCoursesCount, StringFormat='Archivio ({0})'}"
+                                         GroupName="CourseFilters" Tag="archive"
+                                         Checked="CourseFilter_Checked"
+                                         Style="{StaticResource FilterRadioButtonStyle}"/>
+                            <RadioButton Content="Tutte" GroupName="CourseFilters" Tag="all"
+                                         Checked="CourseFilter_Checked"
+                                         Style="{StaticResource FilterRadioButtonStyle}"/>
+                        </StackPanel>
+                    </Grid>
+
+                    <ItemsControl ItemsSource="{Binding VisibleCourses}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <WrapPanel/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border Style="{StaticResource CardBorderStyle}"
+                                        Width="286" MinHeight="142" Margin="0,0,12,12"
+                                        Padding="17">
+                                    <StackPanel>
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Text="{Binding Name}" FontSize="15"
+                                                       FontWeight="SemiBold"
+                                                       Foreground="{StaticResource InkBrush}"
+                                                       TextWrapping="Wrap" Margin="0,0,8,0"/>
+                                            <Border Grid.Column="1" Background="{StaticResource AccentSoftBrush}"
+                                                    CornerRadius="6" Padding="8,4"
+                                                    VerticalAlignment="Top">
+                                                <TextBlock Text="{Binding Cfu, StringFormat={}{0} CFU}"
+                                                           FontSize="10" FontWeight="SemiBold"
+                                                           Foreground="{StaticResource AccentBrush}"/>
+                                            </Border>
+                                        </Grid>
+                                        <TextBlock Text="{Binding Code, TargetNullValue='Codice non indicato'}"
+                                                   FontSize="11" Foreground="{StaticResource MutedBrush}"
+                                                   Margin="0,7,0,13"/>
+                                        <Border x:Name="CourseStatusBorder"
+                                                Background="#EDF1F7" CornerRadius="6"
+                                                Padding="8,5" HorizontalAlignment="Left">
+                                            <TextBlock x:Name="CourseStatusText" Text="IN CORSO"
+                                                       FontSize="9" FontWeight="Bold"
+                                                       Foreground="#52647D"/>
+                                        </Border>
+                                    </StackPanel>
+                                </Border>
+                                <DataTemplate.Triggers>
+                                    <DataTrigger Binding="{Binding Completed}" Value="True">
+                                        <Setter TargetName="CourseStatusBorder" Property="Background" Value="{StaticResource SuccessSoftBrush}"/>
+                                        <Setter TargetName="CourseStatusText" Property="Text" Value="SUPERATO"/>
+                                        <Setter TargetName="CourseStatusText" Property="Foreground" Value="{StaticResource SuccessBrush}"/>
+                                    </DataTrigger>
+                                </DataTemplate.Triggers>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <StackPanel Visibility="{Binding NoVisibleCourses, Converter={StaticResource BooleanToVisibilityConverter}}"
+                                HorizontalAlignment="Stretch">
+                        <Border Style="{StaticResource CardBorderStyle}" Padding="28">
+                            <StackPanel HorizontalAlignment="Center">
+                                <TextBlock Text="Nessuna materia da mostrare"
+                                           FontSize="15" FontWeight="SemiBold"
+                                           Foreground="{StaticResource InkBrush}"
+                                           HorizontalAlignment="Center"/>
+                                <TextBlock Text="{Binding CourseEmptyMessage}"
+                                           FontSize="12" Foreground="{StaticResource MutedBrush}"
+                                           TextWrapping="Wrap" TextAlignment="Center"
+                                           MaxWidth="480" Margin="0,7,0,0"/>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
                 </StackPanel>
-            </TabItem>
-        </TabControl>
-    </Grid>
+            </ScrollViewer>
+        </TabItem>
+
+        <TabItem>
+            <TabItem.Header>
+                <StackPanel Orientation="Horizontal">
+                    <Border Width="30" Height="30" CornerRadius="8" Background="#263955">
+                        <TextBlock Text="03" Foreground="#DCE7F7" FontSize="10"
+                                   FontWeight="Bold" HorizontalAlignment="Center"
+                                   VerticalAlignment="Center"/>
+                    </Border>
+                    <StackPanel Margin="11,0,0,0" VerticalAlignment="Center">
+                        <TextBlock Text="Calendario" FontSize="13" FontWeight="SemiBold"/>
+                        <TextBlock Text="Appelli e pianificazione" FontSize="10" Opacity="0.76"/>
+                    </StackPanel>
+                </StackPanel>
+            </TabItem.Header>
+
+            <ScrollViewer VerticalScrollBarVisibility="Auto"
+                          HorizontalScrollBarVisibility="Disabled">
+                <StackPanel Margin="32,30,32,36">
+                    <TextBlock Text="PIANIFICAZIONE" FontSize="10"
+                               FontWeight="Bold" Foreground="{StaticResource AccentBrush}"/>
+                    <TextBlock Text="Calendario esami" Style="{StaticResource PageTitleStyle}"
+                               Margin="0,7,0,4"/>
+                    <TextBlock Text="Organizza gli esami da sostenere e tieni sotto controllo le date indicative."
+                               Style="{StaticResource PageSubtitleStyle}" Margin="0,0,0,22"/>
+
+                    <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,16">
+                        <StackPanel>
+                            <TextBlock Text="Pianificazione degli esami"
+                                       Style="{StaticResource SectionTitleStyle}"/>
+                            <TextBlock Text="Il pianificatore distribuisce gli esami nelle sessioni in base ai dati attualmente disponibili. Le date prodotte sono stime organizzative, non appelli ufficiali UniTo."
+                                       Style="{StaticResource PageSubtitleStyle}" Margin="0,7,0,14"/>
+                            <Button Content="Distribuisci gli esami nelle sessioni"
+                                    Command="{Binding PlanExamsCommand}"
+                                    HorizontalAlignment="Left"/>
+                            <TextBlock Text="{Binding StatusMessage}" FontSize="11"
+                                       Foreground="{StaticResource MutedBrush}" Margin="0,10,0,0"
+                                       TextWrapping="Wrap"/>
+                        </StackPanel>
+                    </Border>
+
+                    <TextBlock Text="Esami pianificati" Style="{StaticResource SectionTitleStyle}"
+                               Margin="0,0,0,12"/>
+                    <ItemsControl ItemsSource="{Binding Exams}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,10">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel>
+                                            <TextBlock Text="{Binding Name}" FontSize="14"
+                                                       FontWeight="SemiBold" Foreground="{StaticResource InkBrush}"/>
+                                            <TextBlock Text="{Binding CourseName}" FontSize="11"
+                                                       Foreground="{StaticResource MutedBrush}" Margin="0,4,0,0"/>
+                                            <TextBlock Text="{Binding PlannedSession}" FontSize="11"
+                                                       Foreground="{StaticResource MutedBrush}" Margin="0,3,0,0"/>
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="1" VerticalAlignment="Center"
+                                                    HorizontalAlignment="Right">
+                                            <TextBlock Text="{Binding PlannedDate, StringFormat={}{0:dd MMM yyyy}, TargetNullValue='Da pianificare'}"
+                                                       FontSize="13" FontWeight="SemiBold"
+                                                       Foreground="{StaticResource InkBrush}"/>
+                                            <TextBlock Text="{Binding Cfu, StringFormat={}{0} CFU}"
+                                                       FontSize="10" Foreground="{StaticResource MutedBrush}"
+                                                       HorizontalAlignment="Right" Margin="0,4,0,0"/>
+                                        </StackPanel>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <Border Style="{StaticResource CardBorderStyle}"
+                            Visibility="{Binding NoPlannedExams, Converter={StaticResource BooleanToVisibilityConverter}}"
+                            Padding="28">
+                        <StackPanel HorizontalAlignment="Center">
+                            <TextBlock Text="Nessun esame pianificato"
+                                       FontSize="15" FontWeight="SemiBold"
+                                       Foreground="{StaticResource InkBrush}" HorizontalAlignment="Center"/>
+                            <TextBlock Text="Aggiungi le materie e usa il pianificatore per creare una prima distribuzione indicativa."
+                                       FontSize="12" Foreground="{StaticResource MutedBrush}"
+                                       TextWrapping="Wrap" TextAlignment="Center" MaxWidth="480"
+                                       Margin="0,7,0,0"/>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </ScrollViewer>
+        </TabItem>
+
+        <TabItem>
+            <TabItem.Header>
+                <StackPanel Orientation="Horizontal">
+                    <Border Width="30" Height="30" CornerRadius="8" Background="#263955">
+                        <TextBlock Text="04" Foreground="#DCE7F7" FontSize="10"
+                                   FontWeight="Bold" HorizontalAlignment="Center"
+                                   VerticalAlignment="Center"/>
+                    </Border>
+                    <StackPanel Margin="11,0,0,0" VerticalAlignment="Center">
+                        <TextBlock Text="Studio Lab" FontSize="13" FontWeight="SemiBold"/>
+                        <TextBlock Text="Focus e allenamento" FontSize="10" Opacity="0.76"/>
+                    </StackPanel>
+                </StackPanel>
+            </TabItem.Header>
+            <Grid Margin="32">
+                <Border Style="{StaticResource CardBorderStyle}" Padding="34"
+                        VerticalAlignment="Center" MaxWidth="640"
+                        HorizontalAlignment="Center">
+                    <StackPanel HorizontalAlignment="Center">
+                        <Border Width="54" Height="54" CornerRadius="16"
+                                Background="{StaticResource AccentSoftBrush}">
+                            <TextBlock Text="04" Foreground="{StaticResource AccentBrush}"
+                                       FontSize="18" FontWeight="Bold"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <TextBlock Text="Studio Lab" FontSize="22" FontWeight="SemiBold"
+                                   Foreground="{StaticResource InkBrush}"
+                                   HorizontalAlignment="Center" Margin="0,17,0,6"/>
+                        <TextBlock Text="Questa sezione è in progettazione."
+                                   FontSize="13" Foreground="{StaticResource MutedBrush}"
+                                   HorizontalAlignment="Center"/>
+                        <TextBlock Text="Qui troverai timer Pomodoro, missioni, registro focus, Active Recall, schede personali e diario degli errori. Le funzioni saranno attivate solo quando avranno dati e salvataggi reali."
+                                   FontSize="12" Foreground="{StaticResource MutedBrush}"
+                                   TextWrapping="Wrap" TextAlignment="Center"
+                                   MaxWidth="500" Margin="0,12,0,0"/>
+                        <Border Background="{StaticResource SubtleBrush}" CornerRadius="7"
+                                Padding="10,6" Margin="0,18,0,0">
+                            <TextBlock Text="FASE 3 · NON ANCORA DISPONIBILE"
+                                       FontSize="10" FontWeight="Bold"
+                                       Foreground="{StaticResource MutedBrush}"/>
+                        </Border>
+                    </StackPanel>
+                </Border>
+            </Grid>
+        </TabItem>
+
+        <TabItem>
+            <TabItem.Header>
+                <StackPanel Orientation="Horizontal">
+                    <Border Width="30" Height="30" CornerRadius="8" Background="#263955">
+                        <TextBlock Text="05" Foreground="#DCE7F7" FontSize="10"
+                                   FontWeight="Bold" HorizontalAlignment="Center"
+                                   VerticalAlignment="Center"/>
+                    </Border>
+                    <StackPanel Margin="11,0,0,0" VerticalAlignment="Center">
+                        <TextBlock Text="Accademia" FontSize="13" FontWeight="SemiBold"/>
+                        <TextBlock Text="Apprendimento intelligente" FontSize="10" Opacity="0.76"/>
+                    </StackPanel>
+                </StackPanel>
+            </TabItem.Header>
+            <Grid Margin="32">
+                <Border Style="{StaticResource CardBorderStyle}" Padding="34"
+                        VerticalAlignment="Center" MaxWidth="640"
+                        HorizontalAlignment="Center">
+                    <StackPanel HorizontalAlignment="Center">
+                        <Border Width="54" Height="54" CornerRadius="16"
+                                Background="{StaticResource AiSoftBrush}">
+                            <TextBlock Text="AI" Foreground="{StaticResource AiBrush}"
+                                       FontSize="18" FontWeight="Bold"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <TextBlock Text="Accademia" FontSize="22" FontWeight="SemiBold"
+                                   Foreground="{StaticResource InkBrush}"
+                                   HorizontalAlignment="Center" Margin="0,17,0,6"/>
+                        <TextBlock Text="Gli strumenti didattici intelligenti arriveranno in una fase dedicata."
+                                   FontSize="13" Foreground="{StaticResource MutedBrush}"
+                                   HorizontalAlignment="Center" TextAlignment="Center"/>
+                        <TextBlock Text="AI Study Director, Memory Engine, esperti didattici, simulazioni d'esame e PDF Intelligence saranno progettati con tracciabilità delle fonti e collegamento alle singole materie."
+                                   FontSize="12" Foreground="{StaticResource MutedBrush}"
+                                   TextWrapping="Wrap" TextAlignment="Center"
+                                   MaxWidth="500" Margin="0,12,0,0"/>
+                        <Border Background="{StaticResource AiSoftBrush}" CornerRadius="7"
+                                Padding="10,6" Margin="0,18,0,0">
+                            <TextBlock Text="FASE 4–5 · NON ANCORA DISPONIBILE"
+                                       FontSize="10" FontWeight="Bold"
+                                       Foreground="{StaticResource AiBrush}"/>
+                        </Border>
+                    </StackPanel>
+                </Border>
+            </Grid>
+        </TabItem>
+
+        <TabItem>
+            <TabItem.Header>
+                <StackPanel Orientation="Horizontal">
+                    <Border Width="30" Height="30" CornerRadius="8" Background="#263955">
+                        <TextBlock Text="06" Foreground="#DCE7F7" FontSize="10"
+                                   FontWeight="Bold" HorizontalAlignment="Center"
+                                   VerticalAlignment="Center"/>
+                    </Border>
+                    <StackPanel Margin="11,0,0,0" VerticalAlignment="Center">
+                        <TextBlock Text="Progressi" FontSize="13" FontWeight="SemiBold"/>
+                        <TextBlock Text="Statistiche di carriera" FontSize="10" Opacity="0.76"/>
+                    </StackPanel>
+                </StackPanel>
+            </TabItem.Header>
+
+            <ScrollViewer VerticalScrollBarVisibility="Auto"
+                          HorizontalScrollBarVisibility="Disabled">
+                <StackPanel Margin="32,30,32,36">
+                    <TextBlock Text="IL TUO ANDAMENTO" FontSize="10"
+                               FontWeight="Bold" Foreground="{StaticResource AccentBrush}"/>
+                    <TextBlock Text="Progressi" Style="{StaticResource PageTitleStyle}"
+                               Margin="0,7,0,4"/>
+                    <TextBlock Text="Una lettura trasparente dei dati di carriera effettivamente registrati."
+                               Style="{StaticResource PageSubtitleStyle}" Margin="0,0,0,22"/>
+                    <UniformGrid Columns="3">
+                        <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,10,10">
+                            <StackPanel>
+                                <TextBlock Text="CFU ACQUISITI" Style="{StaticResource KpiLabelStyle}"/>
+                                <TextBlock Text="{Binding AcquiredCreditsValue}" FontSize="27"
+                                           FontWeight="SemiBold" Foreground="{StaticResource InkBrush}"
+                                           Margin="0,8,0,0"/>
+                            </StackPanel>
+                        </Border>
+                        <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,10,10">
+                            <StackPanel>
+                                <TextBlock Text="MEDIA PONDERATA" Style="{StaticResource KpiLabelStyle}"/>
+                                <TextBlock Text="{Binding AverageDisplay}" FontSize="27"
+                                           FontWeight="SemiBold" Foreground="{StaticResource InkBrush}"
+                                           Margin="0,8,0,0"/>
+                            </StackPanel>
+                        </Border>
+                        <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,10">
+                            <StackPanel>
+                                <TextBlock Text="MEDIA ARITMETICA" Style="{StaticResource KpiLabelStyle}"/>
+                                <TextBlock Text="{Binding ArithmeticAverageDisplay}" FontSize="27"
+                                           FontWeight="SemiBold" Foreground="{StaticResource InkBrush}"
+                                           Margin="0,8,0,0"/>
+                            </StackPanel>
+                        </Border>
+                    </UniformGrid>
+                    <Border Style="{StaticResource CardBorderStyle}" Margin="0,6,0,0">
+                        <StackPanel>
+                            <TextBlock Text="Come leggere questi dati"
+                                       Style="{StaticResource SectionTitleStyle}"/>
+                            <TextBlock Text="Le medie sono calcolate sugli ultimi voti registrati per materia. Il totale dei CFU deriva dai risultati registrati. Le analisi sul tempo di studio, sulle missioni e sulla memoria saranno aggiunte quando Studio Lab e Memory Engine saranno disponibili."
+                                       Style="{StaticResource PageSubtitleStyle}" Margin="0,9,0,0"/>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </ScrollViewer>
+        </TabItem>
+
+        <TabItem>
+            <TabItem.Header>
+                <StackPanel Orientation="Horizontal">
+                    <Border Width="30" Height="30" CornerRadius="8" Background="#263955">
+                        <TextBlock Text="07" Foreground="#DCE7F7" FontSize="10"
+                                   FontWeight="Bold" HorizontalAlignment="Center"
+                                   VerticalAlignment="Center"/>
+                    </Border>
+                    <StackPanel Margin="11,0,0,0" VerticalAlignment="Center">
+                        <TextBlock Text="Impostazioni" FontSize="13" FontWeight="SemiBold"/>
+                        <TextBlock Text="Profilo e integrazioni" FontSize="10" Opacity="0.76"/>
+                    </StackPanel>
+                </StackPanel>
+            </TabItem.Header>
+
+            <ScrollViewer VerticalScrollBarVisibility="Auto"
+                          HorizontalScrollBarVisibility="Disabled">
+                <StackPanel Margin="32,30,32,36">
+                    <TextBlock Text="CONFIGURAZIONE" FontSize="10"
+                               FontWeight="Bold" Foreground="{StaticResource AccentBrush}"/>
+                    <TextBlock Text="Impostazioni" Style="{StaticResource PageTitleStyle}"
+                               Margin="0,7,0,4"/>
+                    <TextBlock Text="Gestisci le integrazioni utilizzate da StudyHub."
+                               Style="{StaticResource PageSubtitleStyle}" Margin="0,0,0,22"/>
+
+                    <Border Style="{StaticResource CardBorderStyle}" MaxWidth="760"
+                            HorizontalAlignment="Left">
+                        <StackPanel>
+                            <TextBlock Text="Connessione Moodle"
+                                       Style="{StaticResource SectionTitleStyle}"/>
+                            <TextBlock Text="Collega il tuo spazio Moodle UniTo per sincronizzare i corsi e accedere ai materiali consentiti."
+                                       Style="{StaticResource PageSubtitleStyle}" Margin="0,7,0,16"/>
+                            <TextBlock Text="URL della piattaforma" Style="{StaticResource KpiLabelStyle}"
+                                       Margin="0,0,0,5"/>
+                            <TextBox Text="{Binding MoodleUrlInput, UpdateSourceTrigger=PropertyChanged}"
+                                     MaxWidth="600" HorizontalAlignment="Stretch"/>
+                            <TextBlock Text="Token Web Services" Style="{StaticResource KpiLabelStyle}"
+                                       Margin="0,14,0,5"/>
+                            <PasswordBox x:Name="MoodleTokenBox" MaxWidth="600"
+                                         HorizontalAlignment="Stretch" Padding="11,9"
+                                         PasswordChanged="MoodleTokenBox_PasswordChanged"/>
+                            <WrapPanel Margin="0,16,0,0">
+                                <Button Content="Verifica e salva token"
+                                        Command="{Binding ConnectMoodleCommand}"
+                                        Margin="0,0,8,0"/>
+                                <Button Content="Sincronizza corsi"
+                                        Style="{StaticResource SecondaryButtonStyle}"
+                                        Command="{Binding SyncMoodleCommand}"/>
+                            </WrapPanel>
+                            <Border Background="{StaticResource SubtleBrush}" CornerRadius="8"
+                                    Padding="12" Margin="0,16,0,0">
+                                <TextBlock Text="{Binding MoodleStatus}" FontSize="12"
+                                           Foreground="{StaticResource InkBrush}"
+                                           TextWrapping="Wrap"/>
+                            </Border>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </ScrollViewer>
+        </TabItem>
+    </TabControl>
 </Window>

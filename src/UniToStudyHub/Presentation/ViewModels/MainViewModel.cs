@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Globalization;
 using System.Runtime.CompilerServices;
 using UniToStudyHub.Domain.Services;
 using UniToStudyHub.Models;
@@ -22,15 +23,20 @@ public sealed class MainViewModel : INotifyPropertyChanged
     private string _moodleToken = string.Empty;
     private string _moodleStatus = "Non collegato";
     private string _averageDisplay = "—";
+    private string _arithmeticAverageDisplay = "—";
     private string _baseGradeDisplay = "Voto di partenza: —";
     private string _creditsDisplay = "CFU completati: 0";
     private string _statusMessage = string.Empty;
+    private string _courseSearchText = string.Empty;
+    private string _courseFilter = "active";
 
     public event PropertyChangedEventHandler? PropertyChanged;
+
     public ObservableCollection<Course> Courses => _data.Courses;
     public ObservableCollection<Grade> Grades => _data.Grades;
     public ObservableCollection<Exam> Exams => _data.Exams;
     public ObservableCollection<Announcement> Announcements => _data.Announcements;
+    public ObservableCollection<Course> VisibleCourses { get; } = new();
 
     public string CourseNameInput { get => _courseNameInput; set => Set(ref _courseNameInput, value); }
     public string CourseCfuInput { get => _courseCfuInput; set => Set(ref _courseCfuInput, value); }
@@ -40,9 +46,87 @@ public sealed class MainViewModel : INotifyPropertyChanged
     public string MoodleToken { get => _moodleToken; set => Set(ref _moodleToken, value); }
     public string MoodleStatus { get => _moodleStatus; private set => Set(ref _moodleStatus, value); }
     public string AverageDisplay { get => _averageDisplay; private set => Set(ref _averageDisplay, value); }
+    public string ArithmeticAverageDisplay { get => _arithmeticAverageDisplay; private set => Set(ref _arithmeticAverageDisplay, value); }
+    public string ProjectedBaseGradeValue => GradeCalculator.Format(GradeCalculator.ProjectedBase(_data.Grades, _calculator));
     public string BaseGradeDisplay { get => _baseGradeDisplay; private set => Set(ref _baseGradeDisplay, value); }
     public string CreditsDisplay { get => _creditsDisplay; private set => Set(ref _creditsDisplay, value); }
     public string StatusMessage { get => _statusMessage; private set => Set(ref _statusMessage, value); }
+
+    public string CourseSearchText
+    {
+        get => _courseSearchText;
+        set
+        {
+            if (string.Equals(_courseSearchText, value, StringComparison.Ordinal)) return;
+            _courseSearchText = value;
+            OnPropertyChanged();
+            RefreshVisibleCourses();
+        }
+    }
+
+    public string CourseFilter
+    {
+        get => _courseFilter;
+        set
+        {
+            if (string.Equals(_courseFilter, value, StringComparison.Ordinal)) return;
+            _courseFilter = value;
+            OnPropertyChanged();
+            RefreshVisibleCourses();
+        }
+    }
+
+    public string AcquiredCreditsValue => GradeCalculator.AcquiredCfu(_data.Grades, _calculator).ToString(CultureInfo.CurrentCulture);
+    public string ActiveCoursesCount => Courses.Count(x => !x.Completed).ToString(CultureInfo.CurrentCulture);
+    public string ArchivedCoursesCount => Courses.Count(x => x.Completed).ToString(CultureInfo.CurrentCulture);
+    public string AllCoursesCount => Courses.Count.ToString(CultureInfo.CurrentCulture);
+    public bool NoVisibleCourses => VisibleCourses.Count == 0;
+    public bool NoPlannedExams => Exams.Count == 0;
+
+    public string CourseEmptyMessage
+    {
+        get
+        {
+            if (Courses.Count == 0) return "Non hai ancora aggiunto materie. Inizia inserendo il tuo primo insegnamento.";
+            if (!string.IsNullOrWhiteSpace(CourseSearchText)) return "Nessuna materia corrisponde alla ricerca.";
+            return CourseFilter switch
+            {
+                "archive" => "Non ci sono ancora materie concluse nell'archivio.",
+                "all" => "Non ci sono materie da mostrare.",
+                _ => "Non ci sono materie attive. Puoi controllare l'archivio o aggiungerne una."
+            };
+        }
+    }
+
+    public string NextExamNameDisplay
+    {
+        get
+        {
+            var next = GetNextPlannedExam();
+            return next?.Name ?? "Nessun esame pianificato";
+        }
+    }
+
+    public string NextExamDateDisplay
+    {
+        get
+        {
+            var next = GetNextPlannedExam();
+            return next?.PlannedDate?.ToString("dddd d MMMM yyyy", CultureInfo.GetCultureInfo("it-IT"))
+                   ?? "Le date appariranno qui quando pianificate.";
+        }
+    }
+
+    public string LatestGradeDisplay
+    {
+        get
+        {
+            var latest = Grades.OrderByDescending(x => x.Date).FirstOrDefault();
+            return latest is null
+                ? "Non hai ancora registrato voti."
+                : $"{latest.CourseName}: {latest.Value}{(latest.Honors ? " e lode" : string.Empty)} · {latest.Date.ToString("d", CultureInfo.GetCultureInfo("it-IT"))}";
+        }
+    }
 
     public AsyncRelayCommand AddCourseCommand { get; }
     public AsyncRelayCommand AddGradeCommand { get; }
@@ -67,7 +151,9 @@ public sealed class MainViewModel : INotifyPropertyChanged
         _data = await _store.LoadAsync(cancellationToken);
         MoodleUrlInput = _data.MoodleBaseUrl;
         RefreshCollections();
+        RefreshVisibleCourses();
         RefreshCareerSummary();
+        RefreshExamSummary();
     }
 
     private async Task AddCourseAsync()
@@ -80,33 +166,39 @@ public sealed class MainViewModel : INotifyPropertyChanged
 
         var course = new Course { Name = CourseNameInput.Trim(), Cfu = cfu };
         Courses.Add(course);
+        RefreshVisibleCourses();
         try
         {
             await SaveAsync();
             CourseNameInput = string.Empty;
-            StatusMessage = "Corso aggiunto.";
+            StatusMessage = "Materia aggiunta.";
         }
         catch (Exception ex)
         {
             Courses.Remove(course);
             StatusMessage = $"Salvataggio non riuscito: {ex.Message}";
         }
-        RefreshCareerSummary();
+        RefreshCourseSummary();
+        RefreshVisibleCourses();
     }
 
     private async Task AddGradeAsync()
     {
         if (SelectedGradeCourse is null || !int.TryParse(GradeValueInput, out var grade) || grade is < 18 or > 30)
         {
-            StatusMessage = "Seleziona un corso e inserisci un voto tra 18 e 30.";
+            StatusMessage = "Seleziona una materia e inserisci un voto tra 18 e 30.";
             return;
         }
 
         var course = SelectedGradeCourse;
         var item = new Grade
         {
-            CourseId = course.Id, CourseName = course.Name, Cfu = course.Cfu,
-            Value = grade, Date = DateTime.Today, CountsTowardAverage = true
+            CourseId = course.Id,
+            CourseName = course.Name,
+            Cfu = course.Cfu,
+            Value = grade,
+            Date = DateTime.Today,
+            CountsTowardAverage = true
         };
         Grades.Add(item);
         var previousCompleted = course.Completed;
@@ -114,7 +206,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
         try
         {
             await SaveAsync();
-            StatusMessage = "Voto registrato.";
+            StatusMessage = "Voto registrato e materia spostata nell'archivio.";
         }
         catch (Exception ex)
         {
@@ -122,7 +214,9 @@ public sealed class MainViewModel : INotifyPropertyChanged
             course.Completed = previousCompleted;
             StatusMessage = $"Salvataggio non riuscito: {ex.Message}";
         }
+        RefreshCourseSummary();
         RefreshCareerSummary();
+        RefreshVisibleCourses();
     }
 
     private async Task PlanExamsAsync()
@@ -132,9 +226,13 @@ public sealed class MainViewModel : INotifyPropertyChanged
             ExamPlanner.AssignIndicativeSessions(_data.Exams, targetDate: _data.GraduationTarget);
             await SaveAsync();
             OnPropertyChanged(nameof(Exams));
-            StatusMessage = "Pianificazione aggiornata. Le date sono indicative.";
+            RefreshExamSummary();
+            StatusMessage = "Pianificazione aggiornata. Le date generate sono indicative, non appelli ufficiali.";
         }
-        catch (Exception ex) { StatusMessage = $"Pianificazione non riuscita: {ex.Message}"; }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Pianificazione non riuscita: {ex.Message}";
+        }
     }
 
     private async Task ConnectMoodleAsync()
@@ -147,7 +245,10 @@ public sealed class MainViewModel : INotifyPropertyChanged
             MoodleStatus = $"Collegato: {siteName}";
             StatusMessage = "Token verificato e salvato in Windows DPAPI.";
         }
-        catch (Exception ex) { MoodleStatus = ex.Message; }
+        catch (Exception ex)
+        {
+            MoodleStatus = ex.Message;
+        }
     }
 
     private async Task SyncMoodleAsync()
@@ -161,7 +262,12 @@ public sealed class MainViewModel : INotifyPropertyChanged
                 var local = Courses.FirstOrDefault(c => c.MoodleCourseId == remote.id);
                 if (local is null)
                 {
-                    Courses.Add(new Course { MoodleCourseId = remote.id, Name = remote.fullname, Code = remote.shortname });
+                    Courses.Add(new Course
+                    {
+                        MoodleCourseId = remote.id,
+                        Name = remote.fullname,
+                        Code = remote.shortname
+                    });
                     added++;
                 }
             }
@@ -169,8 +275,58 @@ public sealed class MainViewModel : INotifyPropertyChanged
             await SaveAsync();
             MoodleStatus = $"Sincronizzati {courses.Count} corsi Moodle ({added} nuovi).";
             OnPropertyChanged(nameof(Courses));
+            RefreshVisibleCourses();
+            RefreshCourseSummary();
         }
-        catch (Exception ex) { MoodleStatus = ex.Message; }
+        catch (Exception ex)
+        {
+            MoodleStatus = ex.Message;
+        }
+    }
+
+    private Exam? GetNextPlannedExam() =>
+        Exams.Where(x => !x.Completed && x.PlannedDate.HasValue && x.PlannedDate.Value.Date >= DateTime.Today)
+             .OrderBy(x => x.PlannedDate)
+             .FirstOrDefault();
+
+    private void RefreshCourseSummary()
+    {
+        OnPropertyChanged(nameof(ActiveCoursesCount));
+        OnPropertyChanged(nameof(ArchivedCoursesCount));
+        OnPropertyChanged(nameof(AllCoursesCount));
+    }
+
+    private void RefreshExamSummary()
+    {
+        OnPropertyChanged(nameof(NextExamNameDisplay));
+        OnPropertyChanged(nameof(NextExamDateDisplay));
+        OnPropertyChanged(nameof(NoPlannedExams));
+    }
+
+    private void RefreshVisibleCourses()
+    {
+        IEnumerable<Course> filtered = Courses;
+        filtered = CourseFilter switch
+        {
+            "archive" => filtered.Where(x => x.Completed),
+            "all" => filtered,
+            _ => filtered.Where(x => !x.Completed)
+        };
+
+        if (!string.IsNullOrWhiteSpace(CourseSearchText))
+        {
+            var term = CourseSearchText.Trim();
+            filtered = filtered.Where(x =>
+                x.Name.Contains(term, StringComparison.CurrentCultureIgnoreCase) ||
+                x.Code.Contains(term, StringComparison.CurrentCultureIgnoreCase));
+        }
+
+        VisibleCourses.Clear();
+        foreach (var course in filtered.OrderBy(x => x.Name, StringComparer.CurrentCultureIgnoreCase))
+            VisibleCourses.Add(course);
+
+        OnPropertyChanged(nameof(NoVisibleCourses));
+        OnPropertyChanged(nameof(CourseEmptyMessage));
     }
 
     private async Task SaveAsync(CancellationToken cancellationToken = default) =>
@@ -189,6 +345,21 @@ public sealed class MainViewModel : INotifyPropertyChanged
         AverageDisplay = GradeCalculator.Format(GradeCalculator.WeightedAverage(_data.Grades, _calculator));
         BaseGradeDisplay = "Voto di partenza: " + GradeCalculator.Format(GradeCalculator.ProjectedBase(_data.Grades, _calculator));
         CreditsDisplay = $"CFU completati: {GradeCalculator.AcquiredCfu(_data.Grades, _calculator)}";
+
+        var latestGrades = _data.Grades
+            .Where(x => x.Value is >= 18 and <= 30)
+            .GroupBy(x => string.IsNullOrWhiteSpace(x.CourseId) ? x.Id : x.CourseId, StringComparer.Ordinal)
+            .Select(group => group.OrderByDescending(x => x.Date).ThenByDescending(x => x.Id, StringComparer.Ordinal).First())
+            .Where(x => x.CountsTowardAverage)
+            .ToList();
+
+        ArithmeticAverageDisplay = latestGrades.Count == 0
+            ? "—"
+            : GradeCalculator.Format((decimal)latestGrades.Average(x => x.Value));
+
+        OnPropertyChanged(nameof(AcquiredCreditsValue));
+        OnPropertyChanged(nameof(ProjectedBaseGradeValue));
+        OnPropertyChanged(nameof(LatestGradeDisplay));
     }
 
     private void Set<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
@@ -198,6 +369,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
         OnPropertyChanged(propertyName);
         if (propertyName == nameof(SelectedGradeCourse)) AddGradeCommand?.NotifyCanExecuteChanged();
     }
+
 
     private void OnPropertyChanged([CallerMemberName] string? propertyName = null) =>
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
