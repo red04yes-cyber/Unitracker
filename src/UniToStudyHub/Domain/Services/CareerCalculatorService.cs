@@ -63,14 +63,27 @@ public sealed class CareerCalculatorService
         ArgumentNullException.ThrowIfNull(exams);
         ArgumentNullException.ThrowIfNull(scenario);
         var examList = exams.ToList();
+        if (examList.Any(e => e is null))
+            throw new ArgumentException("The career contains a null exam.", nameof(exams));
+        var duplicateExam = examList.GroupBy(e => e.Id, StringComparer.Ordinal).FirstOrDefault(g => g.Count() > 1);
+        if (duplicateExam is not null)
+            throw new ArgumentException($"Exam id '{duplicateExam.Key}' occurs more than once.", nameof(exams));
+
         var changes = scenario.ToList();
+        if (changes.Any(c => c is null))
+            throw new ArgumentException("A scenario contains a null item.", nameof(scenario));
         var currentIds = examList.Select(e => e.Id).ToHashSet(StringComparer.Ordinal);
         var duplicateTargets = changes.Where(c => c.ExistingExamId is not null)
             .GroupBy(c => c.ExistingExamId!, StringComparer.Ordinal).FirstOrDefault(g => g.Count() > 1);
         if (duplicateTargets is not null) throw new ArgumentException($"Exam '{duplicateTargets.Key}' is overridden more than once.", nameof(scenario));
         foreach (var change in changes)
         {
-            if (change.Cfu <= 0) throw new ArgumentOutOfRangeException(nameof(scenario), "Scenario CFU must be positive.");
+            if (string.IsNullOrWhiteSpace(change.Name))
+                throw new ArgumentException("Every simulated exam requires a name.", nameof(scenario));
+            if (change.Grade is null)
+                throw new ArgumentException("Every simulated exam requires a grade or eligibility result.", nameof(scenario));
+            if (change.Cfu <= 0)
+                throw new ArgumentOutOfRangeException(nameof(scenario), "Scenario CFU must be positive.");
             if (change.ExistingExamId is not null && !currentIds.Contains(change.ExistingExamId))
                 throw new ArgumentException($"Exam '{change.ExistingExamId}' does not exist.", nameof(scenario));
         }
