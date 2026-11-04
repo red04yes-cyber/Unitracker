@@ -350,6 +350,8 @@ public sealed class MainViewModel : INotifyPropertyChanged
                 var oldCategory = selected.Category;
                 var oldStart = selected.StartsAt;
                 var oldEnd = selected.EndsAt;
+                var oldAllDay = selected.IsAllDay;
+                var oldUpdatedAt = selected.UpdatedAt;
                 selected.Title = CalendarEventTitle.Trim();
                 selected.Category = CalendarEventCategoryInput;
                 selected.StartsAt = start;
@@ -357,7 +359,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
                 selected.IsAllDay = CalendarEventAllDay;
                 selected.UpdatedAt = DateTimeOffset.Now;
                 try { CalendarService.Validate(selected); await _calendarStore.SaveAsync(CalendarEvents); }
-                catch { selected.Title = oldTitle; selected.Category = oldCategory; selected.StartsAt = oldStart; selected.EndsAt = oldEnd; throw; }
+                catch { selected.Title = oldTitle; selected.Category = oldCategory; selected.StartsAt = oldStart; selected.EndsAt = oldEnd; selected.IsAllDay = oldAllDay; selected.UpdatedAt = oldUpdatedAt; throw; }
                 SelectedCalendarEvent = null;
                 StatusMessage = "Modifiche salvate.";
             }
