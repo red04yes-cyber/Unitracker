@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using System.Windows;
 using UniToStudyHub.Infrastructure.Data;
+using UniToStudyHub.Domain.Services;
 using UniToStudyHub.Presentation.ViewModels;
 using UniToStudyHub.Services;
 
@@ -20,6 +21,7 @@ public partial class App : System.Windows.Application
         services.AddSingleton<LegacyJsonMigrator>();
         services.AddSingleton<IStudyDataStore, SqliteStudyDataStore>();
         services.AddSingleton<MoodleApplicationService>();
+        services.AddSingleton<CareerCalculatorService>();
         services.AddSingleton<MainViewModel>();
         services.AddSingleton<MainWindow>();
 
