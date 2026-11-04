@@ -53,7 +53,6 @@ public static class StudyDataEntityMapper
                     attempt.Id = Guid.NewGuid().ToString("N");
                     while (!allAttemptIds.Add(attempt.Id)) attempt.Id = Guid.NewGuid().ToString("N");
                 }
-            {
                 if (!Enum.TryParse<AttemptStatus>(attempt.Status, true, out var status)) throw new InvalidDataException($"Unknown attempt status '{attempt.Status}'.");
                 if (!Enum.TryParse<ExamOutcome>(attempt.Outcome, true, out var outcome)) throw new InvalidDataException($"Unknown exam outcome '{attempt.Outcome}'.");
                 if (!Enum.TryParse<GradeDecision>(attempt.GradeDecision, true, out var decision)) throw new InvalidDataException($"Unknown grade decision '{attempt.GradeDecision}'.");
