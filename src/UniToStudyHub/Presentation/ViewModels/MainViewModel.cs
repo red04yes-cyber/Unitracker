@@ -347,9 +347,10 @@ public sealed class MainViewModel : INotifyPropertyChanged
         CreditsDisplay = $"CFU completati: {GradeCalculator.AcquiredCfu(_data.Grades, _calculator)}";
 
         var latestGrades = _data.Grades
-            .Where(x => x.CountsTowardAverage && x.Value is >= 18 and <= 30)
+            .Where(x => x.Value is >= 18 and <= 30)
             .GroupBy(x => string.IsNullOrWhiteSpace(x.CourseId) ? x.Id : x.CourseId, StringComparer.Ordinal)
             .Select(group => group.OrderByDescending(x => x.Date).ThenByDescending(x => x.Id, StringComparer.Ordinal).First())
+            .Where(x => x.CountsTowardAverage)
             .ToList();
 
         ArithmeticAverageDisplay = latestGrades.Count == 0
