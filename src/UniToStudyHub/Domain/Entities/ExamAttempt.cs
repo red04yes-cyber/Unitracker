@@ -81,10 +81,10 @@ public sealed class ExamAttempt
                 throw new ArgumentOutOfRangeException(nameof(outcome));
         }
 
-        var isAccepted = decision is GradeDecision.Accepted or GradeDecision.NotApplicable;
-        if (isAccepted && recordedAt is null)
+        var requiresRecording = decision == GradeDecision.Accepted || outcome == ExamOutcome.EligibilityPassed;
+        if (requiresRecording && recordedAt is null)
             throw new ArgumentException("An accepted result must have a recording timestamp.", nameof(recordedAt));
-        if (!isAccepted && recordedAt is not null)
+        if (!requiresRecording && recordedAt is not null)
             throw new ArgumentException("A rejected or failed result cannot have an official recording timestamp.", nameof(recordedAt));
         if (recordedAt is not null && recordedAt.Value < AttemptedAt)
             throw new ArgumentException("A result cannot be recorded before the attempt took place.", nameof(recordedAt));
