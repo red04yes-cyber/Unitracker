@@ -108,6 +108,30 @@ public sealed class MainViewModel : INotifyPropertyChanged
         Grades.Add(item);
         var previousCompleted = course.Completed;
         course.Completed = true;
+        var careerExam = _data.CareerExams.FirstOrDefault(x => x.CourseId == course.Id);
+        var createdCareerExam = careerExam is null;
+        if (careerExam is null)
+        {
+            careerExam = new CareerExamData
+            {
+                CourseId = course.Id,
+                Name = course.Name,
+                Cfu = course.Cfu,
+                CountsTowardAverage = true
+            };
+            _data.CareerExams.Add(careerExam);
+        }
+        var recordedAt = DateTimeOffset.Now;
+        var attempt = new ExamAttemptData
+        {
+            Status = "Completed",
+            Outcome = "Passed",
+            GradeDecision = "Accepted",
+            NumericGrade = grade,
+            AttemptedAt = recordedAt,
+            RecordedAt = recordedAt
+        };
+        careerExam.Attempts.Add(attempt);
         try
         {
             await SaveAsync();
@@ -116,6 +140,8 @@ public sealed class MainViewModel : INotifyPropertyChanged
         catch (Exception ex)
         {
             Grades.Remove(item);
+            careerExam.Attempts.Remove(attempt);
+            if (createdCareerExam) _data.CareerExams.Remove(careerExam);
             course.Completed = previousCompleted;
             StatusMessage = $"Salvataggio non riuscito: {ex.Message}";
         }
