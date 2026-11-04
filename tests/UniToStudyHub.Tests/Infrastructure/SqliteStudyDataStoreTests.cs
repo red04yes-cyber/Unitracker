@@ -57,7 +57,7 @@ public sealed class SqliteStudyDataStoreTests
 
         var loaded = await store.LoadAsync();
         Assert.Equal(2, loaded.Courses.Count);
-        Assert.Equal(1, loaded.Grades.Count);
+        Assert.Single(loaded.Grades);
     }
 
     [Fact]
