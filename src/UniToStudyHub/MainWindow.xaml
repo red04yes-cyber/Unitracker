@@ -530,169 +530,77 @@
                 <StackPanel Margin="32,30,32,36">
                     <TextBlock Text="IL TUO TEMPO, SOTTO CONTROLLO" FontSize="10"
                                FontWeight="Bold" Foreground="{StaticResource AccentBrush}"/>
-                    <Grid Margin="0,7,0,5">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
-                        </Grid.ColumnDefinitions>
+                    <TextBlock Text="Calendario" Style="{StaticResource PageTitleStyle}" Margin="0,7,0,4"/>
+                    <TextBlock Text="Gestisci gli eventi personali e consulta le date già salvate. Le date ufficiali restano distinte da quelle inserite manualmente."
+                               Style="{StaticResource PageSubtitleStyle}" Margin="0,0,0,20"/>
+                    <Border Style="{StaticResource CardBorderStyle}" Padding="18" Margin="0,0,0,18">
                         <StackPanel>
-                            <TextBlock Text="Calendario" Style="{StaticResource PageTitleStyle}"/>
-                            <TextBlock Text="Una panoramica chiara degli appelli e delle prossime tappe della tua carriera."
-                                       Style="{StaticResource PageSubtitleStyle}" Margin="0,4,0,0"/>
+                            <TextBlock Text="NUOVO EVENTO / MODIFICA" Style="{StaticResource KpiLabelStyle}"/>
+                            <TextBox Text="{Binding CalendarEventTitle, UpdateSourceTrigger=PropertyChanged}"
+                                     MaxWidth="720" HorizontalAlignment="Stretch" Margin="0,8,0,10"
+                                     ToolTip="Titolo dell'evento"/>
+                            <WrapPanel>
+                                <DatePicker SelectedDate="{Binding CalendarEventDate}" Width="180" Margin="0,0,10,8"/>
+                                <TextBox Text="{Binding CalendarEventStartTime, UpdateSourceTrigger=PropertyChanged}" Width="82" Margin="0,0,8,8" ToolTip="Ora inizio (HH:mm)"/>
+                                <TextBox Text="{Binding CalendarEventEndTime, UpdateSourceTrigger=PropertyChanged}" Width="82" Margin="0,0,8,8" ToolTip="Ora fine (HH:mm)"/>
+                                <CheckBox Content="Tutto il giorno" IsChecked="{Binding CalendarEventAllDay}" VerticalAlignment="Center" Margin="0,0,12,8"/>
+                                <ComboBox SelectedValue="{Binding CalendarEventCategoryInput}" SelectedValuePath="Content"
+                                          Width="170" Margin="0,0,10,8">
+                                    <ComboBoxItem Content="Personal" IsSelected="True"/>
+                                    <ComboBoxItem Content="Lecture"/>
+                                    <ComboBoxItem Content="Exam"/>
+                                    <ComboBoxItem Content="Deadline"/>
+                                    <ComboBoxItem Content="Study"/>
+                                </ComboBox>
+                                <Button Content="Aggiungi / salva modifiche" Command="{Binding AddCalendarEventCommand}"
+                                        Padding="16,9" Margin="0,0,8,8"/>
+                                <Button Content="Elimina selezionato" Command="{Binding DeleteCalendarEventCommand}"
+                                        Style="{StaticResource SecondaryButtonStyle}" Padding="16,9" Margin="0,0,8,8"/>
+                            </WrapPanel>
+                            <TextBlock Text="{Binding StatusMessage}" FontSize="11"
+                                       Foreground="{StaticResource MutedBrush}" Margin="0,5,0,0" TextWrapping="Wrap"/>
                         </StackPanel>
-                        <Border Grid.Column="1" Background="#EAF0FF" CornerRadius="10"
-                                Padding="12,8" VerticalAlignment="Center">
-                            <StackPanel Orientation="Horizontal">
-                                <Ellipse Width="7" Height="7" Fill="#3157D5" Margin="0,0,8,0"/>
-                                <TextBlock Text="PIANIFICAZIONE" FontSize="9" FontWeight="Bold"
-                                           Foreground="#3157D5" VerticalAlignment="Center"/>
-                            </StackPanel>
-                        </Border>
-                    </Grid>
-
-                    <Grid Margin="0,22,0,20">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="1.65*"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-
-                        <Border Grid.Column="0" Style="{StaticResource CardBorderStyle}"
-                                Margin="0,0,12,0" Padding="22">
-                            <StackPanel>
-                                <TextBlock Text="PIANIFICATORE" FontSize="9" FontWeight="Bold"
-                                           Foreground="{StaticResource AccentBrush}"/>
-                                <TextBlock Text="Dai una forma alla sessione"
-                                           FontSize="19" FontWeight="SemiBold"
-                                           Foreground="{StaticResource InkBrush}" Margin="0,8,0,5"/>
-                                <TextBlock Text="Distribuisci gli esami nelle sessioni disponibili usando le informazioni della tua carriera. Le date generate sono suggerimenti organizzativi, non appelli ufficiali UniTo."
-                                           Style="{StaticResource PageSubtitleStyle}"
-                                           TextWrapping="Wrap" Margin="0,0,0,18"/>
-                                <Button Content="Aggiorna pianificazione"
-                                        Command="{Binding PlanExamsCommand}"
-                                        HorizontalAlignment="Left" Padding="18,10"/>
-                                <TextBlock Text="{Binding StatusMessage}" FontSize="11"
-                                           Foreground="{StaticResource MutedBrush}"
-                                           Margin="0,12,0,0" TextWrapping="Wrap"/>
-                            </StackPanel>
-                        </Border>
-
-                        <Border Grid.Column="1" Style="{StaticResource CardBorderStyle}" Padding="20">
-                            <StackPanel>
-                                <TextBlock Text="DA TENERE A MENTE" FontSize="9" FontWeight="Bold"
-                                           Foreground="{StaticResource MutedBrush}"/>
-                                <TextBlock Text="Le date giuste fanno la differenza."
-                                           FontSize="16" FontWeight="SemiBold"
-                                           Foreground="{StaticResource InkBrush}"
-                                           TextWrapping="Wrap" Margin="0,9,0,7"/>
-                                <TextBlock Text="Le date indicative ti aiutano a organizzarti. Prima di prenotare un esame, verifica sempre l'appello sulle fonti ufficiali."
-                                           FontSize="11" Foreground="{StaticResource MutedBrush}"
-                                           TextWrapping="Wrap" LineHeight="17"/>
-                                <Border Background="#F3F6FB" CornerRadius="8" Padding="10"
-                                        Margin="0,14,0,0">
-                                    <TextBlock Text="Lezioni, scadenze e sincronizzazione saranno aggiunte quando i relativi dati saranno disponibili."
-                                               FontSize="10" Foreground="{StaticResource MutedBrush}"
-                                               TextWrapping="Wrap"/>
-                                </Border>
-                            </StackPanel>
-                        </Border>
-                    </Grid>
-
-                    <Grid Margin="0,0,0,12">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
-                        </Grid.ColumnDefinitions>
+                    </Border>
+                    <Border Style="{StaticResource CardBorderStyle}" Padding="18">
                         <StackPanel>
-                            <TextBlock Text="I tuoi prossimi esami"
-                                       Style="{StaticResource SectionTitleStyle}"/>
-                            <TextBlock Text="Date e sessioni attualmente presenti nella tua carriera."
-                                       FontSize="11" Foreground="{StaticResource MutedBrush}"
-                                       Margin="0,4,0,0"/>
-                        </StackPanel>
-                        <TextBlock Grid.Column="1" Text="{Binding Exams.Count, StringFormat={}{0} ESAMI}"
-                                   FontSize="9" FontWeight="Bold"
-                                   Foreground="{StaticResource MutedBrush}"
-                                   VerticalAlignment="Center"/>
-                    </Grid>
-
-                    <ItemsControl ItemsSource="{Binding Exams}">
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate>
-                                <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,9"
-                                        Padding="0">
-                                    <Grid>
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="5"/>
-                                            <ColumnDefinition Width="Auto"/>
-                                            <ColumnDefinition Width="*"/>
-                                            <ColumnDefinition Width="Auto"/>
-                                        </Grid.ColumnDefinitions>
-                                        <Border Grid.Column="0" Background="#3157D5"
-                                                CornerRadius="10,0,0,10"/>
-                                        <Border Grid.Column="1" Background="#F3F6FB"
-                                                CornerRadius="9" Padding="12,9"
-                                                Margin="14,12">
-                                            <StackPanel HorizontalAlignment="Center">
-                                                <TextBlock Text="{Binding PlannedDate, StringFormat={}{0:MMM}, TargetNullValue=—}"
-                                                           FontSize="9" FontWeight="Bold"
-                                                           Foreground="{StaticResource AccentBrush}"
-                                                           HorizontalAlignment="Center"/>
-                                                <TextBlock Text="{Binding PlannedDate, StringFormat={}{0:dd}, TargetNullValue=—}"
-                                                           FontSize="20" FontWeight="SemiBold"
-                                                           Foreground="{StaticResource InkBrush}"
-                                                           HorizontalAlignment="Center"/>
-                                            </StackPanel>
+                            <Grid Margin="0,0,0,14">
+                                <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                <TextBlock Text="{Binding CalendarPeriodDisplay}" FontSize="19" FontWeight="SemiBold"
+                                           Foreground="{StaticResource InkBrush}" VerticalAlignment="Center"/>
+                                <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                    <Button Content="‹" Command="{Binding PreviousCalendarPeriodCommand}" Width="38" Margin="0,0,6,0"/>
+                                    <Button Content="Oggi" Command="{Binding TodayCalendarCommand}" Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,6,0"/>
+                                    <Button Content="›" Command="{Binding NextCalendarPeriodCommand}" Width="38"/>
+                                </StackPanel>
+                            </Grid>
+                            <TextBlock Text="Seleziona un evento per modificarne titolo, data o categoria. Gli eventi manuali vengono salvati nel profilo locale."
+                                       FontSize="11" Foreground="{StaticResource MutedBrush}" Margin="0,0,0,12" TextWrapping="Wrap"/>
+                            <ItemsControl ItemsSource="{Binding VisibleCalendarEvents}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="9"
+                                                Padding="12" Margin="0,0,0,8">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                                <StackPanel>
+                                                    <TextBlock Text="{Binding Title}" FontSize="13" FontWeight="SemiBold"
+                                                               Foreground="{StaticResource InkBrush}"/>
+                                                    <TextBlock Text="{Binding StartsAt, StringFormat={}{0:ddd, d MMM · HH:mm}}"
+                                                               FontSize="11" Foreground="{StaticResource MutedBrush}" Margin="0,4,0,0"/>
+                                                    <TextBlock Text="{Binding Category}" FontSize="10" Foreground="{StaticResource AccentBrush}" Margin="0,3,0,0"/>
+                                                </StackPanel>
+                                                <Button Grid.Column="1" Content="Modifica" Tag="{Binding}" Click="CalendarEventEdit_Click"
+                                                        Style="{StaticResource SecondaryButtonStyle}" VerticalAlignment="Center"/>
+                                            </Grid>
                                         </Border>
-                                        <StackPanel Grid.Column="2" VerticalAlignment="Center"
-                                                    Margin="2,12,12,12">
-                                            <TextBlock Text="{Binding Name}" FontSize="14"
-                                                       FontWeight="SemiBold"
-                                                       Foreground="{StaticResource InkBrush}"/>
-                                            <TextBlock Text="{Binding CourseName}" FontSize="11"
-                                                       Foreground="{StaticResource MutedBrush}"
-                                                       Margin="0,4,0,0"/>
-                                            <TextBlock Text="{Binding PlannedSession}" FontSize="10"
-                                                       Foreground="{StaticResource MutedBrush}"
-                                                       Margin="0,3,0,0"/>
-                                        </StackPanel>
-                                        <StackPanel Grid.Column="3" VerticalAlignment="Center"
-                                                    HorizontalAlignment="Right" Margin="8,12,18,12">
-                                            <TextBlock Text="{Binding Cfu, StringFormat={}{0} CFU}"
-                                                       FontSize="11" FontWeight="SemiBold"
-                                                       Foreground="{StaticResource InkBrush}"
-                                                       HorizontalAlignment="Right"/>
-                                            <TextBlock Text="DATA INDICATIVA" FontSize="8"
-                                                       FontWeight="Bold"
-                                                       Foreground="{StaticResource MutedBrush}"
-                                                       Margin="0,5,0,0"
-                                                       HorizontalAlignment="Right"/>
-                                        </StackPanel>
-                                    </Grid>
-                                </Border>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-
-                    <Border Style="{StaticResource CardBorderStyle}"
-                            Visibility="{Binding NoPlannedExams, Converter={StaticResource BooleanToVisibilityConverter}}"
-                            Padding="30" Margin="0,2,0,0">
-                        <StackPanel HorizontalAlignment="Center">
-                            <Border Width="44" Height="44" CornerRadius="14"
-                                    Background="#EAF0FF" HorizontalAlignment="Center">
-                                <TextBlock Text="✦" FontSize="20" Foreground="#3157D5"
-                                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                            </Border>
-                            <TextBlock Text="Il tuo calendario inizia da qui"
-                                       FontSize="16" FontWeight="SemiBold"
-                                       Foreground="{StaticResource InkBrush}"
-                                       HorizontalAlignment="Center" Margin="0,13,0,5"/>
-                            <TextBlock Text="Aggiungi le materie alla tua carriera e aggiorna la pianificazione per visualizzare qui gli esami previsti."
-                                       FontSize="11" Foreground="{StaticResource MutedBrush}"
-                                       TextWrapping="Wrap" TextAlignment="Center" MaxWidth="430"/>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <TextBlock Text="Gli eventi sono ordinati per data e ora." FontSize="12" Foreground="{StaticResource MutedBrush}"
+                                       Margin="0,6,0,0"/>
                         </StackPanel>
                     </Border>
                 </StackPanel>
-            </ScrollViewer>
         </TabItem>
 
         <TabItem>

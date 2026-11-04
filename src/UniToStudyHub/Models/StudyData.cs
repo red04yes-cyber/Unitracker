@@ -12,6 +12,7 @@ public sealed class StudyData
     public DateTime GraduationTarget { get; set; } = new(2027, 10, 1);
     public string MoodleBaseUrl { get; set; } = string.Empty;
     public ObservableCollection<CareerExamData> CareerExams { get; set; } = new();
+    public ObservableCollection<CalendarEvent> CalendarEvents { get; set; } = new();
 }
 
 public sealed class Course
