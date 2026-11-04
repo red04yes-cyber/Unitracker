@@ -330,10 +330,18 @@ public sealed class MainViewModel : INotifyPropertyChanged
         try
         {
             var day = CalendarEventDate.Value.Date;
-            if (!CalendarEventAllDay && (!TimeOnly.TryParse(CalendarEventStartTime, CultureInfo.CurrentCulture, out var startTime) || !TimeOnly.TryParse(CalendarEventEndTime, CultureInfo.CurrentCulture, out var endTime)))
-            { StatusMessage = "Inserisci orari validi (HH:mm)."; return; }
-            var startLocal = day.Add(CalendarEventAllDay ? TimeSpan.Zero : startTime.ToTimeSpan());
-            var endLocal = CalendarEventAllDay ? day.AddDays(1) : day.Add(endTime.ToTimeSpan());
+            var startOffset = TimeSpan.Zero;
+            var endOffset = TimeSpan.FromHours(1);
+            if (!CalendarEventAllDay)
+            {
+                if (!TimeOnly.TryParse(CalendarEventStartTime, CultureInfo.CurrentCulture, out var startTime) ||
+                    !TimeOnly.TryParse(CalendarEventEndTime, CultureInfo.CurrentCulture, out var endTime))
+                { StatusMessage = "Inserisci orari validi (HH:mm)."; return; }
+                startOffset = startTime.ToTimeSpan();
+                endOffset = endTime.ToTimeSpan();
+            }
+            var startLocal = day.Add(startOffset);
+            var endLocal = CalendarEventAllDay ? day.AddDays(1) : day.Add(endOffset);
             var start = new DateTimeOffset(startLocal, TimeZoneInfo.Local.GetUtcOffset(startLocal));
             var end = new DateTimeOffset(endLocal, TimeZoneInfo.Local.GetUtcOffset(endLocal));
             if (SelectedCalendarEvent is { } selected)
