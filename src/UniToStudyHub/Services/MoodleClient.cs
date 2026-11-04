@@ -1,4 +1,7 @@
-using System.Text.Json; using UniToStudyHub.Models;
+using System.IO;
+using System.Net.Http;
+using System.Text.Json;
+using UniToStudyHub.Models;
 namespace UniToStudyHub.Services;
 public sealed class MoodleClient:IDisposable
 {

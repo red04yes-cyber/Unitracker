@@ -1,3 +1,5 @@
+using System.IO;
+using System.Net.Http;
 using UniToStudyHub.Models;
 namespace UniToStudyHub.Services;
 public sealed class DocumentSyncService
