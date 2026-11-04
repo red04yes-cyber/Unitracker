@@ -13,7 +13,7 @@ namespace UniToStudyHub.Tests.Infrastructure;
 public sealed class LegacyJsonMigratorTests
 {
     [Fact]
-    public async Task Migration_ImportsAllLegacyCollections_HandlesDuplicateIds_AndKeepsSource()
+    public async Task Migration_ImportsAllLegacyCollections_AndKeepsSource()
     {
         await using var fixture = await DatabaseFixture.CreateAsync();
         var temp = Path.Combine(Path.GetTempPath(), "UnitrackerTests", Guid.NewGuid().ToString("N"));
@@ -28,7 +28,7 @@ public sealed class LegacyJsonMigratorTests
                 Courses = new ObservableCollection<Course>
                 {
                     new() { Id = "duplicate-course", Name = "Analisi", Code = "MAT1", Cfu = 6 },
-                    new() { Id = "duplicate-course", Name = "Fisica", Code = "FIS1", Cfu = 9 }
+                    new() { Id = "course-2", Name = "Fisica", Code = "FIS1", Cfu = 9 }
                 },
                 Grades = new ObservableCollection<Grade>
                 {
@@ -49,7 +49,7 @@ public sealed class LegacyJsonMigratorTests
                         Id = "career-exam-1", CourseId = "duplicate-course", Name = "Analisi", Cfu = 6,
                         Attempts = new ObservableCollection<ExamAttemptData>
                         {
-                            new() { Id = "attempt-1", Status = "Completed", Outcome = "Passed", GradeDecision = "Accepted", NumericGrade = 30, IsHonors = true, RecordedAt = new DateTimeOffset(2026, 1, 11, 10, 0, 0, TimeSpan.Zero) }
+                            new() { Id = "attempt-1", AttemptedAt = new DateTimeOffset(2026, 1, 10, 10, 0, 0, TimeSpan.Zero), Status = "Completed", Outcome = "Passed", GradeDecision = "Accepted", NumericGrade = 30, IsHonors = true, RecordedAt = new DateTimeOffset(2026, 1, 11, 10, 0, 0, TimeSpan.Zero) }
                         }
                     }
                 }
@@ -99,6 +99,47 @@ public sealed class LegacyJsonMigratorTests
             await using var db = fixture.CreateContext();
             Assert.Empty(await db.Courses.ToListAsync());
             Assert.Empty(await db.LegacyImports.ToListAsync());
+        }
+        finally { Directory.Delete(temp, recursive: true); }
+    }
+
+    [Fact]
+    public void DuplicateLegacyIdentifiersAreRejectedWithoutRewritingTheSourceData()
+    {
+        const string duplicateId = "duplicate-course";
+        var data = new StudyData
+        {
+            Courses = new ObservableCollection<Course>
+            {
+                new() { Id = duplicateId, Name = "Analisi", Cfu = 6 },
+                new() { Id = duplicateId, Name = "Fisica", Cfu = 9 }
+            }
+        };
+
+        Assert.Throws<InvalidDataException>(() => StudyDataEntityMapper.NormalizeAndValidate(data));
+        Assert.All(data.Courses, course => Assert.Equal(duplicateId, course.Id));
+    }
+
+    [Fact]
+    public async Task EmptyJsonIsRejectedAndOriginalIsPreserved()
+    {
+        await using var fixture = await DatabaseFixture.CreateAsync();
+        var temp = Path.Combine(Path.GetTempPath(), "UnitrackerTests", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(temp);
+        var path = Path.Combine(temp, "data.json");
+        try
+        {
+            await File.WriteAllTextAsync(path, string.Empty);
+            var migrator = new LegacyJsonMigrator(fixture.Factory, path);
+
+            await Assert.ThrowsAsync<InvalidDataException>(() => migrator.MigrateAsync());
+
+            Assert.True(File.Exists(path));
+            Assert.Equal(string.Empty, await File.ReadAllTextAsync(path));
+            Assert.Single(Directory.GetFiles(temp, "data.pre-sqlite-*.json"));
+            await using var db = fixture.CreateContext();
+            Assert.Empty(await db.ProfileSettings.ToListAsync());
+            Assert.Empty(await db.Courses.ToListAsync());
         }
         finally { Directory.Delete(temp, recursive: true); }
     }
