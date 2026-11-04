@@ -3,6 +3,11 @@ using UniToStudyHub.Domain.ValueObjects;
 
 namespace UniToStudyHub.Domain.Entities;
 
+/// <summary>
+/// A single attempt at an exam. The attempt state, the exam outcome and the
+/// decision about the grade are deliberately three separate concepts.
+/// Previous attempts are never removed or overwritten when a new one is added.
+/// </summary>
 public sealed class ExamAttempt
 {
     public string Id { get; }
@@ -14,12 +19,24 @@ public sealed class ExamAttempt
     public GradeValue? Grade { get; private set; }
     public DateTimeOffset? RecordedAt { get; private set; }
 
+    /// <summary>
+    /// True only when this attempt produced an official, recorded result that
+    /// contributes CFU. A passed exam whose grade was rejected is not official.
+    /// </summary>
+    public bool IsOfficialResult =>
+        Status == AttemptStatus.Completed &&
+        RecordedAt is not null &&
+        Outcome is ExamOutcome.Passed or ExamOutcome.EligibilityPassed &&
+        GradeDecision is GradeDecision.Accepted or GradeDecision.NotApplicable;
+
     public ExamAttempt(string examId, DateTimeOffset attemptedAt, string? id = null)
     {
         if (string.IsNullOrWhiteSpace(examId))
             throw new ArgumentException("Exam id is required.", nameof(examId));
-        if (string.IsNullOrWhiteSpace(id) && id is not null)
+        if (id is not null && string.IsNullOrWhiteSpace(id))
             throw new ArgumentException("Attempt id cannot be whitespace.", nameof(id));
+        if (attemptedAt == default)
+            throw new ArgumentException("An attempt must have a real date.", nameof(attemptedAt));
 
         ExamId = examId;
         Id = id ?? Guid.NewGuid().ToString("N");
@@ -43,6 +60,12 @@ public sealed class ExamAttempt
         Status = AttemptStatus.InProgress;
     }
 
+    /// <summary>
+    /// Closes the attempt with a final outcome. A numeric grade is only valid
+    /// for a passed exam; an eligibility result acquires CFU without entering
+    /// the numeric average. Rejected grades and failed attempts are not
+    /// verbalized, therefore they must not carry a recording timestamp.
+    /// </summary>
     public void Complete(
         ExamOutcome outcome,
         GradeDecision decision,
