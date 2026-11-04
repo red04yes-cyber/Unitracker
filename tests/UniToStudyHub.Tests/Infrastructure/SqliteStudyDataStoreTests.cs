@@ -15,9 +15,14 @@ public sealed class SqliteStudyDataStoreTests
     [Fact]
     public async Task RuntimeSqliteVersionContainsThePatchedNativeLibrary()
     {
-        await using var database = await SqliteTestDatabase.CreateInMemoryAsync();
+        await using var database = await SqliteTestDatabase.CreateFileAsync();
+        await using var db = database.CreateContext();
+        var connection = db.Database.GetDbConnection();
+        await connection.OpenAsync();
+        await using var command = connection.CreateCommand();
+        command.CommandText = "SELECT sqlite_version()";
 
-        var versionText = Assert.Single(await database.QueryScalarsAsync("SELECT sqlite_version()"));
+        var versionText = Assert.IsType<string>(await command.ExecuteScalarAsync());
         var version = Version.Parse(versionText);
 
         Assert.True(
