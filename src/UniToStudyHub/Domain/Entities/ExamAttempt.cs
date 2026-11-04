@@ -30,6 +30,7 @@ public sealed class ExamAttempt
 
     public void Complete(ExamOutcome outcome, GradeDecision decision, GradeValue? grade, DateTimeOffset? recordedAt = null)
     {
+        EnsureNotCompleted();
         if (outcome == ExamOutcome.Pending) throw new ArgumentException("A completed attempt needs a final outcome.", nameof(outcome));
         if (outcome == ExamOutcome.Passed && (grade is null || grade.IsPassFail)) throw new ArgumentException("A passed graded exam requires a numeric grade.", nameof(grade));
         if (outcome == ExamOutcome.EligibilityPassed && (grade is null || !grade.IsPassFail)) throw new ArgumentException("An eligibility exam requires an eligibility result.", nameof(grade));
