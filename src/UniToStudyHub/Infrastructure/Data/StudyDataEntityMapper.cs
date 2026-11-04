@@ -84,8 +84,9 @@ public static class StudyDataEntityMapper
                     }
                     else throw new InvalidDataException($"Completed attempt '{attempt.Id}' has a pending outcome.");
                 }
-                else if (attempt.RecordedAt is not null)
-                    throw new InvalidDataException($"Non-completed attempt '{attempt.Id}' cannot have a recording timestamp.");
+                else if (attempt.RecordedAt is not null || outcome != ExamOutcome.Pending ||
+                         decision != GradeDecision.Pending || attempt.NumericGrade is not null || attempt.IsPassFail || attempt.IsHonors)
+                    throw new InvalidDataException($"Non-completed attempt '{attempt.Id}' must not carry a final result or grade.");
             }
         }
         if (string.IsNullOrWhiteSpace(data.MoodleBaseUrl)) data.MoodleBaseUrl = string.Empty;
