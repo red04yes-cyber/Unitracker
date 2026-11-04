@@ -41,12 +41,18 @@ public static class StudyDataEntityMapper
             if (string.IsNullOrWhiteSpace(e.Name)) throw new InvalidDataException("A planned exam has no name.");
             if (e.Cfu < 0 || e.EstimatedStudyHours < 0) throw new InvalidDataException($"Planned exam '{e.Name}' has a negative value.");
         }
+        var allAttemptIds = new HashSet<string>(StringComparer.Ordinal);
         foreach (var exam in data.CareerExams)
         {
             if (string.IsNullOrWhiteSpace(exam.Name) || exam.Cfu <= 0) throw new InvalidDataException($"Career exam '{exam.Id}' has invalid name or CFU.");
             exam.Attempts ??= new ObservableCollection<ExamAttemptData>();
-            MakeIdsUnique(exam.Attempts, x => x.Id, (x, id) => x.Id = id);
             foreach (var attempt in exam.Attempts)
+            {
+                if (string.IsNullOrWhiteSpace(attempt.Id) || !allAttemptIds.Add(attempt.Id))
+                {
+                    attempt.Id = Guid.NewGuid().ToString("N");
+                    while (!allAttemptIds.Add(attempt.Id)) attempt.Id = Guid.NewGuid().ToString("N");
+                }
             {
                 if (!Enum.TryParse<AttemptStatus>(attempt.Status, true, out var status)) throw new InvalidDataException($"Unknown attempt status '{attempt.Status}'.");
                 if (!Enum.TryParse<ExamOutcome>(attempt.Outcome, true, out var outcome)) throw new InvalidDataException($"Unknown exam outcome '{attempt.Outcome}'.");
