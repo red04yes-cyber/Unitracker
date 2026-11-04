@@ -32,4 +32,9 @@ public partial class MainWindow : Window
     {
         MainTabs.SelectedIndex = 1;
     }
+
+    private void NavigateToSettings_Click(object sender, RoutedEventArgs e)
+    {
+        MainTabs.SelectedIndex = 6;
+    }
 }
