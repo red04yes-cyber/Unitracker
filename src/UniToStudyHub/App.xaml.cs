@@ -1,7 +1,9 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using System.Windows;
+using UniToStudyHub.Infrastructure;
 using UniToStudyHub.Infrastructure.Data;
+using UniToStudyHub.Presentation.Composition;
 using UniToStudyHub.Presentation.ViewModels;
 using UniToStudyHub.Services;
 
@@ -14,28 +16,30 @@ public partial class App : System.Windows.Application
     protected override async void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
+
         var services = new ServiceCollection();
-        services.AddDbContextFactory<StudyHubDbContext>(options =>
-            options.UseSqlite($"Data Source={StudyHubDatabase.GetDatabasePath()}"));
-        services.AddSingleton<LegacyJsonMigrator>();
-        services.AddSingleton<IStudyDataStore, SqliteStudyDataStore>();
-        services.AddSingleton<MoodleApplicationService>();
-        services.AddSingleton<MainViewModel>();
+        services.AddUniToStudyHubCore();
+        services.AddUniToStudyHubViewModels();
         services.AddSingleton<MainWindow>();
 
         _serviceProvider = services.BuildServiceProvider(validateScopes: true);
         try
         {
             await using var scope = _serviceProvider.CreateAsyncScope();
+
             var factory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<StudyHubDbContext>>();
             await using (var db = await factory.CreateDbContextAsync())
+            {
+                await StudyHubDatabase.UpgradePreliminaryMigrationHistoryAsync(db);
                 await db.Database.MigrateAsync();
+            }
 
             var migrator = scope.ServiceProvider.GetRequiredService<LegacyJsonMigrator>();
             await migrator.MigrateAsync();
 
             var viewModel = _serviceProvider.GetRequiredService<MainViewModel>();
             await viewModel.InitializeAsync();
+
             var window = _serviceProvider.GetRequiredService<MainWindow>();
             MainWindow = window;
             window.Show();

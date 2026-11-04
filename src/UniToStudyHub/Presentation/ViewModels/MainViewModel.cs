@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
+using UniToStudyHub.Domain.Services;
 using UniToStudyHub.Models;
 using UniToStudyHub.Presentation.Commands;
 using UniToStudyHub.Services;
@@ -11,6 +12,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
 {
     private readonly IStudyDataStore _store;
     private readonly MoodleApplicationService _moodle;
+    private readonly CareerCalculatorService _calculator;
     private StudyData _data = new();
     private Course? _selectedGradeCourse;
     private string _courseNameInput = string.Empty;
@@ -48,10 +50,11 @@ public sealed class MainViewModel : INotifyPropertyChanged
     public AsyncRelayCommand ConnectMoodleCommand { get; }
     public AsyncRelayCommand SyncMoodleCommand { get; }
 
-    public MainViewModel(IStudyDataStore store, MoodleApplicationService moodle)
+    public MainViewModel(IStudyDataStore store, MoodleApplicationService moodle, CareerCalculatorService calculator)
     {
         _store = store;
         _moodle = moodle;
+        _calculator = calculator;
         AddCourseCommand = new AsyncRelayCommand(AddCourseAsync);
         AddGradeCommand = new AsyncRelayCommand(AddGradeAsync, () => SelectedGradeCourse is not null);
         PlanExamsCommand = new AsyncRelayCommand(PlanExamsAsync);
@@ -183,9 +186,9 @@ public sealed class MainViewModel : INotifyPropertyChanged
 
     private void RefreshCareerSummary()
     {
-        AverageDisplay = GradeCalculator.Format(GradeCalculator.WeightedAverage(_data.Grades));
-        BaseGradeDisplay = "Voto di partenza: " + GradeCalculator.Format(GradeCalculator.ProjectedBase(_data.Grades));
-        CreditsDisplay = $"CFU completati: {GradeCalculator.AcquiredCfu(_data.Grades)}";
+        AverageDisplay = GradeCalculator.Format(GradeCalculator.WeightedAverage(_data.Grades, _calculator));
+        BaseGradeDisplay = "Voto di partenza: " + GradeCalculator.Format(GradeCalculator.ProjectedBase(_data.Grades, _calculator));
+        CreditsDisplay = $"CFU completati: {GradeCalculator.AcquiredCfu(_data.Grades, _calculator)}";
     }
 
     private void Set<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
