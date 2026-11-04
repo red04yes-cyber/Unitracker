@@ -47,6 +47,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
     public string MoodleStatus { get => _moodleStatus; private set => Set(ref _moodleStatus, value); }
     public string AverageDisplay { get => _averageDisplay; private set => Set(ref _averageDisplay, value); }
     public string ArithmeticAverageDisplay { get => _arithmeticAverageDisplay; private set => Set(ref _arithmeticAverageDisplay, value); }
+    public string ProjectedBaseGradeValue => GradeCalculator.Format(GradeCalculator.ProjectedBase(_data.Grades, _calculator));
     public string BaseGradeDisplay { get => _baseGradeDisplay; private set => Set(ref _baseGradeDisplay, value); }
     public string CreditsDisplay { get => _creditsDisplay; private set => Set(ref _creditsDisplay, value); }
     public string StatusMessage { get => _statusMessage; private set => Set(ref _statusMessage, value); }
@@ -356,6 +357,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
             : GradeCalculator.Format((decimal)latestGrades.Average(x => x.Value));
 
         OnPropertyChanged(nameof(AcquiredCreditsValue));
+        OnPropertyChanged(nameof(ProjectedBaseGradeValue));
         OnPropertyChanged(nameof(LatestGradeDisplay));
     }
 
