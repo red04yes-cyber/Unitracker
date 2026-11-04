@@ -48,7 +48,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
     public DateTime? CalendarEventDate { get => _calendarEventDate; set => Set(ref _calendarEventDate, value); }
     public string CalendarEventTitle { get => _calendarEventTitle; set => Set(ref _calendarEventTitle, value); }
     public string CalendarEventCategoryInput { get => _calendarEventCategory; set => Set(ref _calendarEventCategory, value); }
-    public CalendarEvent? SelectedCalendarEvent { get => _selectedCalendarEvent; set { Set(ref _selectedCalendarEvent, value); DeleteCalendarEventCommand?.NotifyCanExecuteChanged(); } }
+    public CalendarEvent? SelectedCalendarEvent { get => _selectedCalendarEvent; set { Set(ref _selectedCalendarEvent, value); if (value is not null) { CalendarEventTitle = value.Title; CalendarEventDate = value.StartsAt.LocalDateTime.Date; CalendarEventCategoryInput = value.Category; } DeleteCalendarEventCommand?.NotifyCanExecuteChanged(); } }
     public string CalendarPeriodDisplay => CalendarDate.ToString("MMMM yyyy", CultureInfo.GetCultureInfo("it-IT"));
 
     public string CourseNameInput { get => _courseNameInput; set => Set(ref _courseNameInput, value); }
@@ -320,12 +320,31 @@ public sealed class MainViewModel : INotifyPropertyChanged
             var day = CalendarEventDate.Value.Date;
             var start = new DateTimeOffset(day.AddHours(9), TimeZoneInfo.Local.GetUtcOffset(day.AddHours(9)));
             var end = start.AddHours(1);
-            var item = CalendarService.CreateManualEvent(CalendarEventTitle, CalendarEventCategoryInput, start, end);
-            CalendarEvents.Add(item);
-            await SaveAsync();
+            if (SelectedCalendarEvent is { } selected)
+            {
+                var oldTitle = selected.Title;
+                var oldCategory = selected.Category;
+                var oldStart = selected.StartsAt;
+                var oldEnd = selected.EndsAt;
+                selected.Title = CalendarEventTitle.Trim();
+                selected.Category = CalendarEventCategoryInput;
+                selected.StartsAt = start;
+                selected.EndsAt = end;
+                selected.UpdatedAt = DateTimeOffset.Now;
+                try { CalendarService.Validate(selected); await SaveAsync(); }
+                catch { selected.Title = oldTitle; selected.Category = oldCategory; selected.StartsAt = oldStart; selected.EndsAt = oldEnd; throw; }
+                SelectedCalendarEvent = null;
+                StatusMessage = "Modifiche salvate.";
+            }
+            else
+            {
+                var item = CalendarService.CreateManualEvent(CalendarEventTitle, CalendarEventCategoryInput, start, end);
+                CalendarEvents.Add(item);
+                await SaveAsync();
+                StatusMessage = "Evento aggiunto al calendario.";
+            }
             CalendarEventTitle = string.Empty;
             CalendarDate = day;
-            StatusMessage = "Evento aggiunto al calendario.";
             RefreshCalendar();
         }
         catch (Exception ex) { StatusMessage = $"Evento non salvato: {ex.Message}"; }
