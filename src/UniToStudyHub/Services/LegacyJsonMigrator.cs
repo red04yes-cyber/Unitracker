@@ -25,9 +25,23 @@ public sealed class LegacyJsonMigrator
     public async Task<bool> MigrateAsync(CancellationToken cancellationToken = default)
     {
         if (!File.Exists(_legacyPath)) return false;
-        var bytes = await File.ReadAllBytesAsync(_legacyPath, cancellationToken);
+
+        await using var db = await _factory.CreateDbContextAsync(cancellationToken);
+        if (await db.LegacyImports.AnyAsync(x => x.Key == MigrationKey, cancellationToken))
+            return false;
+
+        var hasExistingData = await db.ProfileSettings.AnyAsync(cancellationToken) ||
+            await db.Courses.AnyAsync(cancellationToken) ||
+            await db.Grades.AnyAsync(cancellationToken) ||
+            await db.PlannedExams.AnyAsync(cancellationToken) ||
+            await db.Announcements.AnyAsync(cancellationToken) ||
+            await db.CareerExams.AnyAsync(cancellationToken);
+        if (hasExistingData)
+            throw new InvalidOperationException("SQLite already contains user data but has no legacy-import marker. No data was overwritten.");
+
         var folder = Path.GetDirectoryName(_legacyPath)!;
         Directory.CreateDirectory(folder);
+        var bytes = await File.ReadAllBytesAsync(_legacyPath, cancellationToken);
         var backupPath = Path.Combine(folder, $"data.pre-sqlite-{DateTime.UtcNow:yyyyMMddHHmmssfff}-{Guid.NewGuid():N}.json");
         await File.WriteAllBytesAsync(backupPath, bytes, cancellationToken);
         var sourceHash = Convert.ToHexString(SHA256.HashData(bytes));
@@ -40,20 +54,20 @@ public sealed class LegacyJsonMigrator
         }
         catch (JsonException ex)
         {
-            throw new InvalidDataException($"Legacy data file is invalid. Original file preserved; backup: {backupPath}", ex);
+            throw new InvalidDataException($"Legacy data file is invalid. The original file is preserved; backup: {backupPath}", ex);
         }
-        if (legacy is null) throw new InvalidDataException($"Legacy data file contains no StudyData object. Original preserved; backup: {backupPath}.");
-        StudyDataEntityMapper.NormalizeAndValidate(legacy);
 
-        await using var db = await _factory.CreateDbContextAsync(cancellationToken);
-        if (await db.LegacyImports.AnyAsync(x => x.Key == MigrationKey, cancellationToken)) return false;
-        var hasExistingData = await db.Courses.AnyAsync(cancellationToken) ||
-            await db.Grades.AnyAsync(cancellationToken) ||
-            await db.PlannedExams.AnyAsync(cancellationToken) ||
-            await db.Announcements.AnyAsync(cancellationToken) ||
-            await db.CareerExams.AnyAsync(cancellationToken);
-        if (hasExistingData)
-            throw new InvalidOperationException("The SQLite database already contains data but has no legacy-import marker. No records were overwritten.");
+        if (legacy is null)
+            throw new InvalidDataException($"Legacy data file does not contain a StudyData object. The original file is preserved; backup: {backupPath}.");
+
+        try
+        {
+            StudyDataEntityMapper.NormalizeAndValidate(legacy);
+        }
+        catch (Exception ex) when (ex is ArgumentException or InvalidDataException)
+        {
+            throw new InvalidDataException($"Legacy data validation failed. The original file is preserved; backup: {backupPath}", ex);
+        }
 
         await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
         StudyDataEntityMapper.AddToContext(db, legacy);
@@ -65,7 +79,8 @@ public sealed class LegacyJsonMigrator
         });
         await db.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
-        // The original data.json is deliberately retained unchanged for recovery.
+
+        // Keep data.json unchanged: it remains a recovery copy until the user removes it.
         return true;
     }
 }
