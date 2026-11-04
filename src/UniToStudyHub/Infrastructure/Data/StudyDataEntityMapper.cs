@@ -23,6 +23,7 @@ public static class StudyDataEntityMapper
         MakeIdsUnique(data.Exams, x => x.Id, (x, id) => x.Id = id);
         MakeIdsUnique(data.Announcements, x => x.Id, (x, id) => x.Id = id);
         MakeIdsUnique(data.CareerExams, x => x.Id, (x, id) => x.Id = id);
+        PopulateCareerExamsFromLegacyGrades(data);
 
         foreach (var c in data.Courses)
         {
@@ -47,16 +48,87 @@ public static class StudyDataEntityMapper
             MakeIdsUnique(exam.Attempts, x => x.Id, (x, id) => x.Id = id);
             foreach (var attempt in exam.Attempts)
             {
-                if (!Enum.TryParse<AttemptStatus>(attempt.Status, true, out _)) throw new InvalidDataException($"Unknown attempt status '{attempt.Status}'.");
-                if (!Enum.TryParse<ExamOutcome>(attempt.Outcome, true, out _)) throw new InvalidDataException($"Unknown exam outcome '{attempt.Outcome}'.");
-                if (!Enum.TryParse<GradeDecision>(attempt.GradeDecision, true, out _)) throw new InvalidDataException($"Unknown grade decision '{attempt.GradeDecision}'.");
+                if (!Enum.TryParse<AttemptStatus>(attempt.Status, true, out var status)) throw new InvalidDataException($"Unknown attempt status '{attempt.Status}'.");
+                if (!Enum.TryParse<ExamOutcome>(attempt.Outcome, true, out var outcome)) throw new InvalidDataException($"Unknown exam outcome '{attempt.Outcome}'.");
+                if (!Enum.TryParse<GradeDecision>(attempt.GradeDecision, true, out var decision)) throw new InvalidDataException($"Unknown grade decision '{attempt.GradeDecision}'.");
                 if (!attempt.IsPassFail && attempt.NumericGrade is not null)
                     _ = GradeValue.Numeric(attempt.NumericGrade.Value, attempt.IsHonors);
                 else if (attempt.IsPassFail)
                     _ = GradeValue.Restore(null, attempt.IsHonors, true);
+
+                if (status == AttemptStatus.Completed)
+                {
+                    if (outcome == ExamOutcome.Passed)
+                    {
+                        if (attempt.NumericGrade is null || attempt.IsPassFail || decision is not (GradeDecision.Accepted or GradeDecision.Rejected))
+                            throw new InvalidDataException($"Completed graded attempt '{attempt.Id}' has inconsistent outcome or grade decision.");
+                        if (decision == GradeDecision.Accepted && attempt.RecordedAt is null)
+                            throw new InvalidDataException($"Accepted attempt '{attempt.Id}' has no recording timestamp.");
+                        if (decision == GradeDecision.Rejected && attempt.RecordedAt is not null)
+                            throw new InvalidDataException($"Rejected attempt '{attempt.Id}' cannot have a recording timestamp.");
+                    }
+                    else if (outcome == ExamOutcome.EligibilityPassed)
+                    {
+                        if (!attempt.IsPassFail || decision != GradeDecision.NotApplicable || attempt.RecordedAt is null)
+                            throw new InvalidDataException($"Eligibility attempt '{attempt.Id}' has inconsistent result data.");
+                    }
+                    else if (outcome == ExamOutcome.Failed)
+                    {
+                        if (attempt.NumericGrade is not null || attempt.IsPassFail || decision != GradeDecision.NotApplicable || attempt.RecordedAt is not null)
+                            throw new InvalidDataException($"Failed attempt '{attempt.Id}' has inconsistent result data.");
+                    }
+                    else throw new InvalidDataException($"Completed attempt '{attempt.Id}' has a pending outcome.");
+                }
+                else if (attempt.RecordedAt is not null)
+                    throw new InvalidDataException($"Non-completed attempt '{attempt.Id}' cannot have a recording timestamp.");
             }
         }
         if (string.IsNullOrWhiteSpace(data.MoodleBaseUrl)) data.MoodleBaseUrl = string.Empty;
+    }
+
+
+    private static void PopulateCareerExamsFromLegacyGrades(StudyData data)
+    {
+        var representedCourseIds = data.CareerExams.Select(x => x.CourseId).ToHashSet(StringComparer.Ordinal);
+        var courseById = data.Courses.GroupBy(x => x.Id, StringComparer.Ordinal)
+            .ToDictionary(g => g.Key, g => g.First(), StringComparer.Ordinal);
+
+        foreach (var group in data.Grades.GroupBy(
+                     g => string.IsNullOrWhiteSpace(g.CourseId) ? $"legacy-orphan:{g.Id}" : g.CourseId,
+                     StringComparer.Ordinal))
+        {
+            if (representedCourseIds.Contains(group.Key)) continue;
+            var grades = group.OrderBy(g => g.Date).ThenBy(g => g.Id, StringComparer.Ordinal).ToList();
+            var latest = grades[^1];
+            courseById.TryGetValue(group.Key, out var course);
+            var cfu = course?.Cfu > 0 ? course.Cfu : latest.Cfu;
+            var exam = new CareerExamData
+            {
+                Id = Guid.NewGuid().ToString("N"),
+                CourseId = group.Key,
+                Name = string.IsNullOrWhiteSpace(course?.Name) ? latest.CourseName : course.Name,
+                Cfu = cfu,
+                CountsTowardAverage = latest.CountsTowardAverage
+            };
+            foreach (var grade in grades)
+            {
+                var attemptedAt = new DateTimeOffset(grade.Date);
+                exam.Attempts.Add(new ExamAttemptData
+                {
+                    Id = grade.Id,
+                    AttemptedAt = attemptedAt,
+                    Status = nameof(AttemptStatus.Completed),
+                    Outcome = nameof(ExamOutcome.Passed),
+                    GradeDecision = nameof(GradeDecision.Accepted),
+                    NumericGrade = grade.Value,
+                    IsHonors = grade.Honors,
+                    IsPassFail = false,
+                    RecordedAt = attemptedAt
+                });
+            }
+            data.CareerExams.Add(exam);
+            representedCourseIds.Add(group.Key);
+        }
     }
 
     private static void MakeIdsUnique<T>(IEnumerable<T> items, Func<T, string> getId, Action<T, string> setId)
