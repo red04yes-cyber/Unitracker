@@ -49,6 +49,9 @@ public sealed class SqliteStudyDataStore(IDbContextFactory<StudyHubDbContext> co
             try
             {
                 // Delete children before parents; the whole replacement is atomic.
+                await db.QuestionBankItems.ExecuteDeleteAsync(cancellationToken);
+                await db.SyllabusTopics.ExecuteDeleteAsync(cancellationToken);
+                await db.CoursePrerequisites.ExecuteDeleteAsync(cancellationToken);
                 await db.ExamAttempts.ExecuteDeleteAsync(cancellationToken);
                 await db.CareerExams.ExecuteDeleteAsync(cancellationToken);
                 await db.Announcements.ExecuteDeleteAsync(cancellationToken);

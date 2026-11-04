@@ -80,6 +80,20 @@ public sealed class CareerCalculatorService
     }
 
     /// <summary>
+    /// Calculates the career against an explicit degree-program total. This is
+    /// the overload used by the application profile; when the profile has not
+    /// configured a total, the curriculum total is derived from its courses.
+    /// </summary>
+    public CareerSummary Calculate(IEnumerable<CareerExam> exams, int totalCfu)
+    {
+        if (totalCfu <= 0)
+            throw new ArgumentOutOfRangeException(nameof(totalCfu), "The degree total must be positive.");
+        var list = CareerIntegrity.Materialize(exams, nameof(exams));
+        CareerIntegrity.Validate(list);
+        return Calculate(list, totalCfu, remainingExamCount: null);
+    }
+
+    /// <summary>
     /// Calculates the summary against the official degree program total and
     /// verifies that every exam belongs to one of its teaching units.
     /// </summary>

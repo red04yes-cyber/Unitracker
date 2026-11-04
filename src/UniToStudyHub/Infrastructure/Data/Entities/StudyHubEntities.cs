@@ -5,7 +5,16 @@ public sealed class ProfileSettingsEntity
     public int Id { get; set; } = 1;
     public DateTime GraduationTarget { get; set; } = new(2027, 10, 1);
     public string MoodleBaseUrl { get; set; } = string.Empty;
+    public string DegreeProgramName { get; set; } = string.Empty;
+    public string DegreeProgramCode { get; set; } = string.Empty;
+    public int? EnrollmentYear { get; set; }
+    public int? CurrentAcademicYear { get; set; }
+    public int DegreeTotalCfu { get; set; }
+    public string StudyPreferences { get; set; } = string.Empty;
+    public int WeeklyStudyHours { get; set; } = 20;
+    public int MaxDailyStudyMinutes { get; set; } = 240;
 }
+
 public sealed class CourseEntity
 {
     public string Id { get; set; } = string.Empty;
@@ -14,7 +23,20 @@ public sealed class CourseEntity
     public string Code { get; set; } = string.Empty;
     public int Cfu { get; set; }
     public bool Completed { get; set; }
+    public int Status { get; set; }
+    public bool Archived { get; set; }
+    public string Teacher { get; set; } = string.Empty;
+    public string AcademicYear { get; set; } = string.Empty;
+    public string Session { get; set; } = string.Empty;
+    public int EstimatedStudyHours { get; set; }
+    public DateTime? AppealDate { get; set; }
+    public string SyllabusSummary { get; set; } = string.Empty;
+    public string SyllabusUrl { get; set; } = string.Empty;
+    public string Notes { get; set; } = string.Empty;
+    public string Source { get; set; } = "manual";
+    public DateTime? UpdatedAt { get; set; }
 }
+
 public sealed class GradeEntity
 {
     public string Id { get; set; } = string.Empty;
@@ -26,6 +48,7 @@ public sealed class GradeEntity
     public DateTime Date { get; set; }
     public bool CountsTowardAverage { get; set; }
 }
+
 public sealed class PlannedExamEntity
 {
     public string Id { get; set; } = string.Empty;
@@ -38,6 +61,7 @@ public sealed class PlannedExamEntity
     public string PlannedSession { get; set; } = string.Empty;
     public bool Completed { get; set; }
 }
+
 public sealed class AnnouncementEntity
 {
     public string Id { get; set; } = string.Empty;
@@ -49,6 +73,7 @@ public sealed class AnnouncementEntity
     public DateTime UpdatedAt { get; set; }
     public bool IsNew { get; set; }
 }
+
 public sealed class CareerExamEntity
 {
     public string Id { get; set; } = string.Empty;
@@ -58,6 +83,7 @@ public sealed class CareerExamEntity
     public bool CountsTowardAverage { get; set; }
     public List<ExamAttemptEntity> Attempts { get; set; } = new();
 }
+
 public sealed class ExamAttemptEntity
 {
     public string Id { get; set; } = string.Empty;
@@ -71,6 +97,44 @@ public sealed class ExamAttemptEntity
     public bool IsPassFail { get; set; }
     public DateTimeOffset? RecordedAt { get; set; }
 }
+
+public sealed class CoursePrerequisiteEntity
+{
+    public string CourseId { get; set; } = string.Empty;
+    public string PrerequisiteCourseId { get; set; } = string.Empty;
+    public bool IsMandatory { get; set; } = true;
+}
+
+public sealed class SyllabusTopicEntity
+{
+    public string Id { get; set; } = string.Empty;
+    public string CourseId { get; set; } = string.Empty;
+    public string Title { get; set; } = string.Empty;
+    public string Description { get; set; } = string.Empty;
+    public int Status { get; set; }
+    public int EstimatedMinutes { get; set; }
+    public string SourceUrl { get; set; } = string.Empty;
+    public DateTime? LastStudiedAt { get; set; }
+    public DateTime? UpdatedAt { get; set; }
+}
+
+public sealed class QuestionBankItemEntity
+{
+    public string Id { get; set; } = string.Empty;
+    public string CourseId { get; set; } = string.Empty;
+    public string SyllabusTopicId { get; set; } = string.Empty;
+    public string Text { get; set; } = string.Empty;
+    public int Type { get; set; }
+    public string Difficulty { get; set; } = string.Empty;
+    public string OptionsJson { get; set; } = "[]";
+    public string CorrectAnswer { get; set; } = string.Empty;
+    public string Explanation { get; set; } = string.Empty;
+    public string Source { get; set; } = string.Empty;
+    public bool IsOfficial { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public DateTime UpdatedAt { get; set; }
+}
+
 public sealed class LegacyImportEntity
 {
     public string Key { get; set; } = string.Empty;

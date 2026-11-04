@@ -40,6 +40,7 @@ public sealed class SqliteStudyDataStoreTests
 
         Assert.Contains("20261104000100_InitialCreate", migrations);
         Assert.Contains("20261104000200_AddCourseRelationships", migrations);
+        Assert.Contains("20261104192749_AddAcademicKnowledgeModel", migrations);
     }
 
     [Fact]
@@ -59,6 +60,9 @@ public sealed class SqliteStudyDataStoreTests
         Assert.Contains("CareerExams", tables);
         Assert.Contains("ExamAttempts", tables);
         Assert.Contains("ProfileSettings", tables);
+        Assert.Contains("CoursePrerequisites", tables);
+        Assert.Contains("SyllabusTopics", tables);
+        Assert.Contains("QuestionBankItems", tables);
         Assert.Contains("LegacyImports", tables);
 
         var indexes = await database.QueryScalarsAsync(
@@ -156,37 +160,23 @@ public sealed class SqliteStudyDataStoreTests
 
         await using (var db = database.CreateContext())
         {
-            db.Courses.Add(new CourseEntity { Id = "course-1", Name = "Analisi", Code = "MAT1", Cfu = 6 });
-            db.Grades.Add(new GradeEntity
-            {
-                Id = "grade-1", CourseId = "course-1", CourseName = "Analisi",
-                Value = 28, Cfu = 6, Date = new DateTime(2026, 1, 10)
-            });
-            db.PlannedExams.Add(new PlannedExamEntity
-            {
-                Id = "planned-1", CourseId = "course-1", CourseName = "Analisi",
-                Name = "Analisi", Cfu = 6, PlannedSession = "Estiva 2026"
-            });
-            db.CareerExams.Add(new CareerExamEntity
-            {
-                Id = "career-1", CourseId = "course-1", Name = "Analisi", Cfu = 6,
-                Attempts = new List<ExamAttemptEntity>
-                {
-                    new()
-                    {
-                        Id = "attempt-1", ExamId = "career-1",
-                        AttemptedAt = new DateTimeOffset(2026, 1, 10, 10, 0, 0, TimeSpan.Zero),
-                        Status = 3, Outcome = 1, GradeDecision = 1, NumericGrade = 28,
-                        RecordedAt = new DateTimeOffset(2026, 1, 11, 10, 0, 0, TimeSpan.Zero)
-                    }
-                }
-            });
-            db.ProfileSettings.Add(new ProfileSettingsEntity
-            {
-                Id = 1, GraduationTarget = new DateTime(2027, 10, 1),
-                MoodleBaseUrl = "https://moodle.example.edu"
-            });
-            await db.SaveChangesAsync();
+            // Seed the schema as it existed before this migration. Using the
+            // current EF entities here would try to write columns that the
+            // historical schema does not have.
+            await db.Database.ExecuteSqlRawAsync("""
+                INSERT INTO Courses (Id, MoodleCourseId, Name, Code, Cfu, Completed)
+                VALUES ('course-1', NULL, 'Analisi', 'MAT1', 6, 0);
+                INSERT INTO Grades (Id, CourseId, CourseName, Value, Honors, Cfu, Date, CountsTowardAverage)
+                VALUES ('grade-1', 'course-1', 'Analisi', 28, 0, 6, '2026-01-10', 1);
+                INSERT INTO PlannedExams (Id, CourseId, CourseName, Name, Cfu, EstimatedStudyHours, PlannedDate, PlannedSession, Completed)
+                VALUES ('planned-1', 'course-1', 'Analisi', 'Analisi', 6, 0, NULL, 'Estiva 2026', 0);
+                INSERT INTO CareerExams (Id, CourseId, Name, Cfu, CountsTowardAverage)
+                VALUES ('career-1', 'course-1', 'Analisi', 6, 1);
+                INSERT INTO ExamAttempts (Id, ExamId, AttemptedAt, Status, Outcome, GradeDecision, NumericGrade, IsHonors, IsPassFail, RecordedAt)
+                VALUES ('attempt-1', 'career-1', '2026-01-10 10:00:00+00:00', 3, 1, 1, 28, 0, 0, '2026-01-11 10:00:00+00:00');
+                INSERT INTO ProfileSettings (Id, GraduationTarget, MoodleBaseUrl)
+                VALUES (1, '2027-10-01', 'https://moodle.example.edu');
+                """);
         }
 
         await database.MigrateAsync();
@@ -216,8 +206,9 @@ public sealed class SqliteStudyDataStoreTests
 
         await using (var db = database.CreateContext())
         {
-            db.Courses.Add(new CourseEntity { Id = "course-1", Name = "Analisi", Cfu = 6 });
-            await db.SaveChangesAsync();
+            await db.Database.ExecuteSqlRawAsync(
+                "INSERT INTO Courses (Id, MoodleCourseId, Name, Code, Cfu, Completed) " +
+                "VALUES ('course-1', NULL, 'Analisi', '', 6, 0);");
             await db.Database.ExecuteSqlRawAsync(
                 "UPDATE __EFMigrationsHistory SET MigrationId = '202611040001_InitialCreate' " +
                 "WHERE MigrationId = '20261104000100_InitialCreate'");

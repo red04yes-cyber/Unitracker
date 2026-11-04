@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using UniToStudyHub.Domain.Enums;
 
 namespace UniToStudyHub.Models;
 
@@ -9,9 +10,24 @@ public sealed class StudyData
     public ObservableCollection<Grade> Grades { get; set; } = new();
     public ObservableCollection<Exam> Exams { get; set; } = new();
     public ObservableCollection<Announcement> Announcements { get; set; } = new();
+    public ObservableCollection<CareerExamData> CareerExams { get; set; } = new();
+    public ObservableCollection<CoursePrerequisiteData> CoursePrerequisites { get; set; } = new();
+    public ObservableCollection<SyllabusTopicData> SyllabusTopics { get; set; } = new();
+    public ObservableCollection<QuestionBankItemData> Questions { get; set; } = new();
+
     public DateTime GraduationTarget { get; set; } = new(2027, 10, 1);
     public string MoodleBaseUrl { get; set; } = string.Empty;
-    public ObservableCollection<CareerExamData> CareerExams { get; set; } = new();
+
+    // University profile. Empty values mean "not configured" and must not be
+    // rendered as if they were official university data.
+    public string DegreeProgramName { get; set; } = string.Empty;
+    public string DegreeProgramCode { get; set; } = string.Empty;
+    public int? EnrollmentYear { get; set; }
+    public int? CurrentAcademicYear { get; set; }
+    public int DegreeTotalCfu { get; set; }
+    public string StudyPreferences { get; set; } = string.Empty;
+    public int WeeklyStudyHours { get; set; } = 20;
+    public int MaxDailyStudyMinutes { get; set; } = 240;
 }
 
 public sealed class Course
@@ -21,8 +37,24 @@ public sealed class Course
     public string Name { get; set; } = string.Empty;
     public string Code { get; set; } = string.Empty;
     public int Cfu { get; set; }
+
+    /// <summary>Legacy presence flag. It means the exam was concluded successfully.</summary>
     public bool Completed { get; set; }
+
+    public CourseStatus Status { get; set; } = CourseStatus.NotStarted;
+    public bool Archived { get; set; }
+    public string Teacher { get; set; } = string.Empty;
+    public string AcademicYear { get; set; } = string.Empty;
+    public string Session { get; set; } = string.Empty;
+    public int EstimatedStudyHours { get; set; }
+    public DateTime? AppealDate { get; set; }
+    public string SyllabusSummary { get; set; } = string.Empty;
+    public string SyllabusUrl { get; set; } = string.Empty;
+    public string Notes { get; set; } = string.Empty;
+    public string Source { get; set; } = "manual";
+    public DateTime? UpdatedAt { get; set; }
 }
+
 public sealed class Grade
 {
     public string Id { get; set; } = Guid.NewGuid().ToString("N");
@@ -34,6 +66,7 @@ public sealed class Grade
     public DateTime Date { get; set; } = DateTime.Today;
     public bool CountsTowardAverage { get; set; } = true;
 }
+
 public sealed class Exam
 {
     public string Id { get; set; } = Guid.NewGuid().ToString("N");
@@ -46,6 +79,7 @@ public sealed class Exam
     public string PlannedSession { get; set; } = "Da pianificare";
     public bool Completed { get; set; }
 }
+
 public sealed class Announcement
 {
     public string Id { get; set; } = Guid.NewGuid().ToString("N");
@@ -67,6 +101,7 @@ public sealed class CareerExamData
     public bool CountsTowardAverage { get; set; } = true;
     public ObservableCollection<ExamAttemptData> Attempts { get; set; } = new();
 }
+
 public sealed class ExamAttemptData
 {
     public string Id { get; set; } = Guid.NewGuid().ToString("N");
@@ -78,6 +113,43 @@ public sealed class ExamAttemptData
     public bool IsHonors { get; set; }
     public bool IsPassFail { get; set; }
     public DateTimeOffset? RecordedAt { get; set; }
+}
+
+public sealed class CoursePrerequisiteData
+{
+    public string CourseId { get; set; } = string.Empty;
+    public string PrerequisiteCourseId { get; set; } = string.Empty;
+    public bool IsMandatory { get; set; } = true;
+}
+
+public sealed class SyllabusTopicData
+{
+    public string Id { get; set; } = Guid.NewGuid().ToString("N");
+    public string CourseId { get; set; } = string.Empty;
+    public string Title { get; set; } = string.Empty;
+    public string Description { get; set; } = string.Empty;
+    public SyllabusTopicStatus Status { get; set; }
+    public int EstimatedMinutes { get; set; }
+    public string SourceUrl { get; set; } = string.Empty;
+    public DateTime? LastStudiedAt { get; set; }
+    public DateTime? UpdatedAt { get; set; }
+}
+
+public sealed class QuestionBankItemData
+{
+    public string Id { get; set; } = Guid.NewGuid().ToString("N");
+    public string CourseId { get; set; } = string.Empty;
+    public string SyllabusTopicId { get; set; } = string.Empty;
+    public string Text { get; set; } = string.Empty;
+    public QuestionType Type { get; set; } = QuestionType.Open;
+    public string Difficulty { get; set; } = "Media";
+    public ObservableCollection<string> Options { get; set; } = new();
+    public string CorrectAnswer { get; set; } = string.Empty;
+    public string Explanation { get; set; } = string.Empty;
+    public string Source { get; set; } = "Manuale";
+    public bool IsOfficial { get; set; }
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 }
 
 // Moodle response DTOs retained for the existing integration.

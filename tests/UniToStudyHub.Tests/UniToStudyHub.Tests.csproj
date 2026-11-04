@@ -21,13 +21,7 @@
     <Compile Include="../../src/UniToStudyHub/Infrastructure/Data/Migrations/*.cs" Link="Linked/Infrastructure/Data/Migrations/%(Filename)%(Extension)" />
     <Compile Include="../../src/UniToStudyHub/Infrastructure/CompositionRoot.cs" Link="Linked/Infrastructure/CompositionRoot.cs" />
     <Compile Include="../../src/UniToStudyHub/Models/StudyData.cs" Link="Linked/Models/StudyData.cs" />
-    <Compile Include="../../src/UniToStudyHub/Services/LegacyJsonMigrator.cs" Link="Linked/Services/LegacyJsonMigrator.cs" />
-    <Compile Include="../../src/UniToStudyHub/Services/SqliteStudyDataStore.cs" Link="Linked/Services/SqliteStudyDataStore.cs" />
-    <Compile Include="../../src/UniToStudyHub/Services/GradeCalculator.cs" Link="Linked/Services/GradeCalculator.cs" />
-    <Compile Include="../../src/UniToStudyHub/Services/MoodleApplicationService.cs" Link="Linked/Services/MoodleApplicationService.cs" />
-    <Compile Include="../../src/UniToStudyHub/Services/MoodleClient.cs" Link="Linked/Services/MoodleClient.cs" />
-    <Compile Include="../../src/UniToStudyHub/Services/WindowsTokenVault.cs" Link="Linked/Services/WindowsTokenVault.cs" />
-    <Compile Include="../../src/UniToStudyHub/Services/ExamPlanner.cs" Link="Linked/Services/ExamPlanner.cs" />
+    <Compile Include="../../src/UniToStudyHub/Services/*.cs" Link="Linked/Services/%(Filename)%(Extension)" />
     <Compile Include="../../src/UniToStudyHub/Presentation/Commands/*.cs" Link="Linked/Presentation/Commands/%(Filename)%(Extension)" />
     <Compile Include="../../src/UniToStudyHub/Presentation/ViewModels/MainViewModel.cs" Link="Linked/Presentation/ViewModels/MainViewModel.cs" />
     <Compile Include="../../src/UniToStudyHub/Presentation/Composition/PresentationServiceRegistration.cs" Link="Linked/Presentation/Composition/PresentationServiceRegistration.cs" />
