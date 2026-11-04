@@ -174,6 +174,8 @@ public sealed class MainViewModel : INotifyPropertyChanged
     {
         _data = await _store.LoadAsync(cancellationToken);
         var savedCalendarEvents = await _calendarStore.LoadAsync(cancellationToken);
+        if (savedCalendarEvents.Count == 0 && _data.CalendarEvents.Count > 0)
+            savedCalendarEvents = _data.CalendarEvents.ToList();
         _data.CalendarEvents.Clear();
         foreach (var calendarEvent in savedCalendarEvents) _data.CalendarEvents.Add(calendarEvent);
         MoodleUrlInput = _data.MoodleBaseUrl;
