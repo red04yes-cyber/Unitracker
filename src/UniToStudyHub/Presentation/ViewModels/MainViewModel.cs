@@ -24,6 +24,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
     private string _courseNameInput = string.Empty;
     private string _courseCfuInput = "6";
     private string _gradeValueInput = "28";
+    private string _attemptModeInput = "PassedAccepted";
     private string _moodleUrlInput = string.Empty;
     private string _moodleToken = string.Empty;
     private string _moodleStatus = "Non collegato";
@@ -137,6 +138,8 @@ public sealed class MainViewModel : INotifyPropertyChanged
     public string CourseNameInput { get => _courseNameInput; set => Set(ref _courseNameInput, value); }
     public string CourseCfuInput { get => _courseCfuInput; set => Set(ref _courseCfuInput, value); }
     public string GradeValueInput { get => _gradeValueInput; set => Set(ref _gradeValueInput, value); }
+    public string AttemptModeInput { get => _attemptModeInput; set => Set(ref _attemptModeInput, value); }
+    public IReadOnlyList<string> AttemptModeOptions { get; } = new[] { "PassedAccepted", "PassedRejected", "Failed", "EligibilityPassed" };
     public Course? SelectedGradeCourse { get => _selectedGradeCourse; set => Set(ref _selectedGradeCourse, value); }
     public string MoodleUrlInput { get => _moodleUrlInput; set => Set(ref _moodleUrlInput, value); }
     public string MoodleToken { get => _moodleToken; set => Set(ref _moodleToken, value); }
@@ -318,45 +321,99 @@ public sealed class MainViewModel : INotifyPropertyChanged
 
     private async Task AddGradeAsync()
     {
-        if (SelectedGradeCourse is null || !int.TryParse(GradeValueInput, out var grade) || grade is < 18 or > 30)
+        if (SelectedGradeCourse is null)
         {
-            StatusMessage = "Seleziona una materia e inserisci un voto tra 18 e 30.";
+            StatusMessage = "Seleziona una materia.";
             return;
         }
 
         var course = SelectedGradeCourse;
-        var item = new Grade
+        var outcome = ExamOutcome.Pending;
+        var decision = GradeDecision.Pending;
+        int? numericGrade = null;
+        var isPassFail = false;
+        DateTimeOffset? recordedAt = null;
+        Grade? legacyGrade = null;
+
+        switch (AttemptModeInput)
         {
-            CourseId = course.Id,
-            CourseName = course.Name,
-            Cfu = course.Cfu,
-            Value = grade,
-            Date = DateTime.Today,
-            CountsTowardAverage = true
-        };
+            case "PassedAccepted":
+            case "PassedRejected":
+                if (!int.TryParse(GradeValueInput, out var grade) || grade is < 18 or > 30)
+                {
+                    StatusMessage = "Per un esame superato inserisci un voto tra 18 e 30.";
+                    return;
+                }
+                outcome = ExamOutcome.Passed;
+                decision = AttemptModeInput == "PassedAccepted" ? GradeDecision.Accepted : GradeDecision.Rejected;
+                numericGrade = grade;
+                if (decision == GradeDecision.Accepted)
+                {
+                    recordedAt = DateTimeOffset.Now;
+                    legacyGrade = new Grade
+                    {
+                        CourseId = course.Id,
+                        CourseName = course.Name,
+                        Cfu = course.Cfu,
+                        Value = grade,
+                        Date = DateTime.Today,
+                        CountsTowardAverage = true
+                    };
+                }
+                break;
+
+            case "Failed":
+                outcome = ExamOutcome.Failed;
+                decision = GradeDecision.NotApplicable;
+                break;
+
+            case "EligibilityPassed":
+                outcome = ExamOutcome.EligibilityPassed;
+                decision = GradeDecision.NotApplicable;
+                isPassFail = true;
+                recordedAt = DateTimeOffset.Now;
+                break;
+
+            default:
+                StatusMessage = "Seleziona un tipo di tentativo valido.";
+                return;
+        }
+
+        var attemptedAt = DateTimeOffset.Now;
         var previousStatus = course.Status;
         var previousCompleted = course.Completed;
         var previousCareerExam = _data.CareerExams.FirstOrDefault(x => x.CourseId == course.Id);
         var previousAttemptCount = previousCareerExam?.Attempts.Count ?? 0;
         try
         {
-            Grades.Add(item);
+            if (legacyGrade is not null)
+                Grades.Add(legacyGrade);
+
             _career.RecordResult(
                 _data,
                 course.Id,
-                ExamOutcome.Passed,
-                GradeDecision.Accepted,
-                numericGrade: grade,
+                outcome,
+                decision,
+                numericGrade,
                 honors: false,
-                isPassFail: false,
-                attemptedAt: new DateTimeOffset(DateTime.Today.Add(DateTime.Now.TimeOfDay)),
-                recordedAt: DateTimeOffset.Now);
+                isPassFail,
+                attemptedAt,
+                recordedAt);
+
             await SaveAsync();
-            StatusMessage = "Voto e tentativo ufficiale registrati nella carriera.";
+            StatusMessage = AttemptModeInput switch
+            {
+                "PassedAccepted" => "Voto accettato e tentativo ufficiale registrati nella carriera.",
+                "PassedRejected" => "Voto rifiutato registrato nello storico: non incide sulla media né sui CFU.",
+                "Failed" => "Tentativo non superato registrato nello storico della carriera.",
+                "EligibilityPassed" => "Idoneità registrata nella carriera senza influire sulla media numerica.",
+                _ => "Tentativo registrato."
+            };
         }
         catch (Exception ex)
         {
-            Grades.Remove(item);
+            if (legacyGrade is not null)
+                Grades.Remove(legacyGrade);
             if (previousCareerExam is null)
             {
                 foreach (var exam in _data.CareerExams.Where(x => x.CourseId == course.Id).ToList())
@@ -371,6 +428,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
             course.Completed = previousCompleted;
             StatusMessage = $"Salvataggio non riuscito: {ex.Message}";
         }
+
         RefreshCourseSummary();
         RefreshCareerSummary();
         RefreshVisibleCourses();
