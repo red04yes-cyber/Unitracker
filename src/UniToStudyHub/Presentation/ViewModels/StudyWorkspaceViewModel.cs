@@ -78,6 +78,7 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
     private ProgressSnapshot? _progressSnapshot;
 
     public event PropertyChangedEventHandler? PropertyChanged;
+    public event Action<StudyData>? DataReloaded;
 
     public ObservableCollection<StudyTaskData> ActiveTasks { get; } = new();
     public ObservableCollection<FlashcardData> DueFlashcards { get; } = new();
@@ -97,7 +98,8 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
     public ErrorJournalEntryData? SelectedErrorEntry { get => _selectedErrorEntry; set { Set(ref _selectedErrorEntry, value); ReviewErrorNeedsWorkCommand.NotifyCanExecuteChanged(); ReviewErrorRememberedCommand.NotifyCanExecuteChanged(); } }
     public DistractionData? SelectedDistraction { get => _selectedDistraction; set { Set(ref _selectedDistraction, value); ResolveDistractionCommand.NotifyCanExecuteChanged(); } }
     public PdfDocumentData? SelectedPdf { get => _selectedPdf; set { Set(ref _selectedPdf, value); PdfSearchHits.Clear(); OnPropertyChanged(nameof(HasSelectedPdf)); OnPropertyChanged(nameof(NoPdfSearchHits)); SearchPdfCommand.NotifyCanExecuteChanged(); AskPdfCommand.NotifyCanExecuteChanged(); } }
-    public BackupInfo? SelectedBackup { get => _selectedBackup; set { Set(ref _selectedBackup, value); VerifyBackupCommand.NotifyCanExecuteChanged(); } }
+    public BackupInfo? SelectedBackup { get => _selectedBackup; set { Set(ref _selectedBackup, value); VerifyBackupCommand.NotifyCanExecuteChanged(); RestoreBackupCommand.NotifyCanExecuteChanged(); } }
+    public bool HasSelectedBackup => SelectedBackup is not null;
 
     public string FocusTopicInput { get => _focusTopicInput; set => Set(ref _focusTopicInput, value); }
     public string FocusMinutesInput { get => _focusMinutesInput; set => Set(ref _focusMinutesInput, value); }
@@ -202,6 +204,7 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
     public AsyncRelayCommand SaveAcademicProfileCommand { get; }
     public AsyncRelayCommand CreateBackupCommand { get; }
     public AsyncRelayCommand VerifyBackupCommand { get; }
+    public AsyncRelayCommand RestoreBackupCommand { get; }
 
     public StudyWorkspaceViewModel(
         IStudyDataStore store,
@@ -257,6 +260,7 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
         SaveAcademicProfileCommand = new AsyncRelayCommand(SaveAcademicProfileAsync);
         CreateBackupCommand = new AsyncRelayCommand(CreateBackupAsync);
         VerifyBackupCommand = new AsyncRelayCommand(VerifyBackupAsync, () => SelectedBackup is not null);
+        RestoreBackupCommand = new AsyncRelayCommand(RestoreBackupAsync, () => SelectedBackup is not null);
     }
 
     public void Initialize(StudyData data)
@@ -639,6 +643,28 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
             SelectedBackup = BackupItems.FirstOrDefault(x => x.FilePath == path);
         }
         catch (Exception ex) { BackupStatus = $"Verifica non riuscita: {ex.Message}"; }
+    }
+
+    private async Task RestoreBackupAsync()
+    {
+        if (SelectedBackup is null) return;
+        var path = SelectedBackup.FilePath;
+        try
+        {
+            // BackupService verifies/decrypts the source and creates a safety
+            // backup before replacing the live SQLite file.
+            await _backups.RestoreAsync(path);
+            var restored = await _store.LoadAsync();
+            Initialize(restored);
+            DataReloaded?.Invoke(restored);
+            SelectedBackup = BackupItems.FirstOrDefault(x =>
+                string.Equals(x.FilePath, path, StringComparison.OrdinalIgnoreCase));
+            BackupStatus = "Ripristino completato. Database ricaricato; backup di sicurezza creato prima della sostituzione.";
+        }
+        catch (Exception ex)
+        {
+            BackupStatus = $"Ripristino non riuscito: {ex.Message}";
+        }
     }
 
     private async Task SaveAsync()
