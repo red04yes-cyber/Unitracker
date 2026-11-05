@@ -60,6 +60,42 @@ public sealed class CareerApplicationServiceTests
     }
 
     [Fact]
+    public void FailedAttemptIsPreservedButDoesNotAcquireCredits()
+    {
+        var data = Data();
+        var service = new CareerApplicationService(new CareerCalculatorService());
+
+        service.RecordResult(
+            data, "analisi", ExamOutcome.Failed, GradeDecision.NotApplicable,
+            numericGrade: null, honors: false, isPassFail: false,
+            AttemptDate, recordedAt: null);
+
+        var exam = Assert.Single(data.CareerExams);
+        var attempt = Assert.Single(exam.Attempts);
+        Assert.Equal(ExamOutcome.Failed.ToString(), attempt.Outcome);
+        Assert.Equal(0, service.GetSummary(data).AcquiredCfu);
+        Assert.Equal(CourseStatus.Failed, data.Courses.Single(x => x.Id == "analisi").Status);
+        Assert.Null(service.GetArithmeticAverage(data));
+    }
+
+    [Fact]
+    public void EligibilityResultAcquiresCreditsWithoutEnteringNumericAverage()
+    {
+        var data = Data();
+        var service = new CareerApplicationService(new CareerCalculatorService());
+
+        service.RecordResult(
+            data, "analisi", ExamOutcome.EligibilityPassed, GradeDecision.NotApplicable,
+            numericGrade: null, honors: false, isPassFail: true,
+            AttemptDate, RecordedDate);
+
+        Assert.Equal(6, service.GetSummary(data).AcquiredCfu);
+        Assert.Null(service.GetArithmeticAverage(data));
+        Assert.Equal(CourseStatus.Passed, data.Courses.Single(x => x.Id == "analisi").Status);
+        Assert.True(data.Courses.Single(x => x.Id == "analisi").Completed);
+    }
+
+    [Fact]
     public void ArithmeticAverageUsesLatestOfficialNumericResultPerExam()
     {
         var data = Data();
