@@ -173,8 +173,18 @@ public sealed class StudySessionEntity
     public int State { get; set; }
     public string Outcome { get; set; } = string.Empty;
     public string Notes { get; set; } = string.Empty;
+    public List<StudySessionSegmentEntity> Segments { get; set; } = new();
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset UpdatedAt { get; set; }
+}
+
+public sealed class StudySessionSegmentEntity
+{
+    public string Id { get; set; } = string.Empty;
+    public string SessionId { get; set; } = string.Empty;
+    public int Type { get; set; }
+    public DateTimeOffset StartedAt { get; set; }
+    public DateTimeOffset? EndedAt { get; set; }
 }
 
 public sealed class StudyTaskEntity

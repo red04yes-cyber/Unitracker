@@ -10,6 +10,12 @@ public enum StudySessionState
     Cancelled
 }
 
+public enum StudySessionSegmentType
+{
+    Focus,
+    Pause
+}
+
 public enum StudyTaskStatus
 {
     Todo,
@@ -34,6 +40,18 @@ public enum RecallRating
 }
 
 /// <summary>
+/// A persisted focus/pause interval. The sequence is needed because accumulated
+/// seconds alone cannot tell where a pause occurred in the chronological day.
+/// </summary>
+public sealed class StudySessionSegmentData
+{
+    public string Id { get; set; } = Guid.NewGuid().ToString("N");
+    public StudySessionSegmentType Type { get; set; }
+    public DateTimeOffset StartedAt { get; set; } = DateTimeOffset.Now;
+    public DateTimeOffset? EndedAt { get; set; }
+}
+
+/// <summary>
 /// A focus session is persisted as timestamps and accumulated active seconds,
 /// never as a countdown owned by a UI timer. This allows the remaining time to
 /// be reconstructed after an app or machine restart.
@@ -53,6 +71,7 @@ public sealed class StudySessionData
     public StudySessionState State { get; set; } = StudySessionState.Running;
     public string Outcome { get; set; } = string.Empty;
     public string Notes { get; set; } = string.Empty;
+    public ObservableCollection<StudySessionSegmentData> Segments { get; set; } = new();
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.Now;
     public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.Now;
 }

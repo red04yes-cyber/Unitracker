@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 using UniToStudyHub.Models;
 
 namespace UniToStudyHub.Services;
@@ -43,6 +44,11 @@ public sealed class FocusSessionService
             CreatedAt = at,
             UpdatedAt = at
         };
+        session.Segments.Add(new StudySessionSegmentData
+        {
+            Type = StudySessionSegmentType.Focus,
+            StartedAt = at
+        });
         data.StudySessions.Add(session);
         return session;
     }
@@ -56,6 +62,13 @@ public sealed class FocusSessionService
         if (at < session.LastResumedAt.Value)
             throw new ArgumentOutOfRangeException(nameof(now), "The clock moved before the session start.");
         session.AccumulatedFocusSeconds += SecondsBetween(session.LastResumedAt.Value, at);
+        EnsureOpenSegment(session, StudySessionSegmentType.Focus, session.LastResumedAt.Value, at);
+        CloseOpenSegment(session, at);
+        session.Segments.Add(new StudySessionSegmentData
+        {
+            Type = StudySessionSegmentType.Pause,
+            StartedAt = at
+        });
         session.PausedAt = at;
         session.LastResumedAt = null;
         session.State = StudySessionState.Paused;
@@ -72,6 +85,13 @@ public sealed class FocusSessionService
         if (at < session.PausedAt.Value)
             throw new ArgumentOutOfRangeException(nameof(now), "The clock moved before the pause.");
         session.AccumulatedPauseSeconds += SecondsBetween(session.PausedAt.Value, at);
+        EnsureOpenSegment(session, StudySessionSegmentType.Pause, session.PausedAt.Value, at);
+        CloseOpenSegment(session, at);
+        session.Segments.Add(new StudySessionSegmentData
+        {
+            Type = StudySessionSegmentType.Focus,
+            StartedAt = at
+        });
         session.PausedAt = null;
         session.LastResumedAt = at;
         session.State = StudySessionState.Running;
@@ -90,6 +110,11 @@ public sealed class FocusSessionService
             throw new InvalidOperationException("The focus session is already closed.");
         var at = now ?? DateTimeOffset.Now;
         AccumulateUntil(session, at);
+        if (session.State == StudySessionState.Running && session.LastResumedAt is { } resumed)
+            EnsureOpenSegment(session, StudySessionSegmentType.Focus, resumed, at);
+        else if (session.State == StudySessionState.Paused && session.PausedAt is { } paused)
+            EnsureOpenSegment(session, StudySessionSegmentType.Pause, paused, at);
+        CloseOpenSegment(session, at);
         session.EndedAt = at;
         session.Outcome = outcome?.Trim() ?? string.Empty;
         session.State = StudySessionState.Completed;
@@ -109,6 +134,11 @@ public sealed class FocusSessionService
             throw new InvalidOperationException("The focus session is already closed.");
         var at = now ?? DateTimeOffset.Now;
         AccumulateUntil(session, at);
+        if (session.State == StudySessionState.Running && session.LastResumedAt is { } resumed)
+            EnsureOpenSegment(session, StudySessionSegmentType.Focus, resumed, at);
+        else if (session.State == StudySessionState.Paused && session.PausedAt is { } paused)
+            EnsureOpenSegment(session, StudySessionSegmentType.Pause, paused, at);
+        CloseOpenSegment(session, at);
         session.EndedAt = at;
         session.State = StudySessionState.Cancelled;
         session.LastResumedAt = null;
@@ -144,6 +174,40 @@ public sealed class FocusSessionService
     {
         if (session.State == StudySessionState.Running && session.LastResumedAt is not null)
             session.AccumulatedFocusSeconds += SecondsBetween(session.LastResumedAt.Value, at);
+    }
+
+    private static void EnsureOpenSegment(
+        StudySessionData session,
+        StudySessionSegmentType type,
+        DateTimeOffset startedAt,
+        DateTimeOffset endedAt)
+    {
+        session.Segments ??= new ObservableCollection<StudySessionSegmentData>();
+        if (session.Segments.Any(x => x.EndedAt is null)) return;
+        if (endedAt <= startedAt) return;
+        session.Segments.Add(new StudySessionSegmentData
+        {
+            Type = type,
+            StartedAt = startedAt,
+            EndedAt = endedAt
+        });
+    }
+
+    private static void CloseOpenSegment(StudySessionData session, DateTimeOffset at)
+    {
+        session.Segments ??= new ObservableCollection<StudySessionSegmentData>();
+        var open = session.Segments.LastOrDefault(x => x.EndedAt is null);
+        if (open is not null)
+        {
+            if (at < open.StartedAt)
+                throw new ArgumentOutOfRangeException(nameof(at), "The clock moved before the open segment start.");
+            if (at == open.StartedAt)
+            {
+                session.Segments.Remove(open);
+                return;
+            }
+            open.EndedAt = at;
+        }
     }
 
     private static int SecondsBetween(DateTimeOffset from, DateTimeOffset to) =>

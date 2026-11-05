@@ -358,6 +358,7 @@ public static class StudyDataEntityMapper
             catch (InvalidTimeZoneException) { throw new InvalidDataException($"Calendar event '{item.Id}' has an invalid time zone."); }
         }
 
+        var segmentIds = new HashSet<string>(StringComparer.Ordinal);
         foreach (var session in data.StudySessions)
         {
             if (session.PlannedMinutes is < 1 or > 1440)
@@ -372,6 +373,30 @@ public static class StudyDataEntityMapper
                 throw new InvalidDataException($"Study session '{session.Id}' is running but marked paused.");
             if (session.State == StudySessionState.Paused && session.PausedAt is null)
                 throw new InvalidDataException($"Study session '{session.Id}' is paused without a pause timestamp.");
+
+            session.Segments ??= new ObservableCollection<StudySessionSegmentData>();
+            DateTimeOffset? previousEnd = null;
+            StudySessionSegmentData? open = null;
+            foreach (var segment in session.Segments)
+            {
+                if (string.IsNullOrWhiteSpace(segment.Id) || !segmentIds.Add(segment.Id))
+                    throw new InvalidDataException($"Study session '{session.Id}' has a missing or duplicate segment id.");
+                if (!Enum.IsDefined(segment.Type) || segment.StartedAt == default)
+                    throw new InvalidDataException($"Study session '{session.Id}' has an invalid segment.");
+                if (segment.EndedAt is { } end && end <= segment.StartedAt)
+                    throw new InvalidDataException($"Study session '{session.Id}' has a segment that ends before it starts.");
+                if (previousEnd is { } closed && segment.StartedAt < closed)
+                    throw new InvalidDataException($"Study session '{session.Id}' has overlapping segments.");
+                if (open is not null)
+                    throw new InvalidDataException($"Study session '{session.Id}' has more than one open segment.");
+                previousEnd = segment.EndedAt;
+                if (segment.EndedAt is null) open = segment;
+            }
+
+            if (session.State == StudySessionState.Running && open is not null && open.Type != StudySessionSegmentType.Focus)
+                throw new InvalidDataException($"Running study session '{session.Id}' has an open pause segment.");
+            if (session.State == StudySessionState.Paused && open is not null && open.Type != StudySessionSegmentType.Pause)
+                throw new InvalidDataException($"Paused study session '{session.Id}' has an open focus segment.");
         }
 
         foreach (var task in data.StudyTasks)
@@ -784,7 +809,15 @@ public static class StudyDataEntityMapper
             Outcome = x.Outcome,
             Notes = x.Notes,
             CreatedAt = x.CreatedAt,
-            UpdatedAt = x.UpdatedAt
+            UpdatedAt = x.UpdatedAt,
+            Segments = x.Segments.Select(segment => new StudySessionSegmentEntity
+            {
+                Id = segment.Id,
+                SessionId = x.Id,
+                Type = (int)segment.Type,
+                StartedAt = segment.StartedAt,
+                EndedAt = segment.EndedAt
+            }).ToList()
         }));
         db.StudyTasks.AddRange(data.StudyTasks.Select(x => new StudyTaskEntity
         {
@@ -1081,7 +1114,7 @@ public static class StudyDataEntityMapper
                 CreatedAt = x.CreatedAt,
                 UpdatedAt = x.UpdatedAt
             });
-        foreach (var x in await db.StudySessions.AsNoTracking().ToListAsync(cancellationToken))
+        foreach (var x in await db.StudySessions.Include(x => x.Segments).AsNoTracking().ToListAsync(cancellationToken))
             result.StudySessions.Add(new StudySessionData
             {
                 Id = x.Id,
@@ -1097,6 +1130,15 @@ public static class StudyDataEntityMapper
                 State = (StudySessionState)x.State,
                 Outcome = x.Outcome,
                 Notes = x.Notes,
+                Segments = new ObservableCollection<StudySessionSegmentData>(x.Segments
+                    .OrderBy(segment => segment.StartedAt)
+                    .Select(segment => new StudySessionSegmentData
+                    {
+                        Id = segment.Id,
+                        Type = (StudySessionSegmentType)segment.Type,
+                        StartedAt = segment.StartedAt,
+                        EndedAt = segment.EndedAt
+                    })),
                 CreatedAt = x.CreatedAt,
                 UpdatedAt = x.UpdatedAt
             });

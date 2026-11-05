@@ -178,7 +178,8 @@ segreti nella UI né nei messaggi.
 espone `Type`, `Origin`, `Status`, `StartedAt`, `EndedAt`, `TimeZoneId`, `EffectiveSeconds`, riferimenti
 (`CourseId`, `SyllabusTopicId`, `TaskId`, `MissionId`, `ExamId`, `SessionId`, `CalendarEventId`), rating 1–5,
 tag, nota, `IsPrivate` e `IsDeleted`. `StudyMissionData` espone periodo, scadenza, difficoltà, stato, ricompensa
-volontaria e `Steps`.
+volontaria e `Steps`. `StudySessionData.Segments` è la sequenza persistita `Focus`/`Pause` con `StartedAt` e
+`EndedAt`; non ricostruire le pause da `EndedAt - StartedAt`.
 
 ### `ActivityLedgerService`
 
@@ -189,11 +190,17 @@ volontaria e `Steps`.
 - `GetForDay`, `FindOverlaps`, `BuildTimeline`, `BuildHeatmap`, `Summarize` — query e aggregazioni.
 
 `ActivityTimeline.Slots` contiene `RecordedSeconds`, `HasOverlap` e `ActivityIds`; gli slot vuoti sono tempo non
-registrato, non attività inventate. `ActivitySummary.RecordedSeconds` usa i secondi effettivi del ledger.
+registrato, non attività inventate. `ActivitySummary.RecordedSeconds` è l’unione degli intervalli focus, quindi non
+somma le sovrapposizioni. `OverlapSeconds` è il tempo condiviso; `ByType` e `ByCourse` sono aggregazioni per
+dimensione e non vanno sommate per ricavare il totale.
 
-**Importante:** non sommare `ProgressService.FocusMinutes` e i minuti del ledger. Fino alla slice di integrazione,
-usare il ledger per timeline/heatmap e le sessioni per il `ProgressSnapshot` esistente, senza presentare i due
-numeri come un totale unico.
+**Importante:** le pause sono gap tra segmenti focus; una sessione legacy senza segmenti usa un fallback focus
+iniziale e non permette di ricostruire la posizione reale delle pause. Non sommare `ProgressService.FocusMinutes`,
+`EffectiveSeconds` e i minuti del ledger. Fino alla slice di integrazione, usare il ledger per timeline/heatmap e
+le sessioni per il `ProgressSnapshot` esistente, senza presentare i due numeri come un totale unico.
+
+La review temporale, la formula DST e la migrazione `20261105011642_AddFocusSessionSegments` sono documentate in
+`TECHNICAL-SLICE-3-REVIEW.md`.
 
 ### `StudyMissionService`
 
