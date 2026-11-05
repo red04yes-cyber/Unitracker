@@ -1,7 +1,7 @@
 name: Build Windows desktop app
 on:
   push:
-    branches: [ main, work/** ]
+    branches: [ main, develop, 'work/**' ]
   pull_request:
     branches: [ main, work/** ]
   workflow_dispatch:
