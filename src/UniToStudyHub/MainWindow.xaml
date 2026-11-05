@@ -673,7 +673,7 @@
                         <StackPanel Grid.Column="1" Margin="10,0,0,0"><TextBlock Text="Fine" Style="{StaticResource KpiLabelStyle}" Margin="0,0,0,5"/><TextBox Text="{Binding CalendarEventEndTime, UpdateSourceTrigger=PropertyChanged}"/></StackPanel>
                     </Grid>
                     <Button Content="Salva evento" Command="{Binding AddCalendarEventCommand}" Margin="0,16,0,0"/>
-                    <Button Content="Elimina evento selezionato" Command="{Binding DeleteCalendarEventCommand}" Style="{StaticResource QuietButtonStyle}" Margin="0,8,0,0"/>
+                    <Button Content="Elimina evento selezionato" Click="DeleteCalendarEvent_Click" IsEnabled="{Binding HasSelectedCalendarEvent}" Style="{StaticResource QuietButtonStyle}" Margin="0,8,0,0"/>
                     <TextBlock Text="{Binding StatusMessage}" FontSize="10" Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap" Margin="0,12,0,0"/>
                 </StackPanel>
             </Border>
@@ -735,7 +735,7 @@
                     <ListBox ItemsSource="{Binding Workspace.ActiveTasks}" SelectedItem="{Binding Workspace.SelectedTask}" MinHeight="140" MaxHeight="220">
                         <ListBox.ItemTemplate><DataTemplate><StackPanel Margin="4"><TextBlock Text="{Binding Title}" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource InkBrush}" TextWrapping="Wrap"/><TextBlock Text="{Binding EstimatedMinutes, StringFormat={}{0} min stimati}" FontSize="10" Foreground="{StaticResource MutedBrush}"/></StackPanel></DataTemplate></ListBox.ItemTemplate>
                     </ListBox>
-                    <WrapPanel Margin="0,8,0,0"><Button Content="Completa" Command="{Binding Workspace.CompleteTaskCommand}" Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,8,0"/><Button Content="Rimuovi" Command="{Binding Workspace.RemoveTaskCommand}" Style="{StaticResource QuietButtonStyle}"/></WrapPanel>
+                    <WrapPanel Margin="0,8,0,0"><Button Content="Completa" Command="{Binding Workspace.CompleteTaskCommand}" Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,8,0"/><Button Content="Rimuovi" Click="RemoveStudyTask_Click" IsEnabled="{Binding Workspace.HasSelectedTask}" Style="{StaticResource QuietButtonStyle}"/></WrapPanel>
                 </StackPanel>
             </Border>
         </Grid>
