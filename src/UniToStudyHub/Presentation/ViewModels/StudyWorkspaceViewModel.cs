@@ -110,6 +110,7 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
     public bool CanResumeFocus => _focus.GetActive(_data)?.State == StudySessionState.Paused;
     public bool CanFinishFocus => HasActiveFocusSession;
 
+    public IReadOnlyList<int> TaskPriorityOptions { get; } = new[] { 1, 2, 3, 4, 5 };
     public string TaskTitleInput { get => _taskTitleInput; set => Set(ref _taskTitleInput, value); }
     public string TaskMinutesInput { get => _taskMinutesInput; set => Set(ref _taskMinutesInput, value); }
     public DateTime? TaskDueDateInput { get => _taskDueDateInput; set => Set(ref _taskDueDateInput, value); }
