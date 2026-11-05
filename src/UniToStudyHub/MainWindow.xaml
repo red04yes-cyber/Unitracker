@@ -547,7 +547,7 @@
                         </ComboBox>
                     </StackPanel>
                 </Grid>
-                <UniformGrid Columns="7" Margin="0,18,0,6">
+                <UniformGrid Columns="{Binding CalendarGridColumns}" Visibility="{Binding ShowCalendarWeekHeader, Converter={StaticResource BooleanToVisibilityConverter}}" Margin="0,18,0,6">
                     <TextBlock Text="LUN" FontSize="9" FontWeight="Bold" Foreground="{StaticResource MutedBrush}" HorizontalAlignment="Center"/>
                     <TextBlock Text="MAR" FontSize="9" FontWeight="Bold" Foreground="{StaticResource MutedBrush}" HorizontalAlignment="Center"/>
                     <TextBlock Text="MER" FontSize="9" FontWeight="Bold" Foreground="{StaticResource MutedBrush}" HorizontalAlignment="Center"/>
@@ -557,7 +557,7 @@
                     <TextBlock Text="DOM" FontSize="9" FontWeight="Bold" Foreground="{StaticResource MutedBrush}" HorizontalAlignment="Center"/>
                 </UniformGrid>
                 <ListBox ItemsSource="{Binding CalendarDayCells}" SelectedItem="{Binding SelectedCalendarDay, Mode=TwoWay}" Background="Transparent" BorderThickness="0" ScrollViewer.HorizontalScrollBarVisibility="Disabled" ScrollViewer.VerticalScrollBarVisibility="Disabled">
-                    <ListBox.ItemsPanel><ItemsPanelTemplate><UniformGrid Columns="7"/></ItemsPanelTemplate></ListBox.ItemsPanel>
+                    <ListBox.ItemsPanel><ItemsPanelTemplate><UniformGrid Columns="{Binding DataContext.CalendarGridColumns, RelativeSource={RelativeSource AncestorType={x:Type ListBox}}}"/></ItemsPanelTemplate></ListBox.ItemsPanel>
                     <ListBox.ItemContainerStyle>
                         <Style TargetType="{x:Type ListBoxItem}">
                             <Setter Property="Margin" Value="3"/><Setter Property="Padding" Value="0"/>
@@ -580,7 +580,7 @@
                                 <TextBlock Text="{Binding DayNumber}" FontSize="14" FontWeight="SemiBold" Foreground="{StaticResource InkBrush}"/>
                                 <TextBlock Text="{Binding DayName}" FontSize="9" Foreground="{StaticResource MutedBrush}" HorizontalAlignment="Right"/>
                             </Grid><TextBlock Text="{Binding EventSummary}" FontSize="9" Foreground="{StaticResource AccentBrush}" Margin="0,9,0,0"/></StackPanel>
-                            <Border.Style><Style TargetType="{x:Type Border}"><Setter Property="Opacity" Value="1"/><Style.Triggers><DataTrigger Binding="{Binding IsCurrentPeriod}" Value="False"><Setter Property="Opacity" Value="0.38"/></DataTrigger></Style.Triggers></Style></Border.Style>
+                            
                         </Border>
                     </DataTemplate></ListBox.ItemTemplate>
                 </ListBox>
@@ -615,7 +615,7 @@
             </Border>
             <Border Grid.Column="1" Style="{StaticResource CardBorderStyle}">
                 <StackPanel>
-                    <Grid><TextBlock Text="Dettagli evento" Style="{StaticResource SectionTitleStyle}"/><Button Content="Nuovo" Grid.Column="1" Command="{Binding NewCalendarEventCommand}" Style="{StaticResource QuietButtonStyle}" HorizontalAlignment="Right"/></Grid>
+                    <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Text="Dettagli evento" Style="{StaticResource SectionTitleStyle}"/><Button Content="Nuovo" Grid.Column="1" Command="{Binding NewCalendarEventCommand}" Style="{StaticResource QuietButtonStyle}" HorizontalAlignment="Right"/></Grid>
                     <TextBlock Text="Titolo" Style="{StaticResource KpiLabelStyle}" Margin="0,14,0,5"/>
                     <TextBox Text="{Binding CalendarEventTitle, UpdateSourceTrigger=PropertyChanged}"/>
                     <TextBlock Text="Categoria" Style="{StaticResource KpiLabelStyle}" Margin="0,12,0,5"/>
@@ -630,7 +630,7 @@
                         <StackPanel Grid.Column="1" Margin="10,0,0,0"><TextBlock Text="Fine" Style="{StaticResource KpiLabelStyle}" Margin="0,0,0,5"/><TextBox Text="{Binding CalendarEventEndTime, UpdateSourceTrigger=PropertyChanged}"/></StackPanel>
                     </Grid>
                     <Button Content="Salva evento" Command="{Binding AddCalendarEventCommand}" Margin="0,16,0,0"/>
-                    <Button Content="Elimina evento selezionato" Command="{Binding DeleteCalendarEventCommand}" Style="{StaticResource DangerButtonStyle}" Margin="0,8,0,0"/>
+                    <Button Content="Elimina evento selezionato" Command="{Binding DeleteCalendarEventCommand}" Style="{StaticResource QuietButtonStyle}" Margin="0,8,0,0"/>
                     <TextBlock Text="{Binding StatusMessage}" FontSize="10" Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap" Margin="0,12,0,0"/>
                 </StackPanel>
             </Border>
@@ -801,7 +801,7 @@
     <StackPanel Margin="32,30,32,36">
         <TextBlock Text="IL TUO ANDAMENTO" FontSize="10" FontWeight="Bold" Foreground="{StaticResource AccentBrush}"/>
         <TextBlock Text="Progressi" Style="{StaticResource PageTitleStyle}" Margin="0,7,0,4"/>
-        <TextBlock Text="{Binding Workspace.ProgressPeriodDisplay, StringFormat=Periodo · {0}}" Style="{StaticResource PageSubtitleStyle}" Margin="0,0,0,22"/>
+        <TextBlock Text="{Binding Workspace.ProgressPeriodDisplay, StringFormat='Periodo · {0}'}" Style="{StaticResource PageSubtitleStyle}" Margin="0,0,0,22"/>
         <UniformGrid Columns="3" Margin="0,0,0,12">
             <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,10,10"><StackPanel><TextBlock Text="TEMPO DI FOCUS" Style="{StaticResource KpiLabelStyle}"/><TextBlock Text="{Binding Workspace.FocusMinutesDisplay}" FontSize="24" FontWeight="SemiBold" Foreground="{StaticResource InkBrush}" Margin="0,9,0,0"/></StackPanel></Border>
             <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,10,10"><StackPanel><TextBlock Text="SESSIONI COMPLETATE" Style="{StaticResource KpiLabelStyle}"/><TextBlock Text="{Binding Workspace.CompletedSessionsDisplay}" FontSize="24" FontWeight="SemiBold" Foreground="{StaticResource InkBrush}" Margin="0,9,0,0"/></StackPanel></Border>
