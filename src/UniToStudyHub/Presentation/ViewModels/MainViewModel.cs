@@ -171,8 +171,8 @@ public sealed class MainViewModel : INotifyPropertyChanged
     }
 
     public string AcquiredCreditsValue => GradeCalculator.AcquiredCfu(_data.Grades, _calculator).ToString(CultureInfo.CurrentCulture);
-    public string ActiveCoursesCount => Courses.Count(x => !x.Completed).ToString(CultureInfo.CurrentCulture);
-    public string ArchivedCoursesCount => Courses.Count(x => x.Completed).ToString(CultureInfo.CurrentCulture);
+    public string ActiveCoursesCount => Courses.Count(x => !x.Completed && !x.Archived).ToString(CultureInfo.CurrentCulture);
+    public string ArchivedCoursesCount => Courses.Count(x => x.Completed || x.Archived).ToString(CultureInfo.CurrentCulture);
     public string AllCoursesCount => Courses.Count.ToString(CultureInfo.CurrentCulture);
     public bool NoVisibleCourses => VisibleCourses.Count == 0;
     public bool NoPlannedExams => Exams.Count == 0;
@@ -261,10 +261,16 @@ public sealed class MainViewModel : INotifyPropertyChanged
         // the SQLite source of truth, then park the old file so a later delete
         // cannot resurrect events.
         var legacyCalendar = await _calendarStore.LoadAsync(cancellationToken);
-        if (legacyCalendar.Count > 0 && _data.CalendarEvents.Count == 0)
+        if (legacyCalendar.Count > 0)
         {
-            foreach (var calendarEvent in legacyCalendar) _data.CalendarEvents.Add(calendarEvent);
-            await SaveAsync(cancellationToken);
+            // Merge even when SQLite already has events: a partial previous
+            // import must not cause the remaining JSON entries to be skipped.
+            var imported = CalendarEventStore.MergeLegacyEvents(_data, legacyCalendar);
+            if (imported > 0)
+                await SaveAsync(cancellationToken);
+
+            // Only park the source after the merged snapshot was persisted.
+            // If saving fails, startup can safely retry the idempotent merge.
             await _calendarStore.MarkMigratedAsync(cancellationToken);
         }
         MoodleUrlInput = _data.MoodleBaseUrl;
@@ -627,9 +633,9 @@ public sealed class MainViewModel : INotifyPropertyChanged
         IEnumerable<Course> filtered = Courses;
         filtered = CourseFilter switch
         {
-            "archive" => filtered.Where(x => x.Completed),
+            "archive" => filtered.Where(x => x.Archived || x.Completed),
             "all" => filtered,
-            _ => filtered.Where(x => !x.Completed)
+            _ => filtered.Where(x => !x.Archived && !x.Completed)
         };
 
         if (!string.IsNullOrWhiteSpace(CourseSearchText))
