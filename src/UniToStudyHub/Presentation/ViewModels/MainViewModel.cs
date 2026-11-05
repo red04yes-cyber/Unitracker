@@ -215,6 +215,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
     public AsyncRelayCommand PreviousCalendarPeriodCommand { get; }
     public AsyncRelayCommand NextCalendarPeriodCommand { get; }
     public AsyncRelayCommand TodayCalendarCommand { get; }
+    public AsyncRelayCommand NewCalendarEventCommand { get; }
 
     public MainViewModel(IStudyDataStore store, MoodleApplicationService moodle, CareerCalculatorService calculator, StudyWorkspaceViewModel workspace)
     {
@@ -232,6 +233,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
         PreviousCalendarPeriodCommand = new AsyncRelayCommand(() => ChangeCalendarPeriodAsync(-1));
         NextCalendarPeriodCommand = new AsyncRelayCommand(() => ChangeCalendarPeriodAsync(1));
         TodayCalendarCommand = new AsyncRelayCommand(() => SetCalendarTodayAsync());
+        NewCalendarEventCommand = new AsyncRelayCommand(NewCalendarEventAsync);
     }
 
     public async Task InitializeAsync(CancellationToken cancellationToken = default)
@@ -444,6 +446,18 @@ public sealed class MainViewModel : INotifyPropertyChanged
             RefreshCalendar();
         }
         catch (Exception ex) { StatusMessage = $"Evento non salvato: {ex.Message}"; }
+    }
+
+    private async Task NewCalendarEventAsync()
+    {
+        SelectedCalendarEvent = null;
+        CalendarEventTitle = string.Empty;
+        CalendarEventDate = SelectedCalendarDate;
+        CalendarEventCategoryInput = CalendarEventCategory.Personal;
+        CalendarEventStartTime = "09:00";
+        CalendarEventEndTime = "10:00";
+        CalendarEventAllDay = false;
+        await Task.CompletedTask;
     }
 
     private async Task DeleteCalendarEventAsync()
