@@ -34,7 +34,7 @@ public static class LocalFileSecurity
             return true;
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or PlatformNotSupportedException
-                                       or InvalidOperationException or ArgumentException)
+                                       or InvalidOperationException or ArgumentException or System.Security.SecurityException or System.ComponentModel.Win32Exception)
         {
             return false;
         }
@@ -50,7 +50,7 @@ public static class LocalFileSecurity
             return true;
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or PlatformNotSupportedException
-                                       or InvalidOperationException or ArgumentException)
+                                       or InvalidOperationException or ArgumentException or System.Security.SecurityException or System.ComponentModel.Win32Exception)
         {
             return false;
         }
