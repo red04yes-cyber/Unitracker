@@ -95,6 +95,18 @@ public sealed class CareerApplicationServiceTests
     }
 
     [Fact]
+    public void SchedulingAttemptRejectsDuplicateAttemptIdsAcrossCourses()
+    {
+        var data = Data();
+        var service = new CareerApplicationService(new CareerCalculatorService());
+        service.ScheduleAttempt(data, "analisi", AttemptDate, "same-id");
+
+        Assert.Throws<InvalidOperationException>(() =>
+            service.ScheduleAttempt(data, "fisica", AttemptDate.AddDays(1), "same-id"));
+        Assert.Single(data.CareerExams.SelectMany(x => x.Attempts));
+    }
+
+    [Fact]
     public void CfuChangeAfterHistoryIsRejected()
     {
         var data = Data();
