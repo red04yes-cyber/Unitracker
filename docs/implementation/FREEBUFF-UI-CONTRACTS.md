@@ -1,4 +1,4 @@
-# Contratti UI — Freebuff technical slice 1
+# Contratti UI — Freebuff technical slice 1 + 2
 
 La UI è responsabilità di ChatGPT. Questo documento elenca i contratti tecnici disponibili; **non** impone un layout e
 non modifica i file visuali. I binding già presenti in `MainWindow.xaml` restano invariati.
@@ -104,6 +104,71 @@ insieme di eventi confermati.
 
 La UI deve chiedere conferma prima del ripristino, mostrare il percorso del backup di sicurezza e non nascondere gli
 errori di integrità. Il servizio non copia il token Moodle.
+
+## Slice 2 — Calendario, Studio Lab, PDF/AI e progressi
+
+### Calendario
+
+`StudyData.CalendarEvents` è la sorgente unica; il vecchio `CalendarEventStore` viene letto solo per
+l’import legacy una tantum. `MainViewModel` espone:
+
+| Membro | Uso |
+|---|---|
+| `CalendarEvents` | collezione persistita |
+| `VisibleCalendarEvents` | risultati del periodo corrente |
+| `CalendarDate`, `CalendarPeriodDisplay` | navigazione e intestazione |
+| `SelectedCalendarEvent` | selezione/modifica |
+| `CalendarEventTitle`, `CalendarEventCategoryInput`, `CalendarEventDate`, `CalendarEventStartTime`, `CalendarEventEndTime`, `CalendarEventAllDay` | form |
+| `AddCalendarEventCommand`, `DeleteCalendarEventCommand`, `PreviousCalendarPeriodCommand`, `NextCalendarPeriodCommand`, `TodayCalendarCommand` | comandi |
+
+Ogni evento espone `Source` (`CalendarEventSource.Manual/Ics/Planner/Moodle`), `Verification`
+(`CalendarEventVerification.Unverified/Indicative/Official`), `TimeZoneId`, `IsCancelled` e `ExternalId`.
+La UI deve mostrare la provenienza e non presentare gli eventi `Planner`/`Indicative` come appelli ufficiali.
+Per le viste usare `CalendarService.GetWeekRange`, `GetMonthRange` e `GetEventsInRange`; non creare un secondo
+store o una seconda lista di eventi.
+
+### Studio Lab
+
+Servizi disponibili (nessun ViewModel dedicato è stato aggiunto in questa slice):
+
+- `FocusSessionService`: `Start`, `Pause`, `Resume`, `Finish`, `Reset`, `Cancel`, `GetActive`, `Snapshot`.
+  `FocusSnapshot` espone `State`, `ElapsedSeconds`, `RemainingSeconds`, `IsExpired`. Il timer visuale deve
+  interrogare lo stato persistito, non possedere un countdown separato.
+- `StudyTaskService`: `Add`, `Complete`, `Cancel`, `Remove`; task con corso, scadenza, minuti e priorità.
+- `ErrorJournalService`: `Add`, `Review`, `Resolve`; errori collegati a corso/argomento.
+- `FlashcardService`: `Add`, `Review`, `GetDue`; rating `Again/Hard/Good/Easy`, storico delle revisioni.
+- `DistractionService`: `Add`, `Resolve`; `EnergyService`: `Add`, `GetRecent`.
+- `StudyDirectorService.Propose` restituisce solo suggerimenti, non eventi creati automaticamente.
+
+La UI deve salvare dopo ogni mutazione con `IStudyDataStore.SaveAsync` e mostrare lo stato vuoto quando non
+ci sono sessioni, task o carte reali.
+
+### PDF e AI
+
+`PdfImportService.ImportAsync(path, data, courseId)` restituisce `PdfImportResult` con `Document`,
+`WasDuplicate`, `RequiresOcr`, `Warnings`. `PdfDocumentData.Pages` contiene `PdfPageData.PageNumber/Text`;
+`HasExtractableText` è `false` per PDF scansionati. `PdfIntelligenceService.Search` restituisce
+`PdfSearchHit(PageNumber, Snippet)`; `PdfCitationService.CreateCitation` restituisce `SourceCitation` solo
+se la pagina e la frase esistono davvero, e `Verify` ricontrolla la citazione.
+
+`AiStudyService.AnswerFromDocumentAsync` e `SummarizeAsync` restituiscono `AiResponse` con `Status`:
+`Configured`, `NotConfigured`, `Refused`, `Error`. Il default è `NotConfigured`: la UI deve mostrare la
+configurazione mancante e non una risposta finta. `CitationPageHints` non è una prova: le citazioni vanno
+validate. `PromptSafety.SystemPrompt` e `WrapDocument` delimitano i PDF come dati non attendibili.
+
+### Progressi
+
+`ProgressService.Calculate(data, from, to, now)` restituisce metriche derivate da sessioni completate,
+task, flashcard e revisioni. `ErrorPatternService.Detect(data)` richiede un campione minimo di due errori per
+lo stesso argomento/tipo. `WeeklyReviewService.Create(data, weekStart, now)` restituisce osservazioni e azioni
+con avvisi quando i dati mancano. Mostrare sempre periodo, formula e “dati insufficienti” invece di numeri demo.
+
+### Backup manifest
+
+`BackupService.CreateBackupAsync` crea anche `<backup>.manifest.json`; `ReadManifestAsync` restituisce
+`BackupManifest(FormatVersion, CreatedAt, Sha256, SizeBytes)`. `RestoreAsync` verifica il manifest quando
+presente e rifiuta checksum non corrispondenti o formati futuri. Il manifest non è cifrato; non includere
+segreti nella UI né nei messaggi.
 
 ## Stati e messaggi richiesti
 
