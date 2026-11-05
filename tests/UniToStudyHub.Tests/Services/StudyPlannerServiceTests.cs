@@ -230,8 +230,8 @@ public sealed class StudyPlannerServiceTests
         var result = service.Apply(data, replacement, Now.AddMinutes(1));
 
         Assert.Equal(1, result.Added);
-        Assert.Single(data.CalendarEvents.Where(x => x.Id == "manual"));
-        Assert.Single(data.CalendarEvents.Where(x => x.ExternalId?.StartsWith("study-plan:v1:", StringComparison.Ordinal) == true));
+        Assert.Single(data.CalendarEvents, x => x.Id == "manual");
+        Assert.Single(data.CalendarEvents, x => x.ExternalId?.StartsWith("study-plan:v1:", StringComparison.Ordinal) == true);
     }
 
     [Fact]
@@ -251,8 +251,11 @@ public sealed class StudyPlannerServiceTests
         var replacement = service.CreatePreview(data, Options(replace: true), Now.AddMinutes(2));
         service.Apply(data, replacement, Now.AddMinutes(2));
 
-        Assert.Single(data.CalendarEvents);
-        Assert.Equal("Blocco spostato e rinominato dall'utente", data.CalendarEvents[0].Title);
+        Assert.Equal(2, data.CalendarEvents.Count);
+        Assert.Contains(data.CalendarEvents, x =>
+            x.Id == generated.Id && x.Title == "Blocco spostato e rinominato dall'utente");
+        Assert.Single(data.CalendarEvents, x => x.Id != generated.Id &&
+            x.ExternalId?.StartsWith("study-plan:v1:", StringComparison.Ordinal) == true);
     }
 
     [Fact]
@@ -299,8 +302,11 @@ public sealed class StudyPlannerServiceTests
             new DateTimeOffset(2026, 10, 24, 22, 0, 0, TimeSpan.Zero));
 
         var block = Assert.Single(preview.Blocks);
+        var zone = TimeZoneInfo.FindSystemTimeZoneById("Europe/Rome");
+        var localEnd = TimeZoneInfo.ConvertTime(block.EndsAt, zone);
         Assert.Equal(TimeSpan.FromHours(2), block.StartsAt.Offset);
-        Assert.Equal(TimeSpan.FromHours(1), block.EndsAt.Offset);
+        Assert.Equal(new TimeOnly(3, 0), TimeOnly.FromDateTime(localEnd.DateTime));
+        Assert.Equal(TimeSpan.FromHours(1), localEnd.Offset);
         Assert.Equal(TimeSpan.FromHours(2), block.EndsAt - block.StartsAt);
     }
 
