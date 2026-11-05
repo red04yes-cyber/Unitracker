@@ -547,7 +547,7 @@
                         </ComboBox>
                     </StackPanel>
                 </Grid>
-                <UniformGrid Columns="{Binding CalendarGridColumns}" Visibility="{Binding ShowCalendarWeekHeader, Converter={StaticResource BooleanToVisibilityConverter}}" Margin="0,18,0,6">
+                <UniformGrid Columns="7" Visibility="{Binding ShowCalendarWeekHeader, Converter={StaticResource BooleanToVisibilityConverter}}" Margin="0,18,0,6">
                     <TextBlock Text="LUN" FontSize="9" FontWeight="Bold" Foreground="{StaticResource MutedBrush}" HorizontalAlignment="Center"/>
                     <TextBlock Text="MAR" FontSize="9" FontWeight="Bold" Foreground="{StaticResource MutedBrush}" HorizontalAlignment="Center"/>
                     <TextBlock Text="MER" FontSize="9" FontWeight="Bold" Foreground="{StaticResource MutedBrush}" HorizontalAlignment="Center"/>
@@ -557,7 +557,7 @@
                     <TextBlock Text="DOM" FontSize="9" FontWeight="Bold" Foreground="{StaticResource MutedBrush}" HorizontalAlignment="Center"/>
                 </UniformGrid>
                 <ListBox Visibility="{Binding IsMonthCalendar, Converter={StaticResource BooleanToVisibilityConverter}}" ItemsSource="{Binding CalendarDayCells}" SelectedItem="{Binding SelectedCalendarDay, Mode=TwoWay}" Background="Transparent" BorderThickness="0" ScrollViewer.HorizontalScrollBarVisibility="Disabled" ScrollViewer.VerticalScrollBarVisibility="Disabled">
-                    <ListBox.ItemsPanel><ItemsPanelTemplate><UniformGrid Columns="{Binding DataContext.CalendarGridColumns, RelativeSource={RelativeSource AncestorType={x:Type ListBox}}}"/></ItemsPanelTemplate></ListBox.ItemsPanel>
+                    <ListBox.ItemsPanel><ItemsPanelTemplate><UniformGrid Columns="7"/></ItemsPanelTemplate></ListBox.ItemsPanel>
                     <ListBox.ItemContainerStyle>
                         <Style TargetType="{x:Type ListBoxItem}">
                             <Setter Property="Margin" Value="3"/><Setter Property="Padding" Value="0"/>
@@ -942,7 +942,7 @@
                 <Button Content="Crea backup e verifica integrità" Command="{Binding Workspace.CreateBackupCommand}" HorizontalAlignment="Left"/>
                 <TextBlock Text="Backup disponibili" Style="{StaticResource KpiLabelStyle}" Margin="0,16,0,6"/>
                 <ListBox ItemsSource="{Binding Workspace.BackupItems}" SelectedItem="{Binding Workspace.SelectedBackup}" MinHeight="90" MaxHeight="220">
-                    <ListBox.ItemTemplate><DataTemplate><StackPanel Margin="5"><TextBlock Text="{Binding FilePath}" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource InkBrush}" TextWrapping="Wrap"/><TextBlock Text="{Binding CreatedAt, StringFormat={}{0:dd/MM/yyyy HH:mm}}" FontSize="10" Foreground="{StaticResource MutedBrush}"/><TextBlock Text="{Binding SizeBytes, StringFormat={}{0:N0} byte}" FontSize="9" Foreground="{StaticResource MutedBrush}"/><TextBlock Text="{Binding IntegrityVerified, StringFormat=Integrità verificata: {0}}" FontSize="9" Foreground="{StaticResource MutedBrush}"/></StackPanel></DataTemplate></ListBox.ItemTemplate>
+                    <ListBox.ItemTemplate><DataTemplate><StackPanel Margin="5"><TextBlock Text="{Binding FilePath}" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource InkBrush}" TextWrapping="Wrap"/><TextBlock Text="{Binding CreatedAt, StringFormat={}{0:dd/MM/yyyy HH:mm}}" FontSize="10" Foreground="{StaticResource MutedBrush}"/><TextBlock Text="{Binding SizeBytes, StringFormat={}{0:N0} byte}" FontSize="9" Foreground="{StaticResource MutedBrush}"/><TextBlock Text="{Binding Sha256, StringFormat='SHA-256 · {0}'}" FontSize="8" Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap"/><TextBlock Text="{Binding IntegrityVerified, StringFormat=Integrità verificata: {0}}" FontSize="9" Foreground="{StaticResource MutedBrush}"/></StackPanel></DataTemplate></ListBox.ItemTemplate>
                 </ListBox>
                 <WrapPanel Margin="0,9,0,0"><Button Content="Verifica backup selezionato" Command="{Binding Workspace.VerifyBackupCommand}" Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,8,0"/><Button Content="Ripristino non disponibile" IsEnabled="False" Style="{StaticResource QuietButtonStyle}" ToolTip="In attesa che il contratto tecnico restituisca il percorso del backup di sicurezza"/></WrapPanel>
                 <TextBlock Text="{Binding Workspace.BackupStatus}" FontSize="11" Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap" Margin="0,12,0,0"/>
