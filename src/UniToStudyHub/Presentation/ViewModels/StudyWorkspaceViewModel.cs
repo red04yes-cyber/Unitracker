@@ -33,6 +33,7 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
     private readonly SyllabusTrackerService _syllabus;
     private readonly QuestionBankService _questionBank;
     private readonly ExamReadinessService _readiness;
+    private readonly StudyDataExportService _exports;
     private readonly HashSet<string> _verifiedBackups = new(StringComparer.OrdinalIgnoreCase);
     private StudyData _data = new();
     private Course? _selectedCourse;
@@ -57,6 +58,7 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
     private string _questionAnswerInput = string.Empty;
     private string _questionStatus = "Le risposte aperte richiedono revisione manuale.";
     private string _readinessStatus = "Seleziona una materia per leggere la preparazione.";
+    private string _exportStatus = string.Empty;
     private string _focusTopicInput = string.Empty;
     private string _focusMinutesInput = "25";
     private string _focusRemainingDisplay = "25:00";
@@ -111,6 +113,7 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
     public ObservableCollection<CourseProgressRow> CourseProgressRows { get; } = new();
     public ObservableCollection<SyllabusTopicData> SyllabusTopics { get; } = new();
     public ObservableCollection<QuestionBankItemData> QuestionBankItems { get; } = new();
+    public ObservableCollection<DailyProgressRow> DailyProgressRows { get; } = new();
     public ObservableCollection<Course> Courses => _data.Courses;
     public ObservableCollection<PdfDocumentData> PdfDocuments => _data.PdfDocuments;
 
@@ -144,6 +147,7 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
     public string QuestionAnswerInput { get => _questionAnswerInput; set => Set(ref _questionAnswerInput, value); }
     public string QuestionStatus { get => _questionStatus; private set => Set(ref _questionStatus, value); }
     public string ReadinessStatus { get => _readinessStatus; private set => Set(ref _readinessStatus, value); }
+    public string ExportStatus { get => _exportStatus; private set => Set(ref _exportStatus, value); }
     public StudyTaskData? SelectedTask { get => _selectedTask; set { if (ReferenceEquals(_selectedTask, value)) return; _selectedTask = value; OnPropertyChanged(); OnPropertyChanged(nameof(HasSelectedTask)); CompleteTaskCommand.NotifyCanExecuteChanged(); RemoveTaskCommand.NotifyCanExecuteChanged(); } }
     public bool HasSelectedTask => SelectedTask is not null;
     public FlashcardData? SelectedDueFlashcard { get => _selectedDueFlashcard; set { Set(ref _selectedDueFlashcard, value); FlashcardRevealed = false; NotifyReviewCommands(); } }
@@ -300,7 +304,8 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
         StudyPlannerService planner,
         SyllabusTrackerService syllabus,
         QuestionBankService questionBank,
-        ExamReadinessService readiness)
+        ExamReadinessService readiness,
+        StudyDataExportService exports)
     {
         _store = store;
         _academicProfile = academicProfile;
@@ -319,6 +324,7 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
         _syllabus = syllabus;
         _questionBank = questionBank;
         _readiness = readiness;
+        _exports = exports;
 
         StartFocusCommand = new AsyncRelayCommand(StartFocusAsync, () => !HasActiveFocusSession);
         PauseFocusCommand = new AsyncRelayCommand(() => ChangeFocusAsync("pause"), () => CanPauseFocus);
@@ -1015,6 +1021,23 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
             var percentage = maxFocusMinutes == 0 ? 0 : (int)Math.Round(course.FocusMinutes * 100d / maxFocusMinutes);
             CourseProgressRows.Add(new CourseProgressRow(course.CourseName, $"{course.FocusMinutes} min", percentage));
         }
+        DailyProgressRows.Clear();
+        var dailyTotals = new List<(DateTime Date, int Minutes)>();
+        for (var offset = 6; offset >= 0; offset--)
+        {
+            var date = DateTime.Today.AddDays(-offset).Date;
+            var seconds = _data.StudySessions
+                .Where(x => x.StartedAt.LocalDateTime.Date == date && x.State != StudySessionState.Cancelled)
+                .Sum(x => Math.Max(0, x.AccumulatedFocusSeconds));
+            dailyTotals.Add((date, (int)Math.Round(seconds / 60d)));
+        }
+        var maxDaily = dailyTotals.Count == 0 ? 0 : dailyTotals.Max(x => x.Minutes);
+        foreach (var total in dailyTotals)
+            DailyProgressRows.Add(new DailyProgressRow(
+                total.Date.ToString("ddd dd/MM", CultureInfo.GetCultureInfo("it-IT")),
+                total.Minutes,
+                maxDaily == 0 ? 0 : (int)Math.Round(total.Minutes * 100d / maxDaily)));
+        OnPropertyChanged(nameof(DailyProgressRows));
         OnPropertyChanged(nameof(CourseProgressRows));
         OnPropertyChanged(nameof(WeeklyGoalProgressPercent));
         OnPropertyChanged(nameof(CurrentProgress));
@@ -1027,6 +1050,29 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(OpenErrorsDisplay));
         OnPropertyChanged(nameof(FocusStreakDisplay));
         OnPropertyChanged(nameof(WeeklyGoalDisplay));
+    }
+
+    public async Task ExportProgressAsync(string filePath, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(filePath))
+            throw new ArgumentException("Seleziona un percorso di destinazione.", nameof(filePath));
+        try
+        {
+            var today = DateOnly.FromDateTime(DateTime.Today);
+            var from = today.AddDays(-6);
+            var bundle = _exports.Export(
+                _data,
+                new StudyExportRequest(from, today, TimeZoneInfo.Local.Id, IncludePrivateNotes: false),
+                StudyExportFormat.Xlsx);
+            var file = bundle.Files.Single();
+            await File.WriteAllBytesAsync(filePath, file.Content, cancellationToken);
+            ExportStatus = $"Esportazione completata: {filePath}";
+        }
+        catch (Exception ex)
+        {
+            ExportStatus = $"Esportazione non riuscita: {ex.Message}";
+            throw;
+        }
     }
 
     private void ReloadBackups()
