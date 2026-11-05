@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Globalization;
 using System.Runtime.CompilerServices;
+using UniToStudyHub.Domain.Enums;
 using UniToStudyHub.Models;
 using UniToStudyHub.Presentation.Commands;
 using UniToStudyHub.Services;
@@ -27,6 +28,7 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
     private readonly PdfIntelligenceService _pdfIntelligence;
     private readonly AiStudyService _aiStudy;
     private readonly BackupService _backups;
+    private readonly StudyPlannerService _planner;
     private readonly HashSet<string> _verifiedBackups = new(StringComparer.OrdinalIgnoreCase);
     private StudyData _data = new();
     private Course? _selectedCourse;
@@ -36,6 +38,11 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
     private DistractionData? _selectedDistraction;
     private PdfDocumentData? _selectedPdf;
     private BackupInfo? _selectedBackup;
+    private string _plannerAvailabilityInput = string.Empty;
+    private DateTime _plannerFromInput = DateTime.Today;
+    private DateTime _plannerToInput = DateTime.Today.AddDays(13);
+    private string _plannerStatus = "Imposta le tue fasce reali di disponibilità per creare un'anteprima.";
+    private StudyPlanPreview? _currentPlanPreview;
     private string _focusTopicInput = string.Empty;
     private string _focusMinutesInput = "25";
     private string _focusRemainingDisplay = "25:00";
@@ -158,6 +165,15 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
     public string WorkspaceStatus { get => _workspaceStatus; private set => Set(ref _workspaceStatus, value); }
     public string BackupDirectory => _backups.BackupDirectory;
     public ProgressSnapshot? CurrentProgress => _progressSnapshot;
+    public string PlannerAvailabilityInput { get => _plannerAvailabilityInput; set => Set(ref _plannerAvailabilityInput, value); }
+    public DateTime PlannerFromInput { get => _plannerFromInput; set => Set(ref _plannerFromInput, value.Date); }
+    public DateTime PlannerToInput { get => _plannerToInput; set => Set(ref _plannerToInput, value.Date); }
+    public string PlannerStatus { get => _plannerStatus; private set => Set(ref _plannerStatus, value); }
+    public StudyPlanPreview? CurrentPlanPreview { get => _currentPlanPreview; private set { Set(ref _currentPlanPreview, value); OnPropertyChanged(nameof(HasPlanPreview)); OnPropertyChanged(nameof(PlanPreviewSummary)); ApplyStudyPlanCommand?.NotifyCanExecuteChanged(); } }
+    public bool HasPlanPreview => CurrentPlanPreview is not null;
+    public string PlanPreviewSummary => CurrentPlanPreview is { } plan
+        ? $"{plan.ScheduledBlockCount} blocchi · {plan.ScheduledMinutes} minuti · {plan.UnscheduledTasks.Count} task non pianificati"
+        : "Nessuna anteprima disponibile.";
     public bool HasProgressData => _progressSnapshot is { } p && (p.FocusMinutes > 0 || p.CompletedSessions > 0 || p.CompletedTasks > 0 || p.DueFlashcards > 0 || p.OpenErrors > 0);
     public string ProgressPeriodDisplay => _progressSnapshot is { } p
         ? $"{p.From:dd/MM} – {p.To:dd/MM/yyyy}"
@@ -215,6 +231,8 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
     public AsyncRelayCommand CreateBackupCommand { get; }
     public AsyncRelayCommand VerifyBackupCommand { get; }
     public AsyncRelayCommand RestoreBackupCommand { get; }
+    public AsyncRelayCommand PreviewStudyPlanCommand { get; }
+    public AsyncRelayCommand ApplyStudyPlanCommand { get; }
 
     public StudyWorkspaceViewModel(
         IStudyDataStore store,
@@ -229,7 +247,8 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
         PdfImportService pdfImport,
         PdfIntelligenceService pdfIntelligence,
         AiStudyService aiStudy,
-        BackupService backups)
+        BackupService backups,
+        StudyPlannerService planner)
     {
         _store = store;
         _academicProfile = academicProfile;
@@ -244,6 +263,7 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
         _pdfIntelligence = pdfIntelligence;
         _aiStudy = aiStudy;
         _backups = backups;
+        _planner = planner;
 
         StartFocusCommand = new AsyncRelayCommand(StartFocusAsync, () => !HasActiveFocusSession);
         PauseFocusCommand = new AsyncRelayCommand(() => ChangeFocusAsync("pause"), () => CanPauseFocus);
@@ -271,6 +291,8 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
         CreateBackupCommand = new AsyncRelayCommand(CreateBackupAsync);
         VerifyBackupCommand = new AsyncRelayCommand(VerifyBackupAsync, () => SelectedBackup is not null);
         RestoreBackupCommand = new AsyncRelayCommand(RestoreBackupAsync, () => SelectedBackup is not null);
+        PreviewStudyPlanCommand = new AsyncRelayCommand(PreviewStudyPlanAsync);
+        ApplyStudyPlanCommand = new AsyncRelayCommand(ApplyStudyPlanAsync, () => HasPlanPreview);
     }
 
     public void Initialize(StudyData data)
@@ -653,6 +675,78 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
             SelectedBackup = BackupItems.FirstOrDefault(x => x.FilePath == path);
         }
         catch (Exception ex) { BackupStatus = $"Verifica non riuscita: {ex.Message}"; }
+    }
+
+    private async Task PreviewStudyPlanAsync()
+    {
+        try
+        {
+            if (PlannerToInput < PlannerFromInput)
+                throw new ArgumentException("La data finale deve essere successiva o uguale alla data iniziale.");
+
+            var availability = ParseDailyAvailability(PlannerAvailabilityInput);
+            CurrentPlanPreview = _planner.CreatePreview(_data, new StudyPlannerOptions
+            {
+                From = DateOnly.FromDateTime(PlannerFromInput),
+                To = DateOnly.FromDateTime(PlannerToInput),
+                TimeZoneId = TimeZoneInfo.Local.Id,
+                WeeklyAvailability = availability,
+                WeeklyStudyMinutes = _data.WeeklyStudyHours * 60,
+                MaxDailyStudyMinutes = _data.MaxDailyStudyMinutes,
+                PreferredBlockMinutes = 50,
+                MinimumBlockMinutes = 15,
+                BreakMinutes = 10,
+                MaxBlocksPerDay = 4,
+                ReplaceExistingGeneratedBlocks = true
+            });
+            PlannerStatus = $"Anteprima pronta: {PlanPreviewSummary}. I blocchi non sono ancora nel calendario.";
+        }
+        catch (Exception ex)
+        {
+            CurrentPlanPreview = null;
+            PlannerStatus = $"Anteprima non disponibile: {ex.Message}";
+        }
+    }
+
+    private async Task ApplyStudyPlanAsync()
+    {
+        if (CurrentPlanPreview is null) return;
+        try
+        {
+            var result = await _planner.ApplyAndSaveAsync(_data, CurrentPlanPreview, _store);
+            RefreshCollections();
+            RefreshProgress();
+            DataReloaded?.Invoke(_data);
+            PlannerStatus = $"Piano salvato nel calendario: {result.Added} blocchi aggiunti, {result.Conflicts} conflitti, {result.Skipped} ignorati.";
+            CurrentPlanPreview = null;
+        }
+        catch (Exception ex)
+        {
+            PlannerStatus = $"Piano non salvato: {ex.Message}";
+        }
+    }
+
+    private static IReadOnlyList<StudyAvailabilityWindow> ParseDailyAvailability(string input)
+    {
+        var intervals = new List<(TimeOnly Start, TimeOnly End)>();
+        foreach (var part in (input ?? string.Empty).Split(';', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries))
+        {
+            var pieces = part.Split('-', StringSplitOptions.TrimEntries);
+            if (pieces.Length != 2 ||
+                !TimeOnly.TryParseExact(pieces[0], "HH:mm", CultureInfo.InvariantCulture, DateTimeStyles.None, out var start) ||
+                !TimeOnly.TryParseExact(pieces[1], "HH:mm", CultureInfo.InvariantCulture, DateTimeStyles.None, out var end) ||
+                end <= start)
+                throw new ArgumentException("Fascia non valida. Usa HH:mm-HH:mm, ad esempio 09:00-12:00;15:00-18:00.");
+            intervals.Add((start, end));
+        }
+        if (intervals.Count == 0)
+            throw new ArgumentException("Inserisci almeno una fascia giornaliera reale (HH:mm-HH:mm).");
+
+        var result = new List<StudyAvailabilityWindow>();
+        foreach (var day in Enum.GetValues<DayOfWeek>())
+            foreach (var interval in intervals)
+                result.Add(new StudyAvailabilityWindow(day, interval.Start, interval.End));
+        return result;
     }
 
     private async Task RestoreBackupAsync()
