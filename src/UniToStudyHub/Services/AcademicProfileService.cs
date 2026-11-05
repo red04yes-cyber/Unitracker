@@ -171,7 +171,6 @@ public sealed class AcademicProfileService
             foreach (var topic in data.SyllabusTopics.Where(x => x.CourseId == courseId).ToList())
                 data.SyllabusTopics.Remove(topic);
         }
-        }
 
         foreach (var prerequisite in data.CoursePrerequisites
                      .Where(x => x.CourseId == courseId || x.PrerequisiteCourseId == courseId).ToList())
