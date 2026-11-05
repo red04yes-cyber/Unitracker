@@ -452,6 +452,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
             CalendarEventStartTime = "09:00";
             CalendarEventEndTime = "10:00";
             CalendarDate = day;
+            SelectedCalendarDate = day;
             RefreshCalendar();
         }
         catch (Exception ex) { StatusMessage = $"Evento non salvato: {ex.Message}"; }
