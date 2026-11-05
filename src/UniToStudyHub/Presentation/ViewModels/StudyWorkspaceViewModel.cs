@@ -26,6 +26,7 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
     private readonly PdfIntelligenceService _pdfIntelligence;
     private readonly AiStudyService _aiStudy;
     private readonly BackupService _backups;
+    private readonly HashSet<string> _verifiedBackups = new(StringComparer.OrdinalIgnoreCase);
     private StudyData _data = new();
     private Course? _selectedCourse;
     private StudyTaskData? _selectedTask;
@@ -117,7 +118,7 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
     public string WorkspaceStatus { get => _workspaceStatus; private set => Set(ref _workspaceStatus, value); }
     public string BackupDirectory => _backups.BackupDirectory;
     public ProgressSnapshot? CurrentProgress => _progressSnapshot;
-    public bool HasProgressData => _progressSnapshot is { } p && (p.FocusMinutes > 0 || p.CompletedSessions > 0 || p.CompletedTasks > 0);
+    public bool HasProgressData => _progressSnapshot is { } p && (p.FocusMinutes > 0 || p.CompletedSessions > 0 || p.CompletedTasks > 0 || p.DueFlashcards > 0 || p.OpenErrors > 0);
     public string ProgressPeriodDisplay => _progressSnapshot is { } p
         ? $"{p.From:dd/MM} – {p.To:dd/MM/yyyy}"
         : "Ultimi sette giorni";
@@ -241,7 +242,7 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
         else
         {
             var snapshot = _focus.Snapshot(_data, active.Id);
-            FocusStateDisplay = snapshot.State == StudySessionState.Running ? "In corso" : "In pausa";
+            FocusStateDisplay = snapshot.IsExpired ? "Tempo previsto raggiunto" : snapshot.State == StudySessionState.Running ? "In corso" : "In pausa";
             FocusRemainingDisplay = FormatClock(snapshot.RemainingSeconds);
             FocusElapsedDisplay = FormatClock(snapshot.ElapsedSeconds);
             FocusProgressPercent = active.PlannedMinutes <= 0 ? 0 :
@@ -506,6 +507,7 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
             BackupStatus = created.IntegrityVerified
                 ? $"Backup creato e verificato · {created.FilePath}"
                 : $"Backup creato, ma l'integrità non è stata verificata · {created.FilePath}";
+            if (created.IntegrityVerified) _verifiedBackups.Add(created.FilePath);
             ReloadBackups();
             SelectedBackup = BackupItems.FirstOrDefault(x => x.FilePath == created.FilePath);
         }
@@ -517,12 +519,14 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
         if (SelectedBackup is null) return;
         try
         {
-            var verified = await _backups.VerifyBackupAsync(SelectedBackup.FilePath);
+            var path = SelectedBackup.FilePath;
+            var verified = await _backups.VerifyBackupAsync(path);
+            if (verified) _verifiedBackups.Add(path); else _verifiedBackups.Remove(path);
             BackupStatus = verified
                 ? $"Integrità SQLite verificata · {SelectedBackup.FilePath}"
                 : $"Verifica non superata · {SelectedBackup.FilePath}";
             ReloadBackups();
-            SelectedBackup = BackupItems.FirstOrDefault(x => x.FilePath == SelectedBackup?.FilePath);
+            SelectedBackup = BackupItems.FirstOrDefault(x => x.FilePath == path);
         }
         catch (Exception ex) { BackupStatus = $"Verifica non riuscita: {ex.Message}"; }
     }
@@ -580,7 +584,8 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
     private void ReloadBackups()
     {
         BackupItems.Clear();
-        foreach (var backup in _backups.ListBackups()) BackupItems.Add(backup);
+        foreach (var backup in _backups.ListBackups())
+            BackupItems.Add(backup with { IntegrityVerified = _verifiedBackups.Contains(backup.FilePath) });
         OnPropertyChanged(nameof(HasBackups));
     }
 
