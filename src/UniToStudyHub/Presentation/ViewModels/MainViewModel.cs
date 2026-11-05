@@ -328,6 +328,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
         }
 
         var course = SelectedGradeCourse;
+        var attemptedAt = DateTimeOffset.Now;
         var outcome = ExamOutcome.Pending;
         var decision = GradeDecision.Pending;
         int? numericGrade = null;
@@ -379,7 +380,6 @@ public sealed class MainViewModel : INotifyPropertyChanged
                 return;
         }
 
-        var attemptedAt = DateTimeOffset.Now;
         var previousStatus = course.Status;
         var previousCompleted = course.Completed;
         var previousCareerExam = _data.CareerExams.FirstOrDefault(x => x.CourseId == course.Id);
