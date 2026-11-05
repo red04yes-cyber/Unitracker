@@ -3,6 +3,7 @@ using System.ComponentModel;
 using System.Globalization;
 using System.Runtime.CompilerServices;
 using UniToStudyHub.Domain.Services;
+using UniToStudyHub.Domain.Enums;
 using UniToStudyHub.Models;
 using UniToStudyHub.Presentation.Commands;
 using UniToStudyHub.Services;
@@ -14,6 +15,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
     private readonly IStudyDataStore _store;
     private readonly MoodleApplicationService _moodle;
     private readonly CareerCalculatorService _calculator;
+    private readonly CareerApplicationService _career;
     private readonly CalendarEventStore _calendarStore = new();
     public StudyWorkspaceViewModel Workspace { get; }
     private StudyData _data = new();
@@ -234,11 +236,12 @@ public sealed class MainViewModel : INotifyPropertyChanged
     public AsyncRelayCommand TodayCalendarCommand { get; }
     public AsyncRelayCommand NewCalendarEventCommand { get; }
 
-    public MainViewModel(IStudyDataStore store, MoodleApplicationService moodle, CareerCalculatorService calculator, StudyWorkspaceViewModel workspace)
+    public MainViewModel(IStudyDataStore store, MoodleApplicationService moodle, CareerCalculatorService calculator, CareerApplicationService career, StudyWorkspaceViewModel workspace)
     {
         _store = store;
         _moodle = moodle;
         _calculator = calculator;
+        _career = career;
         Workspace = workspace;
         AddCourseCommand = new AsyncRelayCommand(AddCourseAsync);
         AddGradeCommand = new AsyncRelayCommand(AddGradeAsync, () => SelectedGradeCourse is not null);
@@ -326,17 +329,40 @@ public sealed class MainViewModel : INotifyPropertyChanged
             Date = DateTime.Today,
             CountsTowardAverage = true
         };
-        Grades.Add(item);
+        var previousStatus = course.Status;
         var previousCompleted = course.Completed;
-        course.Completed = true;
+        var previousCareerExam = _data.CareerExams.FirstOrDefault(x => x.CourseId == course.Id);
+        var previousAttemptCount = previousCareerExam?.Attempts.Count ?? 0;
         try
         {
+            Grades.Add(item);
+            _career.RecordResult(
+                _data,
+                course.Id,
+                ExamOutcome.Passed,
+                GradeDecision.Accepted,
+                numericGrade: grade,
+                honors: false,
+                isPassFail: false,
+                attemptedAt: new DateTimeOffset(DateTime.Today.Add(DateTime.Now.TimeOfDay)),
+                recordedAt: DateTimeOffset.Now);
             await SaveAsync();
-            StatusMessage = "Voto registrato e materia spostata nell'archivio.";
+            StatusMessage = "Voto e tentativo ufficiale registrati nella carriera.";
         }
         catch (Exception ex)
         {
             Grades.Remove(item);
+            if (previousCareerExam is null)
+            {
+                foreach (var exam in _data.CareerExams.Where(x => x.CourseId == course.Id).ToList())
+                    _data.CareerExams.Remove(exam);
+            }
+            else
+            {
+                while (previousCareerExam.Attempts.Count > previousAttemptCount)
+                    previousCareerExam.Attempts.RemoveAt(previousCareerExam.Attempts.Count - 1);
+            }
+            course.Status = previousStatus;
             course.Completed = previousCompleted;
             StatusMessage = $"Salvataggio non riuscito: {ex.Message}";
         }
@@ -678,9 +704,10 @@ public sealed class MainViewModel : INotifyPropertyChanged
             .Where(x => x.CountsTowardAverage)
             .ToList();
 
-        ArithmeticAverageDisplay = latestGrades.Count == 0
+        var officialAverage = _career.GetArithmeticAverage(_data);
+        ArithmeticAverageDisplay = officialAverage is null
             ? "—"
-            : GradeCalculator.Format((decimal)latestGrades.Average(x => x.Value));
+            : GradeCalculator.Format(officialAverage.Value);
 
         OnPropertyChanged(nameof(AcquiredCreditsValue));
         OnPropertyChanged(nameof(ProjectedBaseGradeValue));
