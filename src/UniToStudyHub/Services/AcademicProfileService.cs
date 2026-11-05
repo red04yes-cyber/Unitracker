@@ -154,7 +154,9 @@ public sealed class AcademicProfileService
         // snapshot; a rejected deletion must never leave grades/exams removed.
         if (!removeCareerHistory)
         {
-            if (data.CareerExams.Any(x => x.CourseId == courseId))
+            if (data.CareerExams.Any(x => x.CourseId == courseId) ||
+                data.Grades.Any(x => x.CourseId == courseId) ||
+                data.Exams.Any(x => x.CourseId == courseId))
                 throw new InvalidOperationException("The course has exam history and cannot be deleted without explicit confirmation.");
             if (data.SyllabusTopics.Any(x => x.CourseId == courseId))
                 throw new InvalidOperationException("The course has syllabus data and cannot be deleted without explicit confirmation.");
