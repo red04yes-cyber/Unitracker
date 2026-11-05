@@ -44,6 +44,8 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
     private int _focusProgressPercent;
     private string _taskTitleInput = string.Empty;
     private string _taskMinutesInput = "30";
+    private DateTime? _taskDueDateInput;
+    private int _taskPriorityInput = 3;
     private string _flashcardFrontInput = string.Empty;
     private string _flashcardBackInput = string.Empty;
     private string _errorTopicInput = string.Empty;
@@ -110,6 +112,8 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
 
     public string TaskTitleInput { get => _taskTitleInput; set => Set(ref _taskTitleInput, value); }
     public string TaskMinutesInput { get => _taskMinutesInput; set => Set(ref _taskMinutesInput, value); }
+    public DateTime? TaskDueDateInput { get => _taskDueDateInput; set => Set(ref _taskDueDateInput, value); }
+    public int TaskPriorityInput { get => _taskPriorityInput; set => Set(ref _taskPriorityInput, value); }
     public string FlashcardFrontInput { get => _flashcardFrontInput; set => Set(ref _flashcardFrontInput, value); }
     public string FlashcardBackInput { get => _flashcardBackInput; set => Set(ref _flashcardBackInput, value); }
     public string ErrorTopicInput { get => _errorTopicInput; set => Set(ref _errorTopicInput, value); }
@@ -398,18 +402,25 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
     private async Task AddTaskAsync()
     {
         if (string.IsNullOrWhiteSpace(TaskTitleInput) ||
-            !int.TryParse(TaskMinutesInput, out var minutes) || minutes is < 0 or > 14400)
+            !int.TryParse(TaskMinutesInput, out var minutes) || minutes is < 0 or > 14400 ||
+            TaskPriorityInput is < 1 or > 5)
+        {
+            WorkspaceStatus = "Inserisci un titolo, minuti validi e una priorità da 1 a 5.";
             return;
+        }
         try
         {
             _tasks.Add(_data, new StudyTaskData
             {
                 Title = TaskTitleInput.Trim(),
                 EstimatedMinutes = minutes,
+                DueAt = TaskDueDateInput is DateTime dueDate ? new DateTimeOffset(dueDate, TimeZoneInfo.Local.GetUtcOffset(dueDate)) : null,
+                Priority = TaskPriorityInput,
                 CourseId = SelectedCourse?.Id ?? string.Empty
             });
             await SaveAsync();
             TaskTitleInput = string.Empty;
+            TaskDueDateInput = null;
             RefreshCollections();
             RefreshProgress();
         }
