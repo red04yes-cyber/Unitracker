@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using UniToStudyHub.Infrastructure.Data;
 using UniToStudyHub.Models;
 using UniToStudyHub.Services;
 using Xunit;
@@ -57,6 +58,7 @@ public sealed class ActivityAndMissionTests
         Assert.Equal(2, data.ActivityRevisions.Count);
         Assert.Equal(ActivityRevisionAction.Updated, data.ActivityRevisions[1].Action);
         Assert.Contains("Ripasso limiti", data.ActivityRevisions[1].BeforeJson, StringComparison.Ordinal);
+        Assert.Contains("Ripasso limiti e continuit", data.ActivityRevisions[1].AfterJson, StringComparison.Ordinal);
 
         service.SoftDelete(data, activity.Id, "Inserimento duplicato", Start.AddHours(3));
 
@@ -127,6 +129,115 @@ public sealed class ActivityAndMissionTests
         Assert.Equal(1800, heatmap.Cells.Single(x => x.Hour == 10).RecordedSeconds);
         var overlap = Assert.Single(overlaps);
         Assert.Equal(1800, (int)(overlap.EndsAt - overlap.StartsAt).TotalSeconds);
+    }
+
+    [Fact]
+    public void PausedFocusIntervalIsExcludedFromTimelineAndSummary()
+    {
+        var data = Data();
+        var focus = new FocusSessionService();
+        var ledger = new ActivityLedgerService();
+        var session = focus.Start(data, "analisi", "Limiti", 25, Start);
+        focus.Pause(data, session.Id, Start.AddMinutes(10));
+        focus.Resume(data, session.Id, Start.AddMinutes(20));
+        focus.Finish(data, session.Id, "Completata", Start.AddMinutes(30));
+        ledger.SyncFocusSession(data, session, Start.AddMinutes(30));
+
+        var timeline = ledger.BuildTimeline(data, new DateOnly(2026, 11, 4), 30, Start.AddHours(1), "UTC");
+        var summary = ledger.Summarize(data, new DateOnly(2026, 11, 4), new DateOnly(2026, 11, 4),
+            Start.AddHours(1), "UTC");
+
+        Assert.Equal(1200, session.AccumulatedFocusSeconds);
+        Assert.Equal(3, session.Segments.Count);
+        Assert.Equal(1200, timeline.RecordedSeconds);
+        Assert.Equal(1200, summary.RecordedSeconds);
+        Assert.Equal(0, timeline.OverlapSeconds);
+        Assert.Equal(1200, timeline.Slots.Single(x => x.Index == 18).RecordedSeconds);
+        Assert.Equal(0, timeline.Slots.Single(x => x.Index == 19).RecordedSeconds);
+        var pauseSegment = Assert.Single(session.Segments, x => x.Type == StudySessionSegmentType.Pause);
+        Assert.Equal(Start.AddMinutes(10), pauseSegment.StartedAt);
+        Assert.Equal(Start.AddMinutes(20), pauseSegment.EndedAt);
+    }
+
+    [Fact]
+    public void ImmediatePauseResumeAndFinishDoesNotLeaveZeroLengthSegments()
+    {
+        var data = Data();
+        var focus = new FocusSessionService();
+        var session = focus.Start(data, "analisi", "Limiti", 25, Start);
+        focus.Pause(data, session.Id, Start);
+        focus.Resume(data, session.Id, Start);
+        focus.Finish(data, session.Id, "Completata", Start);
+
+        Assert.DoesNotContain(session.Segments,
+            segment => segment.EndedAt is { } end && end <= segment.StartedAt);
+        StudyDataEntityMapper.NormalizeAndValidate(data);
+    }
+
+    [Fact]
+    public void ActivityAcrossMidnightAppearsInBothDaysWithoutLosingSeconds()
+    {
+        var data = Data();
+        var ledger = new ActivityLedgerService();
+        ledger.AddManual(data, new StudyActivityData
+        {
+            Type = StudyActivityType.Study,
+            Title = "Sessione notturna",
+            StartedAt = new DateTimeOffset(2026, 11, 4, 23, 30, 0, TimeSpan.Zero),
+            EndedAt = new DateTimeOffset(2026, 11, 5, 0, 30, 0, TimeSpan.Zero),
+            TimeZoneId = "UTC"
+        }, new DateTimeOffset(2026, 11, 5, 1, 0, 0, TimeSpan.Zero));
+
+        var first = ledger.BuildTimeline(data, new DateOnly(2026, 11, 4), 60,
+            new DateTimeOffset(2026, 11, 5, 1, 0, 0, TimeSpan.Zero), "UTC");
+        var second = ledger.BuildTimeline(data, new DateOnly(2026, 11, 5), 60,
+            new DateTimeOffset(2026, 11, 5, 1, 0, 0, TimeSpan.Zero), "UTC");
+
+        Assert.Single(ledger.GetForDay(data, new DateOnly(2026, 11, 4), "UTC"));
+        Assert.Single(ledger.GetForDay(data, new DateOnly(2026, 11, 5), "UTC"));
+        Assert.Equal(1800, first.RecordedSeconds);
+        Assert.Equal(1800, second.RecordedSeconds);
+    }
+
+    [Fact]
+    public void DstDayUsesItsRealLength()
+    {
+        var data = Data();
+        var ledger = new ActivityLedgerService();
+        var day = new DateOnly(2026, 3, 29);
+        var timeline = ledger.BuildTimeline(data, day, 60,
+            new DateTimeOffset(2026, 3, 29, 12, 0, 0, TimeSpan.FromHours(2)), "Europe/Rome");
+
+        Assert.Equal(23 * 3600, timeline.TotalSeconds);
+        Assert.Equal(23, timeline.Slots.Count);
+    }
+
+    [Fact]
+    public void ThreeOverlappingActivitiesUseUniqueSummarySeconds()
+    {
+        var data = Data();
+        var ledger = new ActivityLedgerService();
+        foreach (var (title, offset, minutes) in new[]
+                 {
+                     ("A", 0, 120), ("B", 30, 60), ("C", 60, 120)
+                 })
+        {
+            ledger.AddManual(data, new StudyActivityData
+            {
+                Type = StudyActivityType.Study,
+                Title = title,
+                StartedAt = Start.AddMinutes(offset),
+                EndedAt = Start.AddMinutes(offset + minutes),
+                TimeZoneId = "UTC"
+            }, Start.AddHours(4));
+        }
+
+        var summary = ledger.Summarize(data, new DateOnly(2026, 11, 4), new DateOnly(2026, 11, 4),
+            Start.AddHours(4), "UTC");
+
+        Assert.Equal(3 * 3600, summary.RecordedSeconds);
+        Assert.Equal(90 * 60, summary.OverlapSeconds);
+        Assert.Equal(3, summary.ActivityCount);
     }
 
     [Fact]

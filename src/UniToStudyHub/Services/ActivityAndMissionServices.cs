@@ -44,7 +44,11 @@ public sealed record ActivitySummary(
     int RecordedSeconds,
     int ActivityCount,
     IReadOnlyDictionary<StudyActivityType, int> ByType,
-    IReadOnlyDictionary<string, int> ByCourse);
+    IReadOnlyDictionary<string, int> ByCourse)
+{
+    /// <summary>Seconds covered by two or more activities; included in RecordedSeconds only once.</summary>
+    public int OverlapSeconds { get; init; }
+}
 
 /// <summary>
 /// Owns the unified activity ledger. It records real intervals, keeps manual
@@ -219,11 +223,14 @@ public sealed class ActivityLedgerService
     public IReadOnlyList<StudyActivityData> GetForDay(
         StudyData data,
         DateOnly day,
-        string? timeZoneId = null)
+        string? timeZoneId = null,
+        DateTimeOffset? now = null)
     {
         var zone = ResolveTimeZone(timeZoneId);
-        return GetRecordedIntervals(data, DateTimeOffset.Now)
-            .Where(x => LocalDate(x.Activity.StartedAt, zone) == day)
+        var dayStart = StartOfDay(day, zone);
+        var dayEnd = StartOfDay(day.AddDays(1), zone);
+        return GetRecordedIntervals(data, now ?? DateTimeOffset.Now)
+            .Where(x => x.End > dayStart && x.Start < dayEnd)
             .Select(x => x.Activity)
             .DistinctBy(x => x.Id)
             .OrderBy(x => x.StartedAt)
@@ -239,8 +246,17 @@ public sealed class ActivityLedgerService
         ArgumentNullException.ThrowIfNull(data);
         var zone = ResolveTimeZone(timeZoneId);
         var at = now ?? DateTimeOffset.Now;
+        var dayStart = day is { } value ? StartOfDay(value, zone) : DateTimeOffset.MinValue;
+        var dayEnd = day is { } lastDay ? StartOfDay(lastDay.AddDays(1), zone) : DateTimeOffset.MaxValue;
         var intervals = GetRecordedIntervals(data, at)
-            .Where(x => day is null || LocalDate(x.Start, zone) == day)
+            .Where(x => x.End > dayStart && x.Start < dayEnd)
+            .Select(x =>
+            {
+                var start = x.Start < dayStart ? dayStart : x.Start;
+                var end = x.End > dayEnd ? dayEnd : x.End;
+                return (Start: start, End: end, x.Activity);
+            })
+            .Where(x => x.End > x.Start)
             .OrderBy(x => x.Start)
             .ToList();
         var overlaps = new List<ActivityOverlap>();
@@ -374,25 +390,39 @@ public sealed class ActivityLedgerService
         ArgumentNullException.ThrowIfNull(data);
         if (to < from) throw new ArgumentOutOfRangeException(nameof(to), "The end date must not precede the start date.");
         var zone = ResolveTimeZone(timeZoneId);
-        var items = GetRecordedIntervals(data, now ?? DateTimeOffset.Now)
-            .Where(x => InRange(LocalDate(x.Activity.StartedAt, zone), from, to))
-            .Select(x => x.Activity)
-            .DistinctBy(x => x.Id)
+        var rangeStart = StartOfDay(from, zone);
+        var rangeEnd = StartOfDay(to.AddDays(1), zone);
+        var intervals = GetRecordedIntervals(data, now ?? DateTimeOffset.Now)
+            .Where(x => x.End > rangeStart && x.Start < rangeEnd)
+            .Select(x =>
+            {
+                var start = x.Start < rangeStart ? rangeStart : x.Start;
+                var end = x.End > rangeEnd ? rangeEnd : x.End;
+                return (Start: start, End: end, x.Activity);
+            })
+            .Where(x => x.End > x.Start)
             .ToList();
-        var byType = items
-            .GroupBy(x => x.Type)
-            .ToDictionary(x => x.Key, x => x.Sum(y => y.EffectiveSeconds));
-        var byCourse = items
-            .Where(x => !string.IsNullOrWhiteSpace(x.CourseId))
-            .GroupBy(x => x.CourseId, StringComparer.Ordinal)
-            .ToDictionary(x => x.Key, x => x.Sum(y => y.EffectiveSeconds), StringComparer.Ordinal);
+        var items = intervals.Select(x => x.Activity).DistinctBy(x => x.Id).ToList();
+        var byType = intervals
+            .GroupBy(x => x.Activity.Type)
+            .ToDictionary(x => x.Key, x => UnionSeconds(x.Select(y => (y.Start, y.End))));
+        var byCourse = intervals
+            .Where(x => !string.IsNullOrWhiteSpace(x.Activity.CourseId))
+            .GroupBy(x => x.Activity.CourseId, StringComparer.Ordinal)
+            .ToDictionary(
+                x => x.Key,
+                x => UnionSeconds(x.Select(y => (y.Start, y.End))),
+                StringComparer.Ordinal);
         return new ActivitySummary(
             from,
             to,
-            items.Sum(x => x.EffectiveSeconds),
+            UnionSeconds(intervals.Select(x => (x.Start, x.End))),
             items.Count,
             byType,
-            byCourse);
+            byCourse)
+        {
+            OverlapSeconds = OverlapSeconds(intervals.Select(x => (x.Start, x.End)))
+        };
     }
 
     private static void NormalizeAndValidate(StudyData data, StudyActivityData activity)
@@ -522,17 +552,52 @@ public sealed class ActivityLedgerService
 
     private static IReadOnlyList<(DateTimeOffset Start, DateTimeOffset End, StudyActivityData Activity)> GetRecordedIntervals(
         StudyData data,
-        DateTimeOffset now) =>
-        data.StudyActivities
-            .Where(x => !x.IsDeleted && x.Status is StudyActivityStatus.Running or StudyActivityStatus.Completed)
-            .Select(x =>
-            {
-                var end = x.EndedAt ?? now;
-                return (x.StartedAt, end, x);
-            })
-            .Where(x => x.Item2 > x.Item1)
-            .OrderBy(x => x.Item1)
-            .ToList();
+        DateTimeOffset now)
+    {
+        var sessions = data.StudySessions.ToDictionary(x => x.Id, StringComparer.Ordinal);
+        var intervals = new List<(DateTimeOffset Start, DateTimeOffset End, StudyActivityData Activity)>();
+        foreach (var activity in data.StudyActivities.Where(x =>
+                     !x.IsDeleted && x.Status is StudyActivityStatus.Running or StudyActivityStatus.Completed))
+        {
+            StudySessionData? session = null;
+            if (!string.IsNullOrWhiteSpace(activity.SessionId))
+                sessions.TryGetValue(activity.SessionId, out session);
+            foreach (var interval in GetFocusIntervals(activity, session, now))
+                intervals.Add((interval.Start, interval.End, activity));
+        }
+        return intervals.OrderBy(x => x.Start).ToList();
+    }
+
+    /// <summary>
+    /// A timer activity uses the session's focus segments, so pauses remain gaps.
+    /// Legacy sessions without segments can only expose one inferred block at the
+    /// start; their exact pause positions cannot be reconstructed from aggregates.
+    /// </summary>
+    private static IReadOnlyList<(DateTimeOffset Start, DateTimeOffset End)> GetFocusIntervals(
+        StudyActivityData activity,
+        StudySessionData? session,
+        DateTimeOffset now)
+    {
+        if (session is not null && session.Segments.Count > 0)
+        {
+            return session.Segments
+                .Where(x => x.Type == StudySessionSegmentType.Focus)
+                .Select(x => (x.StartedAt, End: x.EndedAt ?? now))
+                .Where(x => x.End > x.StartedAt)
+                .OrderBy(x => x.StartedAt)
+                .Select(x => (x.StartedAt, x.End))
+                .ToList();
+        }
+
+        var end = activity.EndedAt ?? now;
+        if (activity.EffectiveSeconds > 0)
+            end = activity.StartedAt.AddSeconds(activity.EffectiveSeconds) < end
+                ? activity.StartedAt.AddSeconds(activity.EffectiveSeconds)
+                : end;
+        return end > activity.StartedAt
+            ? new[] { (activity.StartedAt, end) }
+            : Array.Empty<(DateTimeOffset, DateTimeOffset)>();
+    }
 
     private static int UnionSeconds(IEnumerable<(DateTimeOffset Start, DateTimeOffset End)> source)
     {

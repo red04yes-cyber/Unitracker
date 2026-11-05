@@ -17,6 +17,7 @@ public sealed class StudyHubDbContext(DbContextOptions<StudyHubDbContext> option
     public DbSet<QuestionBankItemEntity> QuestionBankItems => Set<QuestionBankItemEntity>();
     public DbSet<CalendarEventEntity> CalendarEvents => Set<CalendarEventEntity>();
     public DbSet<StudySessionEntity> StudySessions => Set<StudySessionEntity>();
+    public DbSet<StudySessionSegmentEntity> StudySessionSegments => Set<StudySessionSegmentEntity>();
     public DbSet<StudyTaskEntity> StudyTasks => Set<StudyTaskEntity>();
     public DbSet<ErrorJournalEntryEntity> ErrorJournalEntries => Set<ErrorJournalEntryEntity>();
     public DbSet<FlashcardEntity> Flashcards => Set<FlashcardEntity>();
@@ -185,6 +186,17 @@ public sealed class StudyHubDbContext(DbContextOptions<StudyHubDbContext> option
             b.Property(x => x.Notes).HasMaxLength(12000).IsRequired();
             b.HasIndex(x => x.StartedAt);
             b.HasIndex(x => new { x.State, x.StartedAt });
+            b.HasMany(x => x.Segments)
+                .WithOne()
+                .HasForeignKey(x => x.SessionId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<StudySessionSegmentEntity>(b =>
+        {
+            b.ToTable("StudySessionSegments");
+            b.HasKey(x => x.Id);
+            b.HasIndex(x => new { x.SessionId, x.StartedAt });
         });
 
         modelBuilder.Entity<StudyTaskEntity>(b =>

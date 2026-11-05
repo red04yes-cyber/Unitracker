@@ -1,5 +1,7 @@
 using System.Collections.ObjectModel;
+using System.IO;
 using Microsoft.EntityFrameworkCore;
+using UniToStudyHub.Infrastructure.Data;
 using UniToStudyHub.Models;
 using UniToStudyHub.Services;
 using Xunit;
@@ -34,6 +36,25 @@ public sealed class ActivityAndMissionPersistenceTests
             }
         };
         data.StudyMissions.Add(mission);
+        data.StudySessions.Add(new StudySessionData
+        {
+            Id = "session-1",
+            CourseId = "analisi",
+            Topic = "Limiti",
+            PlannedMinutes = 25,
+            StartedAt = start,
+            LastResumedAt = start,
+            State = StudySessionState.Running,
+            Segments = new ObservableCollection<StudySessionSegmentData>
+            {
+                new()
+                {
+                    Id = "segment-1",
+                    Type = StudySessionSegmentType.Focus,
+                    StartedAt = start
+                }
+            }
+        });
         data.StudyActivities.Add(new StudyActivityData
         {
             Id = "activity-1",
@@ -66,9 +87,76 @@ public sealed class ActivityAndMissionPersistenceTests
         Assert.Contains("limiti", loaded.StudyActivities[0].Tags);
         Assert.Single(loaded.StudyMissions);
         Assert.Equal(2, loaded.StudyMissions[0].Steps.Count);
+        Assert.Single(loaded.StudySessions);
+        var loadedSegment = Assert.Single(loaded.StudySessions[0].Segments);
+        Assert.Equal(StudySessionSegmentType.Focus, loadedSegment.Type);
+        Assert.Equal(start, loadedSegment.StartedAt);
+        Assert.Null(loadedSegment.EndedAt);
         Assert.Equal("mission-1", loaded.StudyActivities[0].MissionId);
         Assert.Single(loaded.ActivityRevisions);
         Assert.Equal(ActivityRevisionAction.Created, loaded.ActivityRevisions[0].Action);
+    }
+
+    [Fact]
+    public async Task RemovingASessionCascadesItsFocusSegments()
+    {
+        await using var database = await SqliteTestDatabase.CreateInMemoryAsync();
+        var store = new SqliteStudyDataStore(database.Factory);
+        var start = new DateTimeOffset(2026, 11, 4, 9, 0, 0, TimeSpan.Zero);
+        var data = new StudyData
+        {
+            StudySessions = new ObservableCollection<StudySessionData>
+            {
+                new()
+                {
+                    Id = "session-cascade",
+                    StartedAt = start,
+                    LastResumedAt = start,
+                    State = StudySessionState.Running,
+                    Segments = new ObservableCollection<StudySessionSegmentData>
+                    {
+                        new() { Id = "segment-cascade", Type = StudySessionSegmentType.Focus, StartedAt = start }
+                    }
+                }
+            }
+        };
+        await store.SaveAsync(data);
+
+        await using (var context = database.CreateContext())
+        {
+            context.StudySessions.Remove(await context.StudySessions.SingleAsync());
+            await context.SaveChangesAsync();
+        }
+
+        await using var verification = database.CreateContext();
+        Assert.True(await verification.StudySessionSegments.AnyAsync() == false);
+    }
+
+    [Fact]
+    public void PersistenceValidationRejectsOverlappingSessionSegments()
+    {
+        var start = new DateTimeOffset(2026, 11, 4, 9, 0, 0, TimeSpan.Zero);
+        var data = new StudyData
+        {
+            Courses = new ObservableCollection<Course> { new() { Id = "analisi", Name = "Analisi", Cfu = 6 } },
+            StudySessions = new ObservableCollection<StudySessionData>
+            {
+                new()
+                {
+                    Id = "session-overlap",
+                    CourseId = "analisi",
+                    StartedAt = start,
+                    State = StudySessionState.Running,
+                    Segments = new ObservableCollection<StudySessionSegmentData>
+                    {
+                        new() { Type = StudySessionSegmentType.Focus, StartedAt = start, EndedAt = start.AddHours(1) },
+                        new() { Type = StudySessionSegmentType.Pause, StartedAt = start.AddMinutes(30), EndedAt = start.AddMinutes(45) }
+                    }
+                }
+            }
+        };
+
+        Assert.Throws<InvalidDataException>(() => StudyDataEntityMapper.NormalizeAndValidate(data));
     }
 
     [Fact]
@@ -102,5 +190,6 @@ public sealed class ActivityAndMissionPersistenceTests
         Assert.Equal("Analisi", (await migrated.Courses.SingleAsync()).Name);
         Assert.True(await migrated.StudyActivities.AnyAsync() == false);
         Assert.True(await migrated.StudyMissions.AnyAsync() == false);
+        Assert.True(await migrated.StudySessionSegments.AnyAsync() == false);
     }
 }

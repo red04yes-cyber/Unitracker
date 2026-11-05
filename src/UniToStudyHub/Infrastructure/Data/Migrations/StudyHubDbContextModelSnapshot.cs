@@ -1102,6 +1102,31 @@ namespace UniToStudyHub.Infrastructure.Data.Migrations
                     b.ToTable("StudySessions", (string)null);
                 });
 
+            modelBuilder.Entity("UniToStudyHub.Infrastructure.Data.Entities.StudySessionSegmentEntity", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTimeOffset?>("EndedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("SessionId")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTimeOffset>("StartedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SessionId", "StartedAt");
+
+                    b.ToTable("StudySessionSegments", (string)null);
+                });
+
             modelBuilder.Entity("UniToStudyHub.Infrastructure.Data.Entities.StudyTaskEntity", b =>
                 {
                     b.Property<string>("Id")
@@ -1268,6 +1293,15 @@ namespace UniToStudyHub.Infrastructure.Data.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("UniToStudyHub.Infrastructure.Data.Entities.StudySessionSegmentEntity", b =>
+                {
+                    b.HasOne("UniToStudyHub.Infrastructure.Data.Entities.StudySessionEntity", null)
+                        .WithMany("Segments")
+                        .HasForeignKey("SessionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("UniToStudyHub.Infrastructure.Data.Entities.SyllabusTopicEntity", b =>
                 {
                     b.HasOne("UniToStudyHub.Infrastructure.Data.Entities.CourseEntity", null)
@@ -1285,6 +1319,11 @@ namespace UniToStudyHub.Infrastructure.Data.Migrations
             modelBuilder.Entity("UniToStudyHub.Infrastructure.Data.Entities.StudyMissionEntity", b =>
                 {
                     b.Navigation("Steps");
+                });
+
+            modelBuilder.Entity("UniToStudyHub.Infrastructure.Data.Entities.StudySessionEntity", b =>
+                {
+                    b.Navigation("Segments");
                 });
 #pragma warning restore 612, 618
         }

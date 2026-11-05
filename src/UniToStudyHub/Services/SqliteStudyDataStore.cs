@@ -58,6 +58,7 @@ public sealed class SqliteStudyDataStore(IDbContextFactory<StudyHubDbContext> co
                 await db.MissionSteps.ExecuteDeleteAsync(cancellationToken);
                 await db.StudyMissions.ExecuteDeleteAsync(cancellationToken);
                 await db.StudyTasks.ExecuteDeleteAsync(cancellationToken);
+                await db.StudySessionSegments.ExecuteDeleteAsync(cancellationToken);
                 await db.StudySessions.ExecuteDeleteAsync(cancellationToken);
                 await db.Distractions.ExecuteDeleteAsync(cancellationToken);
                 await db.EnergyCheckIns.ExecuteDeleteAsync(cancellationToken);
