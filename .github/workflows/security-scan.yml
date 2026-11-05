@@ -82,20 +82,34 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          report="$(dotnet list src/UniToStudyHub/UniToStudyHub.csproj package --vulnerable --include-transitive)"
-          printf '%s\n' "$report"
-          if printf '%s\n' "$report" | grep -Eqi 'GHSA-|CVE-|NU190[1-4]|has the following vulnerable packages'; then
+          set +e
+          dotnet list src/UniToStudyHub/UniToStudyHub.csproj package --vulnerable --include-transitive > vulnerability-report.txt 2>&1
+          audit_exit=$?
+          set -e
+          cat vulnerability-report.txt
+          if grep -Eqi 'GHSA-|CVE-[0-9]{4}-[0-9]+|NU190[1-4]|vulnerable package' vulnerability-report.txt; then
             echo "Vulnerable packages detected in the application dependency graph."
             exit 1
+          fi
+          if [ "$audit_exit" -ne 0 ]; then
+            echo "NuGet vulnerability audit command failed (exit $audit_exit)."
+            exit "$audit_exit"
           fi
 
       - name: Fail on vulnerable direct or transitive packages (tests)
         shell: bash
         run: |
           set -euo pipefail
-          report="$(dotnet list tests/UniToStudyHub.Tests/UniToStudyHub.Tests.csproj package --vulnerable --include-transitive)"
-          printf '%s\n' "$report"
-          if printf '%s\n' "$report" | grep -Eqi 'https://github.com/advisories/GHSA-|https://nvd.nist.gov/vuln/detail/'; then
+          set +e
+          dotnet list tests/UniToStudyHub.Tests/UniToStudyHub.Tests.csproj package --vulnerable --include-transitive > vulnerability-report-tests.txt 2>&1
+          audit_exit=$?
+          set -e
+          cat vulnerability-report-tests.txt
+          if grep -Eqi 'GHSA-|CVE-[0-9]{4}-[0-9]+|NU190[1-4]|vulnerable package' vulnerability-report-tests.txt; then
             echo "Vulnerable packages detected in the test dependency graph."
             exit 1
+          fi
+          if [ "$audit_exit" -ne 0 ]; then
+            echo "NuGet vulnerability audit command failed (exit $audit_exit)."
+            exit "$audit_exit"
           fi
