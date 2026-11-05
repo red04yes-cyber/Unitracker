@@ -556,7 +556,7 @@
                     <TextBlock Text="SAB" FontSize="9" FontWeight="Bold" Foreground="{StaticResource MutedBrush}" HorizontalAlignment="Center"/>
                     <TextBlock Text="DOM" FontSize="9" FontWeight="Bold" Foreground="{StaticResource MutedBrush}" HorizontalAlignment="Center"/>
                 </UniformGrid>
-                <ListBox ItemsSource="{Binding CalendarDayCells}" SelectedItem="{Binding SelectedCalendarDay, Mode=TwoWay}" Background="Transparent" BorderThickness="0" ScrollViewer.HorizontalScrollBarVisibility="Disabled" ScrollViewer.VerticalScrollBarVisibility="Disabled">
+                <ListBox Visibility="{Binding IsMonthCalendar, Converter={StaticResource BooleanToVisibilityConverter}}" ItemsSource="{Binding CalendarDayCells}" SelectedItem="{Binding SelectedCalendarDay, Mode=TwoWay}" Background="Transparent" BorderThickness="0" ScrollViewer.HorizontalScrollBarVisibility="Disabled" ScrollViewer.VerticalScrollBarVisibility="Disabled">
                     <ListBox.ItemsPanel><ItemsPanelTemplate><UniformGrid Columns="{Binding DataContext.CalendarGridColumns, RelativeSource={RelativeSource AncestorType={x:Type ListBox}}}"/></ItemsPanelTemplate></ListBox.ItemsPanel>
                     <ListBox.ItemContainerStyle>
                         <Style TargetType="{x:Type ListBoxItem}">
@@ -584,6 +584,47 @@
                         </Border>
                     </DataTemplate></ListBox.ItemTemplate>
                 </ListBox>
+                <TextBlock Text="{Binding CalendarAgendaTitle}" Visibility="{Binding IsWeekCalendar, Converter={StaticResource BooleanToVisibilityConverter}}" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource MutedBrush}" Margin="0,14,0,6"/>
+                <ListBox Visibility="{Binding IsWeekCalendar, Converter={StaticResource BooleanToVisibilityConverter}}" ItemsSource="{Binding CalendarDayCells}" SelectedItem="{Binding SelectedCalendarDay}" Background="Transparent" BorderThickness="0">
+                    <ListBox.ItemsPanel><ItemsPanelTemplate><UniformGrid Rows="1" Columns="7"/></ItemsPanelTemplate></ListBox.ItemsPanel>
+                    <ListBox.ItemContainerStyle><Style TargetType="{x:Type ListBoxItem}"><Setter Property="Margin" Value="3"/><Setter Property="Padding" Value="0"/><Setter Property="HorizontalContentAlignment" Value="Stretch"/></Style></ListBox.ItemContainerStyle>
+                    <ListBox.ItemTemplate><DataTemplate>
+                        <Border Style="{StaticResource CardBorderStyle}" Padding="9" MinWidth="90">
+                            <StackPanel>
+                                <TextBlock Text="{Binding Date, StringFormat='ddd d'}" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource InkBrush}"/>
+                                <TextBlock Text="{Binding EventSummary}" FontSize="9" Foreground="{StaticResource MutedBrush}" Margin="0,2,0,7"/>
+                                <ItemsControl ItemsSource="{Binding Events}">
+                                    <ItemsControl.ItemTemplate><DataTemplate>
+                                        <StackPanel Margin="0,0,0,8">
+                                            <TextBlock Text="{Binding StartsAt, StringFormat='HH:mm'}" FontSize="9" FontWeight="SemiBold" Foreground="{StaticResource AccentBrush}"/>
+                                            <TextBlock Text="{Binding Title}" FontSize="10" Foreground="{StaticResource InkBrush}" TextWrapping="Wrap"/>
+                                        </StackPanel>
+                                    </DataTemplate></ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+                        </Border>
+                    </DataTemplate></ListBox.ItemTemplate>
+                </ListBox>
+                <TextBlock Text="{Binding CalendarAgendaTitle}" Visibility="{Binding IsDayCalendar, Converter={StaticResource BooleanToVisibilityConverter}}" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource MutedBrush}" Margin="0,14,0,6"/>
+                <ListBox Visibility="{Binding IsDayCalendar, Converter={StaticResource BooleanToVisibilityConverter}}" ItemsSource="{Binding CalendarDayCells}" SelectedItem="{Binding SelectedCalendarDay}" Background="Transparent" BorderThickness="0">
+                    <ListBox.ItemTemplate><DataTemplate>
+                        <Border Style="{StaticResource CardBorderStyle}" Padding="16">
+                            <StackPanel>
+                                <TextBlock Text="{Binding Date, StringFormat='dddd d MMMM yyyy'}" FontSize="14" FontWeight="SemiBold" Foreground="{StaticResource InkBrush}"/>
+                                <ItemsControl ItemsSource="{Binding Events}" Margin="0,8,0,0">
+                                    <ItemsControl.ItemTemplate><DataTemplate>
+                                        <Grid Margin="0,0,0,8">
+                                            <Grid.ColumnDefinitions><ColumnDefinition Width="90"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                            <TextBlock Text="{Binding StartsAt, StringFormat='HH:mm'}" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource AccentBrush}"/>
+                                            <TextBlock Grid.Column="1" Text="{Binding Title}" FontSize="12" Foreground="{StaticResource InkBrush}" TextWrapping="Wrap"/>
+                                        </Grid>
+                                    </DataTemplate></ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+                        </Border>
+                    </DataTemplate></ListBox.ItemTemplate>
+                </ListBox>
+
             </StackPanel>
         </Border>
         <Grid>
