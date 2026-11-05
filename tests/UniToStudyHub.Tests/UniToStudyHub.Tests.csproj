@@ -25,6 +25,9 @@
     <Compile Include="../../src/UniToStudyHub/Services/*.cs" Link="Linked/Services/%(Filename)%(Extension)" />
     <Compile Include="../../src/UniToStudyHub/Presentation/Commands/*.cs" Link="Linked/Presentation/Commands/%(Filename)%(Extension)" />
     <Compile Include="../../src/UniToStudyHub/Presentation/ViewModels/MainViewModel.cs" Link="Linked/Presentation/ViewModels/MainViewModel.cs" />
+    <Compile Include="../../src/UniToStudyHub/Presentation/ViewModels/StudyWorkspaceViewModel.cs" Link="Linked/Presentation/ViewModels/StudyWorkspaceViewModel.cs" />
+    <Compile Include="../../src/UniToStudyHub/Presentation/ViewModels/CalendarDayCell.cs" Link="Linked/Presentation/ViewModels/CalendarDayCell.cs" />
+    <Compile Include="../../src/UniToStudyHub/Presentation/ViewModels/CourseProgressRow.cs" Link="Linked/Presentation/ViewModels/CourseProgressRow.cs" />
     <Compile Include="../../src/UniToStudyHub/Presentation/Composition/PresentationServiceRegistration.cs" Link="Linked/Presentation/Composition/PresentationServiceRegistration.cs" />
   </ItemGroup>
   <ItemGroup>
