@@ -711,7 +711,7 @@
                     <TextBlock Text="SESSIONE DI FOCUS" FontSize="10" FontWeight="Bold" Foreground="#AFC5EA"/>
                     <TextBlock Text="{Binding Workspace.FocusRemainingDisplay}" FontSize="48" FontWeight="SemiBold" Foreground="White" Margin="0,12,0,0"/>
                     <TextBlock Text="{Binding Workspace.FocusStateDisplay}" FontSize="12" Foreground="#D0DAE9"/>
-                    <ProgressBar Value="{Binding Workspace.FocusProgressPercent}" Maximum="100" Height="5" Margin="0,14,0,0"/>
+                    <ProgressBar Value="{Binding Workspace.FocusProgressPercent, Mode=OneWay}" Maximum="100" Height="5" Margin="0,14,0,0"/>
                     <TextBlock Text="{Binding Workspace.FocusElapsedDisplay}" FontSize="10" Foreground="#D0DAE9" Margin="0,6,0,0"/>
                     <TextBox Text="{Binding Workspace.FocusTopicInput, UpdateSourceTrigger=PropertyChanged}" ToolTip="Argomento" Margin="0,16,0,0"/>
                     <Grid Margin="0,8,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="90"/></Grid.ColumnDefinitions>
@@ -1004,7 +1004,7 @@
                 <TextBlock Text="Dati e backup" Style="{StaticResource SectionTitleStyle}"/>
                 <TextBlock Text="Le copie sono locali e includono un manifest di formato e checksum. I backup non sono cifrati." FontSize="11" Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap" Margin="0,6,0,12"/>
                 <TextBlock Text="Cartella backup" Style="{StaticResource KpiLabelStyle}"/>
-                <TextBox Text="{Binding Workspace.BackupDirectory}" IsReadOnly="True" Margin="0,5,0,10"/>
+                <TextBox Text="{Binding Workspace.BackupDirectory, Mode=OneWay}" IsReadOnly="True" Margin="0,5,0,10"/>
                 <Button Content="Crea backup e verifica integrità" Command="{Binding Workspace.CreateBackupCommand}" HorizontalAlignment="Left"/>
                 <TextBlock Text="Backup disponibili" Style="{StaticResource KpiLabelStyle}" Margin="0,16,0,6"/>
                 <ListBox ItemsSource="{Binding Workspace.BackupItems}" SelectedItem="{Binding Workspace.SelectedBackup}" MinHeight="90" MaxHeight="220">
