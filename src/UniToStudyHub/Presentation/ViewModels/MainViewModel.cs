@@ -139,7 +139,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
     public string CourseCfuInput { get => _courseCfuInput; set => Set(ref _courseCfuInput, value); }
     public string GradeValueInput { get => _gradeValueInput; set => Set(ref _gradeValueInput, value); }
     public string AttemptModeInput { get => _attemptModeInput; set => Set(ref _attemptModeInput, value); }
-    public IReadOnlyList<string> AttemptModeOptions { get; } = new[] { "PassedAccepted", "PassedRejected", "Failed", "EligibilityPassed" };
+    public IReadOnlyList<string> AttemptModeOptions { get; } = new[] { "Superato · accettato", "Superato · rifiutato", "Non superato", "Idoneità" };
     public Course? SelectedGradeCourse { get => _selectedGradeCourse; set => Set(ref _selectedGradeCourse, value); }
     public string MoodleUrlInput { get => _moodleUrlInput; set => Set(ref _moodleUrlInput, value); }
     public string MoodleToken { get => _moodleToken; set => Set(ref _moodleToken, value); }
@@ -338,15 +338,15 @@ public sealed class MainViewModel : INotifyPropertyChanged
 
         switch (AttemptModeInput)
         {
-            case "PassedAccepted":
-            case "PassedRejected":
+            case "Superato · accettato":
+            case "Superato · rifiutato":
                 if (!int.TryParse(GradeValueInput, out var grade) || grade is < 18 or > 30)
                 {
                     StatusMessage = "Per un esame superato inserisci un voto tra 18 e 30.";
                     return;
                 }
                 outcome = ExamOutcome.Passed;
-                decision = AttemptModeInput == "PassedAccepted" ? GradeDecision.Accepted : GradeDecision.Rejected;
+                decision = AttemptModeInput == "Superato · accettato" ? GradeDecision.Accepted : GradeDecision.Rejected;
                 numericGrade = grade;
                 if (decision == GradeDecision.Accepted)
                 {
@@ -363,12 +363,12 @@ public sealed class MainViewModel : INotifyPropertyChanged
                 }
                 break;
 
-            case "Failed":
+            case "Non superato":
                 outcome = ExamOutcome.Failed;
                 decision = GradeDecision.NotApplicable;
                 break;
 
-            case "EligibilityPassed":
+            case "Idoneità":
                 outcome = ExamOutcome.EligibilityPassed;
                 decision = GradeDecision.NotApplicable;
                 isPassFail = true;
@@ -403,10 +403,10 @@ public sealed class MainViewModel : INotifyPropertyChanged
             await SaveAsync();
             StatusMessage = AttemptModeInput switch
             {
-                "PassedAccepted" => "Voto accettato e tentativo ufficiale registrati nella carriera.",
-                "PassedRejected" => "Voto rifiutato registrato nello storico: non incide sulla media né sui CFU.",
-                "Failed" => "Tentativo non superato registrato nello storico della carriera.",
-                "EligibilityPassed" => "Idoneità registrata nella carriera senza influire sulla media numerica.",
+                "Superato · accettato" => "Voto accettato e tentativo ufficiale registrati nella carriera.",
+                "Superato · rifiutato" => "Voto rifiutato registrato nello storico: non incide sulla media né sui CFU.",
+                "Non superato" => "Tentativo non superato registrato nello storico della carriera.",
+                "Idoneità" => "Idoneità registrata nella carriera senza influire sulla media numerica.",
                 _ => "Tentativo registrato."
             };
         }
