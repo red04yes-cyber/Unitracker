@@ -837,8 +837,8 @@
             <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
     <StackPanel Margin="32,30,32,36">
         <TextBlock Text="MATERIALI DIDATTICI" FontSize="10" FontWeight="Bold" Foreground="{StaticResource AiBrush}"/>
-        <TextBlock Text="AI &amp; PDF Intelligence" Style="{StaticResource PageTitleStyle}" Margin="0,7,0,4"/>
-        <TextBlock Text="Importa PDF locali, cerca nel testo estratto e usa l'assistente solo quando un provider è configurato." Style="{StaticResource PageSubtitleStyle}" Margin="0,0,0,22"/>
+        <TextBlock Text="Accademia" Style="{StaticResource PageTitleStyle}" Margin="0,7,0,4"/>
+        <TextBlock Text="Materiali, studio attivo e strumenti di preparazione. Le funzioni AI sono in progresso e arriveranno in una fase successiva." Style="{StaticResource PageSubtitleStyle}" Margin="0,0,0,22"/>
         <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="0.9*"/><ColumnDefinition Width="1.4*"/></Grid.ColumnDefinitions>
             <Border Grid.Column="0" Style="{StaticResource CardBorderStyle}" Margin="0,0,12,0">
                 <StackPanel>
@@ -874,12 +874,20 @@
                 </Border>
                 <Border Style="{StaticResource CardBorderStyle}" Margin="0,12,0,0">
                     <StackPanel>
-                        <TextBlock Text="Assistente sul documento" Style="{StaticResource SectionTitleStyle}"/>
-                        <TextBlock Text="Provider non configurato: nessuna domanda viene inviata e non vengono mostrate risposte simulate." FontSize="11" Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap" Margin="0,5,0,12"/>
-                        <TextBox Text="{Binding Workspace.PdfQuestionInput, UpdateSourceTrigger=PropertyChanged}" ToolTip="Scrivi una domanda sul documento"/>
-                        <Button Content="Chiedi sul documento" Command="{Binding Workspace.AskPdfCommand}" Margin="0,9,0,10" HorizontalAlignment="Left"/>
-                        <Border Background="{StaticResource AiSoftBrush}" CornerRadius="8" Padding="11"><TextBlock Text="{Binding Workspace.AiStatusMessage}" FontSize="11" Foreground="{StaticResource AiBrush}" TextWrapping="Wrap"/></Border>
-                        <TextBlock Text="{Binding Workspace.AiResponseText}" FontSize="12" Foreground="{StaticResource InkBrush}" TextWrapping="Wrap" Margin="0,12,0,0"/>
+                        <Grid>
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                            <TextBlock Text="AI Study Director" Style="{StaticResource SectionTitleStyle}"/>
+                            <Border Grid.Column="1" Background="{StaticResource AiSoftBrush}" CornerRadius="7" Padding="10,5">
+                                <TextBlock Text="IN PROGRESSO" FontSize="9" FontWeight="Bold" Foreground="{StaticResource AiBrush}"/>
+                            </Border>
+                        </Grid>
+                        <TextBlock Text="La parte AI verrà aggiunta in una fase successiva. In questa versione non vengono inviate domande a provider esterni e non vengono mostrate risposte generate." FontSize="11" Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap" Margin="0,7,0,0"/>
+                        <Border Background="{StaticResource SubtleBrush}" CornerRadius="8" Padding="12" Margin="0,13,0,0">
+                            <StackPanel>
+                                <TextBlock Text="In preparazione" FontSize="10" FontWeight="Bold" Foreground="{StaticResource AiBrush}"/>
+                                <TextBlock Text="Pianificazione assistita · Tutor Feynman · Analisi degli errori · Generazione di quiz dai materiali" FontSize="11" Foreground="{StaticResource InkBrush}" TextWrapping="Wrap" Margin="0,5,0,0"/>
+                            </StackPanel>
+                        </Border>
                     </StackPanel>
                 </Border>
             </StackPanel>
