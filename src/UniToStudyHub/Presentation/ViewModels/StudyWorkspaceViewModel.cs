@@ -98,7 +98,17 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
     public ErrorJournalEntryData? SelectedErrorEntry { get => _selectedErrorEntry; set { Set(ref _selectedErrorEntry, value); ReviewErrorNeedsWorkCommand.NotifyCanExecuteChanged(); ReviewErrorRememberedCommand.NotifyCanExecuteChanged(); } }
     public DistractionData? SelectedDistraction { get => _selectedDistraction; set { Set(ref _selectedDistraction, value); ResolveDistractionCommand.NotifyCanExecuteChanged(); } }
     public PdfDocumentData? SelectedPdf { get => _selectedPdf; set { Set(ref _selectedPdf, value); PdfSearchHits.Clear(); OnPropertyChanged(nameof(HasSelectedPdf)); OnPropertyChanged(nameof(NoPdfSearchHits)); SearchPdfCommand.NotifyCanExecuteChanged(); AskPdfCommand.NotifyCanExecuteChanged(); } }
-    public BackupInfo? SelectedBackup { get => _selectedBackup; set { Set(ref _selectedBackup, value); VerifyBackupCommand.NotifyCanExecuteChanged(); RestoreBackupCommand.NotifyCanExecuteChanged(); } }
+    public BackupInfo? SelectedBackup
+    {
+        get => _selectedBackup;
+        set
+        {
+            Set(ref _selectedBackup, value);
+            OnPropertyChanged(nameof(HasSelectedBackup));
+            VerifyBackupCommand.NotifyCanExecuteChanged();
+            RestoreBackupCommand.NotifyCanExecuteChanged();
+        }
+    }
     public bool HasSelectedBackup => SelectedBackup is not null;
 
     public string FocusTopicInput { get => _focusTopicInput; set => Set(ref _focusTopicInput, value); }
