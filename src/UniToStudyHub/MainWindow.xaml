@@ -976,6 +976,7 @@
                 <TextBlock Text="Preferenze di studio" Style="{StaticResource KpiLabelStyle}" Margin="0,10,0,5"/>
                 <TextBox Text="{Binding Workspace.StudyPreferencesInput, UpdateSourceTrigger=PropertyChanged}" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="64"/>
                 <Button Content="Salva profilo" Command="{Binding Workspace.SaveAcademicProfileCommand}" HorizontalAlignment="Left" Margin="0,14,0,0"/>
+                <TextBlock Text="{Binding Workspace.WorkspaceStatus}" FontSize="10" Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap" Margin="0,9,0,0"/>
             </StackPanel>
         </Border>
         <Border Style="{StaticResource CardBorderStyle}" MaxWidth="860" HorizontalAlignment="Left" Margin="0,0,0,14">
