@@ -373,11 +373,11 @@
                     <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,14">
                         <Expander IsExpanded="False">
                             <Expander.Header>
-                                <TextBlock Text="Registra un voto" FontSize="13"
+                                <TextBlock Text="Registra un tentativo d’esame" FontSize="13"
                                            FontWeight="SemiBold" Foreground="{StaticResource InkBrush}"/>
                             </Expander.Header>
                             <StackPanel Margin="0,12,0,0">
-                                <TextBlock Text="Seleziona la materia e inserisci il voto ottenuto. La materia passerà nell'archivio."
+                                <TextBlock Text="Registra un esame superato (accettato o rifiutato), non superato oppure un’idoneità. Il voto numerico serve solo per gli esiti superati."
                                            Style="{StaticResource PageSubtitleStyle}" Margin="0,0,0,10"/>
                                 <WrapPanel>
                                     <StackPanel Width="300" Margin="0,0,10,0">
@@ -386,13 +386,17 @@
                                                   DisplayMemberPath="Name"
                                                   SelectedItem="{Binding SelectedGradeCourse}"/>
                                     </StackPanel>
-                                    <StackPanel Width="105" Margin="0,0,10,0">
-                                        <TextBlock Text="Voto" Style="{StaticResource KpiLabelStyle}" Margin="0,0,0,5"/>
+                                    <StackPanel Width="185" Margin="0,0,10,0">
+                                        <TextBlock Text="Esito del tentativo" Style="{StaticResource KpiLabelStyle}" Margin="0,0,0,5"/>
+                                        <ComboBox ItemsSource="{Binding AttemptModeOptions}" SelectedItem="{Binding AttemptModeInput}"/>
+                                    </StackPanel>
+                                    <StackPanel Width="90" Margin="0,0,10,0">
+                                        <TextBlock Text="Voto (18–30)" Style="{StaticResource KpiLabelStyle}" Margin="0,0,0,5"/>
                                         <TextBox Text="{Binding GradeValueInput, UpdateSourceTrigger=PropertyChanged}"/>
                                     </StackPanel>
                                     <StackPanel VerticalAlignment="Bottom">
                                         <TextBlock Text=" " FontSize="10" Margin="0,0,0,5"/>
-                                        <Button Content="Registra voto" Command="{Binding AddGradeCommand}"/>
+                                        <Button Content="Registra tentativo" Command="{Binding AddGradeCommand}"/>
                                     </StackPanel>
                                 </WrapPanel>
                             </StackPanel>
