@@ -34,7 +34,7 @@ Dashboard a due aree: Focus in primo piano; sotto/accanto Attività e Ripasso. S
 Timer grande con durata residua, stato (Pronto/In corso/In pausa/Scaduto), materia opzionale e controlli Avvia/Pausa/Riprendi/Termina/Annulla. Il display interroga `FocusSessionService.Snapshot`; il timer visuale aggiorna solo la presentazione. Dopo riapertura mostra la sessione ricostruita dal servizio.
 
 ### Task e flashcard
-Task con materia, scadenza, priorità e minuti stimati; filtri Oggi/Prossimi/Completati. Flashcard con conteggio dovute e flusso di ripasso; rating Again/Hard/Good/Easy ben distinti. Stato vuoto con invito ad aggiungere la prima attività/carta.
+Task con materia, scadenza, priorità e minuti stimati; nell’attuale UI i task aperti sono ordinati per scadenza e priorità, senza filtri separati per stato. Flashcard con conteggio dovute e flusso di ripasso; rating Again/Hard/Good/Easy ben distinti. Stato vuoto con invito ad aggiungere la prima attività/carta.
 
 ### Diario
 Errori raggruppati per materia/argomento con causa, stato di revisione e prossima revisione. Energia e distrazioni sono annotazioni volontarie, non giudizi o punteggi.
@@ -48,7 +48,7 @@ Elenco documenti con nome, materia, data importazione, pagine e stato estrazione
 Vista a due pannelli: libreria documenti con anteprima del testo estratto pagina per pagina e risultati di ricerca. Ogni risultato mostra numero pagina e snippet. La UI non etichetta ancora le risposte AI come citazioni verificate; il provider predefinito resta non configurato.
 
 ### Assistente
-Input domanda/riassunto con selezione documento. Stati obbligatori:
+Input domanda con selezione documento. Gli stati attuali sono espliciti; il riassunto AI e la configurazione del provider restano da completare. Stati obbligatori:
 - NotConfigured: spiegare che manca la configurazione AI; non mostrare output generato.
 - Configured: mostrare risposta solo dopo completamento; validare ogni citazione prima di etichettarla verificata.
 - Refused: spiegazione breve e neutra.
@@ -85,7 +85,7 @@ Ripristino: dialog di conferma con percorso selezionato, avviso di sostituzione 
 3. Creare libreria PDF e flusso AI con stati espliciti.
 4. Collegare Progressi ai servizi e alle formule reali.
 5. Collegare Sistema/Backup con verifica e conferma ripristino.
-6. Eseguire build e test; completare verifica visuale/runtime su Windows prima del merge.
+6. Aggiungere filtri task, selettore periodo e trend giornalieri, quindi eseguire build e test; completare verifica visuale/runtime su Windows prima del merge.
 
 ## Dipendenze da chiarire con il ramo tecnico
 - ViewModel dedicati o contratti binding per Studio Lab, PDF/AI, Progressi e Backup.
