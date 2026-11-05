@@ -761,6 +761,46 @@
                 </StackPanel>
             </Border>
         </Grid>
+        <Grid Margin="0,16,0,0">
+            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+            <Border Grid.Column="0" Style="{StaticResource CardBorderStyle}" Margin="0,0,12,0">
+                <StackPanel>
+                    <TextBlock Text="Check-in energia e focus" Style="{StaticResource SectionTitleStyle}"/>
+                    <TextBlock Text="Registra come ti senti: sono annotazioni personali, non valutazioni automatiche." FontSize="10" Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap" Margin="0,4,0,10"/>
+                    <TextBlock Text="{Binding Workspace.EnergyLevelInput, StringFormat='Energia · {0}/5'}" FontSize="11" Foreground="{StaticResource InkBrush}"/>
+                    <Slider Minimum="1" Maximum="5" TickFrequency="1" IsSnapToTickEnabled="True" Value="{Binding Workspace.EnergyLevelInput}"/>
+                    <TextBlock Text="{Binding Workspace.SelfFocusLevelInput, StringFormat='Focus percepito · {0}/5'}" FontSize="11" Foreground="{StaticResource InkBrush}" Margin="0,8,0,0"/>
+                    <Slider Minimum="1" Maximum="5" TickFrequency="1" IsSnapToTickEnabled="True" Value="{Binding Workspace.SelfFocusLevelInput}"/>
+                    <TextBox Text="{Binding Workspace.EnergyNoteInput, UpdateSourceTrigger=PropertyChanged}" ToolTip="Nota facoltativa" Margin="0,8,0,0"/>
+                    <Button Content="Salva check-in" Command="{Binding Workspace.AddEnergyCheckInCommand}" HorizontalAlignment="Left" Margin="0,9,0,0"/>
+                    <ItemsControl ItemsSource="{Binding Workspace.RecentEnergyCheckIns}" Margin="0,12,0,0">
+                        <ItemsControl.ItemTemplate><DataTemplate>
+                            <Grid Margin="0,4,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                <TextBlock Text="{Binding RecordedAt, StringFormat='dd/MM HH:mm'}" FontSize="9" Foreground="{StaticResource MutedBrush}"/>
+                                <TextBlock Grid.Column="1" Text="{Binding EnergyLevel, StringFormat='Energia {0}/5'}" FontSize="9" Foreground="{StaticResource InkBrush}"/>
+                            </Grid>
+                        </DataTemplate></ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </Border>
+            <Border Grid.Column="1" Style="{StaticResource CardBorderStyle}">
+                <StackPanel>
+                    <TextBlock Text="Parcheggio distrazioni" Style="{StaticResource SectionTitleStyle}"/>
+                    <TextBlock Text="Annota ciò che ti distrae e torna al compito senza perderlo." FontSize="10" Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap" Margin="0,4,0,10"/>
+                    <TextBox Text="{Binding Workspace.DistractionInput, UpdateSourceTrigger=PropertyChanged}" ToolTip="Annota una distrazione"/>
+                    <Button Content="Aggiungi nota" Command="{Binding Workspace.AddDistractionCommand}" HorizontalAlignment="Left" Margin="0,9,0,10"/>
+                    <ListBox ItemsSource="{Binding Workspace.OpenDistractions}" SelectedItem="{Binding Workspace.SelectedDistraction}" MaxHeight="150">
+                        <ListBox.ItemTemplate><DataTemplate>
+                            <StackPanel Margin="4">
+                                <TextBlock Text="{Binding Text}" FontSize="11" Foreground="{StaticResource InkBrush}" TextWrapping="Wrap"/>
+                                <TextBlock Text="{Binding CreatedAt, StringFormat='dd/MM HH:mm'}" FontSize="9" Foreground="{StaticResource MutedBrush}"/>
+                            </StackPanel>
+                        </DataTemplate></ListBox.ItemTemplate>
+                    </ListBox>
+                    <Button Content="Segna come risolta" Command="{Binding Workspace.ResolveDistractionCommand}" Style="{StaticResource SecondaryButtonStyle}" HorizontalAlignment="Left" Margin="0,8,0,0"/>
+                </StackPanel>
+            </Border>
+        </Grid>
         <TextBlock Text="{Binding Workspace.WorkspaceStatus}" FontSize="11" Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap" Margin="2,14,2,0"/>
     </StackPanel>
 </ScrollViewer>
