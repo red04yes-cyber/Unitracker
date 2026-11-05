@@ -3,7 +3,6 @@ using System.ComponentModel;
 using System.Globalization;
 using System.Runtime.CompilerServices;
 using UniToStudyHub.Domain.Enums;
-using UniToStudyHub.Domain.Enums;
 using UniToStudyHub.Models;
 using UniToStudyHub.Presentation.Commands;
 using UniToStudyHub.Services;
@@ -129,7 +128,8 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
         get => _selectedCourse;
         set
         {
-            if (!Set(ref _selectedCourse, value)) return;
+            if (EqualityComparer<Course?>.Default.Equals(_selectedCourse, value)) return;
+            Set(ref _selectedCourse, value);
             RefreshSyllabusAndQuestions();
             RefreshReadiness();
             AddSyllabusTopicCommand?.NotifyCanExecuteChanged();
