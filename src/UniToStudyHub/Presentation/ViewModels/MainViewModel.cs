@@ -392,13 +392,14 @@ public sealed class MainViewModel : INotifyPropertyChanged
         }
     }
 
-    private async Task ConnectMoodleAsync()
+    public async Task ConnectMoodleAsync()
     {
         try
         {
             var siteName = await _moodle.VerifyAndStoreTokenAsync(MoodleUrlInput, MoodleToken);
             _data.MoodleBaseUrl = MoodleUrlInput.Trim();
             await SaveAsync();
+            MoodleToken = string.Empty;
             MoodleStatus = $"Collegato: {siteName}";
             OnPropertyChanged(nameof(IsMoodleConnected));
             DisconnectMoodleCommand.NotifyCanExecuteChanged();
