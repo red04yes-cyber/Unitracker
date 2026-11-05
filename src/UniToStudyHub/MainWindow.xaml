@@ -727,13 +727,17 @@
                 <StackPanel>
                     <TextBlock Text="Attività aperte" Style="{StaticResource SectionTitleStyle}"/>
                     <TextBox Text="{Binding Workspace.TaskTitleInput, UpdateSourceTrigger=PropertyChanged}" ToolTip="Titolo attività" Margin="0,12,0,0"/>
-                    <Grid Margin="0,8,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="80"/></Grid.ColumnDefinitions>
+                    <Grid Margin="0,8,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="76"/><ColumnDefinition Width="82"/></Grid.ColumnDefinitions>
                         <ComboBox ItemsSource="{Binding Workspace.Courses}" DisplayMemberPath="Name" SelectedItem="{Binding Workspace.SelectedCourse}" ToolTip="Materia"/>
-                        <TextBox Grid.Column="1" Text="{Binding Workspace.TaskMinutesInput, UpdateSourceTrigger=PropertyChanged}" Margin="8,0,0,0" ToolTip="Minuti"/>
+                        <TextBox Grid.Column="1" Text="{Binding Workspace.TaskMinutesInput, UpdateSourceTrigger=PropertyChanged}" Margin="7,0,0,0" ToolTip="Minuti stimati"/>
+                        <ComboBox Grid.Column="2" SelectedValuePath="Tag" SelectedValue="{Binding Workspace.TaskPriorityInput}" Margin="7,0,0,0" ToolTip="Priorità">
+                            <ComboBoxItem Content="P1" Tag="5"/><ComboBoxItem Content="P2" Tag="4"/><ComboBoxItem Content="P3" Tag="3"/><ComboBoxItem Content="P4" Tag="2"/><ComboBoxItem Content="P5" Tag="1"/>
+                        </ComboBox>
                     </Grid>
+                    <DatePicker SelectedDate="{Binding Workspace.TaskDueDateInput}" ToolTip="Scadenza (facoltativa)" Margin="0,8,0,0"/>
                     <Button Content="Aggiungi attività" Command="{Binding Workspace.AddTaskCommand}" Margin="0,10,0,10"/>
                     <ListBox ItemsSource="{Binding Workspace.ActiveTasks}" SelectedItem="{Binding Workspace.SelectedTask}" MinHeight="140" MaxHeight="220">
-                        <ListBox.ItemTemplate><DataTemplate><StackPanel Margin="4"><TextBlock Text="{Binding Title}" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource InkBrush}" TextWrapping="Wrap"/><TextBlock Text="{Binding EstimatedMinutes, StringFormat={}{0} min stimati}" FontSize="10" Foreground="{StaticResource MutedBrush}"/></StackPanel></DataTemplate></ListBox.ItemTemplate>
+                        <ListBox.ItemTemplate><DataTemplate><StackPanel Margin="4"><TextBlock Text="{Binding Title}" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource InkBrush}" TextWrapping="Wrap"/><TextBlock Text="{Binding EstimatedMinutes, StringFormat={}{0} min stimati}" FontSize="10" Foreground="{StaticResource MutedBrush}"/><TextBlock Text="{Binding DueAt, StringFormat='Scadenza · {0:dd/MM/yyyy}', TargetNullValue='Senza scadenza'}" FontSize="9" Foreground="{StaticResource MutedBrush}"/><TextBlock Text="{Binding Priority, StringFormat='Priorità {0}/5'}" FontSize="9" Foreground="{StaticResource MutedBrush}"/></StackPanel></DataTemplate></ListBox.ItemTemplate>
                     </ListBox>
                     <WrapPanel Margin="0,8,0,0"><Button Content="Completa" Command="{Binding Workspace.CompleteTaskCommand}" Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,8,0"/><Button Content="Rimuovi" Click="RemoveStudyTask_Click" IsEnabled="{Binding Workspace.HasSelectedTask}" Style="{StaticResource QuietButtonStyle}"/></WrapPanel>
                 </StackPanel>
