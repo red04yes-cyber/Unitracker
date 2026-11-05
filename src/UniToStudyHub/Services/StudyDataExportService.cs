@@ -415,7 +415,14 @@ public sealed class StudyDataExportService
         builder.AppendLine(string.Join(',', table.Headers.Select(EscapeCsv)));
         foreach (var row in table.Rows)
             builder.AppendLine(string.Join(',', row.Select(EscapeCsv)));
-        return new UTF8Encoding(encoderShouldEmitUTF8Identifier: true).GetBytes(builder.ToString());
+        // Encoding.GetBytes never emits the preamble: prepend the UTF-8 BOM
+        // explicitly so Excel reads accents in the CSV files.
+        var body = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false).GetBytes(builder.ToString());
+        var preamble = Encoding.UTF8.GetPreamble();
+        var bytes = new byte[preamble.Length + body.Length];
+        preamble.CopyTo(bytes, 0);
+        body.CopyTo(bytes, preamble.Length);
+        return bytes;
     }
 
     private static string EscapeCsv(object? value)

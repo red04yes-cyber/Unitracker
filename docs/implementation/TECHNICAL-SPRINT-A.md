@@ -182,3 +182,42 @@ merge.
   non va mostrato come completato.
 - Il bundle CSV contiene più file: la UI deve salvarli tutti o proporre una
   cartella, non fingere un singolo CSV.
+
+## Final QA (branch `work/freebuff-issue-39-sprint-a-qa`)
+
+Collaudo sul commit `b11f6af`, senza modifiche UI/XAML e senza redesign.
+
+Verifiche eseguite e superate:
+
+- `dotnet test tests/UniToStudyHub.Tests/UniToStudyHub.Tests.csproj -c Release`:
+  153 test (144 esistenti + 9 di QA), 0 falliti.
+- `dotnet build src/UniToStudyHub/UniToStudyHub.csproj -c Release -p:EnableWindowsTargeting=true`:
+  riuscita.
+- Migrazione da `20261105011642_AddFocusSessionSegments` allo schema corrente su
+  un database file già esistente: il corso preesistente è preservato e le
+  tabelle `PomodoroSettings`, `PomodoroTimer`, `PomodoroCycles` vengono create.
+- Salvataggio rifiutato (identificativi duplicati): il dataset precedente resta
+  intatto, la transazione non sostituisce nulla.
+- Pomodoro: segmenti Focus/Pausa separati dopo pausa e ripresa; dopo un riavvio
+  la fase scaduta si chiude alla deadline persistita e anche la pausa si chiude
+  alla propria scadenza, senza credito di tempo tardivo; `StartNextFocus`
+  mantiene una sola riga ledger e continua i segmenti.
+- Export: CSV con accenti, virgolette e newline; XLSX con cinque fogli separati e
+  colonne ISO per offset espliciti; JSON con `schemaVersion` e note private
+  escluse di default, incluse solo con `IncludePrivateNotes`.
+- Progressi: intervalli sovrapposti contati una volta, `RecordedSeconds` unico,
+  `OverlapSeconds` riportato, totali giornalieri coerenti con il totale.
+
+Correzione emersa dal collaudo:
+
+- `CsvBytes` dichiarava `encoderShouldEmitUTF8Identifier: true`, ma
+  `Encoding.GetBytes` non emette il preamble: il BOM UTF-8 non veniva scritto.
+  Ora il BOM è anteposto esplicitamente, così Excel legge correttamente accenti e
+  caratteri speciali. Coperto da test.
+
+Non eseguito in questo ambiente (Linux, senza runtime WPF):
+
+- avvio e interazione WPF su Windows, pausa/ripresa reale, chiusura e riapertura
+  dell'app, interruzione fisica della scrittura su disco, apertura dei file in
+  Excel. Queste prove restano al workflow `build-windows.yml` su
+  `windows-latest`, che il branch di QA attiva con il push `work/**`.
