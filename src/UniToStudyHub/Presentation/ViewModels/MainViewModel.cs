@@ -3,9 +3,11 @@ using System.ComponentModel;
 using System.Globalization;
 using System.Runtime.CompilerServices;
 using UniToStudyHub.Domain.Services;
+using UniToStudyHub.Domain.Enums;
 using UniToStudyHub.Models;
 using UniToStudyHub.Presentation.Commands;
 using UniToStudyHub.Services;
+using UniToStudyHub.Security;
 
 namespace UniToStudyHub.Presentation.ViewModels;
 
@@ -14,6 +16,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
     private readonly IStudyDataStore _store;
     private readonly MoodleApplicationService _moodle;
     private readonly CareerCalculatorService _calculator;
+    private readonly CareerApplicationService _career;
     private readonly CalendarEventStore _calendarStore = new();
     public StudyWorkspaceViewModel Workspace { get; }
     private StudyData _data = new();
@@ -21,6 +24,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
     private string _courseNameInput = string.Empty;
     private string _courseCfuInput = "6";
     private string _gradeValueInput = "28";
+    private string _attemptModeInput = "Superato · accettato";
     private string _moodleUrlInput = string.Empty;
     private string _moodleToken = string.Empty;
     private string _moodleStatus = "Non collegato";
@@ -134,10 +138,13 @@ public sealed class MainViewModel : INotifyPropertyChanged
     public string CourseNameInput { get => _courseNameInput; set => Set(ref _courseNameInput, value); }
     public string CourseCfuInput { get => _courseCfuInput; set => Set(ref _courseCfuInput, value); }
     public string GradeValueInput { get => _gradeValueInput; set => Set(ref _gradeValueInput, value); }
+    public string AttemptModeInput { get => _attemptModeInput; set => Set(ref _attemptModeInput, value); }
+    public IReadOnlyList<string> AttemptModeOptions { get; } = new[] { "Superato · accettato", "Superato · rifiutato", "Non superato", "Idoneità" };
     public Course? SelectedGradeCourse { get => _selectedGradeCourse; set => Set(ref _selectedGradeCourse, value); }
     public string MoodleUrlInput { get => _moodleUrlInput; set => Set(ref _moodleUrlInput, value); }
     public string MoodleToken { get => _moodleToken; set => Set(ref _moodleToken, value); }
     public string MoodleStatus { get => _moodleStatus; private set => Set(ref _moodleStatus, value); }
+    public bool IsMoodleConnected => _moodle.IsConnected;
     public bool IsMoodlePanelExpanded { get => _isMoodlePanelExpanded; set => Set(ref _isMoodlePanelExpanded, value); }
     public string AverageDisplay { get => _averageDisplay; private set => Set(ref _averageDisplay, value); }
     public string ArithmeticAverageDisplay { get => _arithmeticAverageDisplay; private set => Set(ref _arithmeticAverageDisplay, value); }
@@ -171,8 +178,8 @@ public sealed class MainViewModel : INotifyPropertyChanged
     }
 
     public string AcquiredCreditsValue => GradeCalculator.AcquiredCfu(_data.Grades, _calculator).ToString(CultureInfo.CurrentCulture);
-    public string ActiveCoursesCount => Courses.Count(x => !x.Completed).ToString(CultureInfo.CurrentCulture);
-    public string ArchivedCoursesCount => Courses.Count(x => x.Completed).ToString(CultureInfo.CurrentCulture);
+    public string ActiveCoursesCount => Courses.Count(x => !x.Completed && !x.Archived).ToString(CultureInfo.CurrentCulture);
+    public string ArchivedCoursesCount => Courses.Count(x => x.Completed || x.Archived).ToString(CultureInfo.CurrentCulture);
     public string AllCoursesCount => Courses.Count.ToString(CultureInfo.CurrentCulture);
     public bool NoVisibleCourses => VisibleCourses.Count == 0;
     public bool NoPlannedExams => Exams.Count == 0;
@@ -227,6 +234,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
     public AsyncRelayCommand PlanExamsCommand { get; }
     public AsyncRelayCommand ConnectMoodleCommand { get; }
     public AsyncRelayCommand SyncMoodleCommand { get; }
+    public AsyncRelayCommand DisconnectMoodleCommand { get; }
     public AsyncRelayCommand AddCalendarEventCommand { get; }
     public AsyncRelayCommand DeleteCalendarEventCommand { get; }
     public AsyncRelayCommand PreviousCalendarPeriodCommand { get; }
@@ -234,17 +242,20 @@ public sealed class MainViewModel : INotifyPropertyChanged
     public AsyncRelayCommand TodayCalendarCommand { get; }
     public AsyncRelayCommand NewCalendarEventCommand { get; }
 
-    public MainViewModel(IStudyDataStore store, MoodleApplicationService moodle, CareerCalculatorService calculator, StudyWorkspaceViewModel workspace)
+    public MainViewModel(IStudyDataStore store, MoodleApplicationService moodle, CareerCalculatorService calculator, CareerApplicationService career, StudyWorkspaceViewModel workspace)
     {
         _store = store;
         _moodle = moodle;
         _calculator = calculator;
+        _career = career;
         Workspace = workspace;
+        Workspace.DataReloaded += OnWorkspaceDataReloaded;
         AddCourseCommand = new AsyncRelayCommand(AddCourseAsync);
         AddGradeCommand = new AsyncRelayCommand(AddGradeAsync, () => SelectedGradeCourse is not null);
         PlanExamsCommand = new AsyncRelayCommand(PlanExamsAsync);
         ConnectMoodleCommand = new AsyncRelayCommand(ConnectMoodleAsync);
         SyncMoodleCommand = new AsyncRelayCommand(SyncMoodleAsync);
+        DisconnectMoodleCommand = new AsyncRelayCommand(DisconnectMoodleAsync, () => _moodle.IsConnected);
         AddCalendarEventCommand = new AsyncRelayCommand(AddCalendarEventAsync);
         DeleteCalendarEventCommand = new AsyncRelayCommand(DeleteCalendarEventAsync, () => SelectedCalendarEvent is not null);
         PreviousCalendarPeriodCommand = new AsyncRelayCommand(() => ChangeCalendarPeriodAsync(-1));
@@ -261,10 +272,16 @@ public sealed class MainViewModel : INotifyPropertyChanged
         // the SQLite source of truth, then park the old file so a later delete
         // cannot resurrect events.
         var legacyCalendar = await _calendarStore.LoadAsync(cancellationToken);
-        if (legacyCalendar.Count > 0 && _data.CalendarEvents.Count == 0)
+        if (legacyCalendar.Count > 0)
         {
-            foreach (var calendarEvent in legacyCalendar) _data.CalendarEvents.Add(calendarEvent);
-            await SaveAsync(cancellationToken);
+            // Merge even when SQLite already has events: a partial previous
+            // import must not cause the remaining JSON entries to be skipped.
+            var imported = CalendarEventStore.MergeLegacyEvents(_data, legacyCalendar);
+            if (imported > 0)
+                await SaveAsync(cancellationToken);
+
+            // Only park the source after the merged snapshot was persisted.
+            // If saving fails, startup can safely retry the idempotent merge.
             await _calendarStore.MarkMigratedAsync(cancellationToken);
         }
         MoodleUrlInput = _data.MoodleBaseUrl;
@@ -304,36 +321,114 @@ public sealed class MainViewModel : INotifyPropertyChanged
 
     private async Task AddGradeAsync()
     {
-        if (SelectedGradeCourse is null || !int.TryParse(GradeValueInput, out var grade) || grade is < 18 or > 30)
+        if (SelectedGradeCourse is null)
         {
-            StatusMessage = "Seleziona una materia e inserisci un voto tra 18 e 30.";
+            StatusMessage = "Seleziona una materia.";
             return;
         }
 
         var course = SelectedGradeCourse;
-        var item = new Grade
+        var attemptedAt = DateTimeOffset.Now;
+        var outcome = ExamOutcome.Pending;
+        var decision = GradeDecision.Pending;
+        int? numericGrade = null;
+        var isPassFail = false;
+        DateTimeOffset? recordedAt = null;
+        Grade? legacyGrade = null;
+
+        switch (AttemptModeInput)
         {
-            CourseId = course.Id,
-            CourseName = course.Name,
-            Cfu = course.Cfu,
-            Value = grade,
-            Date = DateTime.Today,
-            CountsTowardAverage = true
-        };
-        Grades.Add(item);
+            case "Superato · accettato":
+            case "Superato · rifiutato":
+                if (!int.TryParse(GradeValueInput, out var grade) || grade is < 18 or > 30)
+                {
+                    StatusMessage = "Per un esame superato inserisci un voto tra 18 e 30.";
+                    return;
+                }
+                outcome = ExamOutcome.Passed;
+                decision = AttemptModeInput == "Superato · accettato" ? GradeDecision.Accepted : GradeDecision.Rejected;
+                numericGrade = grade;
+                if (decision == GradeDecision.Accepted)
+                {
+                    recordedAt = DateTimeOffset.Now;
+                    legacyGrade = new Grade
+                    {
+                        CourseId = course.Id,
+                        CourseName = course.Name,
+                        Cfu = course.Cfu,
+                        Value = grade,
+                        Date = DateTime.Today,
+                        CountsTowardAverage = true
+                    };
+                }
+                break;
+
+            case "Non superato":
+                outcome = ExamOutcome.Failed;
+                decision = GradeDecision.NotApplicable;
+                break;
+
+            case "Idoneità":
+                outcome = ExamOutcome.EligibilityPassed;
+                decision = GradeDecision.NotApplicable;
+                isPassFail = true;
+                recordedAt = DateTimeOffset.Now;
+                break;
+
+            default:
+                StatusMessage = "Seleziona un tipo di tentativo valido.";
+                return;
+        }
+
+        var previousStatus = course.Status;
         var previousCompleted = course.Completed;
-        course.Completed = true;
+        var previousCareerExam = _data.CareerExams.FirstOrDefault(x => x.CourseId == course.Id);
+        var previousAttemptCount = previousCareerExam?.Attempts.Count ?? 0;
         try
         {
+            if (legacyGrade is not null)
+                Grades.Add(legacyGrade);
+
+            _career.RecordResult(
+                _data,
+                course.Id,
+                outcome,
+                decision,
+                numericGrade: numericGrade,
+                honors: false,
+                isPassFail: isPassFail,
+                attemptedAt: attemptedAt,
+                recordedAt: recordedAt);
+
             await SaveAsync();
-            StatusMessage = "Voto registrato e materia spostata nell'archivio.";
+            StatusMessage = AttemptModeInput switch
+            {
+                "Superato · accettato" => "Voto accettato e tentativo ufficiale registrati nella carriera.",
+                "Superato · rifiutato" => "Voto rifiutato registrato nello storico: non incide sulla media né sui CFU.",
+                "Non superato" => "Tentativo non superato registrato nello storico della carriera.",
+                "Idoneità" => "Idoneità registrata nella carriera senza influire sulla media numerica.",
+                _ => "Tentativo registrato."
+            };
         }
         catch (Exception ex)
         {
-            Grades.Remove(item);
+            if (legacyGrade is not null)
+                Grades.Remove(legacyGrade);
+            if (previousCareerExam is null)
+            {
+                foreach (var exam in _data.CareerExams.Where(x => x.CourseId == course.Id).ToList())
+                    _data.CareerExams.Remove(exam);
+            }
+            else
+            {
+                while (previousCareerExam.Attempts.Count > previousAttemptCount)
+                    previousCareerExam.Attempts.RemoveAt(previousCareerExam.Attempts.Count - 1);
+            }
+            course.Status = previousStatus;
             course.Completed = previousCompleted;
             StatusMessage = $"Salvataggio non riuscito: {ex.Message}";
         }
+
         RefreshCourseSummary();
         RefreshCareerSummary();
         RefreshVisibleCourses();
@@ -355,14 +450,17 @@ public sealed class MainViewModel : INotifyPropertyChanged
         }
     }
 
-    private async Task ConnectMoodleAsync()
+    public async Task ConnectMoodleAsync()
     {
         try
         {
             var siteName = await _moodle.VerifyAndStoreTokenAsync(MoodleUrlInput, MoodleToken);
             _data.MoodleBaseUrl = MoodleUrlInput.Trim();
             await SaveAsync();
+            MoodleToken = string.Empty;
             MoodleStatus = $"Collegato: {siteName}";
+            OnPropertyChanged(nameof(IsMoodleConnected));
+            DisconnectMoodleCommand.NotifyCanExecuteChanged();
             StatusMessage = "Token verificato e salvato in Windows DPAPI.";
         }
         catch (Exception ex)
@@ -375,32 +473,182 @@ public sealed class MainViewModel : INotifyPropertyChanged
     {
         try
         {
-            var courses = await _moodle.GetEnrolledCoursesAsync(MoodleUrlInput);
-            var added = 0;
-            foreach (var remote in courses)
+            var remoteCourses = await _moodle.GetEnrolledCoursesAsync(MoodleUrlInput);
+            var remoteCalendar = await _moodle.GetCalendarEventsAsync(
+                MoodleUrlInput,
+                remoteCourses.Select(x => x.id),
+                DateTime.Today.AddDays(-30),
+                DateTime.Today.AddDays(365));
+
+            // Fetch optional course content before changing the local snapshot.
+            // A permission error on one course is reported but does not stop
+            // importing courses and calendar events.
+            var contentsByCourse = new Dictionary<int, IReadOnlyList<MoodleCourseSection>>();
+            var discussionsByForum = new Dictionary<int, IReadOnlyList<MoodleForumDiscussion>>();
+            var forumCourseById = new Dictionary<int, int>();
+            var optionalErrors = 0;
+            foreach (var remote in remoteCourses)
+            {
+                try
+                {
+                    var sections = await _moodle.GetCourseContentsAsync(MoodleUrlInput, remote.id);
+                    contentsByCourse[remote.id] = sections;
+                    foreach (var forum in sections.SelectMany(x => x.modules).Where(x =>
+                                 string.Equals(x.modname, "forum", StringComparison.OrdinalIgnoreCase) && x.instance > 0))
+                    {
+                        forumCourseById[forum.instance] = remote.id;
+                        if (discussionsByForum.ContainsKey(forum.instance)) continue;
+                        discussionsByForum[forum.instance] =
+                            await _moodle.GetForumDiscussionsAsync(MoodleUrlInput, forum.instance);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    optionalErrors++;
+                    AppDiagnostics.Warning("moodle", $"Contenuti facoltativi non sincronizzati per corso {remote.id}.", ex);
+                }
+            }
+
+            var addedCourses = 0;
+            var updatedCourses = 0;
+            foreach (var remote in remoteCourses)
             {
                 var local = Courses.FirstOrDefault(c => c.MoodleCourseId == remote.id);
                 if (local is null)
                 {
-                    Courses.Add(new Course
+                    local = new Course { MoodleCourseId = remote.id, Source = "moodle" };
+                    Courses.Add(local);
+                    addedCourses++;
+                }
+                else updatedCourses++;
+
+                local.Name = remote.fullname;
+                local.Code = remote.shortname;
+                local.SyllabusSummary = string.IsNullOrWhiteSpace(remote.summary) ? local.SyllabusSummary : remote.summary;
+                local.SyllabusUrl = $"{MoodleUrlInput.TrimEnd('/')}/course/view.php?id={remote.id}";
+                local.UpdatedAt = DateTime.UtcNow;
+            }
+
+            var addedCalendar = 0;
+            var updatedCalendar = 0;
+            foreach (var remote in remoteCalendar.events)
+            {
+                if (remote.timestart <= 0) continue;
+                var externalId = $"moodle-event:{remote.id}";
+                var start = DateTimeOffset.FromUnixTimeSeconds(remote.timestart);
+                var end = start.AddSeconds(Math.Max(60, remote.timeduration));
+                var course = Courses.FirstOrDefault(x => x.MoodleCourseId == remote.courseid);
+                var existing = CalendarEvents.FirstOrDefault(x =>
+                    x.Source == CalendarEventSource.Moodle && x.ExternalId == externalId);
+                if (existing is null)
+                {
+                    existing = new CalendarEvent { Id = Guid.NewGuid().ToString("N"), Source = CalendarEventSource.Moodle, ExternalId = externalId };
+                    CalendarEvents.Add(existing);
+                    addedCalendar++;
+                }
+                else updatedCalendar++;
+
+                existing.Title = string.IsNullOrWhiteSpace(remote.name) ? "Evento Moodle" : remote.name;
+                existing.Category = remote.eventtype.Contains("exam", StringComparison.OrdinalIgnoreCase)
+                    ? CalendarEventCategory.Exam
+                    : remote.eventtype.Contains("due", StringComparison.OrdinalIgnoreCase) ||
+                      remote.eventtype.Contains("assign", StringComparison.OrdinalIgnoreCase)
+                        ? CalendarEventCategory.Deadline
+                        : CalendarEventCategory.Lecture;
+                existing.StartsAt = start;
+                existing.EndsAt = end;
+                existing.CourseId = course?.Id;
+                existing.CourseName = course?.Name ?? string.Empty;
+                existing.Notes = remote.description ?? string.Empty;
+                existing.Verification = CalendarEventVerification.Official;
+                existing.TimeZoneId = TimeZoneInfo.Local.Id;
+                existing.ExternalSequence = remote.timemodified;
+                existing.UpdatedAt = DateTimeOffset.UtcNow;
+            }
+
+            var addedUpdates = 0;
+            foreach (var pair in contentsByCourse)
+            {
+                var course = Courses.FirstOrDefault(x => x.MoodleCourseId == pair.Key);
+                if (course is null) continue;
+                foreach (var section in pair.Value)
+                foreach (var module in section.modules)
+                {
+                    var files = module.contents.Where(x => !string.IsNullOrWhiteSpace(x.filename)).ToList();
+                    if (files.Count == 0) continue;
+                    var sourceKey = $"moodle-resource:{pair.Key}:{module.id}";
+                    var summary = $"{section.name} · {string.Join(", ", files.Select(x => x.filename).Take(8))}";
+                    var update = Announcements.FirstOrDefault(x => x.SourceKey == sourceKey);
+                    if (update is null)
                     {
-                        MoodleCourseId = remote.id,
-                        Name = remote.fullname,
-                        Code = remote.shortname
-                    });
-                    added++;
+                        update = new Announcement { SourceKey = sourceKey, CourseName = course.Name };
+                        Announcements.Add(update);
+                        addedUpdates++;
+                    }
+                    update.CourseName = course.Name;
+                    update.Title = module.name;
+                    update.Summary = summary;
+                    update.Url = course.SyllabusUrl;
+                    update.UpdatedAt = DateTime.UtcNow;
+                    update.IsNew = true;
                 }
             }
+
+            foreach (var pair in discussionsByForum)
+            foreach (var discussion in pair.Value)
+            {
+                var sourceKey = $"moodle-discussion:{discussion.id}";
+                var update = Announcements.FirstOrDefault(x => x.SourceKey == sourceKey);
+                var isNew = update is null;
+                if (update is null)
+                {
+                    update = new Announcement { SourceKey = sourceKey };
+                    Announcements.Add(update);
+                    addedUpdates++;
+                }
+                update.CourseName = forumCourseById.TryGetValue(pair.Key, out var moodleCourseId)
+                    ? Courses.FirstOrDefault(c => c.MoodleCourseId == moodleCourseId)?.Name ?? update.CourseName
+                    : update.CourseName;
+                update.Title = string.IsNullOrWhiteSpace(discussion.firstpost?.subject) ? discussion.name : discussion.firstpost.subject;
+                update.Summary = "Discussione Moodle · aggiornamento " +
+                                 DateTimeOffset.FromUnixTimeSeconds(Math.Max(0, discussion.timemodified)).ToLocalTime().ToString("g", CultureInfo.GetCultureInfo("it-IT"));
+                update.UpdatedAt = DateTime.UtcNow;
+                update.IsNew = isNew;
+                update.Url = string.IsNullOrWhiteSpace(MoodleUrlInput) ? string.Empty : $"{MoodleUrlInput.TrimEnd('/')}/mod/forum/view.php?id={discussion.forumid}";
+            }
+
             _data.MoodleBaseUrl = MoodleUrlInput.Trim();
             await SaveAsync();
-            MoodleStatus = $"Sincronizzati {courses.Count} corsi Moodle ({added} nuovi).";
+            MoodleStatus = $"Moodle: {addedCourses} corsi nuovi, {updatedCourses} aggiornati · {addedCalendar} eventi nuovi, {updatedCalendar} aggiornati · {addedUpdates} materiali/discussioni. Errori facoltativi: {optionalErrors}.";
             OnPropertyChanged(nameof(Courses));
+            OnPropertyChanged(nameof(Announcements));
+            OnPropertyChanged(nameof(IsMoodleConnected));
             RefreshVisibleCourses();
             RefreshCourseSummary();
+            RefreshCalendar();
         }
         catch (Exception ex)
         {
-            MoodleStatus = ex.Message;
+            MoodleStatus = $"Sincronizzazione non completata: {ex.Message}";
+        }
+    }
+
+    private async Task DisconnectMoodleAsync()
+    {
+        try
+        {
+            await _moodle.DisconnectAsync();
+            MoodleApplicationService.ClearLocalMoodleReferences(_data);
+            MoodleToken = string.Empty;
+            await SaveAsync();
+            MoodleStatus = "Moodle disconnesso. Token e riferimenti locali rimossi; corsi, voti e storico accademico conservati.";
+            OnPropertyChanged(nameof(IsMoodleConnected));
+            DisconnectMoodleCommand.NotifyCanExecuteChanged();
+            RefreshVisibleCourses();
+        }
+        catch (Exception ex)
+        {
+            MoodleStatus = $"Disconnessione non completata: {ex.Message}";
         }
     }
 
@@ -627,9 +875,9 @@ public sealed class MainViewModel : INotifyPropertyChanged
         IEnumerable<Course> filtered = Courses;
         filtered = CourseFilter switch
         {
-            "archive" => filtered.Where(x => x.Completed),
+            "archive" => filtered.Where(x => x.Archived || x.Completed),
             "all" => filtered,
-            _ => filtered.Where(x => !x.Completed)
+            _ => filtered.Where(x => !x.Archived && !x.Completed)
         };
 
         if (!string.IsNullOrWhiteSpace(CourseSearchText))
@@ -646,6 +894,18 @@ public sealed class MainViewModel : INotifyPropertyChanged
 
         OnPropertyChanged(nameof(NoVisibleCourses));
         OnPropertyChanged(nameof(CourseEmptyMessage));
+    }
+
+    private void OnWorkspaceDataReloaded(StudyData data)
+    {
+        _data = data;
+        RefreshCollections();
+        RefreshVisibleCourses();
+        RefreshCourseSummary();
+        RefreshCareerSummary();
+        RefreshExamSummary();
+        RefreshCalendar();
+        OnPropertyChanged(nameof(AcquiredCreditsValue));
     }
 
     private async Task SaveAsync(CancellationToken cancellationToken = default) =>
@@ -672,9 +932,10 @@ public sealed class MainViewModel : INotifyPropertyChanged
             .Where(x => x.CountsTowardAverage)
             .ToList();
 
-        ArithmeticAverageDisplay = latestGrades.Count == 0
+        var officialAverage = _career.GetArithmeticAverage(_data);
+        ArithmeticAverageDisplay = officialAverage is null
             ? "—"
-            : GradeCalculator.Format((decimal)latestGrades.Average(x => x.Value));
+            : GradeCalculator.Format(officialAverage.Value);
 
         OnPropertyChanged(nameof(AcquiredCreditsValue));
         OnPropertyChanged(nameof(ProjectedBaseGradeValue));

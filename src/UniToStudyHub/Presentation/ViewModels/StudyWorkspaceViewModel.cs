@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Globalization;
 using System.Runtime.CompilerServices;
+using UniToStudyHub.Domain.Enums;
 using UniToStudyHub.Models;
 using UniToStudyHub.Presentation.Commands;
 using UniToStudyHub.Services;
@@ -27,6 +28,11 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
     private readonly PdfIntelligenceService _pdfIntelligence;
     private readonly AiStudyService _aiStudy;
     private readonly BackupService _backups;
+    private readonly StudyPlannerService _planner;
+    private readonly SyllabusTrackerService _syllabus;
+    private readonly QuestionBankService _questionBank;
+    private readonly ExamReadinessService _readiness;
+    private readonly StudyDataExportService _exports;
     private readonly HashSet<string> _verifiedBackups = new(StringComparer.OrdinalIgnoreCase);
     private StudyData _data = new();
     private Course? _selectedCourse;
@@ -36,6 +42,29 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
     private DistractionData? _selectedDistraction;
     private PdfDocumentData? _selectedPdf;
     private BackupInfo? _selectedBackup;
+    private string _plannerAvailabilityInput = string.Empty;
+    private DateTime _plannerFromInput = DateTime.Today;
+    private DateTime _plannerToInput = DateTime.Today.AddDays(13);
+    private string _plannerStatus = "Imposta le tue fasce reali di disponibilità per creare un'anteprima.";
+    private StudyPlanPreview? _currentPlanPreview;
+    private SyllabusTopicData? _selectedSyllabusTopic;
+    private QuestionBankItemData? _selectedQuestion;
+    private string _syllabusTitleInput = string.Empty;
+    private string _syllabusMinutesInput = "30";
+    private string _questionTextInput = string.Empty;
+    private string _questionOptionsInput = string.Empty;
+    private string _questionCorrectAnswerInput = string.Empty;
+    private string _questionAnswerInput = string.Empty;
+    private string _questionStatus = "Le risposte aperte richiedono revisione manuale.";
+    private string _readinessStatus = "Seleziona una materia per leggere la preparazione.";
+    private string _exportStatus = string.Empty;
+    private readonly List<QuestionBankItemData> _simulationQuestions = new();
+    private int _simulationIndex;
+    private int _simulationCorrect;
+    private int _simulationAutoMarked;
+    private int _simulationManualReview;
+    private bool _simulationActive;
+    private string _simulationStatus = "Avvia una simulazione per esercitarti con i quesiti della materia selezionata.";
     private string _focusTopicInput = string.Empty;
     private string _focusMinutesInput = "25";
     private string _focusRemainingDisplay = "25:00";
@@ -78,6 +107,7 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
     private ProgressSnapshot? _progressSnapshot;
 
     public event PropertyChangedEventHandler? PropertyChanged;
+    public event Action<StudyData>? DataReloaded;
 
     public ObservableCollection<StudyTaskData> ActiveTasks { get; } = new();
     public ObservableCollection<FlashcardData> DueFlashcards { get; } = new();
@@ -87,17 +117,67 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
     public ObservableCollection<PdfSearchHit> PdfSearchHits { get; } = new();
     public ObservableCollection<BackupInfo> BackupItems { get; } = new();
     public ObservableCollection<CourseProgressRow> CourseProgressRows { get; } = new();
+    public ObservableCollection<SyllabusTopicData> SyllabusTopics { get; } = new();
+    public ObservableCollection<QuestionBankItemData> QuestionBankItems { get; } = new();
+    public ObservableCollection<DailyProgressRow> DailyProgressRows { get; } = new();
     public ObservableCollection<Course> Courses => _data.Courses;
     public ObservableCollection<PdfDocumentData> PdfDocuments => _data.PdfDocuments;
 
-    public Course? SelectedCourse { get => _selectedCourse; set => Set(ref _selectedCourse, value); }
+    public Course? SelectedCourse
+    {
+        get => _selectedCourse;
+        set
+        {
+            if (EqualityComparer<Course?>.Default.Equals(_selectedCourse, value)) return;
+            Set(ref _selectedCourse, value);
+            RefreshSyllabusAndQuestions();
+            RefreshReadiness();
+            AddSyllabusTopicCommand?.NotifyCanExecuteChanged();
+            AddQuestionCommand?.NotifyCanExecuteChanged();
+        }
+    }
+    public SyllabusTopicData? SelectedSyllabusTopic
+    {
+        get => _selectedSyllabusTopic;
+        set { Set(ref _selectedSyllabusTopic, value); CompleteSyllabusTopicCommand?.NotifyCanExecuteChanged(); }
+    }
+    public QuestionBankItemData? SelectedQuestion
+    {
+        get => _selectedQuestion;
+        set { Set(ref _selectedQuestion, value); EvaluateQuestionCommand?.NotifyCanExecuteChanged(); }
+    }
+    public string SyllabusTitleInput { get => _syllabusTitleInput; set => Set(ref _syllabusTitleInput, value); }
+    public string SyllabusMinutesInput { get => _syllabusMinutesInput; set => Set(ref _syllabusMinutesInput, value); }
+    public string QuestionTextInput { get => _questionTextInput; set => Set(ref _questionTextInput, value); }
+    public string QuestionOptionsInput { get => _questionOptionsInput; set => Set(ref _questionOptionsInput, value); }
+    public string QuestionCorrectAnswerInput { get => _questionCorrectAnswerInput; set => Set(ref _questionCorrectAnswerInput, value); }
+    public string QuestionAnswerInput { get => _questionAnswerInput; set => Set(ref _questionAnswerInput, value); }
+    public string QuestionStatus { get => _questionStatus; private set => Set(ref _questionStatus, value); }
+    public string ReadinessStatus { get => _readinessStatus; private set => Set(ref _readinessStatus, value); }
+    public string ExportStatus { get => _exportStatus; private set => Set(ref _exportStatus, value); }
+    public string SimulationStatus { get => _simulationStatus; private set => Set(ref _simulationStatus, value); }
+    public bool IsSimulationActive { get => _simulationActive; private set { Set(ref _simulationActive, value); OnPropertyChanged(nameof(SimulationQuestionDisplay)); SubmitSimulationAnswerCommand?.NotifyCanExecuteChanged(); } }
+    public string SimulationQuestionDisplay => IsSimulationActive && _simulationIndex < _simulationQuestions.Count
+        ? $"Quesito {_simulationIndex + 1}/{_simulationQuestions.Count} · {_simulationQuestions[_simulationIndex].Text}"
+        : "Nessun quesito attivo.";
     public StudyTaskData? SelectedTask { get => _selectedTask; set { if (ReferenceEquals(_selectedTask, value)) return; _selectedTask = value; OnPropertyChanged(); OnPropertyChanged(nameof(HasSelectedTask)); CompleteTaskCommand.NotifyCanExecuteChanged(); RemoveTaskCommand.NotifyCanExecuteChanged(); } }
     public bool HasSelectedTask => SelectedTask is not null;
     public FlashcardData? SelectedDueFlashcard { get => _selectedDueFlashcard; set { Set(ref _selectedDueFlashcard, value); FlashcardRevealed = false; NotifyReviewCommands(); } }
     public ErrorJournalEntryData? SelectedErrorEntry { get => _selectedErrorEntry; set { Set(ref _selectedErrorEntry, value); ReviewErrorNeedsWorkCommand.NotifyCanExecuteChanged(); ReviewErrorRememberedCommand.NotifyCanExecuteChanged(); } }
     public DistractionData? SelectedDistraction { get => _selectedDistraction; set { Set(ref _selectedDistraction, value); ResolveDistractionCommand.NotifyCanExecuteChanged(); } }
     public PdfDocumentData? SelectedPdf { get => _selectedPdf; set { Set(ref _selectedPdf, value); PdfSearchHits.Clear(); OnPropertyChanged(nameof(HasSelectedPdf)); OnPropertyChanged(nameof(NoPdfSearchHits)); SearchPdfCommand.NotifyCanExecuteChanged(); AskPdfCommand.NotifyCanExecuteChanged(); } }
-    public BackupInfo? SelectedBackup { get => _selectedBackup; set { Set(ref _selectedBackup, value); VerifyBackupCommand.NotifyCanExecuteChanged(); } }
+    public BackupInfo? SelectedBackup
+    {
+        get => _selectedBackup;
+        set
+        {
+            Set(ref _selectedBackup, value);
+            OnPropertyChanged(nameof(HasSelectedBackup));
+            VerifyBackupCommand.NotifyCanExecuteChanged();
+            RestoreBackupCommand.NotifyCanExecuteChanged();
+        }
+    }
+    public bool HasSelectedBackup => SelectedBackup is not null;
 
     public string FocusTopicInput { get => _focusTopicInput; set => Set(ref _focusTopicInput, value); }
     public string FocusMinutesInput { get => _focusMinutesInput; set => Set(ref _focusMinutesInput, value); }
@@ -146,6 +226,15 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
     public string WorkspaceStatus { get => _workspaceStatus; private set => Set(ref _workspaceStatus, value); }
     public string BackupDirectory => _backups.BackupDirectory;
     public ProgressSnapshot? CurrentProgress => _progressSnapshot;
+    public string PlannerAvailabilityInput { get => _plannerAvailabilityInput; set => Set(ref _plannerAvailabilityInput, value); }
+    public DateTime PlannerFromInput { get => _plannerFromInput; set => Set(ref _plannerFromInput, value.Date); }
+    public DateTime PlannerToInput { get => _plannerToInput; set => Set(ref _plannerToInput, value.Date); }
+    public string PlannerStatus { get => _plannerStatus; private set => Set(ref _plannerStatus, value); }
+    public StudyPlanPreview? CurrentPlanPreview { get => _currentPlanPreview; private set { Set(ref _currentPlanPreview, value); OnPropertyChanged(nameof(HasPlanPreview)); OnPropertyChanged(nameof(PlanPreviewSummary)); ApplyStudyPlanCommand?.NotifyCanExecuteChanged(); } }
+    public bool HasPlanPreview => CurrentPlanPreview is not null;
+    public string PlanPreviewSummary => CurrentPlanPreview is { } plan
+        ? $"{plan.ScheduledBlockCount} blocchi · {plan.ScheduledMinutes} minuti · {plan.UnscheduledTasks.Count} task non pianificati"
+        : "Nessuna anteprima disponibile.";
     public bool HasProgressData => _progressSnapshot is { } p && (p.FocusMinutes > 0 || p.CompletedSessions > 0 || p.CompletedTasks > 0 || p.DueFlashcards > 0 || p.OpenErrors > 0);
     public string ProgressPeriodDisplay => _progressSnapshot is { } p
         ? $"{p.From:dd/MM} – {p.To:dd/MM/yyyy}"
@@ -202,6 +291,15 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
     public AsyncRelayCommand SaveAcademicProfileCommand { get; }
     public AsyncRelayCommand CreateBackupCommand { get; }
     public AsyncRelayCommand VerifyBackupCommand { get; }
+    public AsyncRelayCommand RestoreBackupCommand { get; }
+    public AsyncRelayCommand PreviewStudyPlanCommand { get; }
+    public AsyncRelayCommand ApplyStudyPlanCommand { get; }
+    public AsyncRelayCommand AddSyllabusTopicCommand { get; }
+    public AsyncRelayCommand CompleteSyllabusTopicCommand { get; }
+    public AsyncRelayCommand AddQuestionCommand { get; }
+    public AsyncRelayCommand EvaluateQuestionCommand { get; }
+    public AsyncRelayCommand StartSimulationCommand { get; }
+    public AsyncRelayCommand SubmitSimulationAnswerCommand { get; }
 
     public StudyWorkspaceViewModel(
         IStudyDataStore store,
@@ -216,7 +314,12 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
         PdfImportService pdfImport,
         PdfIntelligenceService pdfIntelligence,
         AiStudyService aiStudy,
-        BackupService backups)
+        BackupService backups,
+        StudyPlannerService planner,
+        SyllabusTrackerService syllabus,
+        QuestionBankService questionBank,
+        ExamReadinessService readiness,
+        StudyDataExportService exports)
     {
         _store = store;
         _academicProfile = academicProfile;
@@ -231,6 +334,11 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
         _pdfIntelligence = pdfIntelligence;
         _aiStudy = aiStudy;
         _backups = backups;
+        _planner = planner;
+        _syllabus = syllabus;
+        _questionBank = questionBank;
+        _readiness = readiness;
+        _exports = exports;
 
         StartFocusCommand = new AsyncRelayCommand(StartFocusAsync, () => !HasActiveFocusSession);
         PauseFocusCommand = new AsyncRelayCommand(() => ChangeFocusAsync("pause"), () => CanPauseFocus);
@@ -257,6 +365,15 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
         SaveAcademicProfileCommand = new AsyncRelayCommand(SaveAcademicProfileAsync);
         CreateBackupCommand = new AsyncRelayCommand(CreateBackupAsync);
         VerifyBackupCommand = new AsyncRelayCommand(VerifyBackupAsync, () => SelectedBackup is not null);
+        RestoreBackupCommand = new AsyncRelayCommand(RestoreBackupAsync, () => SelectedBackup is not null);
+        PreviewStudyPlanCommand = new AsyncRelayCommand(PreviewStudyPlanAsync);
+        ApplyStudyPlanCommand = new AsyncRelayCommand(ApplyStudyPlanAsync, () => HasPlanPreview);
+        AddSyllabusTopicCommand = new AsyncRelayCommand(AddSyllabusTopicAsync, () => SelectedCourse is not null);
+        CompleteSyllabusTopicCommand = new AsyncRelayCommand(CompleteSyllabusTopicAsync, () => SelectedSyllabusTopic is not null);
+        AddQuestionCommand = new AsyncRelayCommand(AddQuestionAsync, () => SelectedCourse is not null);
+        EvaluateQuestionCommand = new AsyncRelayCommand(EvaluateQuestionAsync, () => SelectedQuestion is not null);
+        StartSimulationCommand = new AsyncRelayCommand(StartSimulationAsync, () => QuestionBankItems.Count > 0);
+        SubmitSimulationAnswerCommand = new AsyncRelayCommand(SubmitSimulationAnswerAsync, () => IsSimulationActive);
     }
 
     public void Initialize(StudyData data)
@@ -641,6 +758,283 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
         catch (Exception ex) { BackupStatus = $"Verifica non riuscita: {ex.Message}"; }
     }
 
+    private async Task PreviewStudyPlanAsync()
+    {
+        try
+        {
+            if (PlannerToInput < PlannerFromInput)
+                throw new ArgumentException("La data finale deve essere successiva o uguale alla data iniziale.");
+
+            var availability = ParseDailyAvailability(PlannerAvailabilityInput);
+            CurrentPlanPreview = _planner.CreatePreview(_data, new StudyPlannerOptions
+            {
+                From = DateOnly.FromDateTime(PlannerFromInput),
+                To = DateOnly.FromDateTime(PlannerToInput),
+                TimeZoneId = TimeZoneInfo.Local.Id,
+                WeeklyAvailability = availability,
+                WeeklyStudyMinutes = _data.WeeklyStudyHours * 60,
+                MaxDailyStudyMinutes = _data.MaxDailyStudyMinutes,
+                PreferredBlockMinutes = 50,
+                MinimumBlockMinutes = 15,
+                BreakMinutes = 10,
+                MaxBlocksPerDay = 4,
+                ReplaceExistingGeneratedBlocks = true
+            });
+            PlannerStatus = $"Anteprima pronta: {PlanPreviewSummary}. I blocchi non sono ancora nel calendario.";
+        }
+        catch (Exception ex)
+        {
+            CurrentPlanPreview = null;
+            PlannerStatus = $"Anteprima non disponibile: {ex.Message}";
+        }
+    }
+
+    private async Task ApplyStudyPlanAsync()
+    {
+        if (CurrentPlanPreview is null) return;
+        try
+        {
+            var result = await _planner.ApplyAndSaveAsync(_data, CurrentPlanPreview, _store);
+            RefreshCollections();
+            RefreshProgress();
+            DataReloaded?.Invoke(_data);
+            PlannerStatus = $"Piano salvato nel calendario: {result.Added} blocchi aggiunti, {result.Conflicts} conflitti, {result.Skipped} ignorati.";
+            CurrentPlanPreview = null;
+        }
+        catch (Exception ex)
+        {
+            PlannerStatus = $"Piano non salvato: {ex.Message}";
+        }
+    }
+
+    private async Task AddSyllabusTopicAsync()
+    {
+        if (SelectedCourse is null) return;
+        if (!int.TryParse(SyllabusMinutesInput, NumberStyles.Integer, CultureInfo.InvariantCulture, out var minutes) || minutes < 0)
+        {
+            WorkspaceStatus = "Inserisci una stima in minuti valida per l'argomento.";
+            return;
+        }
+
+        SyllabusTopicData? created = null;
+        try
+        {
+            created = _syllabus.Add(_data, SelectedCourse.Id, SyllabusTitleInput, estimatedMinutes: minutes);
+            await SaveAsync();
+            SyllabusTitleInput = string.Empty;
+            RefreshSyllabusAndQuestions();
+            SelectedSyllabusTopic = SyllabusTopics.FirstOrDefault(x => x.Id == created.Id);
+            RefreshReadiness();
+            WorkspaceStatus = "Argomento aggiunto al syllabus.";
+        }
+        catch (Exception ex)
+        {
+            if (created is not null) _data.SyllabusTopics.Remove(created);
+            WorkspaceStatus = $"Argomento non salvato: {ex.Message}";
+        }
+    }
+
+    private async Task CompleteSyllabusTopicAsync()
+    {
+        if (SelectedSyllabusTopic is null) return;
+        var topic = SelectedSyllabusTopic;
+        var previousStatus = topic.Status;
+        var previousStudiedAt = topic.LastStudiedAt;
+        try
+        {
+            _syllabus.UpdateStatus(_data, topic.Id, SyllabusTopicStatus.Completed);
+            await SaveAsync();
+            RefreshSyllabusAndQuestions();
+            SelectedSyllabusTopic = SyllabusTopics.FirstOrDefault(x => x.Id == topic.Id);
+            RefreshReadiness();
+            WorkspaceStatus = "Argomento contrassegnato come completato.";
+        }
+        catch (Exception ex)
+        {
+            topic.Status = previousStatus;
+            topic.LastStudiedAt = previousStudiedAt;
+            WorkspaceStatus = $"Aggiornamento syllabus non salvato: {ex.Message}";
+        }
+    }
+
+    private async Task AddQuestionAsync()
+    {
+        if (SelectedCourse is null) return;
+        var options = QuestionOptionsInput.Split(';', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+        var question = new QuestionBankItemData
+        {
+            CourseId = SelectedCourse.Id,
+            SyllabusTopicId = SelectedSyllabusTopic?.CourseId == SelectedCourse.Id ? SelectedSyllabusTopic.Id : string.Empty,
+            Text = QuestionTextInput,
+            Type = options.Length >= 2 ? QuestionType.Closed : QuestionType.Open,
+            Options = new ObservableCollection<string>(options),
+            CorrectAnswer = QuestionCorrectAnswerInput.Trim(),
+            Source = "Manuale"
+        };
+        var added = false;
+        try
+        {
+            _questionBank.Add(_data, question);
+            added = true;
+            await SaveAsync();
+            QuestionTextInput = string.Empty;
+            QuestionOptionsInput = string.Empty;
+            QuestionCorrectAnswerInput = string.Empty;
+            RefreshSyllabusAndQuestions();
+            SelectedQuestion = QuestionBankItems.FirstOrDefault(x => x.Id == question.Id);
+            QuestionStatus = question.Type == QuestionType.Closed
+                ? "Quesito a scelta chiusa salvato. Puoi provarlo e verificare la risposta."
+                : "Quesito aperto salvato. La correzione richiede revisione manuale.";
+        }
+        catch (Exception ex)
+        {
+            if (added) _data.Questions.Remove(question);
+            QuestionStatus = $"Quesito non salvato: {ex.Message}";
+        }
+    }
+
+    private Task EvaluateQuestionAsync()
+    {
+        if (SelectedQuestion is null) return Task.CompletedTask;
+        var evaluation = _questionBank.Evaluate(SelectedQuestion, QuestionAnswerInput);
+        QuestionStatus = evaluation.RequiresManualReview
+            ? evaluation.Feedback
+            : evaluation.IsCorrect == true
+                ? "Risposta corretta."
+                : "Risposta da correggere. " + evaluation.Feedback;
+        return Task.CompletedTask;
+    }
+
+    private Task StartSimulationAsync()
+    {
+        _simulationQuestions.Clear();
+        var random = Random.Shared;
+        _simulationQuestions.AddRange(QuestionBankItems.OrderBy(_ => random.Next()).Take(10));
+        _simulationIndex = 0;
+        _simulationCorrect = 0;
+        _simulationAutoMarked = 0;
+        _simulationManualReview = 0;
+        QuestionAnswerInput = string.Empty;
+        IsSimulationActive = _simulationQuestions.Count > 0;
+        SimulationStatus = IsSimulationActive
+            ? $"Simulazione avviata: {_simulationQuestions.Count} quesiti. Le risposte aperte sono segnalate per revisione."
+            : "Non ci sono domande per questa materia.";
+        OnPropertyChanged(nameof(SimulationQuestionDisplay));
+        return Task.CompletedTask;
+    }
+
+    private Task SubmitSimulationAnswerAsync()
+    {
+        if (!IsSimulationActive || _simulationIndex >= _simulationQuestions.Count)
+            return Task.CompletedTask;
+        var question = _simulationQuestions[_simulationIndex];
+        var evaluation = _questionBank.Evaluate(question, QuestionAnswerInput);
+        if (evaluation.RequiresManualReview)
+            _simulationManualReview++;
+        else
+        {
+            _simulationAutoMarked++;
+            if (evaluation.IsCorrect == true) _simulationCorrect++;
+        }
+
+        _simulationIndex++;
+        QuestionAnswerInput = string.Empty;
+        if (_simulationIndex >= _simulationQuestions.Count)
+        {
+            IsSimulationActive = false;
+            SimulationStatus = $"Simulazione conclusa: {_simulationCorrect}/{_simulationAutoMarked} corrette tra le risposte chiuse; {_simulationManualReview} aperte da rivedere manualmente. Il tentativo non viene registrato come esame ufficiale.";
+        }
+        else
+        {
+            SimulationStatus = $"Risposta acquisita. Restano {_simulationQuestions.Count - _simulationIndex} quesiti.";
+            OnPropertyChanged(nameof(SimulationQuestionDisplay));
+        }
+        return Task.CompletedTask;
+    }
+
+    private void RefreshSyllabusAndQuestions()
+    {
+        SyllabusTopics.Clear();
+        QuestionBankItems.Clear();
+        if (SelectedCourse is not null)
+        {
+            foreach (var item in _syllabus.GetTopics(_data, SelectedCourse.Id))
+                SyllabusTopics.Add(item);
+            foreach (var item in _questionBank.GetForCourse(_data, SelectedCourse.Id))
+                QuestionBankItems.Add(item);
+        }
+        if (SelectedSyllabusTopic is null || !SyllabusTopics.Any(x => x.Id == SelectedSyllabusTopic.Id))
+            SelectedSyllabusTopic = SyllabusTopics.FirstOrDefault();
+        if (SelectedQuestion is null || !QuestionBankItems.Any(x => x.Id == SelectedQuestion.Id))
+            SelectedQuestion = QuestionBankItems.FirstOrDefault();
+        OnPropertyChanged(nameof(SyllabusTopics));
+        OnPropertyChanged(nameof(QuestionBankItems));
+        AddSyllabusTopicCommand?.NotifyCanExecuteChanged();
+        AddQuestionCommand?.NotifyCanExecuteChanged();
+        CompleteSyllabusTopicCommand?.NotifyCanExecuteChanged();
+        EvaluateQuestionCommand?.NotifyCanExecuteChanged();
+        StartSimulationCommand?.NotifyCanExecuteChanged();
+    }
+
+    private void RefreshReadiness()
+    {
+        if (SelectedCourse is null)
+        {
+            ReadinessStatus = "Seleziona una materia per leggere la preparazione.";
+            return;
+        }
+
+        var result = _readiness.Calculate(_data, SelectedCourse.Id);
+        var score = result.Score is null ? "non disponibile" : $"{result.Score:0.##}%";
+        var missing = result.MissingData.Count == 0 ? "Nessun dato mancante." : string.Join(" · ", result.MissingData);
+        ReadinessStatus = $"{SelectedCourse.Name}: {score} · {result.Coverage.CompletedTopics}/{result.Coverage.TotalTopics} argomenti · {missing}";
+    }
+
+    private static IReadOnlyList<StudyAvailabilityWindow> ParseDailyAvailability(string input)
+    {
+        var intervals = new List<(TimeOnly Start, TimeOnly End)>();
+        foreach (var part in (input ?? string.Empty).Split(';', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries))
+        {
+            var pieces = part.Split('-', StringSplitOptions.TrimEntries);
+            if (pieces.Length != 2 ||
+                !TimeOnly.TryParseExact(pieces[0], "HH:mm", CultureInfo.InvariantCulture, DateTimeStyles.None, out var start) ||
+                !TimeOnly.TryParseExact(pieces[1], "HH:mm", CultureInfo.InvariantCulture, DateTimeStyles.None, out var end) ||
+                end <= start)
+                throw new ArgumentException("Fascia non valida. Usa HH:mm-HH:mm, ad esempio 09:00-12:00;15:00-18:00.");
+            intervals.Add((start, end));
+        }
+        if (intervals.Count == 0)
+            throw new ArgumentException("Inserisci almeno una fascia giornaliera reale (HH:mm-HH:mm).");
+
+        var result = new List<StudyAvailabilityWindow>();
+        foreach (var day in Enum.GetValues<DayOfWeek>())
+            foreach (var interval in intervals)
+                result.Add(new StudyAvailabilityWindow(day, interval.Start, interval.End));
+        return result;
+    }
+
+    private async Task RestoreBackupAsync()
+    {
+        if (SelectedBackup is null) return;
+        var path = SelectedBackup.FilePath;
+        try
+        {
+            // BackupService verifies/decrypts the source and creates a safety
+            // backup before replacing the live SQLite file.
+            await _backups.RestoreAsync(path);
+            var restored = await _store.LoadAsync();
+            Initialize(restored);
+            DataReloaded?.Invoke(restored);
+            SelectedBackup = BackupItems.FirstOrDefault(x =>
+                string.Equals(x.FilePath, path, StringComparison.OrdinalIgnoreCase));
+            BackupStatus = "Ripristino completato. Database ricaricato; backup di sicurezza creato prima della sostituzione.";
+        }
+        catch (Exception ex)
+        {
+            BackupStatus = $"Ripristino non riuscito: {ex.Message}";
+        }
+    }
+
     private async Task SaveAsync()
     {
         await _store.SaveAsync(_data);
@@ -691,6 +1085,23 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
             var percentage = maxFocusMinutes == 0 ? 0 : (int)Math.Round(course.FocusMinutes * 100d / maxFocusMinutes);
             CourseProgressRows.Add(new CourseProgressRow(course.CourseName, $"{course.FocusMinutes} min", percentage));
         }
+        DailyProgressRows.Clear();
+        var dailyTotals = new List<(DateTime Date, int Minutes)>();
+        for (var offset = 6; offset >= 0; offset--)
+        {
+            var date = DateTime.Today.AddDays(-offset).Date;
+            var seconds = _data.StudySessions
+                .Where(x => x.StartedAt.LocalDateTime.Date == date && x.State != StudySessionState.Cancelled)
+                .Sum(x => Math.Max(0, x.AccumulatedFocusSeconds));
+            dailyTotals.Add((date, (int)Math.Round(seconds / 60d)));
+        }
+        var maxDaily = dailyTotals.Count == 0 ? 0 : dailyTotals.Max(x => x.Minutes);
+        foreach (var total in dailyTotals)
+            DailyProgressRows.Add(new DailyProgressRow(
+                total.Date.ToString("ddd dd/MM", CultureInfo.GetCultureInfo("it-IT")),
+                total.Minutes,
+                maxDaily == 0 ? 0 : (int)Math.Round(total.Minutes * 100d / maxDaily)));
+        OnPropertyChanged(nameof(DailyProgressRows));
         OnPropertyChanged(nameof(CourseProgressRows));
         OnPropertyChanged(nameof(WeeklyGoalProgressPercent));
         OnPropertyChanged(nameof(CurrentProgress));
@@ -703,6 +1114,29 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(OpenErrorsDisplay));
         OnPropertyChanged(nameof(FocusStreakDisplay));
         OnPropertyChanged(nameof(WeeklyGoalDisplay));
+    }
+
+    public async Task ExportProgressAsync(string filePath, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(filePath))
+            throw new ArgumentException("Seleziona un percorso di destinazione.", nameof(filePath));
+        try
+        {
+            var today = DateOnly.FromDateTime(DateTime.Today);
+            var from = today.AddDays(-6);
+            var bundle = _exports.Export(
+                _data,
+                new StudyExportRequest(from, today, TimeZoneInfo.Local.Id, IncludePrivateNotes: false),
+                StudyExportFormat.Xlsx);
+            var file = bundle.Files.Single();
+            await File.WriteAllBytesAsync(filePath, file.Content, cancellationToken);
+            ExportStatus = $"Esportazione completata: {filePath}";
+        }
+        catch (Exception ex)
+        {
+            ExportStatus = $"Esportazione non riuscita: {ex.Message}";
+            throw;
+        }
     }
 
     private void ReloadBackups()
@@ -749,3 +1183,5 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
     private void OnPropertyChanged([CallerMemberName] string? propertyName = null) =>
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
 }
+
+public sealed record DailyProgressRow(string DayLabel, int FocusMinutes, int FocusPercent);

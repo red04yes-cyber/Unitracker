@@ -73,16 +73,25 @@ public sealed class MoodleClient : IDisposable
         return CallAsync<MoodleCalendarResult>("core_calendar_get_calendar_events", parameters, ct);
     }
 
-    public async Task<List<MoodleForumDiscussion>> GetForumDiscussionsAsync(int id, CancellationToken ct = default)
+    public Task<List<MoodleForumDiscussion>> GetForumDiscussionsAsync(int id, CancellationToken ct = default) =>
+        GetForumDiscussionsPageAsync(id, 0, 25, ct);
+
+    public async Task<List<MoodleForumDiscussion>> GetForumDiscussionsPageAsync(
+        int id,
+        int page,
+        int perPage = 25,
+        CancellationToken ct = default)
     {
+        if (page < 0) throw new ArgumentOutOfRangeException(nameof(page));
+        if (perPage is < 1 or > 100) throw new ArgumentOutOfRangeException(nameof(perPage));
         var result = await CallAsync<MoodleForumDiscussionsResult>("mod_forum_get_forum_discussions",
             new Dictionary<string, string>
             {
                 { "forumid", id.ToString() },
                 { "sortby", "timemodified" },
                 { "sortdirection", "DESC" },
-                { "page", "0" },
-                { "perpage", "25" },
+                { "page", page.ToString() },
+                { "perpage", perPage.ToString() },
                 { "groupid", "-1" }
             }, ct);
         return result.discussions ?? new List<MoodleForumDiscussion>();

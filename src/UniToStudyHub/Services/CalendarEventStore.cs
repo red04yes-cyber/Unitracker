@@ -54,6 +54,36 @@ public sealed class CalendarEventStore
         }
     }
 
+    /// <summary>
+    /// Merges the old JSON calendar into the SQLite snapshot. Existing database
+    /// events win when the identity matches; only missing legacy items are added.
+    /// The operation is idempotent and safe to retry after an interrupted save.
+    /// </summary>
+    public static int MergeLegacyEvents(StudyData data, IEnumerable<CalendarEvent> legacyEvents)
+    {
+        ArgumentNullException.ThrowIfNull(data);
+        ArgumentNullException.ThrowIfNull(legacyEvents);
+
+        var added = 0;
+        foreach (var item in legacyEvents)
+        {
+            if (string.IsNullOrWhiteSpace(item.Id))
+                item.Id = Guid.NewGuid().ToString("N");
+
+            var alreadyPresent = data.CalendarEvents.Any(existing =>
+                string.Equals(existing.Id, item.Id, StringComparison.Ordinal) ||
+                (!string.IsNullOrWhiteSpace(item.ExternalId) &&
+                 string.Equals(existing.Source, item.Source, StringComparison.Ordinal) &&
+                 string.Equals(existing.ExternalId, item.ExternalId, StringComparison.Ordinal)));
+
+            if (alreadyPresent) continue;
+            data.CalendarEvents.Add(item);
+            added++;
+        }
+
+        return added;
+    }
+
     public async Task SaveAsync(IEnumerable<CalendarEvent> events, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(events);

@@ -87,6 +87,52 @@ END:VCALENDAR
     }
 
     [Fact]
+    public void LegacyCalendarMergeKeepsMissingEventsWhenSqliteIsAlreadyPopulated()
+    {
+        var data = Data();
+        data.CalendarEvents.Add(new CalendarEvent
+        {
+            Id = "sqlite-1",
+            Source = CalendarEventSource.Ics,
+            ExternalId = "uid-existing",
+            Title = "Versione SQLite"
+        });
+
+        var legacy = new[]
+        {
+            new CalendarEvent
+            {
+                Id = "sqlite-1",
+                Source = CalendarEventSource.Ics,
+                ExternalId = "uid-existing",
+                Title = "Versione legacy duplicata"
+            },
+            new CalendarEvent
+            {
+                Id = "legacy-duplicate-id",
+                Source = CalendarEventSource.Ics,
+                ExternalId = "uid-existing",
+                Title = "Duplicato per UID"
+            },
+            new CalendarEvent
+            {
+                Id = "legacy-new",
+                Source = CalendarEventSource.Manual,
+                Title = "Evento legacy mancante"
+            }
+        };
+
+        var added = CalendarEventStore.MergeLegacyEvents(data, legacy);
+        var retried = CalendarEventStore.MergeLegacyEvents(data, legacy);
+
+        Assert.Equal(1, added);
+        Assert.Equal(0, retried);
+        Assert.Equal(2, data.CalendarEvents.Count);
+        Assert.Contains(data.CalendarEvents, x => x.Id == "legacy-new");
+        Assert.Equal("Versione SQLite", data.CalendarEvents.Single(x => x.Id == "sqlite-1").Title);
+    }
+
+    [Fact]
     public void IcsImportIsIdempotentAndAppliesCancellation()
     {
         const string first = """
