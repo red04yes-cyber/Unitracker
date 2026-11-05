@@ -71,45 +71,11 @@ jobs:
         with:
           dotnet-version: 10.0.x
 
-      - name: Restore application and test projects (NuGet advisories are errors)
+      - name: Restore application and test projects with blocking NuGet audit
         shell: bash
         run: |
           set -euo pipefail
           dotnet restore src/UniToStudyHub/UniToStudyHub.csproj -p:EnableWindowsTargeting=true -warnaserror:NU1901,NU1902,NU1903,NU1904
           dotnet restore tests/UniToStudyHub.Tests/UniToStudyHub.Tests.csproj -p:EnableWindowsTargeting=true -warnaserror:NU1901,NU1902,NU1903,NU1904
+          echo "NuGet audit completed with NU1901-NU1904 treated as errors for both dependency graphs."
 
-      - name: Fail on vulnerable direct or transitive packages (application)
-        shell: bash
-        run: |
-          set -euo pipefail
-          set +e
-          dotnet list src/UniToStudyHub/UniToStudyHub.csproj package --vulnerable --include-transitive > vulnerability-report.txt 2>&1
-          audit_exit=$?
-          set -e
-          cat vulnerability-report.txt
-          if grep -Eqi 'GHSA-|CVE-[0-9]{4}-[0-9]+|NU190[1-4]' vulnerability-report.txt; then
-            echo "Vulnerable packages detected in the application dependency graph."
-            exit 1
-          fi
-          if [ "$audit_exit" -ne 0 ]; then
-            echo "NuGet vulnerability audit command failed (exit $audit_exit)."
-            exit "$audit_exit"
-          fi
-
-      - name: Fail on vulnerable direct or transitive packages (tests)
-        shell: bash
-        run: |
-          set -euo pipefail
-          set +e
-          dotnet list tests/UniToStudyHub.Tests/UniToStudyHub.Tests.csproj package --vulnerable --include-transitive > vulnerability-report-tests.txt 2>&1
-          audit_exit=$?
-          set -e
-          cat vulnerability-report-tests.txt
-          if grep -Eqi 'GHSA-|CVE-[0-9]{4}-[0-9]+|NU190[1-4]' vulnerability-report-tests.txt; then
-            echo "Vulnerable packages detected in the test dependency graph."
-            exit 1
-          fi
-          if [ "$audit_exit" -ne 0 ]; then
-            echo "NuGet vulnerability audit command failed (exit $audit_exit)."
-            exit "$audit_exit"
-          fi
