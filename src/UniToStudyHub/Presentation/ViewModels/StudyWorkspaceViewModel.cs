@@ -96,7 +96,7 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
     public FlashcardData? SelectedDueFlashcard { get => _selectedDueFlashcard; set { Set(ref _selectedDueFlashcard, value); FlashcardRevealed = false; NotifyReviewCommands(); } }
     public ErrorJournalEntryData? SelectedErrorEntry { get => _selectedErrorEntry; set { Set(ref _selectedErrorEntry, value); ReviewErrorNeedsWorkCommand.NotifyCanExecuteChanged(); ReviewErrorRememberedCommand.NotifyCanExecuteChanged(); } }
     public DistractionData? SelectedDistraction { get => _selectedDistraction; set { Set(ref _selectedDistraction, value); ResolveDistractionCommand.NotifyCanExecuteChanged(); } }
-    public PdfDocumentData? SelectedPdf { get => _selectedPdf; set { Set(ref _selectedPdf, value); PdfSearchHits.Clear(); OnPropertyChanged(nameof(HasSelectedPdf)); SearchPdfCommand.NotifyCanExecuteChanged(); AskPdfCommand.NotifyCanExecuteChanged(); } }
+    public PdfDocumentData? SelectedPdf { get => _selectedPdf; set { Set(ref _selectedPdf, value); PdfSearchHits.Clear(); OnPropertyChanged(nameof(HasSelectedPdf)); OnPropertyChanged(nameof(NoPdfSearchHits)); SearchPdfCommand.NotifyCanExecuteChanged(); AskPdfCommand.NotifyCanExecuteChanged(); } }
     public BackupInfo? SelectedBackup { get => _selectedBackup; set { Set(ref _selectedBackup, value); VerifyBackupCommand.NotifyCanExecuteChanged(); } }
 
     public string FocusTopicInput { get => _focusTopicInput; set => Set(ref _focusTopicInput, value); }
