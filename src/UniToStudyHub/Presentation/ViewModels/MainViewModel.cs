@@ -24,6 +24,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
     private string _moodleUrlInput = string.Empty;
     private string _moodleToken = string.Empty;
     private string _moodleStatus = "Non collegato";
+    private bool _isMoodlePanelExpanded;
     private string _averageDisplay = "—";
     private string _arithmeticAverageDisplay = "—";
     private string _baseGradeDisplay = "Voto di partenza: —";
@@ -137,6 +138,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
     public string MoodleUrlInput { get => _moodleUrlInput; set => Set(ref _moodleUrlInput, value); }
     public string MoodleToken { get => _moodleToken; set => Set(ref _moodleToken, value); }
     public string MoodleStatus { get => _moodleStatus; private set => Set(ref _moodleStatus, value); }
+    public bool IsMoodlePanelExpanded { get => _isMoodlePanelExpanded; set => Set(ref _isMoodlePanelExpanded, value); }
     public string AverageDisplay { get => _averageDisplay; private set => Set(ref _averageDisplay, value); }
     public string ArithmeticAverageDisplay { get => _arithmeticAverageDisplay; private set => Set(ref _arithmeticAverageDisplay, value); }
     public string ProjectedBaseGradeValue => GradeCalculator.Format(GradeCalculator.ProjectedBase(_data.Grades, _calculator));
