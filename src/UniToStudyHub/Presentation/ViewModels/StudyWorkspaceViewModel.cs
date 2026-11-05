@@ -785,6 +785,141 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
         }
     }
 
+    private async Task AddSyllabusTopicAsync()
+    {
+        if (SelectedCourse is null) return;
+        if (!int.TryParse(SyllabusMinutesInput, NumberStyles.Integer, CultureInfo.InvariantCulture, out var minutes) || minutes < 0)
+        {
+            WorkspaceStatus = "Inserisci una stima in minuti valida per l'argomento.";
+            return;
+        }
+
+        SyllabusTopicData? created = null;
+        try
+        {
+            created = _syllabus.Add(_data, SelectedCourse.Id, SyllabusTitleInput, estimatedMinutes: minutes);
+            await SaveAsync();
+            SyllabusTitleInput = string.Empty;
+            RefreshSyllabusAndQuestions();
+            SelectedSyllabusTopic = SyllabusTopics.FirstOrDefault(x => x.Id == created.Id);
+            RefreshReadiness();
+            WorkspaceStatus = "Argomento aggiunto al syllabus.";
+        }
+        catch (Exception ex)
+        {
+            if (created is not null) _data.SyllabusTopics.Remove(created);
+            WorkspaceStatus = $"Argomento non salvato: {ex.Message}";
+        }
+    }
+
+    private async Task CompleteSyllabusTopicAsync()
+    {
+        if (SelectedSyllabusTopic is null) return;
+        var topic = SelectedSyllabusTopic;
+        var previousStatus = topic.Status;
+        var previousStudiedAt = topic.LastStudiedAt;
+        try
+        {
+            _syllabus.UpdateStatus(_data, topic.Id, SyllabusTopicStatus.Completed);
+            await SaveAsync();
+            RefreshSyllabusAndQuestions();
+            SelectedSyllabusTopic = SyllabusTopics.FirstOrDefault(x => x.Id == topic.Id);
+            RefreshReadiness();
+            WorkspaceStatus = "Argomento contrassegnato come completato.";
+        }
+        catch (Exception ex)
+        {
+            topic.Status = previousStatus;
+            topic.LastStudiedAt = previousStudiedAt;
+            WorkspaceStatus = $"Aggiornamento syllabus non salvato: {ex.Message}";
+        }
+    }
+
+    private async Task AddQuestionAsync()
+    {
+        if (SelectedCourse is null) return;
+        var options = QuestionOptionsInput.Split(';', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+        var question = new QuestionBankItemData
+        {
+            CourseId = SelectedCourse.Id,
+            SyllabusTopicId = SelectedSyllabusTopic?.CourseId == SelectedCourse.Id ? SelectedSyllabusTopic.Id : string.Empty,
+            Text = QuestionTextInput,
+            Type = options.Length >= 2 ? QuestionType.Closed : QuestionType.Open,
+            Options = new ObservableCollection<string>(options),
+            CorrectAnswer = QuestionCorrectAnswerInput.Trim(),
+            Source = "Manuale"
+        };
+        var added = false;
+        try
+        {
+            _questionBank.Add(_data, question);
+            added = true;
+            await SaveAsync();
+            QuestionTextInput = string.Empty;
+            QuestionOptionsInput = string.Empty;
+            QuestionCorrectAnswerInput = string.Empty;
+            RefreshSyllabusAndQuestions();
+            SelectedQuestion = QuestionBankItems.FirstOrDefault(x => x.Id == question.Id);
+            QuestionStatus = question.Type == QuestionType.Closed
+                ? "Quesito a scelta chiusa salvato. Puoi provarlo e verificare la risposta."
+                : "Quesito aperto salvato. La correzione richiede revisione manuale.";
+        }
+        catch (Exception ex)
+        {
+            if (added) _data.Questions.Remove(question);
+            QuestionStatus = $"Quesito non salvato: {ex.Message}";
+        }
+    }
+
+    private Task EvaluateQuestionAsync()
+    {
+        if (SelectedQuestion is null) return Task.CompletedTask;
+        var evaluation = _questionBank.Evaluate(SelectedQuestion, QuestionAnswerInput);
+        QuestionStatus = evaluation.RequiresManualReview
+            ? evaluation.Feedback
+            : evaluation.IsCorrect == true
+                ? "Risposta corretta."
+                : "Risposta da correggere. " + evaluation.Feedback;
+        return Task.CompletedTask;
+    }
+
+    private void RefreshSyllabusAndQuestions()
+    {
+        SyllabusTopics.Clear();
+        QuestionBankItems.Clear();
+        if (SelectedCourse is not null)
+        {
+            foreach (var item in _syllabus.GetTopics(_data, SelectedCourse.Id))
+                SyllabusTopics.Add(item);
+            foreach (var item in _questionBank.GetForCourse(_data, SelectedCourse.Id))
+                QuestionBankItems.Add(item);
+        }
+        if (SelectedSyllabusTopic is null || !SyllabusTopics.Any(x => x.Id == SelectedSyllabusTopic.Id))
+            SelectedSyllabusTopic = SyllabusTopics.FirstOrDefault();
+        if (SelectedQuestion is null || !QuestionBankItems.Any(x => x.Id == SelectedQuestion.Id))
+            SelectedQuestion = QuestionBankItems.FirstOrDefault();
+        OnPropertyChanged(nameof(SyllabusTopics));
+        OnPropertyChanged(nameof(QuestionBankItems));
+        AddSyllabusTopicCommand?.NotifyCanExecuteChanged();
+        AddQuestionCommand?.NotifyCanExecuteChanged();
+        CompleteSyllabusTopicCommand?.NotifyCanExecuteChanged();
+        EvaluateQuestionCommand?.NotifyCanExecuteChanged();
+    }
+
+    private void RefreshReadiness()
+    {
+        if (SelectedCourse is null)
+        {
+            ReadinessStatus = "Seleziona una materia per leggere la preparazione.";
+            return;
+        }
+
+        var result = _readiness.Calculate(_data, SelectedCourse.Id);
+        var score = result.Score is null ? "non disponibile" : $"{result.Score:0.##}%";
+        var missing = result.MissingData.Count == 0 ? "Nessun dato mancante." : string.Join(" · ", result.MissingData);
+        ReadinessStatus = $"{SelectedCourse.Name}: {score} · {result.Coverage.CompletedTopics}/{result.Coverage.TotalTopics} argomenti · {missing}";
+    }
+
     private static IReadOnlyList<StudyAvailabilityWindow> ParseDailyAvailability(string input)
     {
         var intervals = new List<(TimeOnly Start, TimeOnly End)>();
