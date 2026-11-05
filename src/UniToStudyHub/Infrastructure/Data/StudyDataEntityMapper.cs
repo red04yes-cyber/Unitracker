@@ -900,6 +900,7 @@ public static class StudyDataEntityMapper
             State = (int)x.State,
             Outcome = x.Outcome,
             Notes = x.Notes,
+            NotesArePrivate = x.NotesArePrivate,
             CreatedAt = x.CreatedAt,
             UpdatedAt = x.UpdatedAt,
             Segments = x.Segments.Select(segment => new StudySessionSegmentEntity
@@ -1300,6 +1301,7 @@ public static class StudyDataEntityMapper
                 State = (StudySessionState)x.State,
                 Outcome = x.Outcome,
                 Notes = x.Notes,
+                NotesArePrivate = x.NotesArePrivate,
                 Segments = new ObservableCollection<StudySessionSegmentData>(x.Segments
                     .OrderBy(segment => segment.StartedAt)
                     .Select(segment => new StudySessionSegmentData

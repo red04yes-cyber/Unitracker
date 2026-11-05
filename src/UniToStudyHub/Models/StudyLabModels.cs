@@ -70,7 +70,13 @@ public sealed class StudySessionData
     public int AccumulatedPauseSeconds { get; set; }
     public StudySessionState State { get; set; } = StudySessionState.Running;
     public string Outcome { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Conservative privacy default: notes are private unless explicitly marked
+    /// otherwise. Legacy sessions therefore never leak through an export.
+    /// </summary>
     public string Notes { get; set; } = string.Empty;
+    public bool NotesArePrivate { get; set; } = true;
     public ObservableCollection<StudySessionSegmentData> Segments { get; set; } = new();
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.Now;
     public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.Now;

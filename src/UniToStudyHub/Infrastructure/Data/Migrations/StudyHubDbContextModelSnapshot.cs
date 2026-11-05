@@ -1201,6 +1201,11 @@ namespace UniToStudyHub.Infrastructure.Data.Migrations
                         .HasMaxLength(12000)
                         .HasColumnType("TEXT");
 
+                    b.Property<bool>("NotesArePrivate")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(true);
+
                     b.Property<string>("Outcome")
                         .IsRequired()
                         .HasMaxLength(2000)

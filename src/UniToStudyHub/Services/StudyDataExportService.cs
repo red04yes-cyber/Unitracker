@@ -205,7 +205,8 @@ public sealed class StudyDataExportService
                 x.AccumulatedFocusSeconds,
                 x.AccumulatedPauseSeconds,
                 outcome = request.IncludeResult ? x.Outcome : null,
-                notes = request.IncludeNotes ? x.Notes : null,
+                notes = SessionNotesForExport(x, request),
+                notesArePrivate = x.NotesArePrivate,
                 segments = selection.Segments
                     .Where(s => s.SessionId == x.Id)
                     .Select(s => new
@@ -260,6 +261,7 @@ public sealed class StudyDataExportService
             {
                 new object?[] { "Schema", SchemaVersion },
                 new object?[] { "Generato il", generatedAt },
+                new object?[] { "Generato il (ISO)", generatedAt.ToString("O", CultureInfo.InvariantCulture) },
                 new object?[] { "Dal", selection.Request.From },
                 new object?[] { "Al", selection.Request.To },
                 new object?[] { "Secondi unici", selection.Summary.RecordedSeconds },
@@ -275,8 +277,24 @@ public sealed class StudyDataExportService
         return new StudyExportFile("unitracker-export.xlsx", XlsxContentType, XlsxBytes(sheets));
     }
 
-    private static XlsxSheet SheetFromTable(string name, ExportTable table) =>
-        new(name, table.Headers, table.Rows, table.Styles);
+    private static XlsxSheet SheetFromTable(string name, ExportTable table)
+    {
+        if (table.InstantColumns.Count == 0)
+            return new XlsxSheet(name, table.Headers, table.Rows, table.Styles);
+
+        var headers = table.Headers
+            .Concat(table.InstantColumns.Select(index => table.Headers[index] + " ISO"))
+            .ToArray();
+        var styles = table.Styles
+            .Concat(table.InstantColumns.Select(_ => 0))
+            .ToArray();
+        var rows = table.Rows.Select(row => row
+            .Concat(table.InstantColumns.Select(index => row[index] is DateTimeOffset instant
+                ? (object?)instant.ToString("O", CultureInfo.InvariantCulture)
+                : string.Empty))
+            .ToArray()).ToList();
+        return new XlsxSheet(name, headers, rows, styles);
+    }
 
     private static ExportTable ActivityTable(ExportSelection selection, StudyExportRequest request)
     {
@@ -290,8 +308,8 @@ public sealed class StudyDataExportService
             new("Task", x => x.TaskId),
             new("Missione", x => x.MissionId),
             new("Sessione", x => x.SessionId),
-            new("Inizio", x => x.StartedAt, 1),
-            new("Fine", x => x.EndedAt, 1),
+            new("Inizio", x => x.StartedAt, 1, IsInstant: true),
+            new("Fine", x => x.EndedAt, 1, IsInstant: true),
             new("Secondi effettivi", x => x.EffectiveSeconds, 2),
             new("Origine", x => x.Origin.ToString()),
             new("Stato", x => x.Status.ToString())
@@ -308,7 +326,7 @@ public sealed class StudyDataExportService
         if (request.IncludeTags) columns.Add(new("Tag", x => string.Join(", ", x.Tags)));
         columns.Add(new("Privata", x => x.IsPrivate));
         columns.Add(new("Revisione", x => x.Revision));
-        columns.Add(new("Eliminata il", x => x.DeletedAt, 1));
+        columns.Add(new("Eliminata il", x => x.DeletedAt, 1, IsInstant: true));
         return Table(columns, selection.Activities);
     }
 
@@ -320,14 +338,15 @@ public sealed class StudyDataExportService
             new("Materia", x => x.CourseId),
             new("Argomento", x => x.Topic),
             new("Minuti pianificati", x => x.PlannedMinutes),
-            new("Inizio", x => x.StartedAt, 1),
-            new("Fine", x => x.EndedAt, 1),
+            new("Inizio", x => x.StartedAt, 1, IsInstant: true),
+            new("Fine", x => x.EndedAt, 1, IsInstant: true),
             new("Stato", x => x.State.ToString()),
             new("Secondi focus", x => x.AccumulatedFocusSeconds, 2),
             new("Secondi pausa", x => x.AccumulatedPauseSeconds, 2)
         };
         if (request.IncludeResult) columns.Add(new("Esito", x => x.Outcome));
-        if (request.IncludeNotes) columns.Add(new("Note", x => x.Notes));
+        if (request.IncludeNotes) columns.Add(new("Note", x => SessionNotesForExport(x, request)));
+        columns.Add(new("Note private", x => x.NotesArePrivate));
         return Table(columns, selection.Sessions);
     }
 
@@ -337,8 +356,8 @@ public sealed class StudyDataExportService
             new ExportColumn<SegmentRow>("Sessione", x => x.SessionId),
             new ExportColumn<SegmentRow>("Segmento", x => x.Segment.Id),
             new ExportColumn<SegmentRow>("Tipo", x => x.Segment.Type.ToString()),
-            new ExportColumn<SegmentRow>("Inizio", x => x.Segment.StartedAt, 1),
-            new ExportColumn<SegmentRow>("Fine", x => x.Segment.EndedAt, 1),
+            new ExportColumn<SegmentRow>("Inizio", x => x.Segment.StartedAt, 1, IsInstant: true),
+            new ExportColumn<SegmentRow>("Fine", x => x.Segment.EndedAt, 1, IsInstant: true),
             new ExportColumn<SegmentRow>("Secondi", x => x.DurationSeconds, 2)
         }, selection.Segments);
 
@@ -348,16 +367,16 @@ public sealed class StudyDataExportService
             new ExportColumn<PomodoroCycleData>("ID", x => x.Id),
             new ExportColumn<PomodoroCycleData>("Sessione", x => x.SessionId),
             new ExportColumn<PomodoroCycleData>("Ciclo", x => x.CycleNumber),
-            new ExportColumn<PomodoroCycleData>("Focus inizio", x => x.FocusStartedAt, 1),
-            new ExportColumn<PomodoroCycleData>("Focus fine", x => x.FocusEndedAt, 1),
+            new ExportColumn<PomodoroCycleData>("Focus inizio", x => x.FocusStartedAt, 1, IsInstant: true),
+            new ExportColumn<PomodoroCycleData>("Focus fine", x => x.FocusEndedAt, 1, IsInstant: true),
             new ExportColumn<PomodoroCycleData>("Secondi focus", x => x.FocusSeconds, 2),
             new ExportColumn<PomodoroCycleData>("Pausa", x => x.BreakType.ToString()),
-            new ExportColumn<PomodoroCycleData>("Pausa inizio", x => x.BreakStartedAt, 1),
-            new ExportColumn<PomodoroCycleData>("Pausa fine", x => x.BreakEndedAt, 1),
+            new ExportColumn<PomodoroCycleData>("Pausa inizio", x => x.BreakStartedAt, 1, IsInstant: true),
+            new ExportColumn<PomodoroCycleData>("Pausa fine", x => x.BreakEndedAt, 1, IsInstant: true),
             new ExportColumn<PomodoroCycleData>("Secondi pausa", x => x.BreakSeconds, 2),
             new ExportColumn<PomodoroCycleData>("Saltato", x => x.WasSkipped),
             new ExportColumn<PomodoroCycleData>("Completato", x => x.IsCompleted),
-            new ExportColumn<PomodoroCycleData>("Completato il", x => x.CompletedAt, 1)
+            new ExportColumn<PomodoroCycleData>("Completato il", x => x.CompletedAt, 1, IsInstant: true)
         }, selection.Cycles);
 
     private static ExportTable SummaryTable(ExportSelection selection)
@@ -374,7 +393,7 @@ public sealed class StudyDataExportService
             rows.Add(new object?[] { $"Materia: {item.Key}", item.Value });
         foreach (var item in selection.Summary.ByTopic.OrderBy(x => x.Key))
             rows.Add(new object?[] { $"Argomento: {item.Key}", item.Value });
-        return new ExportTable(new[] { "Metrica", "Secondi" }, new[] { 0, 2 }, rows);
+        return new ExportTable(new[] { "Metrica", "Secondi" }, new[] { 0, 2 }, rows, Array.Empty<int>());
     }
 
     private static ExportTable Table<T>(IEnumerable<ExportColumn<T>> columns, IEnumerable<T> rows)
@@ -383,34 +402,49 @@ public sealed class StudyDataExportService
         return new ExportTable(
             list.Select(x => x.Header).ToArray(),
             list.Select(x => x.Style).ToArray(),
-            rows.Select(row => list.Select(column => column.Value(row)).ToArray()).ToList());
+            rows.Select(row => list.Select(column => column.Value(row)).ToArray()).ToList(),
+            list.Select((column, index) => (column, index))
+                .Where(x => x.column.IsInstant)
+                .Select(x => x.index)
+                .ToArray());
     }
 
     private static byte[] CsvBytes(ExportTable table)
     {
         var builder = new StringBuilder();
-        builder.AppendLine(string.Join(',', table.Headers.Select(header => EscapeCsv(header, forceText: true))));
+        builder.AppendLine(string.Join(',', table.Headers.Select(EscapeCsv)));
         foreach (var row in table.Rows)
-            builder.AppendLine(string.Join(',', row.Select((value, index) =>
-                EscapeCsv(value, forceText: table.Styles[index] == 0))));
+            builder.AppendLine(string.Join(',', row.Select(EscapeCsv)));
         return new UTF8Encoding(encoderShouldEmitUTF8Identifier: true).GetBytes(builder.ToString());
     }
 
-    private static string EscapeCsv(object? value, bool forceText)
+    private static string EscapeCsv(object? value)
     {
         if (value is null) return string.Empty;
-        if (!forceText && value is IFormattable formattable)
+        if (value is DateTimeOffset date)
+            return QuoteCsv(date.ToString("O", CultureInfo.InvariantCulture));
+        if (value is DateOnly dateOnly)
+            return QuoteCsv(dateOnly.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture));
+        if (value is bool boolean)
+            return boolean ? "true" : "false";
+        if (value is IFormattable formattable)
             return formattable.ToString(null, CultureInfo.InvariantCulture) ?? string.Empty;
-        var text = value switch
+        return QuoteCsv(NeedsFormulaGuard(value.ToString() ?? string.Empty)
+            ? "'" + value
+            : value.ToString() ?? string.Empty);
+    }
+
+    private static string QuoteCsv(string text) =>
+        "\"" + text.Replace("\"", "\"\"") + "\"";
+
+    private static bool NeedsFormulaGuard(string text)
+    {
+        foreach (var character in text)
         {
-            DateTimeOffset date => date.ToString("O", CultureInfo.InvariantCulture),
-            DateOnly date => date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
-            bool boolean => boolean ? "true" : "false",
-            _ => Convert.ToString(value, CultureInfo.InvariantCulture) ?? string.Empty
-        };
-        if (text.Length > 0 && (text[0] is '=' or '+' or '-' or '@' or '\t' or '\r'))
-            text = "'" + text;
-        return "\"" + text.Replace("\"", "\"\"") + "\"";
+            if (char.IsWhiteSpace(character) || char.IsControl(character)) continue;
+            return character is '=' or '+' or '-' or '@';
+        }
+        return false;
     }
 
     private static byte[] XlsxBytes(IReadOnlyList<XlsxSheet> sheets)
@@ -550,6 +584,11 @@ public sealed class StudyDataExportService
             ? activity.Note
             : null;
 
+    private static string? SessionNotesForExport(StudySessionData session, StudyExportRequest request) =>
+        request.IncludeNotes && (request.IncludePrivateNotes || !session.NotesArePrivate)
+            ? session.Notes
+            : null;
+
     private static object FilterDocument(StudyExportRequest request) => new
     {
         request.From,
@@ -580,8 +619,12 @@ public sealed class StudyDataExportService
         return new DateTimeOffset(local, offset);
     }
 
-    private sealed record ExportColumn<T>(string Header, Func<T, object?> Value, int Style = 0);
-    private sealed record ExportTable(string[] Headers, int[] Styles, IReadOnlyList<object?[]> Rows);
+    private sealed record ExportColumn<T>(string Header, Func<T, object?> Value, int Style = 0, bool IsInstant = false);
+    private sealed record ExportTable(
+        string[] Headers,
+        int[] Styles,
+        IReadOnlyList<object?[]> Rows,
+        IReadOnlyList<int> InstantColumns);
     private sealed record XlsxSheet(string Name, IReadOnlyList<string> Headers, IReadOnlyList<object?[]> Rows, int[] Styles);
     private sealed record ExportCell(object? Value, int Style);
     private sealed record ExportSelection(
@@ -594,15 +637,15 @@ public sealed class StudyDataExportService
         DateTimeOffset Now)
     {
         public IReadOnlyList<SegmentRow> Segments { get; } = Sessions
-            .SelectMany(session => session.Segments.Select(segment => new SegmentRow(session.Id, segment)))
+            .SelectMany(session => session.Segments.Select(segment => new SegmentRow(session.Id, segment, Now)))
             .OrderBy(x => x.Segment.StartedAt)
             .ToList();
     }
 
-    private sealed record SegmentRow(string SessionId, StudySessionSegmentData Segment)
+    private sealed record SegmentRow(string SessionId, StudySessionSegmentData Segment, DateTimeOffset Now)
     {
         public int DurationSeconds => Segment.EndedAt is { } end
             ? Math.Max(0, (int)Math.Floor((end - Segment.StartedAt).TotalSeconds))
-            : 0;
+            : Math.Max(0, (int)Math.Floor((Now - Segment.StartedAt).TotalSeconds));
     }
 }

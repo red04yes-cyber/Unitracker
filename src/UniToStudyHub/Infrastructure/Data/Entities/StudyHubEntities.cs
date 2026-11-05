@@ -173,6 +173,7 @@ public sealed class StudySessionEntity
     public int State { get; set; }
     public string Outcome { get; set; } = string.Empty;
     public string Notes { get; set; } = string.Empty;
+    public bool NotesArePrivate { get; set; } = true;
     public List<StudySessionSegmentEntity> Segments { get; set; } = new();
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset UpdatedAt { get; set; }

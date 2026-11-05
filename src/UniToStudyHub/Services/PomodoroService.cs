@@ -208,15 +208,16 @@ public sealed class PomodoroService(FocusSessionService focus, ActivityLedgerSer
         while (data.PomodoroTimer is { Status: PomodoroTimerStatus.Running, PhaseEndsAt: { } ends } timer &&
                ends <= at && guard++ < 8)
         {
-            if (timer.Phase == PomodoroPhase.Focus)
+            var phase = timer.Phase;
+            if (phase == PomodoroPhase.Focus)
             {
                 FinishFocusAt(data, timer, ends, skipped: false);
-                transitions.Add(new PomodoroTransition(timer.Phase, timer.Status, timer.PhaseEndsAt ?? ends));
+                transitions.Add(new PomodoroTransition(phase, timer.Status, ends));
                 continue;
             }
 
             FinishBreakAt(data, timer, ends, skipped: false);
-            transitions.Add(new PomodoroTransition(timer.Phase, timer.Status, ends));
+            transitions.Add(new PomodoroTransition(phase, timer.Status, ends));
             break;
         }
         return new PomodoroReconcileResult(
@@ -229,6 +230,11 @@ public sealed class PomodoroService(FocusSessionService focus, ActivityLedgerSer
         ArgumentNullException.ThrowIfNull(data);
         var at = now ?? DateTimeOffset.Now;
         var timer = data.PomodoroTimer;
+        if (timer is null) return;
+        if (timer.Status == PomodoroTimerStatus.Running &&
+            timer.PhaseEndsAt is { } deadline && deadline <= at)
+            Reconcile(data, at);
+        timer = data.PomodoroTimer;
         if (timer is null) return;
         if (timer.CurrentCycleId is { Length: > 0 } cycleId &&
             data.PomodoroCycles.FirstOrDefault(x => string.Equals(x.Id, cycleId, StringComparison.Ordinal)) is { } cycle &&
@@ -256,6 +262,14 @@ public sealed class PomodoroService(FocusSessionService focus, ActivityLedgerSer
         if (timer.Status != PomodoroTimerStatus.Running)
             throw new InvalidOperationException("Only a running Pomodoro phase can be completed.");
         var at = now ?? DateTimeOffset.Now;
+        if (timer.PhaseEndsAt is { } deadline && deadline <= at)
+        {
+            // The phase already ended: reconcile it at the persisted deadline
+            // instead of crediting time until the late click. The next break is
+            // opened by Reconcile and no focus is started automatically.
+            Reconcile(data, at);
+            return timer;
+        }
         if (timer.Phase == PomodoroPhase.Focus)
             FinishFocusAt(data, timer, at, skipped);
         else
@@ -265,11 +279,12 @@ public sealed class PomodoroService(FocusSessionService focus, ActivityLedgerSer
 
     private void FinishFocusAt(StudyData data, PomodoroTimerData timer, DateTimeOffset at, bool skipped)
     {
+        var effectiveAt = timer.PhaseEndsAt is { } deadline && at > deadline ? deadline : at;
         var settings = data.PomodoroSettings;
-        var active = ElapsedActive(timer, DurationSeconds(settings, PomodoroPhase.Focus), at);
+        var active = ElapsedActive(timer, DurationSeconds(settings, PomodoroPhase.Focus), effectiveAt);
         var session = FindSession(data, timer.SessionId);
         if (session.State == StudySessionState.Running)
-            focus.Pause(data, session.Id, at);
+            focus.Pause(data, session.Id, effectiveAt);
 
         if (!skipped)
             timer.FocusesCompletedInSet++;
@@ -281,10 +296,10 @@ public sealed class PomodoroService(FocusSessionService focus, ActivityLedgerSer
             SessionId = timer.SessionId,
             CycleNumber = timer.CycleNumber,
             FocusStartedAt = timer.PhaseWindowStartedAt,
-            FocusEndedAt = at,
+            FocusEndedAt = effectiveAt,
             FocusSeconds = active,
             BreakType = breakType,
-            BreakStartedAt = at,
+            BreakStartedAt = effectiveAt,
             WasSkipped = skipped
         };
         data.PomodoroCycles.Add(cycle);
@@ -292,34 +307,35 @@ public sealed class PomodoroService(FocusSessionService focus, ActivityLedgerSer
         timer.CycleNumber++;
         timer.ActiveSeconds = 0;
         timer.Phase = breakType;
-        timer.PhaseWindowStartedAt = at;
-        timer.PhaseStartedAt = at;
+        timer.PhaseWindowStartedAt = effectiveAt;
+        timer.PhaseStartedAt = effectiveAt;
         timer.RemainingSeconds = DurationSeconds(settings, breakType);
-        timer.PhaseEndsAt = at.AddSeconds(timer.RemainingSeconds);
+        timer.PhaseEndsAt = effectiveAt.AddSeconds(timer.RemainingSeconds);
         timer.Status = PomodoroTimerStatus.Running;
-        timer.UpdatedAt = at;
-        Sync(data, timer, at);
+        timer.UpdatedAt = effectiveAt;
+        Sync(data, timer, effectiveAt);
     }
 
     private void FinishBreakAt(StudyData data, PomodoroTimerData timer, DateTimeOffset at, bool skipped)
     {
-        var active = ElapsedActive(timer, DurationSeconds(data.PomodoroSettings, timer.Phase), at);
+        var effectiveAt = timer.PhaseEndsAt is { } deadline && at > deadline ? deadline : at;
+        var active = ElapsedActive(timer, DurationSeconds(data.PomodoroSettings, timer.Phase), effectiveAt);
         if (timer.CurrentCycleId is { Length: > 0 } cycleId &&
             data.PomodoroCycles.FirstOrDefault(x => string.Equals(x.Id, cycleId, StringComparison.Ordinal)) is { } cycle)
         {
-            cycle.BreakEndedAt = at;
+            cycle.BreakEndedAt = effectiveAt;
             cycle.BreakSeconds = active;
             cycle.IsCompleted = !skipped && !cycle.WasSkipped;
-            cycle.CompletedAt = cycle.IsCompleted ? at : null;
+            cycle.CompletedAt = cycle.IsCompleted ? effectiveAt : null;
         }
         if (timer.Phase == PomodoroPhase.LongBreak)
             timer.FocusesCompletedInSet = 0;
         timer.ActiveSeconds = active;
         timer.RemainingSeconds = 0;
-        timer.PhaseEndsAt = at;
+        timer.PhaseEndsAt = effectiveAt;
         timer.Status = PomodoroTimerStatus.Completed;
-        timer.UpdatedAt = at;
-        Sync(data, timer, at);
+        timer.UpdatedAt = effectiveAt;
+        Sync(data, timer, effectiveAt);
     }
 
     private void CloseCompletedRun(StudyData data, DateTimeOffset at)

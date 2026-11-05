@@ -187,6 +187,7 @@ public sealed class StudyHubDbContext(DbContextOptions<StudyHubDbContext> option
             b.Property(x => x.Topic).HasMaxLength(400).IsRequired();
             b.Property(x => x.Outcome).HasMaxLength(2000).IsRequired();
             b.Property(x => x.Notes).HasMaxLength(12000).IsRequired();
+            b.Property(x => x.NotesArePrivate).HasDefaultValue(true);
             b.HasIndex(x => x.StartedAt);
             b.HasIndex(x => new { x.State, x.StartedAt });
             b.HasMany(x => x.Segments)

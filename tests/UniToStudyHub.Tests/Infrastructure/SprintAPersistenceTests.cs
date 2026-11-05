@@ -66,13 +66,84 @@ public sealed class SprintAPersistenceTests
         var result = restored.Reconcile(loaded, Start.AddMinutes(30));
 
         Assert.Equal(2, result.Transitions.Count);
+        Assert.Equal(PomodoroPhase.Focus, result.Transitions[0].Phase);
+        Assert.Equal(Start.AddMinutes(25), result.Transitions[0].At);
+        Assert.Equal(PomodoroPhase.ShortBreak, result.Transitions[1].Phase);
+        Assert.Equal(Start.AddMinutes(30), result.Transitions[1].At);
         Assert.Equal(PomodoroTimerStatus.Completed, loaded.PomodoroTimer!.Status);
         Assert.Equal(PomodoroPhase.ShortBreak, loaded.PomodoroTimer.Phase);
-        Assert.Single(loaded.PomodoroCycles, x => x.IsCompleted);
+        var cycle = Assert.Single(loaded.PomodoroCycles, x => x.IsCompleted);
+        Assert.Equal(1500, cycle.FocusSeconds);
+        Assert.Equal(Start.AddMinutes(25), cycle.FocusEndedAt);
         Assert.DoesNotContain(loaded.StudySessions, x => x.State == StudySessionState.Running);
-        Assert.Single(loaded.StudySessions);
+        var session = Assert.Single(loaded.StudySessions);
+        Assert.Equal(1500, session.AccumulatedFocusSeconds);
+        var focusSegment = Assert.Single(session.Segments, x => x.Type == StudySessionSegmentType.Focus);
+        Assert.Equal(Start.AddMinutes(25), focusSegment.EndedAt);
         Assert.Single(loaded.StudyActivities);
         Assert.Equal(1500, loaded.StudyActivities[0].EffectiveSeconds);
+    }
+
+    [Fact]
+    public async Task SessionNotePrivacyRoundTripsAndLegacyFlagDefaultsToPrivate()
+    {
+        await using var database = await SqliteTestDatabase.CreateInMemoryAsync();
+        var store = new SqliteStudyDataStore(database.Factory);
+        var data = Data();
+        data.StudySessions.Add(new StudySessionData
+        {
+            Id = "session-private",
+            CourseId = "analisi",
+            Topic = "Privata",
+            StartedAt = Start,
+            EndedAt = Start.AddMinutes(25),
+            State = StudySessionState.Completed,
+            Notes = "nota privata",
+            NotesArePrivate = true
+        });
+        data.StudySessions.Add(new StudySessionData
+        {
+            Id = "session-public",
+            CourseId = "analisi",
+            Topic = "Pubblica",
+            StartedAt = Start.AddHours(1),
+            EndedAt = Start.AddHours(1).AddMinutes(25),
+            State = StudySessionState.Completed,
+            Notes = "nota pubblica",
+            NotesArePrivate = false
+        });
+
+        await store.SaveAsync(data);
+        var loaded = await store.LoadAsync();
+
+        Assert.True(loaded.StudySessions.Single(x => x.Id == "session-private").NotesArePrivate);
+        Assert.False(loaded.StudySessions.Single(x => x.Id == "session-public").NotesArePrivate);
+        Assert.Equal("nota privata", loaded.StudySessions.Single(x => x.Id == "session-private").Notes);
+    }
+
+    [Fact]
+    public async Task SessionNotePrivacyMigrationMarksLegacyNotesPrivate()
+    {
+        await using var database = await SqliteTestDatabase.CreateFileAsync(migrate: false);
+        await database.MigrateAsync("20261105021044_AddPomodoroAndExportPersistence");
+        await database.QueryScalarsAsync("""
+            INSERT INTO "StudySessions"
+                ("Id", "CourseId", "Topic", "PlannedMinutes", "StartedAt", "LastResumedAt", "PausedAt", "EndedAt",
+                 "AccumulatedFocusSeconds", "AccumulatedPauseSeconds", "State", "Outcome", "Notes", "CreatedAt", "UpdatedAt")
+            VALUES
+                ('session-legacy-note', '', 'Nota legacy', 25, '2026-11-01 09:00:00+00:00', NULL, NULL,
+                 '2026-11-01 09:25:00+00:00', 1500, 0, 2, '', 'nota legacy',
+                 '2026-11-01 09:00:00+00:00', '2026-11-01 09:25:00+00:00');
+            """);
+
+        await database.MigrateAsync();
+
+        Assert.Equal(new[] { "1" }, await database.QueryScalarsAsync(
+            "SELECT \"NotesArePrivate\" FROM \"StudySessions\" WHERE \"Id\" = 'session-legacy-note';"));
+        var loaded = await new SqliteStudyDataStore(database.Factory).LoadAsync();
+        var session = Assert.Single(loaded.StudySessions);
+        Assert.True(session.NotesArePrivate);
+        Assert.Equal("nota legacy", session.Notes);
     }
 
     [Fact]

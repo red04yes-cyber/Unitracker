@@ -714,18 +714,18 @@ public sealed class WeeklyReviewService
         var patterns = new ErrorPatternService().Detect(data);
         var observations = new List<string>
         {
-            $"Focus completato: {progress.FocusMinutes} minuti in {progress.CompletedSessions} sessioni.",
-            $"Tempo registrato unico: {progress.RecordedMinutes} minuti; sovrapposizioni: {progress.OverlapSeconds / 60} minuti.",
+            $"Tempo Focus (sessioni): {progress.FocusMinutes} minuti in {progress.CompletedSessions} sessioni.",
+            $"Tempo di studio registrato unico: {progress.RecordedMinutes} minuti; sovrapposizioni: {progress.OverlapSeconds / 60} minuti.",
             $"Task completati: {progress.CompletedTasks}; flashcard in scadenza: {progress.DueFlashcards}.",
             $"Cicli Pomodoro completati: {progress.CompletedPomodoroCycles}."
         };
         if (progress.EstimatedSessionMinutes > 0)
             observations.Add(
-                $"Tempo pianificato nelle sessioni: {progress.EstimatedSessionMinutes} minuti; tempo registrato unico: {progress.RecordedMinutes} minuti.");
+                $"Tempo pianificato nelle sessioni: {progress.EstimatedSessionMinutes} minuti; tempo di studio registrato unico: {progress.RecordedMinutes} minuti.");
         if (progress.WeeklyGoalConfigured)
-            observations.Add(progress.FocusMinutes >= progress.WeeklyGoalMinutes
-                ? "L'obiettivo settimanale configurato è stato raggiunto."
-                : $"Mancano {progress.FocusMinutesRemaining} minuti all'obiettivo settimanale configurato.");
+            observations.Add(progress.RecordedMinutes >= progress.WeeklyGoalMinutes
+                ? $"Obiettivo settimanale: {progress.WeeklyGoalMinutes} minuti; raggiunto con {progress.RecordedMinutes} minuti di studio registrato unico. Tempo Focus: {progress.FocusMinutes} minuti; sovrapposizioni: {progress.OverlapSeconds / 60} minuti."
+                : $"Obiettivo settimanale: {progress.WeeklyGoalMinutes} minuti; mancano {progress.RecordedMinutesRemaining} minuti. Tempo di studio registrato unico: {progress.RecordedMinutes} minuti; tempo Focus: {progress.FocusMinutes} minuti; sovrapposizioni: {progress.OverlapSeconds / 60} minuti.");
         var suggestions = new List<string>();
         if (progress.DueFlashcards > 0) suggestions.Add("Programma una sessione di ripasso per le flashcard scadute.");
         if (progress.OpenErrors > 0) suggestions.Add("Rivedi il diario errori e collega gli errori ricorrenti a un ripasso.");

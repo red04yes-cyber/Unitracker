@@ -277,7 +277,7 @@ END:VCALENDAR
         Assert.Equal(2, patterns[0].Count);
         var review = new WeeklyReviewService().Create(data, new DateOnly(2026, 11, 2),
             new DateTimeOffset(2026, 11, 4, 12, 0, 0, TimeSpan.Zero));
-        Assert.Contains(review.Observations, x => x.Contains("Focus completato", StringComparison.Ordinal));
+        Assert.Contains(review.Observations, x => x.Contains("Tempo Focus", StringComparison.Ordinal));
         Assert.Contains(review.SuggestedActions, x => x.Contains("diario errori", StringComparison.Ordinal));
     }
 
