@@ -7,6 +7,7 @@ public static class PresentationServiceRegistration
 {
     public static IServiceCollection AddUniToStudyHubViewModels(this IServiceCollection services)
     {
+        services.AddSingleton<StudyWorkspaceViewModel>();
         services.AddSingleton<MainViewModel>();
         return services;
     }

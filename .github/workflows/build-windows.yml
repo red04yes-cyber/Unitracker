@@ -24,6 +24,9 @@ jobs:
       - run: dotnet restore src/UniToStudyHub/UniToStudyHub.csproj
       - run: dotnet build src/UniToStudyHub/UniToStudyHub.csproj --configuration Release --no-restore
       - run: dotnet publish src/UniToStudyHub/UniToStudyHub.csproj --configuration Release --runtime win-x64 --self-contained true /p:PublishSingleFile=true
+      - name: Smoke test published WPF application
+        shell: pwsh
+        run: ./scripts/windows-startup-smoke.ps1
       - uses: actions/upload-artifact@v4
         with:
           name: UniToStudyHub-win-x64
