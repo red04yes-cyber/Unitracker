@@ -59,6 +59,13 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
     private string _questionStatus = "Le risposte aperte richiedono revisione manuale.";
     private string _readinessStatus = "Seleziona una materia per leggere la preparazione.";
     private string _exportStatus = string.Empty;
+    private readonly List<QuestionBankItemData> _simulationQuestions = new();
+    private int _simulationIndex;
+    private int _simulationCorrect;
+    private int _simulationAutoMarked;
+    private int _simulationManualReview;
+    private bool _simulationActive;
+    private string _simulationStatus = "Avvia una simulazione per esercitarti con i quesiti della materia selezionata.";
     private string _focusTopicInput = string.Empty;
     private string _focusMinutesInput = "25";
     private string _focusRemainingDisplay = "25:00";
@@ -148,6 +155,11 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
     public string QuestionStatus { get => _questionStatus; private set => Set(ref _questionStatus, value); }
     public string ReadinessStatus { get => _readinessStatus; private set => Set(ref _readinessStatus, value); }
     public string ExportStatus { get => _exportStatus; private set => Set(ref _exportStatus, value); }
+    public string SimulationStatus { get => _simulationStatus; private set => Set(ref _simulationStatus, value); }
+    public bool IsSimulationActive { get => _simulationActive; private set { Set(ref _simulationActive, value); OnPropertyChanged(nameof(SimulationQuestionDisplay)); SubmitSimulationAnswerCommand?.NotifyCanExecuteChanged(); } }
+    public string SimulationQuestionDisplay => IsSimulationActive && _simulationIndex < _simulationQuestions.Count
+        ? $"Quesito {_simulationIndex + 1}/{_simulationQuestions.Count} · {_simulationQuestions[_simulationIndex].Text}"
+        : "Nessun quesito attivo.";
     public StudyTaskData? SelectedTask { get => _selectedTask; set { if (ReferenceEquals(_selectedTask, value)) return; _selectedTask = value; OnPropertyChanged(); OnPropertyChanged(nameof(HasSelectedTask)); CompleteTaskCommand.NotifyCanExecuteChanged(); RemoveTaskCommand.NotifyCanExecuteChanged(); } }
     public bool HasSelectedTask => SelectedTask is not null;
     public FlashcardData? SelectedDueFlashcard { get => _selectedDueFlashcard; set { Set(ref _selectedDueFlashcard, value); FlashcardRevealed = false; NotifyReviewCommands(); } }
@@ -286,6 +298,8 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
     public AsyncRelayCommand CompleteSyllabusTopicCommand { get; }
     public AsyncRelayCommand AddQuestionCommand { get; }
     public AsyncRelayCommand EvaluateQuestionCommand { get; }
+    public AsyncRelayCommand StartSimulationCommand { get; }
+    public AsyncRelayCommand SubmitSimulationAnswerCommand { get; }
 
     public StudyWorkspaceViewModel(
         IStudyDataStore store,
@@ -358,6 +372,8 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
         CompleteSyllabusTopicCommand = new AsyncRelayCommand(CompleteSyllabusTopicAsync, () => SelectedSyllabusTopic is not null);
         AddQuestionCommand = new AsyncRelayCommand(AddQuestionAsync, () => SelectedCourse is not null);
         EvaluateQuestionCommand = new AsyncRelayCommand(EvaluateQuestionAsync, () => SelectedQuestion is not null);
+        StartSimulationCommand = new AsyncRelayCommand(StartSimulationAsync, () => QuestionBankItems.Count > 0);
+        SubmitSimulationAnswerCommand = new AsyncRelayCommand(SubmitSimulationAnswerAsync, () => IsSimulationActive);
     }
 
     public void Initialize(StudyData data)
@@ -889,6 +905,53 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
         return Task.CompletedTask;
     }
 
+    private Task StartSimulationAsync()
+    {
+        _simulationQuestions.Clear();
+        var random = Random.Shared;
+        _simulationQuestions.AddRange(QuestionBankItems.OrderBy(_ => random.Next()).Take(10));
+        _simulationIndex = 0;
+        _simulationCorrect = 0;
+        _simulationAutoMarked = 0;
+        _simulationManualReview = 0;
+        QuestionAnswerInput = string.Empty;
+        IsSimulationActive = _simulationQuestions.Count > 0;
+        SimulationStatus = IsSimulationActive
+            ? $"Simulazione avviata: {_simulationQuestions.Count} quesiti. Le risposte aperte sono segnalate per revisione."
+            : "Non ci sono domande per questa materia.";
+        OnPropertyChanged(nameof(SimulationQuestionDisplay));
+        return Task.CompletedTask;
+    }
+
+    private Task SubmitSimulationAnswerAsync()
+    {
+        if (!IsSimulationActive || _simulationIndex >= _simulationQuestions.Count)
+            return Task.CompletedTask;
+        var question = _simulationQuestions[_simulationIndex];
+        var evaluation = _questionBank.Evaluate(question, QuestionAnswerInput);
+        if (evaluation.RequiresManualReview)
+            _simulationManualReview++;
+        else
+        {
+            _simulationAutoMarked++;
+            if (evaluation.IsCorrect == true) _simulationCorrect++;
+        }
+
+        _simulationIndex++;
+        QuestionAnswerInput = string.Empty;
+        if (_simulationIndex >= _simulationQuestions.Count)
+        {
+            IsSimulationActive = false;
+            SimulationStatus = $"Simulazione conclusa: {_simulationCorrect}/{_simulationAutoMarked} corrette tra le risposte chiuse; {_simulationManualReview} aperte da rivedere manualmente. Il tentativo non viene registrato come esame ufficiale.";
+        }
+        else
+        {
+            SimulationStatus = $"Risposta acquisita. Restano {_simulationQuestions.Count - _simulationIndex} quesiti.";
+            OnPropertyChanged(nameof(SimulationQuestionDisplay));
+        }
+        return Task.CompletedTask;
+    }
+
     private void RefreshSyllabusAndQuestions()
     {
         SyllabusTopics.Clear();
@@ -910,6 +973,7 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
         AddQuestionCommand?.NotifyCanExecuteChanged();
         CompleteSyllabusTopicCommand?.NotifyCanExecuteChanged();
         EvaluateQuestionCommand?.NotifyCanExecuteChanged();
+        StartSimulationCommand?.NotifyCanExecuteChanged();
     }
 
     private void RefreshReadiness()
