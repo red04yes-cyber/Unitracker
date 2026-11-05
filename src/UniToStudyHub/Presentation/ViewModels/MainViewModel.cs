@@ -74,6 +74,9 @@ public sealed class MainViewModel : INotifyPropertyChanged
             if (string.Equals(_calendarViewMode, value, StringComparison.Ordinal)) return;
             _calendarViewMode = value;
             OnPropertyChanged();
+            OnPropertyChanged(nameof(IsMonthCalendar));
+            OnPropertyChanged(nameof(IsWeekCalendar));
+            OnPropertyChanged(nameof(IsDayCalendar));
             RefreshCalendar();
         }
     }
@@ -96,6 +99,9 @@ public sealed class MainViewModel : INotifyPropertyChanged
     public string SelectedDayDisplay => SelectedCalendarDate.ToString("dddd d MMMM yyyy", CultureInfo.GetCultureInfo("it-IT"));
     public int CalendarGridColumns => CalendarViewMode == "Day" ? 1 : 7;
     public bool ShowCalendarWeekHeader => CalendarViewMode != "Day";
+    public bool IsMonthCalendar => CalendarViewMode == "Month";
+    public bool IsWeekCalendar => CalendarViewMode == "Week";
+    public bool IsDayCalendar => CalendarViewMode == "Day";
     public DateTime? CalendarEventDate { get => _calendarEventDate; set => Set(ref _calendarEventDate, value); }
     public string CalendarEventTitle { get => _calendarEventTitle; set => Set(ref _calendarEventTitle, value); }
     public string CalendarEventCategoryInput { get => _calendarEventCategory; set => Set(ref _calendarEventCategory, value); }
@@ -537,8 +543,14 @@ public sealed class MainViewModel : INotifyPropertyChanged
             var dayStart = new DateTimeOffset(date, TimeZoneInfo.Local.GetUtcOffset(date));
             var dayEndDate = date.AddDays(1);
             var dayEnd = new DateTimeOffset(dayEndDate, TimeZoneInfo.Local.GetUtcOffset(dayEndDate));
-            var count = CalendarService.GetEventsInRange(CalendarEvents, dayStart, dayEnd).Count;
-            CalendarDayCells.Add(new CalendarDayCell(date, CalendarViewMode != "Month" || date.Month == CalendarDate.Month, count));
+            var dayEvents = CalendarService.GetEventsInRange(CalendarEvents, dayStart, dayEnd)
+                .Where(item => !item.IsCancelled)
+                .OrderBy(item => item.StartsAt)
+                .ToList();
+            CalendarDayCells.Add(new CalendarDayCell(
+                date,
+                CalendarViewMode != "Month" || date.Month == CalendarDate.Month,
+                dayEvents));
         }
 
         if (CalendarViewMode == "Month"
@@ -559,6 +571,9 @@ public sealed class MainViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(SelectedDayDisplay));
         OnPropertyChanged(nameof(CalendarGridColumns));
         OnPropertyChanged(nameof(ShowCalendarWeekHeader));
+        OnPropertyChanged(nameof(IsMonthCalendar));
+        OnPropertyChanged(nameof(IsWeekCalendar));
+        OnPropertyChanged(nameof(IsDayCalendar));
     }
 
     private void RefreshSelectedDayEvents()
