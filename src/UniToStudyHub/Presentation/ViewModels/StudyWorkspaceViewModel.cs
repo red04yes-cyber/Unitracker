@@ -17,6 +17,7 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
     private readonly IStudyDataStore _store;
     private readonly FocusSessionService _focus;
     private readonly StudyTaskService _tasks;
+    private readonly ErrorJournalService _errors;
     private readonly FlashcardService _flashcards;
     private readonly ProgressService _progress;
     private readonly PdfImportService _pdfImport;
@@ -27,6 +28,7 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
     private Course? _selectedCourse;
     private StudyTaskData? _selectedTask;
     private FlashcardData? _selectedDueFlashcard;
+    private ErrorJournalEntryData? _selectedErrorEntry;
     private PdfDocumentData? _selectedPdf;
     private BackupInfo? _selectedBackup;
     private string _focusTopicInput = string.Empty;
@@ -39,6 +41,11 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
     private string _taskMinutesInput = "30";
     private string _flashcardFrontInput = string.Empty;
     private string _flashcardBackInput = string.Empty;
+    private string _errorTopicInput = string.Empty;
+    private string _errorQuestionInput = string.Empty;
+    private string _errorIncorrectInput = string.Empty;
+    private string _errorCorrectInput = string.Empty;
+    private string _errorCauseInput = string.Empty;
     private bool _flashcardRevealed;
     private string _pdfSearchQuery = string.Empty;
     private string _pdfQuestionInput = string.Empty;
@@ -53,6 +60,7 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
 
     public ObservableCollection<StudyTaskData> ActiveTasks { get; } = new();
     public ObservableCollection<FlashcardData> DueFlashcards { get; } = new();
+    public ObservableCollection<ErrorJournalEntryData> OpenErrorEntries { get; } = new();
     public ObservableCollection<PdfSearchHit> PdfSearchHits { get; } = new();
     public ObservableCollection<BackupInfo> BackupItems { get; } = new();
     public ObservableCollection<Course> Courses => _data.Courses;
@@ -61,6 +69,7 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
     public Course? SelectedCourse { get => _selectedCourse; set => Set(ref _selectedCourse, value); }
     public StudyTaskData? SelectedTask { get => _selectedTask; set { Set(ref _selectedTask, value); CompleteTaskCommand.NotifyCanExecuteChanged(); RemoveTaskCommand.NotifyCanExecuteChanged(); } }
     public FlashcardData? SelectedDueFlashcard { get => _selectedDueFlashcard; set { Set(ref _selectedDueFlashcard, value); FlashcardRevealed = false; NotifyReviewCommands(); } }
+    public ErrorJournalEntryData? SelectedErrorEntry { get => _selectedErrorEntry; set { Set(ref _selectedErrorEntry, value); ReviewErrorNeedsWorkCommand.NotifyCanExecuteChanged(); ReviewErrorRememberedCommand.NotifyCanExecuteChanged(); } }
     public PdfDocumentData? SelectedPdf { get => _selectedPdf; set { Set(ref _selectedPdf, value); PdfSearchHits.Clear(); OnPropertyChanged(nameof(HasSelectedPdf)); SearchPdfCommand.NotifyCanExecuteChanged(); AskPdfCommand.NotifyCanExecuteChanged(); } }
     public BackupInfo? SelectedBackup { get => _selectedBackup; set { Set(ref _selectedBackup, value); VerifyBackupCommand.NotifyCanExecuteChanged(); } }
 
@@ -79,6 +88,11 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
     public string TaskMinutesInput { get => _taskMinutesInput; set => Set(ref _taskMinutesInput, value); }
     public string FlashcardFrontInput { get => _flashcardFrontInput; set => Set(ref _flashcardFrontInput, value); }
     public string FlashcardBackInput { get => _flashcardBackInput; set => Set(ref _flashcardBackInput, value); }
+    public string ErrorTopicInput { get => _errorTopicInput; set => Set(ref _errorTopicInput, value); }
+    public string ErrorQuestionInput { get => _errorQuestionInput; set => Set(ref _errorQuestionInput, value); }
+    public string ErrorIncorrectInput { get => _errorIncorrectInput; set => Set(ref _errorIncorrectInput, value); }
+    public string ErrorCorrectInput { get => _errorCorrectInput; set => Set(ref _errorCorrectInput, value); }
+    public string ErrorCauseInput { get => _errorCauseInput; set => Set(ref _errorCauseInput, value); }
     public bool FlashcardRevealed { get => _flashcardRevealed; set => Set(ref _flashcardRevealed, value); }
     public string PdfSearchQuery { get => _pdfSearchQuery; set => Set(ref _pdfSearchQuery, value); }
     public string PdfQuestionInput { get => _pdfQuestionInput; set => Set(ref _pdfQuestionInput, value); }
@@ -119,6 +133,9 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
     public AsyncRelayCommand CompleteTaskCommand { get; }
     public AsyncRelayCommand RemoveTaskCommand { get; }
     public AsyncRelayCommand AddFlashcardCommand { get; }
+    public AsyncRelayCommand AddErrorEntryCommand { get; }
+    public AsyncRelayCommand ReviewErrorNeedsWorkCommand { get; }
+    public AsyncRelayCommand ReviewErrorRememberedCommand { get; }
     public AsyncRelayCommand ReviewAgainCommand { get; }
     public AsyncRelayCommand ReviewHardCommand { get; }
     public AsyncRelayCommand ReviewGoodCommand { get; }
@@ -132,6 +149,7 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
         IStudyDataStore store,
         FocusSessionService focus,
         StudyTaskService tasks,
+        ErrorJournalService errors,
         FlashcardService flashcards,
         ProgressService progress,
         PdfImportService pdfImport,
@@ -142,6 +160,7 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
         _store = store;
         _focus = focus;
         _tasks = tasks;
+        _errors = errors;
         _flashcards = flashcards;
         _progress = progress;
         _pdfImport = pdfImport;
@@ -158,6 +177,9 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
         CompleteTaskCommand = new AsyncRelayCommand(CompleteTaskAsync, () => SelectedTask is not null);
         RemoveTaskCommand = new AsyncRelayCommand(RemoveTaskAsync, () => SelectedTask is not null);
         AddFlashcardCommand = new AsyncRelayCommand(AddFlashcardAsync);
+        AddErrorEntryCommand = new AsyncRelayCommand(AddErrorEntryAsync);
+        ReviewErrorNeedsWorkCommand = new AsyncRelayCommand(() => ReviewErrorAsync(false), () => SelectedErrorEntry is not null);
+        ReviewErrorRememberedCommand = new AsyncRelayCommand(() => ReviewErrorAsync(true), () => SelectedErrorEntry is not null);
         ReviewAgainCommand = new AsyncRelayCommand(() => ReviewFlashcardAsync(RecallRating.Again), () => SelectedDueFlashcard is not null);
         ReviewHardCommand = new AsyncRelayCommand(() => ReviewFlashcardAsync(RecallRating.Hard), () => SelectedDueFlashcard is not null);
         ReviewGoodCommand = new AsyncRelayCommand(() => ReviewFlashcardAsync(RecallRating.Good), () => SelectedDueFlashcard is not null);
@@ -316,6 +338,45 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
         catch (Exception ex) { WorkspaceStatus = $"Flashcard non salvata: {ex.Message}"; }
     }
 
+    private async Task AddErrorEntryAsync()
+    {
+        if (string.IsNullOrWhiteSpace(ErrorQuestionInput) || string.IsNullOrWhiteSpace(ErrorCorrectInput)) return;
+        try
+        {
+            _errors.Add(_data, new ErrorJournalEntryData
+            {
+                CourseId = SelectedCourse?.Id ?? string.Empty,
+                Topic = ErrorTopicInput.Trim(),
+                Question = ErrorQuestionInput.Trim(),
+                IncorrectAnswer = ErrorIncorrectInput.Trim(),
+                CorrectAnswer = ErrorCorrectInput.Trim(),
+                RootCause = ErrorCauseInput.Trim()
+            });
+            await SaveAsync();
+            ErrorTopicInput = string.Empty;
+            ErrorQuestionInput = string.Empty;
+            ErrorIncorrectInput = string.Empty;
+            ErrorCorrectInput = string.Empty;
+            ErrorCauseInput = string.Empty;
+            RefreshCollections();
+        }
+        catch (Exception ex) { WorkspaceStatus = $"Errore non registrato: {ex.Message}"; }
+    }
+
+    private async Task ReviewErrorAsync(bool recalled)
+    {
+        if (SelectedErrorEntry is null) return;
+        try
+        {
+            _errors.Review(_data, SelectedErrorEntry.Id, recalled);
+            await SaveAsync();
+            SelectedErrorEntry = null;
+            RefreshCollections();
+            RefreshProgress();
+        }
+        catch (Exception ex) { WorkspaceStatus = $"Ripasso errore non salvato: {ex.Message}"; }
+    }
+
     private async Task ReviewFlashcardAsync(RecallRating rating)
     {
         if (SelectedDueFlashcard is null) return;
@@ -409,6 +470,9 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
             ActiveTasks.Add(item);
         DueFlashcards.Clear();
         foreach (var item in _flashcards.GetDue(_data)) DueFlashcards.Add(item);
+        OpenErrorEntries.Clear();
+        foreach (var item in _data.ErrorJournalEntries.Where(x => x.Status != ErrorReviewStatus.Resolved).OrderBy(x => x.NextReviewAt ?? DateTimeOffset.MaxValue))
+            OpenErrorEntries.Add(item);
         OnPropertyChanged(nameof(HasActiveTasks));
         OnPropertyChanged(nameof(HasDueFlashcards));
         OnPropertyChanged(nameof(PdfDocuments));
