@@ -166,6 +166,13 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
     public bool HasDueFlashcards => DueFlashcards.Count > 0;
     public bool HasActiveTasks => ActiveTasks.Count > 0;
     public bool HasBackups => BackupItems.Count > 0;
+    public bool NoBackups => BackupItems.Count == 0;
+    public bool NoActiveTasks => ActiveTasks.Count == 0;
+    public bool NoDueFlashcards => DueFlashcards.Count == 0;
+    public bool NoOpenErrorEntries => OpenErrorEntries.Count == 0;
+    public bool NoOpenDistractions => OpenDistractions.Count == 0;
+    public bool NoPdfDocuments => PdfDocuments.Count == 0;
+    public bool NoPdfSearchHits => PdfSearchHits.Count == 0;
     public string PdfDocumentSummary => SelectedPdf is null
         ? "Seleziona un documento."
         : $"{SelectedPdf.PageCount} pagine · {(SelectedPdf.HasExtractableText ? "Testo estraibile" : "OCR richiesto")}";
@@ -294,6 +301,7 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
             var result = await _pdfImport.ImportAsync(path, _data, SelectedCourse?.Id);
             await _store.SaveAsync(_data);
             SelectedPdf = result.Document;
+            OnPropertyChanged(nameof(NoPdfDocuments));
             PdfStatus = result.WasDuplicate
                 ? "Documento già presente: non è stata creata una copia."
                 : result.RequiresOcr
@@ -568,6 +576,7 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
         PdfSearchHits.Clear();
         foreach (var hit in _pdfIntelligence.Search(SelectedPdf, PdfSearchQuery))
             PdfSearchHits.Add(hit);
+        OnPropertyChanged(nameof(NoPdfSearchHits));
         PdfStatus = PdfSearchHits.Count == 0
             ? "Nessun risultato nel testo estraibile del documento."
             : $"{PdfSearchHits.Count} risultati trovati. Le pagine sono riferimenti al testo importato.";
@@ -659,6 +668,11 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
             RecentEnergyCheckIns.Add(item);
         OnPropertyChanged(nameof(HasActiveTasks));
         OnPropertyChanged(nameof(HasDueFlashcards));
+        OnPropertyChanged(nameof(NoActiveTasks));
+        OnPropertyChanged(nameof(NoDueFlashcards));
+        OnPropertyChanged(nameof(NoOpenErrorEntries));
+        OnPropertyChanged(nameof(NoOpenDistractions));
+        OnPropertyChanged(nameof(NoPdfDocuments));
         OnPropertyChanged(nameof(PdfDocuments));
         OnPropertyChanged(nameof(PdfDocumentSummary));
         if (SelectedDueFlashcard is null || !DueFlashcards.Any(x => x.Id == SelectedDueFlashcard.Id))
@@ -697,6 +711,7 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
         foreach (var backup in _backups.ListBackups())
             BackupItems.Add(backup with { IntegrityVerified = _verifiedBackups.Contains(backup.FilePath) });
         OnPropertyChanged(nameof(HasBackups));
+        OnPropertyChanged(nameof(NoBackups));
     }
 
     private void NotifyFocusState()
