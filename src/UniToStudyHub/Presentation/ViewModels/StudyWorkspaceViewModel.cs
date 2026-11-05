@@ -133,6 +133,7 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
     public AsyncRelayCommand CompleteTaskCommand { get; }
     public AsyncRelayCommand RemoveTaskCommand { get; }
     public AsyncRelayCommand AddFlashcardCommand { get; }
+    public AsyncRelayCommand RevealFlashcardCommand { get; }
     public AsyncRelayCommand AddErrorEntryCommand { get; }
     public AsyncRelayCommand ReviewErrorNeedsWorkCommand { get; }
     public AsyncRelayCommand ReviewErrorRememberedCommand { get; }
@@ -177,6 +178,7 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
         CompleteTaskCommand = new AsyncRelayCommand(CompleteTaskAsync, () => SelectedTask is not null);
         RemoveTaskCommand = new AsyncRelayCommand(RemoveTaskAsync, () => SelectedTask is not null);
         AddFlashcardCommand = new AsyncRelayCommand(AddFlashcardAsync);
+        RevealFlashcardCommand = new AsyncRelayCommand(RevealFlashcardAsync, () => SelectedDueFlashcard is not null);
         AddErrorEntryCommand = new AsyncRelayCommand(AddErrorEntryAsync);
         ReviewErrorNeedsWorkCommand = new AsyncRelayCommand(() => ReviewErrorAsync(false), () => SelectedErrorEntry is not null);
         ReviewErrorRememberedCommand = new AsyncRelayCommand(() => ReviewErrorAsync(true), () => SelectedErrorEntry is not null);
@@ -336,6 +338,12 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
             RefreshProgress();
         }
         catch (Exception ex) { WorkspaceStatus = $"Flashcard non salvata: {ex.Message}"; }
+    }
+
+    private Task RevealFlashcardAsync()
+    {
+        FlashcardRevealed = !FlashcardRevealed;
+        return Task.CompletedTask;
     }
 
     private async Task AddErrorEntryAsync()
@@ -520,6 +528,7 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
 
     private void NotifyReviewCommands()
     {
+        RevealFlashcardCommand?.NotifyCanExecuteChanged();
         ReviewAgainCommand?.NotifyCanExecuteChanged();
         ReviewHardCommand?.NotifyCanExecuteChanged();
         ReviewGoodCommand?.NotifyCanExecuteChanged();
