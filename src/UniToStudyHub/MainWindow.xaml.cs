@@ -49,6 +49,22 @@ public partial class MainWindow : Window
             await viewModel.Workspace.ImportPdfAsync(dialog.FileName);
     }
 
+    private void RestoreBackup_Click(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is not MainViewModel viewModel || viewModel.Workspace.SelectedBackup is null)
+            return;
+
+        var backupName = System.IO.Path.GetFileName(viewModel.Workspace.SelectedBackup.FilePath);
+        var result = MessageBox.Show(
+            $"Ripristinare il backup \\"{backupName}\\"? I dati correnti verranno sostituiti. Prima sarà creata una copia di sicurezza automatica.",
+            "Conferma ripristino backup",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Warning,
+            MessageBoxResult.No);
+        if (result == MessageBoxResult.Yes)
+            viewModel.Workspace.RestoreBackupCommand.Execute(null);
+    }
+
     private void DeleteCalendarEvent_Click(object sender, RoutedEventArgs e)
     {
         if (DataContext is not MainViewModel viewModel || viewModel.SelectedCalendarEvent is null)
