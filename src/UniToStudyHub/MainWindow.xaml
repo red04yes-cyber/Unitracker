@@ -525,80 +525,118 @@
                 </StackPanel>
             </TabItem.Header>
 
-            <ScrollViewer VerticalScrollBarVisibility="Auto"
-                          HorizontalScrollBarVisibility="Disabled">
-                <StackPanel Margin="32,30,32,36">
-                    <TextBlock Text="PIANIFICAZIONE" FontSize="10"
-                               FontWeight="Bold" Foreground="{StaticResource AccentBrush}"/>
-                    <TextBlock Text="Calendario esami" Style="{StaticResource PageTitleStyle}"
-                               Margin="0,7,0,4"/>
-                    <TextBlock Text="Organizza gli esami da sostenere e tieni sotto controllo le date indicative."
-                               Style="{StaticResource PageSubtitleStyle}" Margin="0,0,0,22"/>
-
-                    <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,16">
-                        <StackPanel>
-                            <TextBlock Text="Pianificazione degli esami"
-                                       Style="{StaticResource SectionTitleStyle}"/>
-                            <TextBlock Text="Il pianificatore distribuisce gli esami nelle sessioni in base ai dati attualmente disponibili. Le date prodotte sono stime organizzative, non appelli ufficiali UniTo."
-                                       Style="{StaticResource PageSubtitleStyle}" Margin="0,7,0,14"/>
-                            <Button Content="Distribuisci gli esami nelle sessioni"
-                                    Command="{Binding PlanExamsCommand}"
-                                    HorizontalAlignment="Left"/>
-                            <TextBlock Text="{Binding StatusMessage}" FontSize="11"
-                                       Foreground="{StaticResource MutedBrush}" Margin="0,10,0,0"
-                                       TextWrapping="Wrap"/>
-                        </StackPanel>
-                    </Border>
-
-                    <TextBlock Text="Esami pianificati" Style="{StaticResource SectionTitleStyle}"
-                               Margin="0,0,0,12"/>
-                    <ItemsControl ItemsSource="{Binding Exams}">
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate>
-                                <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,10">
-                                    <Grid>
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="*"/>
-                                            <ColumnDefinition Width="Auto"/>
-                                        </Grid.ColumnDefinitions>
-                                        <StackPanel>
-                                            <TextBlock Text="{Binding Name}" FontSize="14"
-                                                       FontWeight="SemiBold" Foreground="{StaticResource InkBrush}"/>
-                                            <TextBlock Text="{Binding CourseName}" FontSize="11"
-                                                       Foreground="{StaticResource MutedBrush}" Margin="0,4,0,0"/>
-                                            <TextBlock Text="{Binding PlannedSession}" FontSize="11"
-                                                       Foreground="{StaticResource MutedBrush}" Margin="0,3,0,0"/>
-                                        </StackPanel>
-                                        <StackPanel Grid.Column="1" VerticalAlignment="Center"
-                                                    HorizontalAlignment="Right">
-                                            <TextBlock Text="{Binding PlannedDate, StringFormat={}{0:dd MMM yyyy}, TargetNullValue='Da pianificare'}"
-                                                       FontSize="13" FontWeight="SemiBold"
-                                                       Foreground="{StaticResource InkBrush}"/>
-                                            <TextBlock Text="{Binding Cfu, StringFormat={}{0} CFU}"
-                                                       FontSize="10" Foreground="{StaticResource MutedBrush}"
-                                                       HorizontalAlignment="Right" Margin="0,4,0,0"/>
-                                        </StackPanel>
-                                    </Grid>
-                                </Border>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-
-                    <Border Style="{StaticResource CardBorderStyle}"
-                            Visibility="{Binding NoPlannedExams, Converter={StaticResource BooleanToVisibilityConverter}}"
-                            Padding="28">
-                        <StackPanel HorizontalAlignment="Center">
-                            <TextBlock Text="Nessun esame pianificato"
-                                       FontSize="15" FontWeight="SemiBold"
-                                       Foreground="{StaticResource InkBrush}" HorizontalAlignment="Center"/>
-                            <TextBlock Text="Aggiungi le materie e usa il pianificatore per creare una prima distribuzione indicativa."
-                                       FontSize="12" Foreground="{StaticResource MutedBrush}"
-                                       TextWrapping="Wrap" TextAlignment="Center" MaxWidth="480"
-                                       Margin="0,7,0,0"/>
-                        </StackPanel>
-                    </Border>
+            <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+    <StackPanel Margin="32,30,32,36">
+        <TextBlock Text="ORGANIZZAZIONE" FontSize="10" FontWeight="Bold" Foreground="{StaticResource AccentBrush}"/>
+        <TextBlock Text="Calendario" Style="{StaticResource PageTitleStyle}" Margin="0,7,0,4"/>
+        <TextBlock Text="Lezioni, esami, scadenze e sessioni di studio. Ogni evento conserva la propria provenienza." Style="{StaticResource PageSubtitleStyle}" Margin="0,0,0,22"/>
+        <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,16">
+            <StackPanel>
+                <Grid>
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                    <StackPanel>
+                        <TextBlock Text="{Binding CalendarPeriodDisplay}" FontSize="21" FontWeight="SemiBold" Foreground="{StaticResource InkBrush}"/>
+                        <TextBlock Text="Settimana da lunedì · date locali" FontSize="11" Foreground="{StaticResource MutedBrush}" Margin="0,4,0,0"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                        <Button Content="‹" Width="38" Command="{Binding PreviousCalendarPeriodCommand}" Style="{StaticResource QuietButtonStyle}"/>
+                        <Button Content="Oggi" Margin="6,0" Command="{Binding TodayCalendarCommand}" Style="{StaticResource SecondaryButtonStyle}"/>
+                        <Button Content="›" Width="38" Command="{Binding NextCalendarPeriodCommand}" Style="{StaticResource QuietButtonStyle}"/>
+                        <ComboBox Width="126" Margin="12,0,0,0" SelectedValuePath="Tag" SelectedValue="{Binding CalendarViewMode, UpdateSourceTrigger=PropertyChanged}">
+                            <ComboBoxItem Content="Mese" Tag="Month"/><ComboBoxItem Content="Settimana" Tag="Week"/><ComboBoxItem Content="Giorno" Tag="Day"/>
+                        </ComboBox>
+                    </StackPanel>
+                </Grid>
+                <UniformGrid Columns="7" Margin="0,18,0,6">
+                    <TextBlock Text="LUN" FontSize="9" FontWeight="Bold" Foreground="{StaticResource MutedBrush}" HorizontalAlignment="Center"/>
+                    <TextBlock Text="MAR" FontSize="9" FontWeight="Bold" Foreground="{StaticResource MutedBrush}" HorizontalAlignment="Center"/>
+                    <TextBlock Text="MER" FontSize="9" FontWeight="Bold" Foreground="{StaticResource MutedBrush}" HorizontalAlignment="Center"/>
+                    <TextBlock Text="GIO" FontSize="9" FontWeight="Bold" Foreground="{StaticResource MutedBrush}" HorizontalAlignment="Center"/>
+                    <TextBlock Text="VEN" FontSize="9" FontWeight="Bold" Foreground="{StaticResource MutedBrush}" HorizontalAlignment="Center"/>
+                    <TextBlock Text="SAB" FontSize="9" FontWeight="Bold" Foreground="{StaticResource MutedBrush}" HorizontalAlignment="Center"/>
+                    <TextBlock Text="DOM" FontSize="9" FontWeight="Bold" Foreground="{StaticResource MutedBrush}" HorizontalAlignment="Center"/>
+                </UniformGrid>
+                <ListBox ItemsSource="{Binding CalendarDayCells}" SelectedItem="{Binding SelectedCalendarDay, Mode=TwoWay}" Background="Transparent" BorderThickness="0" ScrollViewer.HorizontalScrollBarVisibility="Disabled" ScrollViewer.VerticalScrollBarVisibility="Disabled">
+                    <ListBox.ItemsPanel><ItemsPanelTemplate><UniformGrid Columns="7"/></ItemsPanelTemplate></ListBox.ItemsPanel>
+                    <ListBox.ItemContainerStyle>
+                        <Style TargetType="{x:Type ListBoxItem}">
+                            <Setter Property="Margin" Value="3"/><Setter Property="Padding" Value="0"/>
+                            <Setter Property="HorizontalContentAlignment" Value="Stretch"/><Setter Property="VerticalContentAlignment" Value="Stretch"/>
+                            <Setter Property="Background" Value="White"/><Setter Property="BorderBrush" Value="{StaticResource BorderBrush}"/><Setter Property="BorderThickness" Value="1"/>
+                            <Setter Property="Template"><Setter.Value>
+                                <ControlTemplate TargetType="{x:Type ListBoxItem}">
+                                    <Border x:Name="DaySurface" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="8"><ContentPresenter/></Border>
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property="IsSelected" Value="True"><Setter TargetName="DaySurface" Property="Background" Value="{StaticResource AccentSoftBrush}"/><Setter TargetName="DaySurface" Property="BorderBrush" Value="{StaticResource AccentBrush}"/></Trigger>
+                                        <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="DaySurface" Property="Opacity" Value="0.82"/></Trigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </Setter.Value></Setter>
+                        </Style>
+                    </ListBox.ItemContainerStyle>
+                    <ListBox.ItemTemplate><DataTemplate>
+                        <Border Padding="8" MinHeight="67">
+                            <StackPanel><Grid>
+                                <TextBlock Text="{Binding DayNumber}" FontSize="14" FontWeight="SemiBold" Foreground="{StaticResource InkBrush}"/>
+                                <TextBlock Text="{Binding DayName}" FontSize="9" Foreground="{StaticResource MutedBrush}" HorizontalAlignment="Right"/>
+                            </Grid><TextBlock Text="{Binding EventSummary}" FontSize="9" Foreground="{StaticResource AccentBrush}" Margin="0,9,0,0"/></StackPanel>
+                            <Border.Style><Style TargetType="{x:Type Border}"><Setter Property="Opacity" Value="1"/><Style.Triggers><DataTrigger Binding="{Binding IsCurrentPeriod}" Value="False"><Setter Property="Opacity" Value="0.38"/></DataTrigger></Style.Triggers></Style></Border.Style>
+                        </Border>
+                    </DataTemplate></ListBox.ItemTemplate>
+                </ListBox>
+            </StackPanel>
+        </Border>
+        <Grid>
+            <Grid.ColumnDefinitions><ColumnDefinition Width="1.2*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+            <Border Grid.Column="0" Style="{StaticResource CardBorderStyle}" Margin="0,0,12,0">
+                <StackPanel>
+                    <TextBlock Text="{Binding SelectedDayDisplay}" Style="{StaticResource SectionTitleStyle}"/>
+                    <TextBlock Text="Eventi del giorno selezionato" FontSize="11" Foreground="{StaticResource MutedBrush}" Margin="0,4,0,12"/>
+                    <ListBox ItemsSource="{Binding SelectedDayEvents}" SelectedItem="{Binding SelectedCalendarEvent, Mode=TwoWay}" BorderThickness="0" Background="Transparent" MinHeight="120">
+                        <ListBox.ItemContainerStyle><Style TargetType="{x:Type ListBoxItem}"><Setter Property="Padding" Value="0"/><Setter Property="Margin" Value="0,0,0,8"/><Setter Property="HorizontalContentAlignment" Value="Stretch"/></Style></ListBox.ItemContainerStyle>
+                        <ListBox.ItemTemplate><DataTemplate>
+                            <Border Background="{StaticResource SubtleBrush}" CornerRadius="8" Padding="12">
+                                <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="58"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                    <TextBlock Text="{Binding StartsAt, StringFormat={}{0:HH:mm}}" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource AccentBrush}" VerticalAlignment="Top"/>
+                                    <StackPanel Grid.Column="1">
+                                        <TextBlock Text="{Binding Title}" FontSize="13" FontWeight="SemiBold" Foreground="{StaticResource InkBrush}" TextWrapping="Wrap"/>
+                                        <TextBlock Text="{Binding Category}" FontSize="10" Foreground="{StaticResource MutedBrush}" Margin="0,3,0,0"/>
+                                        <WrapPanel Margin="0,7,0,0">
+                                            <Border Background="{StaticResource PanelBrush}" CornerRadius="5" Padding="6,3" Margin="0,0,5,0"><TextBlock Text="{Binding Source}" FontSize="9" Foreground="{StaticResource MutedBrush}"/></Border>
+                                            <Border Background="{StaticResource WarningSoftBrush}" CornerRadius="5" Padding="6,3"><TextBlock Text="{Binding Verification}" FontSize="9" Foreground="#8A5B1D"/></Border>
+                                        </WrapPanel>
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+                        </DataTemplate></ListBox.ItemTemplate>
+                    </ListBox>
+                    <TextBlock Text="Gli eventi Pianificati sono stime organizzative; solo quelli verificati come ufficiali vanno considerati confermati." FontSize="10" Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap" Margin="0,8,0,0"/>
                 </StackPanel>
-            </ScrollViewer>
+            </Border>
+            <Border Grid.Column="1" Style="{StaticResource CardBorderStyle}">
+                <StackPanel>
+                    <Grid><TextBlock Text="Dettagli evento" Style="{StaticResource SectionTitleStyle}"/><Button Content="Nuovo" Grid.Column="1" Command="{Binding NewCalendarEventCommand}" Style="{StaticResource QuietButtonStyle}" HorizontalAlignment="Right"/></Grid>
+                    <TextBlock Text="Titolo" Style="{StaticResource KpiLabelStyle}" Margin="0,14,0,5"/>
+                    <TextBox Text="{Binding CalendarEventTitle, UpdateSourceTrigger=PropertyChanged}"/>
+                    <TextBlock Text="Categoria" Style="{StaticResource KpiLabelStyle}" Margin="0,12,0,5"/>
+                    <ComboBox SelectedValuePath="Content" SelectedValue="{Binding CalendarEventCategoryInput, UpdateSourceTrigger=PropertyChanged}">
+                        <ComboBoxItem Content="Personal"/><ComboBoxItem Content="Lecture"/><ComboBoxItem Content="Exam"/><ComboBoxItem Content="Deadline"/><ComboBoxItem Content="Study"/><ComboBoxItem Content="Review"/>
+                    </ComboBox>
+                    <TextBlock Text="Data" Style="{StaticResource KpiLabelStyle}" Margin="0,12,0,5"/>
+                    <DatePicker SelectedDate="{Binding CalendarEventDate, UpdateSourceTrigger=PropertyChanged}"/>
+                    <CheckBox Content="Evento per tutto il giorno" IsChecked="{Binding CalendarEventAllDay}" Margin="0,12,0,0"/>
+                    <Grid Margin="0,10,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                        <StackPanel><TextBlock Text="Inizio" Style="{StaticResource KpiLabelStyle}" Margin="0,0,0,5"/><TextBox Text="{Binding CalendarEventStartTime, UpdateSourceTrigger=PropertyChanged}"/></StackPanel>
+                        <StackPanel Grid.Column="1" Margin="10,0,0,0"><TextBlock Text="Fine" Style="{StaticResource KpiLabelStyle}" Margin="0,0,0,5"/><TextBox Text="{Binding CalendarEventEndTime, UpdateSourceTrigger=PropertyChanged}"/></StackPanel>
+                    </Grid>
+                    <Button Content="Salva evento" Command="{Binding AddCalendarEventCommand}" Margin="0,16,0,0"/>
+                    <Button Content="Elimina evento selezionato" Command="{Binding DeleteCalendarEventCommand}" Style="{StaticResource DangerButtonStyle}" Margin="0,8,0,0"/>
+                    <TextBlock Text="{Binding StatusMessage}" FontSize="10" Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap" Margin="0,12,0,0"/>
+                </StackPanel>
+            </Border>
+        </Grid>
+    </StackPanel>
+</ScrollViewer>
         </TabItem>
 
         <TabItem>
@@ -708,51 +746,25 @@
                 </StackPanel>
             </TabItem.Header>
 
-            <ScrollViewer VerticalScrollBarVisibility="Auto"
-                          HorizontalScrollBarVisibility="Disabled">
-                <StackPanel Margin="32,30,32,36">
-                    <TextBlock Text="IL TUO ANDAMENTO" FontSize="10"
-                               FontWeight="Bold" Foreground="{StaticResource AccentBrush}"/>
-                    <TextBlock Text="Progressi" Style="{StaticResource PageTitleStyle}"
-                               Margin="0,7,0,4"/>
-                    <TextBlock Text="Una lettura trasparente dei dati di carriera effettivamente registrati."
-                               Style="{StaticResource PageSubtitleStyle}" Margin="0,0,0,22"/>
-                    <UniformGrid Columns="3">
-                        <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,10,10">
-                            <StackPanel>
-                                <TextBlock Text="CFU ACQUISITI" Style="{StaticResource KpiLabelStyle}"/>
-                                <TextBlock Text="{Binding AcquiredCreditsValue}" FontSize="27"
-                                           FontWeight="SemiBold" Foreground="{StaticResource InkBrush}"
-                                           Margin="0,8,0,0"/>
-                            </StackPanel>
-                        </Border>
-                        <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,10,10">
-                            <StackPanel>
-                                <TextBlock Text="MEDIA PONDERATA" Style="{StaticResource KpiLabelStyle}"/>
-                                <TextBlock Text="{Binding AverageDisplay}" FontSize="27"
-                                           FontWeight="SemiBold" Foreground="{StaticResource InkBrush}"
-                                           Margin="0,8,0,0"/>
-                            </StackPanel>
-                        </Border>
-                        <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,10">
-                            <StackPanel>
-                                <TextBlock Text="MEDIA ARITMETICA" Style="{StaticResource KpiLabelStyle}"/>
-                                <TextBlock Text="{Binding ArithmeticAverageDisplay}" FontSize="27"
-                                           FontWeight="SemiBold" Foreground="{StaticResource InkBrush}"
-                                           Margin="0,8,0,0"/>
-                            </StackPanel>
-                        </Border>
-                    </UniformGrid>
-                    <Border Style="{StaticResource CardBorderStyle}" Margin="0,6,0,0">
-                        <StackPanel>
-                            <TextBlock Text="Come leggere questi dati"
-                                       Style="{StaticResource SectionTitleStyle}"/>
-                            <TextBlock Text="Le medie sono calcolate sugli ultimi voti registrati per materia. Il totale dei CFU deriva dai risultati registrati. Le analisi sul tempo di studio, sulle missioni e sulla memoria saranno aggiunte quando Studio Lab e Memory Engine saranno disponibili."
-                                       Style="{StaticResource PageSubtitleStyle}" Margin="0,9,0,0"/>
-                        </StackPanel>
-                    </Border>
-                </StackPanel>
-            </ScrollViewer>
+            <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+    <StackPanel Margin="32,30,32,36">
+        <TextBlock Text="IL TUO ANDAMENTO" FontSize="10" FontWeight="Bold" Foreground="{StaticResource AccentBrush}"/>
+        <TextBlock Text="Progressi" Style="{StaticResource PageTitleStyle}" Margin="0,7,0,4"/>
+        <TextBlock Text="{Binding Workspace.ProgressPeriodDisplay, StringFormat=Periodo · {0}}" Style="{StaticResource PageSubtitleStyle}" Margin="0,0,0,22"/>
+        <UniformGrid Columns="3" Margin="0,0,0,12">
+            <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,10,10"><StackPanel><TextBlock Text="TEMPO DI FOCUS" Style="{StaticResource KpiLabelStyle}"/><TextBlock Text="{Binding Workspace.FocusMinutesDisplay}" FontSize="24" FontWeight="SemiBold" Foreground="{StaticResource InkBrush}" Margin="0,9,0,0"/></StackPanel></Border>
+            <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,10,10"><StackPanel><TextBlock Text="SESSIONI COMPLETATE" Style="{StaticResource KpiLabelStyle}"/><TextBlock Text="{Binding Workspace.CompletedSessionsDisplay}" FontSize="24" FontWeight="SemiBold" Foreground="{StaticResource InkBrush}" Margin="0,9,0,0"/></StackPanel></Border>
+            <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,10"><StackPanel><TextBlock Text="TASK COMPLETATI" Style="{StaticResource KpiLabelStyle}"/><TextBlock Text="{Binding Workspace.CompletedTasksDisplay}" FontSize="24" FontWeight="SemiBold" Foreground="{StaticResource InkBrush}" Margin="0,9,0,0"/></StackPanel></Border>
+            <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,10,10"><StackPanel><TextBlock Text="FLASHCARD DOVUTE" Style="{StaticResource KpiLabelStyle}"/><TextBlock Text="{Binding Workspace.DueFlashcardsDisplay}" FontSize="24" FontWeight="SemiBold" Foreground="{StaticResource InkBrush}" Margin="0,9,0,0"/></StackPanel></Border>
+            <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,10,10"><StackPanel><TextBlock Text="ERRORI APERTI" Style="{StaticResource KpiLabelStyle}"/><TextBlock Text="{Binding Workspace.OpenErrorsDisplay}" FontSize="24" FontWeight="SemiBold" Foreground="{StaticResource InkBrush}" Margin="0,9,0,0"/></StackPanel></Border>
+            <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,10"><StackPanel><TextBlock Text="STREAK FOCUS" Style="{StaticResource KpiLabelStyle}"/><TextBlock Text="{Binding Workspace.FocusStreakDisplay}" FontSize="24" FontWeight="SemiBold" Foreground="{StaticResource InkBrush}" Margin="0,9,0,0"/></StackPanel></Border>
+        </UniformGrid>
+        <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="1.1*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+            <Border Grid.Column="0" Style="{StaticResource CardBorderStyle}" Margin="0,0,12,0"><StackPanel><TextBlock Text="Obiettivo settimanale" Style="{StaticResource SectionTitleStyle}"/><TextBlock Text="{Binding Workspace.WeeklyGoalDisplay}" FontSize="16" FontWeight="SemiBold" Foreground="{StaticResource InkBrush}" Margin="0,10,0,0"/><TextBlock Text="Il totale deriva dalle sessioni di focus salvate, non da stime o tempo trascorso con l'app aperta." FontSize="11" Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap" Margin="0,8,0,0"/></StackPanel></Border>
+            <Border Grid.Column="1" Style="{StaticResource CardBorderStyle}"><StackPanel><TextBlock Text="Per materia" Style="{StaticResource SectionTitleStyle}"/><ItemsControl ItemsSource="{Binding Workspace.CurrentProgress.Courses}"><ItemsControl.ItemTemplate><DataTemplate><Grid Margin="0,10,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Text="{Binding CourseName}" FontSize="11" Foreground="{StaticResource InkBrush}" TextWrapping="Wrap"/><TextBlock Grid.Column="1" Text="{Binding FocusMinutes, StringFormat={}{0} min}" FontSize="11" Foreground="{StaticResource MutedBrush}"/></Grid></DataTemplate></ItemsControl.ItemTemplate></ItemsControl><TextBlock Text="Le statistiche sono calcolate sugli ultimi sette giorni (da lunedì a oggi). Le metriche vuote restano indicate come dati insufficienti." FontSize="10" Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap" Margin="0,12,0,0"/></StackPanel></Border>
+        </Grid>
+    </StackPanel>
+</ScrollViewer>
         </TabItem>
 
         <TabItem>
@@ -770,50 +782,41 @@
                 </StackPanel>
             </TabItem.Header>
 
-            <ScrollViewer VerticalScrollBarVisibility="Auto"
-                          HorizontalScrollBarVisibility="Disabled">
-                <StackPanel Margin="32,30,32,36">
-                    <TextBlock Text="CONFIGURAZIONE" FontSize="10"
-                               FontWeight="Bold" Foreground="{StaticResource AccentBrush}"/>
-                    <TextBlock Text="Impostazioni" Style="{StaticResource PageTitleStyle}"
-                               Margin="0,7,0,4"/>
-                    <TextBlock Text="Gestisci le integrazioni utilizzate da StudyHub."
-                               Style="{StaticResource PageSubtitleStyle}" Margin="0,0,0,22"/>
-
-                    <Border Style="{StaticResource CardBorderStyle}" MaxWidth="760"
-                            HorizontalAlignment="Left">
-                        <StackPanel>
-                            <TextBlock Text="Connessione Moodle"
-                                       Style="{StaticResource SectionTitleStyle}"/>
-                            <TextBlock Text="Collega il tuo spazio Moodle UniTo per sincronizzare i corsi e accedere ai materiali consentiti."
-                                       Style="{StaticResource PageSubtitleStyle}" Margin="0,7,0,16"/>
-                            <TextBlock Text="URL della piattaforma" Style="{StaticResource KpiLabelStyle}"
-                                       Margin="0,0,0,5"/>
-                            <TextBox Text="{Binding MoodleUrlInput, UpdateSourceTrigger=PropertyChanged}"
-                                     MaxWidth="600" HorizontalAlignment="Stretch"/>
-                            <TextBlock Text="Token Web Services" Style="{StaticResource KpiLabelStyle}"
-                                       Margin="0,14,0,5"/>
-                            <PasswordBox x:Name="MoodleTokenBox" MaxWidth="600"
-                                         HorizontalAlignment="Stretch" Padding="11,9"
-                                         PasswordChanged="MoodleTokenBox_PasswordChanged"/>
-                            <WrapPanel Margin="0,16,0,0">
-                                <Button Content="Verifica e salva token"
-                                        Command="{Binding ConnectMoodleCommand}"
-                                        Margin="0,0,8,0"/>
-                                <Button Content="Sincronizza corsi"
-                                        Style="{StaticResource SecondaryButtonStyle}"
-                                        Command="{Binding SyncMoodleCommand}"/>
-                            </WrapPanel>
-                            <Border Background="{StaticResource SubtleBrush}" CornerRadius="8"
-                                    Padding="12" Margin="0,16,0,0">
-                                <TextBlock Text="{Binding MoodleStatus}" FontSize="12"
-                                           Foreground="{StaticResource InkBrush}"
-                                           TextWrapping="Wrap"/>
-                            </Border>
-                        </StackPanel>
-                    </Border>
-                </StackPanel>
-            </ScrollViewer>
+            <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+    <StackPanel Margin="32,30,32,36">
+        <TextBlock Text="CONFIGURAZIONE" FontSize="10" FontWeight="Bold" Foreground="{StaticResource AccentBrush}"/>
+        <TextBlock Text="Impostazioni" Style="{StaticResource PageTitleStyle}" Margin="0,7,0,4"/>
+        <TextBlock Text="Gestisci integrazioni, dati locali e copie di sicurezza." Style="{StaticResource PageSubtitleStyle}" Margin="0,0,0,22"/>
+        <Border Style="{StaticResource CardBorderStyle}" MaxWidth="860" HorizontalAlignment="Left" Margin="0,0,0,14">
+            <StackPanel>
+                <TextBlock Text="Connessione Moodle" Style="{StaticResource SectionTitleStyle}"/>
+                <TextBlock Text="Collega il tuo spazio Moodle UniTo per sincronizzare i corsi e accedere ai materiali consentiti." Style="{StaticResource PageSubtitleStyle}" Margin="0,7,0,16"/>
+                <TextBlock Text="URL della piattaforma" Style="{StaticResource KpiLabelStyle}" Margin="0,0,0,5"/>
+                <TextBox Text="{Binding MoodleUrlInput, UpdateSourceTrigger=PropertyChanged}" MaxWidth="600" HorizontalAlignment="Stretch"/>
+                <TextBlock Text="Token Web Services" Style="{StaticResource KpiLabelStyle}" Margin="0,14,0,5"/>
+                <PasswordBox x:Name="MoodleTokenBox" MaxWidth="600" HorizontalAlignment="Stretch" Padding="11,9" PasswordChanged="MoodleTokenBox_PasswordChanged"/>
+                <WrapPanel Margin="0,16,0,0"><Button Content="Verifica e salva token" Command="{Binding ConnectMoodleCommand}" Margin="0,0,8,0"/><Button Content="Sincronizza corsi" Style="{StaticResource SecondaryButtonStyle}" Command="{Binding SyncMoodleCommand}"/></WrapPanel>
+                <Border Background="{StaticResource SubtleBrush}" CornerRadius="8" Padding="12" Margin="0,16,0,0"><TextBlock Text="{Binding MoodleStatus}" FontSize="12" Foreground="{StaticResource InkBrush}" TextWrapping="Wrap"/></Border>
+            </StackPanel>
+        </Border>
+        <Border Style="{StaticResource CardBorderStyle}" MaxWidth="860" HorizontalAlignment="Left">
+            <StackPanel>
+                <TextBlock Text="Dati e backup" Style="{StaticResource SectionTitleStyle}"/>
+                <TextBlock Text="Le copie sono locali e includono un manifest di formato e checksum. I backup non sono cifrati." FontSize="11" Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap" Margin="0,6,0,12"/>
+                <TextBlock Text="Cartella backup" Style="{StaticResource KpiLabelStyle}"/>
+                <TextBox Text="{Binding Workspace.BackupDirectory}" IsReadOnly="True" Margin="0,5,0,10"/>
+                <Button Content="Crea backup e verifica integrità" Command="{Binding Workspace.CreateBackupCommand}" HorizontalAlignment="Left"/>
+                <TextBlock Text="Backup disponibili" Style="{StaticResource KpiLabelStyle}" Margin="0,16,0,6"/>
+                <ListBox ItemsSource="{Binding Workspace.BackupItems}" SelectedItem="{Binding Workspace.SelectedBackup}" MinHeight="90" MaxHeight="220">
+                    <ListBox.ItemTemplate><DataTemplate><StackPanel Margin="5"><TextBlock Text="{Binding FilePath}" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource InkBrush}" TextWrapping="Wrap"/><TextBlock Text="{Binding CreatedAt, StringFormat={}{0:dd/MM/yyyy HH:mm}}" FontSize="10" Foreground="{StaticResource MutedBrush}"/><TextBlock Text="{Binding SizeBytes, StringFormat={}{0:N0} byte}" FontSize="9" Foreground="{StaticResource MutedBrush}"/><TextBlock Text="{Binding IntegrityVerified, StringFormat=Integrità verificata: {0}}" FontSize="9" Foreground="{StaticResource MutedBrush}"/></StackPanel></DataTemplate></ListBox.ItemTemplate>
+                </ListBox>
+                <WrapPanel Margin="0,9,0,0"><Button Content="Verifica backup selezionato" Command="{Binding Workspace.VerifyBackupCommand}" Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,8,0"/><Button Content="Ripristino non disponibile" IsEnabled="False" Style="{StaticResource QuietButtonStyle}" ToolTip="In attesa che il contratto tecnico restituisca il percorso del backup di sicurezza"/></WrapPanel>
+                <TextBlock Text="{Binding Workspace.BackupStatus}" FontSize="11" Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap" Margin="0,12,0,0"/>
+                <TextBlock Text="Il ripristino resta disattivato finché il servizio non espone alla UI il percorso effettivo del backup di sicurezza creato prima della sostituzione del database." FontSize="10" Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap" Margin="0,7,0,0"/>
+            </StackPanel>
+        </Border>
+    </StackPanel>
+</ScrollViewer>
         </TabItem>
     </TabControl>
 </Window>
