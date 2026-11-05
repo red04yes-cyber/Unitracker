@@ -109,7 +109,29 @@ La somma dei gruppi `ByType` o `ByCourse` può quindi superare
 doppio conteggio: è la stessa ora osservata da due dimensioni. La UI deve
 mostrare `OverlapSeconds` e non sommare i gruppi per ricavare il totale.
 
-## 4. Test di regressione aggiunti
+## 4. Fase 0 — verifica della PR #40
+
+Il test di migrazione incrementale ora parte dalla migrazione
+`20261105005756_AddActivityLedgerAndMissions`, inserisce una sessione legacy e
+una voce `StudyActivity` già persistite, applica
+`20261105011642_AddFocusSessionSegments` e verifica che:
+
+- entrambe le righe siano ancora presenti e leggibili;
+- non siano state duplicate o modificate;
+- `StudySessionSegments` resti vuota per la sessione legacy;
+- `SqliteStudyDataStore.LoadAsync` ricarichi la sessione con `Segments` vuoto.
+
+Il fallback legacy è coperto anche a livello di servizio: una sessione senza
+segmenti usa `EffectiveSeconds` per un unico blocco focus iniziale; la timeline
+non inventa attività nella parte restante dell’intervallo e la posizione delle
+vecchie pause resta esplicitamente non ricostruibile.
+
+La CI Windows `build-windows.yml` ora copre anche le pull request verso
+`work/**`, esegue restore e test Release prima della build WPF Release e ha
+permessi `contents: read`. Il risultato effettivo della CI non è ancora
+osservato: va verificato su GitHub dopo il push.
+
+## 5. Test di regressione aggiunti
 
 - pausa 09:10–09:20 esclusa da timeline e riepilogo, con segmento pausa
   verificato nella posizione corretta;
@@ -127,7 +149,7 @@ mostrare `OverlapSeconds` e non sommare i gruppi per ricavare il totale.
 - migrazione incrementale da un database della slice 2, con dati utente
   preesistenti e nuova tabella vuota.
 
-## 5. Verifica reale
+## 6. Verifica reale
 
 Eseguiti:
 
@@ -136,7 +158,7 @@ dotnet test tests/UniToStudyHub.Tests/UniToStudyHub.Tests.csproj -c Release
 dotnet build src/UniToStudyHub/UniToStudyHub.csproj -c Release -p:EnableWindowsTargeting=true
 ```
 
-Risultato: **121/121 test passati**, build WPF Release **0 warning / 0 error**.
+Risultato: **122/122 test passati**, build WPF Release **0 warning / 0 error**.
 
 Non eseguibili in questo ambiente Linux:
 
@@ -145,7 +167,7 @@ Non eseguibili in questo ambiente Linux:
 - prova di crash del processo durante una transazione SQLite. Lo store usa una
   transazione, ma non è stato simulato un crash a metà scrittura.
 
-## 6. Contratti UI aggiornati
+## 7. Contratti UI aggiornati
 
 - `StudySessionData.Segments` è la fonte per distinguere focus e pause.
 - `FocusSnapshot` continua a esporre `ElapsedSeconds` e `RemainingSeconds`;

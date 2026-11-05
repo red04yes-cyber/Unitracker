@@ -163,7 +163,7 @@ public sealed class ActivityAndMissionPersistenceTests
     public async Task IncrementalMigrationPreservesExistingUserData()
     {
         await using var database = await SqliteTestDatabase.CreateFileAsync(migrate: false);
-        await database.MigrateAsync("20261105000258_AddStudyLabAndCalendarPersistence");
+        await database.MigrateAsync("20261105005756_AddActivityLedgerAndMissions");
 
         await using (var context = database.CreateContext())
         {
@@ -180,16 +180,58 @@ public sealed class ActivityAndMissionPersistenceTests
                 Cfu = 6,
                 Source = "manual"
             });
+            var legacyStart = new DateTimeOffset(2026, 11, 1, 9, 0, 0, TimeSpan.Zero);
+            context.StudySessions.Add(new UniToStudyHub.Infrastructure.Data.Entities.StudySessionEntity
+            {
+                Id = "session-legacy",
+                CourseId = "course-existing",
+                Topic = "Limiti legacy",
+                PlannedMinutes = 25,
+                StartedAt = legacyStart,
+                EndedAt = legacyStart.AddMinutes(20),
+                AccumulatedFocusSeconds = 1200,
+                State = (int)StudySessionState.Completed,
+                Outcome = "Completata prima della migrazione",
+                CreatedAt = legacyStart,
+                UpdatedAt = legacyStart.AddMinutes(20)
+            });
+            context.StudyActivities.Add(new UniToStudyHub.Infrastructure.Data.Entities.StudyActivityEntity
+            {
+                Id = "activity-legacy",
+                Type = (int)StudyActivityType.Study,
+                Title = "Attività legacy",
+                CourseId = "course-existing",
+                SessionId = "session-legacy",
+                StartedAt = legacyStart,
+                EndedAt = legacyStart.AddMinutes(20),
+                TimeZoneId = "UTC",
+                EffectiveSeconds = 1200,
+                Origin = (int)StudyActivityOrigin.Manual,
+                Status = (int)StudyActivityStatus.Completed,
+                CreatedAt = legacyStart,
+                UpdatedAt = legacyStart.AddMinutes(20)
+            });
             await context.SaveChangesAsync();
         }
 
         await database.MigrateAsync();
 
-        await using var migrated = database.CreateContext();
-        Assert.Equal("Corso esistente", (await migrated.ProfileSettings.SingleAsync()).DegreeProgramName);
-        Assert.Equal("Analisi", (await migrated.Courses.SingleAsync()).Name);
-        Assert.True(await migrated.StudyActivities.AnyAsync() == false);
-        Assert.True(await migrated.StudyMissions.AnyAsync() == false);
-        Assert.True(await migrated.StudySessionSegments.AnyAsync() == false);
+        await using (var migrated = database.CreateContext())
+        {
+            Assert.Equal("Corso esistente", (await migrated.ProfileSettings.SingleAsync()).DegreeProgramName);
+            Assert.Equal("Analisi", (await migrated.Courses.SingleAsync()).Name);
+            Assert.Equal("session-legacy", (await migrated.StudySessions.SingleAsync()).Id);
+            Assert.Equal("activity-legacy", (await migrated.StudyActivities.SingleAsync()).Id);
+            Assert.Equal(1200, (await migrated.StudyActivities.SingleAsync()).EffectiveSeconds);
+            Assert.True(await migrated.StudySessionSegments.AnyAsync() == false);
+            Assert.True(await migrated.StudyMissions.AnyAsync() == false);
+        }
+
+        var loaded = await new SqliteStudyDataStore(database.Factory).LoadAsync();
+        Assert.Single(loaded.StudySessions);
+        Assert.Single(loaded.StudyActivities);
+        Assert.Equal("Limiti legacy", loaded.StudySessions[0].Topic);
+        Assert.Equal("Attività legacy", loaded.StudyActivities[0].Title);
+        Assert.Empty(loaded.StudySessions[0].Segments);
     }
 }

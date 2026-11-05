@@ -161,7 +161,7 @@ La suite comprende i test preesistenti più:
 - cascade dei segmenti e rifiuto di segmenti sovrapposti;
 - migrazione incrementale con dati utente preesistenti.
 
-Risultato dell’ultima esecuzione: **121/121 test passati**, build WPF Release
+Risultato dell’ultima esecuzione: **122/122 test passati**, build WPF Release
 senza warning/errori. Il risultato finale viene riconfermato dopo l’ultima
 modifica.
 

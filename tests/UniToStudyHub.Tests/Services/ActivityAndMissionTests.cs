@@ -175,6 +175,47 @@ public sealed class ActivityAndMissionTests
     }
 
     [Fact]
+    public void LegacySessionWithoutSegmentsUsesEffectiveSecondsAsAnApproximateBlock()
+    {
+        var data = Data();
+        var session = new StudySessionData
+        {
+            Id = "legacy-session",
+            CourseId = "analisi",
+            Topic = "Sessione legacy",
+            PlannedMinutes = 25,
+            StartedAt = Start,
+            EndedAt = Start.AddMinutes(30),
+            LastResumedAt = null,
+            State = StudySessionState.Completed,
+            AccumulatedFocusSeconds = 1200
+        };
+        data.StudySessions.Add(session);
+        var ledger = new ActivityLedgerService();
+        ledger.AddManual(data, new StudyActivityData
+        {
+            Type = StudyActivityType.Study,
+            Title = "Sessione legacy",
+            CourseId = "analisi",
+            SessionId = session.Id,
+            StartedAt = Start,
+            EndedAt = Start.AddMinutes(30),
+            EffectiveSeconds = 1200,
+            TimeZoneId = "UTC"
+        }, Start.AddHours(1));
+
+        var summary = ledger.Summarize(data, new DateOnly(2026, 11, 4), new DateOnly(2026, 11, 4),
+            Start.AddHours(1), "UTC");
+        var timeline = ledger.BuildTimeline(data, new DateOnly(2026, 11, 4), 30,
+            Start.AddHours(1), "UTC");
+
+        Assert.Empty(session.Segments);
+        Assert.Equal(1200, summary.RecordedSeconds);
+        Assert.Equal(1200, timeline.RecordedSeconds);
+        Assert.Equal(0, timeline.Slots.Single(x => x.Index == 19).RecordedSeconds);
+    }
+
+    [Fact]
     public void ActivityAcrossMidnightAppearsInBothDaysWithoutLosingSeconds()
     {
         var data = Data();
