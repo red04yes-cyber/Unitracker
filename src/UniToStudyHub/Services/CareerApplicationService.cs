@@ -145,6 +145,8 @@ public sealed class CareerApplicationService(CareerCalculatorService calculator)
             ?? throw new ArgumentException($"Course '{courseId}' does not exist.", nameof(courseId));
         var examData = EnsureCareerExam(data, course);
         var id = string.IsNullOrWhiteSpace(attemptId) ? Guid.NewGuid().ToString("N") : attemptId;
+        if (data.CareerExams.SelectMany(x => x.Attempts).Any(x => string.Equals(x.Id, id, StringComparison.Ordinal)))
+            throw new InvalidOperationException($"Attempt id '{id}' already exists.");
         var attempt = new ExamAttempt(examData.Id, attemptedAt, id);
         var dto = new ExamAttemptData
         {
