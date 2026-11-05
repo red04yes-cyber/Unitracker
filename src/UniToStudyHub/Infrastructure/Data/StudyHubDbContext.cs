@@ -23,6 +23,10 @@ public sealed class StudyHubDbContext(DbContextOptions<StudyHubDbContext> option
     public DbSet<FlashcardReviewEntity> FlashcardReviews => Set<FlashcardReviewEntity>();
     public DbSet<DistractionEntity> Distractions => Set<DistractionEntity>();
     public DbSet<EnergyCheckInEntity> EnergyCheckIns => Set<EnergyCheckInEntity>();
+    public DbSet<StudyActivityEntity> StudyActivities => Set<StudyActivityEntity>();
+    public DbSet<ActivityRevisionEntity> ActivityRevisions => Set<ActivityRevisionEntity>();
+    public DbSet<StudyMissionEntity> StudyMissions => Set<StudyMissionEntity>();
+    public DbSet<MissionStepEntity> MissionSteps => Set<MissionStepEntity>();
     public DbSet<PdfDocumentEntity> PdfDocuments => Set<PdfDocumentEntity>();
     public DbSet<LegacyImportEntity> LegacyImports => Set<LegacyImportEntity>();
 
@@ -238,6 +242,55 @@ public sealed class StudyHubDbContext(DbContextOptions<StudyHubDbContext> option
             b.ToTable("EnergyCheckIns");
             b.HasKey(x => x.Id);
             b.HasIndex(x => x.RecordedAt);
+        });
+
+        modelBuilder.Entity<StudyActivityEntity>(b =>
+        {
+            b.ToTable("StudyActivities");
+            b.HasKey(x => x.Id);
+            b.Property(x => x.Title).HasMaxLength(400).IsRequired();
+            b.Property(x => x.TimeZoneId).HasMaxLength(100).IsRequired();
+            b.Property(x => x.Result).HasMaxLength(2000).IsRequired();
+            b.Property(x => x.Note).HasMaxLength(12000).IsRequired();
+            b.Property(x => x.TagsJson).IsRequired();
+            b.HasIndex(x => x.StartedAt);
+            b.HasIndex(x => new { x.CourseId, x.StartedAt });
+            b.HasIndex(x => x.SessionId);
+            b.HasIndex(x => x.DeletedAt);
+        });
+
+        modelBuilder.Entity<ActivityRevisionEntity>(b =>
+        {
+            b.ToTable("ActivityRevisions");
+            b.HasKey(x => x.Id);
+            b.Property(x => x.Reason).HasMaxLength(400).IsRequired();
+            b.Property(x => x.BeforeJson).IsRequired();
+            b.Property(x => x.AfterJson).IsRequired();
+            b.HasIndex(x => new { x.ActivityId, x.RevisedAt });
+        });
+
+        modelBuilder.Entity<StudyMissionEntity>(b =>
+        {
+            b.ToTable("StudyMissions");
+            b.HasKey(x => x.Id);
+            b.Property(x => x.Title).HasMaxLength(400).IsRequired();
+            b.Property(x => x.Description).HasMaxLength(12000).IsRequired();
+            b.Property(x => x.Reward).HasMaxLength(400).IsRequired();
+            b.Property(x => x.Source).HasMaxLength(40).IsRequired();
+            b.HasIndex(x => new { x.Period, x.StartsAt });
+            b.HasIndex(x => new { x.Status, x.DueAt });
+            b.HasMany(x => x.Steps)
+                .WithOne()
+                .HasForeignKey(x => x.MissionId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<MissionStepEntity>(b =>
+        {
+            b.ToTable("MissionSteps");
+            b.HasKey(x => x.Id);
+            b.Property(x => x.Title).HasMaxLength(400).IsRequired();
+            b.HasIndex(x => new { x.MissionId, x.Position });
         });
 
         modelBuilder.Entity<PdfDocumentEntity>(b =>

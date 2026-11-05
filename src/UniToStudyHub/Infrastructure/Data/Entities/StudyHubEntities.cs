@@ -260,6 +260,79 @@ public sealed class EnergyCheckInEntity
     public string Note { get; set; } = string.Empty;
 }
 
+public sealed class StudyActivityEntity
+{
+    public string Id { get; set; } = string.Empty;
+    public int Type { get; set; }
+    public string Title { get; set; } = string.Empty;
+    public string CourseId { get; set; } = string.Empty;
+    public string SyllabusTopicId { get; set; } = string.Empty;
+    public string TaskId { get; set; } = string.Empty;
+    public string MissionId { get; set; } = string.Empty;
+    public string ExamId { get; set; } = string.Empty;
+    public string SessionId { get; set; } = string.Empty;
+    public string CalendarEventId { get; set; } = string.Empty;
+    public DateTimeOffset StartedAt { get; set; }
+    public DateTimeOffset? EndedAt { get; set; }
+    public string TimeZoneId { get; set; } = string.Empty;
+    public int EffectiveSeconds { get; set; }
+    public int Origin { get; set; }
+    public int Status { get; set; }
+    public string Result { get; set; } = string.Empty;
+    public int? FocusRating { get; set; }
+    public int? DifficultyRating { get; set; }
+    public int? QualityRating { get; set; }
+    public int? EnergyRating { get; set; }
+    public string Note { get; set; } = string.Empty;
+    public string TagsJson { get; set; } = "[]";
+    public bool IsPrivate { get; set; }
+    public int Revision { get; set; }
+    public DateTimeOffset CreatedAt { get; set; }
+    public DateTimeOffset UpdatedAt { get; set; }
+    public DateTimeOffset? DeletedAt { get; set; }
+}
+
+public sealed class ActivityRevisionEntity
+{
+    public string Id { get; set; } = string.Empty;
+    public string ActivityId { get; set; } = string.Empty;
+    public int Action { get; set; }
+    public string Reason { get; set; } = string.Empty;
+    public string BeforeJson { get; set; } = string.Empty;
+    public string AfterJson { get; set; } = string.Empty;
+    public DateTimeOffset RevisedAt { get; set; }
+}
+
+public sealed class StudyMissionEntity
+{
+    public string Id { get; set; } = string.Empty;
+    public string Title { get; set; } = string.Empty;
+    public string Description { get; set; } = string.Empty;
+    public string CourseId { get; set; } = string.Empty;
+    public string SyllabusTopicId { get; set; } = string.Empty;
+    public int Period { get; set; }
+    public DateTimeOffset StartsAt { get; set; }
+    public DateTimeOffset? DueAt { get; set; }
+    public int Difficulty { get; set; }
+    public int Status { get; set; }
+    public string Reward { get; set; } = string.Empty;
+    public string Source { get; set; } = string.Empty;
+    public List<MissionStepEntity> Steps { get; set; } = new();
+    public DateTimeOffset CreatedAt { get; set; }
+    public DateTimeOffset UpdatedAt { get; set; }
+    public DateTimeOffset? CompletedAt { get; set; }
+}
+
+public sealed class MissionStepEntity
+{
+    public string Id { get; set; } = string.Empty;
+    public string MissionId { get; set; } = string.Empty;
+    public string Title { get; set; } = string.Empty;
+    public bool IsCompleted { get; set; }
+    public int Position { get; set; }
+    public DateTimeOffset? CompletedAt { get; set; }
+}
+
 public sealed class PdfDocumentEntity
 {
     public string Id { get; set; } = string.Empty;

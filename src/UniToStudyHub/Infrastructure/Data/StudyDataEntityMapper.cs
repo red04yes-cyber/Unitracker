@@ -35,6 +35,9 @@ public static class StudyDataEntityMapper
         data.CalendarEvents ??= new ObservableCollection<CalendarEvent>();
         data.StudySessions ??= new ObservableCollection<StudySessionData>();
         data.StudyTasks ??= new ObservableCollection<StudyTaskData>();
+        data.StudyActivities ??= new ObservableCollection<StudyActivityData>();
+        data.StudyMissions ??= new ObservableCollection<StudyMissionData>();
+        data.ActivityRevisions ??= new ObservableCollection<ActivityRevisionData>();
         data.ErrorJournalEntries ??= new ObservableCollection<ErrorJournalEntryData>();
         data.Flashcards ??= new ObservableCollection<FlashcardData>();
         data.FlashcardReviews ??= new ObservableCollection<FlashcardReviewData>();
@@ -53,6 +56,9 @@ public static class StudyDataEntityMapper
         EnsureNoNullItems(data.CalendarEvents, "calendar event");
         EnsureNoNullItems(data.StudySessions, "study session");
         EnsureNoNullItems(data.StudyTasks, "study task");
+        EnsureNoNullItems(data.StudyActivities, "study activity");
+        EnsureNoNullItems(data.StudyMissions, "study mission");
+        EnsureNoNullItems(data.ActivityRevisions, "activity revision");
         EnsureNoNullItems(data.ErrorJournalEntries, "error journal entry");
         EnsureNoNullItems(data.Flashcards, "flashcard");
         EnsureNoNullItems(data.FlashcardReviews, "flashcard review");
@@ -70,6 +76,9 @@ public static class StudyDataEntityMapper
         EnsureUniqueIds(data.CalendarEvents, x => x.Id, "calendar event");
         EnsureUniqueIds(data.StudySessions, x => x.Id, "study session");
         EnsureUniqueIds(data.StudyTasks, x => x.Id, "study task");
+        EnsureUniqueIds(data.StudyActivities, x => x.Id, "study activity");
+        EnsureUniqueIds(data.StudyMissions, x => x.Id, "study mission");
+        EnsureUniqueIds(data.ActivityRevisions, x => x.Id, "activity revision");
         EnsureUniqueIds(data.ErrorJournalEntries, x => x.Id, "error journal entry");
         EnsureUniqueIds(data.Flashcards, x => x.Id, "flashcard");
         EnsureUniqueIds(data.FlashcardReviews, x => x.Id, "flashcard review");
@@ -375,6 +384,110 @@ public static class StudyDataEntityMapper
                 throw new InvalidDataException($"Study task '{task.Id}' has an unknown status.");
             if (!string.IsNullOrWhiteSpace(task.CourseId) && !courseIds.Contains(task.CourseId))
                 throw new InvalidDataException($"Study task '{task.Id}' refers to a course that does not exist.");
+        }
+
+        foreach (var mission in data.StudyMissions)
+        {
+            if (string.IsNullOrWhiteSpace(mission.Title))
+                throw new InvalidDataException($"Study mission '{mission.Id}' has no title.");
+            if (!Enum.IsDefined(mission.Period) || !Enum.IsDefined(mission.Status))
+                throw new InvalidDataException($"Study mission '{mission.Id}' has an invalid period or status.");
+            if (mission.Difficulty is < 1 or > 5)
+                throw new InvalidDataException($"Study mission '{mission.Id}' has an invalid difficulty.");
+            if (mission.StartsAt == default || mission.DueAt is { } due && due < mission.StartsAt)
+                throw new InvalidDataException($"Study mission '{mission.Id}' has invalid dates.");
+            if (!string.IsNullOrWhiteSpace(mission.CourseId) && !courseIds.Contains(mission.CourseId))
+                throw new InvalidDataException($"Study mission '{mission.Id}' refers to a course that does not exist.");
+            if (!string.IsNullOrWhiteSpace(mission.SyllabusTopicId) &&
+                !data.SyllabusTopics.Any(x => string.Equals(x.Id, mission.SyllabusTopicId, StringComparison.Ordinal)))
+                throw new InvalidDataException($"Study mission '{mission.Id}' refers to a syllabus topic that does not exist.");
+            mission.Description ??= string.Empty;
+            mission.Reward ??= string.Empty;
+            mission.Source ??= "manual";
+            mission.Steps ??= new ObservableCollection<MissionStepData>();
+            if (mission.Steps.Count > 200)
+                throw new InvalidDataException($"Study mission '{mission.Id}' has too many steps.");
+            var stepIds = new HashSet<string>(StringComparer.Ordinal);
+            for (var index = 0; index < mission.Steps.Count; index++)
+            {
+                var step = mission.Steps[index];
+                if (string.IsNullOrWhiteSpace(step.Id) || !stepIds.Add(step.Id))
+                    throw new InvalidDataException($"Study mission '{mission.Id}' has a missing or duplicate step id.");
+                if (string.IsNullOrWhiteSpace(step.Title))
+                    throw new InvalidDataException($"Study mission '{mission.Id}' has a step without a title.");
+                if (step.IsCompleted && step.CompletedAt is null)
+                    throw new InvalidDataException($"Completed step '{step.Id}' has no completion timestamp.");
+                step.Position = index;
+            }
+        }
+
+        var missionIds = new HashSet<string>(data.StudyMissions.Select(x => x.Id), StringComparer.Ordinal);
+        var linkedSessionIds = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var activity in data.StudyActivities)
+        {
+            if (string.IsNullOrWhiteSpace(activity.Title))
+                throw new InvalidDataException($"Study activity '{activity.Id}' has no title.");
+            if (!Enum.IsDefined(activity.Type) || !Enum.IsDefined(activity.Origin) || !Enum.IsDefined(activity.Status))
+                throw new InvalidDataException($"Study activity '{activity.Id}' has an invalid type, origin or status.");
+            if (activity.StartedAt == default || activity.EndedAt is { } ended && ended <= activity.StartedAt)
+                throw new InvalidDataException($"Study activity '{activity.Id}' has invalid timestamps.");
+            if (activity.Status == StudyActivityStatus.Completed && activity.EndedAt is null)
+                throw new InvalidDataException($"Completed study activity '{activity.Id}' has no end timestamp.");
+            if (activity.EffectiveSeconds is < 0 or > 86400)
+                throw new InvalidDataException($"Study activity '{activity.Id}' has invalid effective seconds.");
+            if (activity.EndedAt is { } end &&
+                activity.EffectiveSeconds > (int)Math.Floor((end - activity.StartedAt).TotalSeconds))
+                throw new InvalidDataException($"Study activity '{activity.Id}' credits more time than its interval.");
+            if (string.IsNullOrWhiteSpace(activity.TimeZoneId))
+                throw new InvalidDataException($"Study activity '{activity.Id}' has no time zone.");
+            try { _ = TimeZoneInfo.FindSystemTimeZoneById(activity.TimeZoneId); }
+            catch (TimeZoneNotFoundException) { throw new InvalidDataException($"Study activity '{activity.Id}' has an unknown time zone."); }
+            catch (InvalidTimeZoneException) { throw new InvalidDataException($"Study activity '{activity.Id}' has an invalid time zone."); }
+            activity.Note ??= string.Empty;
+            activity.Result ??= string.Empty;
+            activity.Tags ??= new ObservableCollection<string>();
+            if (activity.Note.Length > 12000 || activity.Result.Length > 2000 ||
+                activity.Tags.Count > 20 || activity.Tags.Any(x => string.IsNullOrWhiteSpace(x) || x.Length > 60))
+                throw new InvalidDataException($"Study activity '{activity.Id}' has overlong text or invalid tags.");
+            if (activity.FocusRating is < 1 or > 5 || activity.DifficultyRating is < 1 or > 5 ||
+                activity.QualityRating is < 1 or > 5 || activity.EnergyRating is < 1 or > 5)
+                throw new InvalidDataException($"Study activity '{activity.Id}' has a rating outside 1–5.");
+            if (!string.IsNullOrWhiteSpace(activity.CourseId) && !courseIds.Contains(activity.CourseId))
+                throw new InvalidDataException($"Study activity '{activity.Id}' refers to a course that does not exist.");
+            if (!string.IsNullOrWhiteSpace(activity.SyllabusTopicId) &&
+                !data.SyllabusTopics.Any(x => string.Equals(x.Id, activity.SyllabusTopicId, StringComparison.Ordinal)))
+                throw new InvalidDataException($"Study activity '{activity.Id}' refers to a syllabus topic that does not exist.");
+            if (!string.IsNullOrWhiteSpace(activity.TaskId) &&
+                !data.StudyTasks.Any(x => string.Equals(x.Id, activity.TaskId, StringComparison.Ordinal)))
+                throw new InvalidDataException($"Study activity '{activity.Id}' refers to a task that does not exist.");
+            if (!string.IsNullOrWhiteSpace(activity.MissionId) && !missionIds.Contains(activity.MissionId))
+                throw new InvalidDataException($"Study activity '{activity.Id}' refers to a mission that does not exist.");
+            if (!string.IsNullOrWhiteSpace(activity.ExamId) &&
+                !data.Exams.Any(x => string.Equals(x.Id, activity.ExamId, StringComparison.Ordinal)))
+                throw new InvalidDataException($"Study activity '{activity.Id}' refers to an exam that does not exist.");
+            if (!string.IsNullOrWhiteSpace(activity.SessionId))
+            {
+                if (!data.StudySessions.Any(x => string.Equals(x.Id, activity.SessionId, StringComparison.Ordinal)))
+                    throw new InvalidDataException($"Study activity '{activity.Id}' refers to a session that does not exist.");
+                if (!linkedSessionIds.Add(activity.SessionId))
+                    throw new InvalidDataException($"More than one activity is linked to session '{activity.SessionId}'.");
+            }
+            if (!string.IsNullOrWhiteSpace(activity.CalendarEventId) &&
+                !data.CalendarEvents.Any(x => string.Equals(x.Id, activity.CalendarEventId, StringComparison.Ordinal)))
+                throw new InvalidDataException($"Study activity '{activity.Id}' refers to a calendar event that does not exist.");
+        }
+
+        var activityIds = new HashSet<string>(data.StudyActivities.Select(x => x.Id), StringComparer.Ordinal);
+        foreach (var revision in data.ActivityRevisions)
+        {
+            if (!activityIds.Contains(revision.ActivityId))
+                throw new InvalidDataException($"Activity revision '{revision.Id}' refers to a missing activity.");
+            if (!Enum.IsDefined(revision.Action) || string.IsNullOrWhiteSpace(revision.Reason))
+                throw new InvalidDataException($"Activity revision '{revision.Id}' has an invalid action or reason.");
+            if (revision.BeforeJson.Length > 200000 || revision.AfterJson.Length > 200000)
+                throw new InvalidDataException($"Activity revision '{revision.Id}' is too large.");
+            if (revision.RevisedAt == default)
+                throw new InvalidDataException($"Activity revision '{revision.Id}' has no timestamp.");
         }
 
         var topicIds = new HashSet<string>(data.SyllabusTopics.Select(x => x.Id), StringComparer.Ordinal);
@@ -688,6 +801,74 @@ public static class StudyDataEntityMapper
             CreatedAt = x.CreatedAt,
             UpdatedAt = x.UpdatedAt
         }));
+        db.StudyMissions.AddRange(data.StudyMissions.Select(x => new StudyMissionEntity
+        {
+            Id = x.Id,
+            Title = x.Title,
+            Description = x.Description,
+            CourseId = x.CourseId,
+            SyllabusTopicId = x.SyllabusTopicId,
+            Period = (int)x.Period,
+            StartsAt = x.StartsAt,
+            DueAt = x.DueAt,
+            Difficulty = x.Difficulty,
+            Status = (int)x.Status,
+            Reward = x.Reward,
+            Source = x.Source,
+            CreatedAt = x.CreatedAt,
+            UpdatedAt = x.UpdatedAt,
+            CompletedAt = x.CompletedAt,
+            Steps = x.Steps.Select(step => new MissionStepEntity
+            {
+                Id = step.Id,
+                MissionId = x.Id,
+                Title = step.Title,
+                IsCompleted = step.IsCompleted,
+                Position = step.Position,
+                CompletedAt = step.CompletedAt
+            }).ToList()
+        }));
+        db.StudyActivities.AddRange(data.StudyActivities.Select(x => new StudyActivityEntity
+        {
+            Id = x.Id,
+            Type = (int)x.Type,
+            Title = x.Title,
+            CourseId = x.CourseId,
+            SyllabusTopicId = x.SyllabusTopicId,
+            TaskId = x.TaskId,
+            MissionId = x.MissionId,
+            ExamId = x.ExamId,
+            SessionId = x.SessionId,
+            CalendarEventId = x.CalendarEventId,
+            StartedAt = x.StartedAt,
+            EndedAt = x.EndedAt,
+            TimeZoneId = x.TimeZoneId,
+            EffectiveSeconds = x.EffectiveSeconds,
+            Origin = (int)x.Origin,
+            Status = (int)x.Status,
+            Result = x.Result,
+            FocusRating = x.FocusRating,
+            DifficultyRating = x.DifficultyRating,
+            QualityRating = x.QualityRating,
+            EnergyRating = x.EnergyRating,
+            Note = x.Note,
+            TagsJson = JsonSerializer.Serialize(x.Tags),
+            IsPrivate = x.IsPrivate,
+            Revision = x.Revision,
+            CreatedAt = x.CreatedAt,
+            UpdatedAt = x.UpdatedAt,
+            DeletedAt = x.DeletedAt
+        }));
+        db.ActivityRevisions.AddRange(data.ActivityRevisions.Select(x => new ActivityRevisionEntity
+        {
+            Id = x.Id,
+            ActivityId = x.ActivityId,
+            Action = (int)x.Action,
+            Reason = x.Reason,
+            BeforeJson = x.BeforeJson,
+            AfterJson = x.AfterJson,
+            RevisedAt = x.RevisedAt
+        }));
         db.ErrorJournalEntries.AddRange(data.ErrorJournalEntries.Select(x => new ErrorJournalEntryEntity
         {
             Id = x.Id,
@@ -934,6 +1115,90 @@ public static class StudyDataEntityMapper
                 Source = x.Source,
                 CreatedAt = x.CreatedAt,
                 UpdatedAt = x.UpdatedAt
+            });
+        foreach (var x in await db.StudyMissions.Include(x => x.Steps).AsNoTracking().ToListAsync(cancellationToken))
+            result.StudyMissions.Add(new StudyMissionData
+            {
+                Id = x.Id,
+                Title = x.Title,
+                Description = x.Description,
+                CourseId = x.CourseId,
+                SyllabusTopicId = x.SyllabusTopicId,
+                Period = (StudyMissionPeriod)x.Period,
+                StartsAt = x.StartsAt,
+                DueAt = x.DueAt,
+                Difficulty = x.Difficulty,
+                Status = (StudyMissionStatus)x.Status,
+                Reward = x.Reward,
+                Source = x.Source,
+                CreatedAt = x.CreatedAt,
+                UpdatedAt = x.UpdatedAt,
+                CompletedAt = x.CompletedAt,
+                Steps = new ObservableCollection<MissionStepData>(x.Steps
+                    .OrderBy(step => step.Position)
+                    .Select(step => new MissionStepData
+                    {
+                        Id = step.Id,
+                        Title = step.Title,
+                        IsCompleted = step.IsCompleted,
+                        Position = step.Position,
+                        CompletedAt = step.CompletedAt
+                    }))
+            });
+        foreach (var x in await db.StudyActivities.AsNoTracking().ToListAsync(cancellationToken))
+        {
+            ObservableCollection<string> tags;
+            try
+            {
+                tags = JsonSerializer.Deserialize<ObservableCollection<string>>(x.TagsJson, JsonOptions)
+                    ?? new ObservableCollection<string>();
+            }
+            catch (JsonException ex)
+            {
+                throw new InvalidDataException($"Study activity '{x.Id}' has invalid tag data.", ex);
+            }
+            result.StudyActivities.Add(new StudyActivityData
+            {
+                Id = x.Id,
+                Type = (StudyActivityType)x.Type,
+                Title = x.Title,
+                CourseId = x.CourseId,
+                SyllabusTopicId = x.SyllabusTopicId,
+                TaskId = x.TaskId,
+                MissionId = x.MissionId,
+                ExamId = x.ExamId,
+                SessionId = x.SessionId,
+                CalendarEventId = x.CalendarEventId,
+                StartedAt = x.StartedAt,
+                EndedAt = x.EndedAt,
+                TimeZoneId = x.TimeZoneId,
+                EffectiveSeconds = x.EffectiveSeconds,
+                Origin = (StudyActivityOrigin)x.Origin,
+                Status = (StudyActivityStatus)x.Status,
+                Result = x.Result,
+                FocusRating = x.FocusRating,
+                DifficultyRating = x.DifficultyRating,
+                QualityRating = x.QualityRating,
+                EnergyRating = x.EnergyRating,
+                Note = x.Note,
+                Tags = tags,
+                IsPrivate = x.IsPrivate,
+                Revision = x.Revision,
+                CreatedAt = x.CreatedAt,
+                UpdatedAt = x.UpdatedAt,
+                DeletedAt = x.DeletedAt
+            });
+        }
+        foreach (var x in await db.ActivityRevisions.AsNoTracking().ToListAsync(cancellationToken))
+            result.ActivityRevisions.Add(new ActivityRevisionData
+            {
+                Id = x.Id,
+                ActivityId = x.ActivityId,
+                Action = (ActivityRevisionAction)x.Action,
+                Reason = x.Reason,
+                BeforeJson = x.BeforeJson,
+                AfterJson = x.AfterJson,
+                RevisedAt = x.RevisedAt
             });
         foreach (var x in await db.ErrorJournalEntries.AsNoTracking().ToListAsync(cancellationToken))
             result.ErrorJournalEntries.Add(new ErrorJournalEntryData

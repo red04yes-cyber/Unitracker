@@ -36,6 +36,8 @@ public static class CompositionRoot
         services.AddSingleton<IcsImportService>();
         services.AddSingleton<FocusSessionService>();
         services.AddSingleton<StudyTaskService>();
+        services.AddSingleton<ActivityLedgerService>();
+        services.AddSingleton<StudyMissionService>();
         services.AddSingleton<ErrorJournalService>();
         services.AddSingleton<FlashcardService>();
         services.AddSingleton<DistractionService>();

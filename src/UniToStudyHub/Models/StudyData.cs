@@ -16,6 +16,9 @@ public sealed class StudyData
     public ObservableCollection<QuestionBankItemData> Questions { get; set; } = new();
     public ObservableCollection<StudySessionData> StudySessions { get; set; } = new();
     public ObservableCollection<StudyTaskData> StudyTasks { get; set; } = new();
+    public ObservableCollection<StudyActivityData> StudyActivities { get; set; } = new();
+    public ObservableCollection<StudyMissionData> StudyMissions { get; set; } = new();
+    public ObservableCollection<ActivityRevisionData> ActivityRevisions { get; set; } = new();
     public ObservableCollection<ErrorJournalEntryData> ErrorJournalEntries { get; set; } = new();
     public ObservableCollection<FlashcardData> Flashcards { get; set; } = new();
     public ObservableCollection<FlashcardReviewData> FlashcardReviews { get; set; } = new();

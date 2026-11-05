@@ -53,6 +53,10 @@ public sealed class SqliteStudyDataStore(IDbContextFactory<StudyHubDbContext> co
                 await db.FlashcardReviews.ExecuteDeleteAsync(cancellationToken);
                 await db.Flashcards.ExecuteDeleteAsync(cancellationToken);
                 await db.ErrorJournalEntries.ExecuteDeleteAsync(cancellationToken);
+                await db.ActivityRevisions.ExecuteDeleteAsync(cancellationToken);
+                await db.StudyActivities.ExecuteDeleteAsync(cancellationToken);
+                await db.MissionSteps.ExecuteDeleteAsync(cancellationToken);
+                await db.StudyMissions.ExecuteDeleteAsync(cancellationToken);
                 await db.StudyTasks.ExecuteDeleteAsync(cancellationToken);
                 await db.StudySessions.ExecuteDeleteAsync(cancellationToken);
                 await db.Distractions.ExecuteDeleteAsync(cancellationToken);

@@ -1,4 +1,4 @@
-# Contratti UI — Freebuff technical slice 1 + 2
+# Contratti UI — Freebuff technical slice 1 + 2 + 3
 
 La UI è responsabilità di ChatGPT. Questo documento elenca i contratti tecnici disponibili; **non** impone un layout e
 non modifica i file visuali. I binding già presenti in `MainWindow.xaml` restano invariati.
@@ -169,6 +169,43 @@ con avvisi quando i dati mancano. Mostrare sempre periodo, formula e “dati ins
 `BackupManifest(FormatVersion, CreatedAt, Sha256, SizeBytes)`. `RestoreAsync` verifica il manifest quando
 presente e rifiuta checksum non corrispondenti o formati futuri. Il manifest non è cifrato; non includere
 segreti nella UI né nei messaggi.
+
+## Slice 3 — Activity ledger e missioni
+
+### Dati
+
+`StudyData.StudyActivities`, `StudyMissions` e `ActivityRevisions` sono proprietà additive. `StudyActivityData`
+espone `Type`, `Origin`, `Status`, `StartedAt`, `EndedAt`, `TimeZoneId`, `EffectiveSeconds`, riferimenti
+(`CourseId`, `SyllabusTopicId`, `TaskId`, `MissionId`, `ExamId`, `SessionId`, `CalendarEventId`), rating 1–5,
+tag, nota, `IsPrivate` e `IsDeleted`. `StudyMissionData` espone periodo, scadenza, difficoltà, stato, ricompensa
+volontaria e `Steps`.
+
+### `ActivityLedgerService`
+
+- `AddManual(data, activity, now)` — quick-log manuale; imposta origine manuale e stato completato.
+- `SyncFocusSession(data, session, now)` / `SyncFocusSessions(data, now)` — idempotente per `SessionId`.
+- `Update(data, updated, reason, now)` e `SoftDelete(data, id, reason, now)` — richiedono una motivazione e
+  producono una revisione.
+- `GetForDay`, `FindOverlaps`, `BuildTimeline`, `BuildHeatmap`, `Summarize` — query e aggregazioni.
+
+`ActivityTimeline.Slots` contiene `RecordedSeconds`, `HasOverlap` e `ActivityIds`; gli slot vuoti sono tempo non
+registrato, non attività inventate. `ActivitySummary.RecordedSeconds` usa i secondi effettivi del ledger.
+
+**Importante:** non sommare `ProgressService.FocusMinutes` e i minuti del ledger. Fino alla slice di integrazione,
+usare il ledger per timeline/heatmap e le sessioni per il `ProgressSnapshot` esistente, senza presentare i due
+numeri come un totale unico.
+
+### `StudyMissionService`
+
+`Add`, `AddStep`, `SetStepCompleted`, `Complete`, `Cancel`, `GetForPeriod`. Una missione senza step non può essere
+completata con `Complete`; lo stato è `Planned`, `InProgress`, `Completed` o `Cancelled`. La ricompensa è un testo
+volontario, non un punteggio automatico.
+
+### UI
+
+Non esiste ancora un ViewModel dedicato: la schermata Studio Lab deve usare i servizi e salvare con
+`IStudyDataStore.SaveAsync`. Non modificare `MainWindow.xaml` per questa slice; i contratti sono pronti per una
+schermata separata. Gli export CSV/XLSX e il Pomodoro a cicli non sono ancora disponibili.
 
 ## Stati e messaggi richiesti
 
