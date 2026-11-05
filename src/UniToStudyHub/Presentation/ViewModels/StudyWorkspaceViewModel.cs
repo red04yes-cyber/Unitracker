@@ -18,6 +18,8 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
     private readonly FocusSessionService _focus;
     private readonly StudyTaskService _tasks;
     private readonly ErrorJournalService _errors;
+    private readonly DistractionService _distractions;
+    private readonly EnergyService _energy;
     private readonly FlashcardService _flashcards;
     private readonly ProgressService _progress;
     private readonly PdfImportService _pdfImport;
@@ -29,6 +31,7 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
     private StudyTaskData? _selectedTask;
     private FlashcardData? _selectedDueFlashcard;
     private ErrorJournalEntryData? _selectedErrorEntry;
+    private DistractionData? _selectedDistraction;
     private PdfDocumentData? _selectedPdf;
     private BackupInfo? _selectedBackup;
     private string _focusTopicInput = string.Empty;
@@ -46,6 +49,10 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
     private string _errorIncorrectInput = string.Empty;
     private string _errorCorrectInput = string.Empty;
     private string _errorCauseInput = string.Empty;
+    private string _distractionInput = string.Empty;
+    private string _energyNoteInput = string.Empty;
+    private int _energyLevelInput = 3;
+    private int _selfFocusLevelInput = 3;
     private bool _flashcardRevealed;
     private string _pdfSearchQuery = string.Empty;
     private string _pdfQuestionInput = string.Empty;
@@ -61,6 +68,8 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
     public ObservableCollection<StudyTaskData> ActiveTasks { get; } = new();
     public ObservableCollection<FlashcardData> DueFlashcards { get; } = new();
     public ObservableCollection<ErrorJournalEntryData> OpenErrorEntries { get; } = new();
+    public ObservableCollection<DistractionData> OpenDistractions { get; } = new();
+    public ObservableCollection<EnergyCheckInData> RecentEnergyCheckIns { get; } = new();
     public ObservableCollection<PdfSearchHit> PdfSearchHits { get; } = new();
     public ObservableCollection<BackupInfo> BackupItems { get; } = new();
     public ObservableCollection<Course> Courses => _data.Courses;
@@ -70,6 +79,7 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
     public StudyTaskData? SelectedTask { get => _selectedTask; set { Set(ref _selectedTask, value); CompleteTaskCommand.NotifyCanExecuteChanged(); RemoveTaskCommand.NotifyCanExecuteChanged(); } }
     public FlashcardData? SelectedDueFlashcard { get => _selectedDueFlashcard; set { Set(ref _selectedDueFlashcard, value); FlashcardRevealed = false; NotifyReviewCommands(); } }
     public ErrorJournalEntryData? SelectedErrorEntry { get => _selectedErrorEntry; set { Set(ref _selectedErrorEntry, value); ReviewErrorNeedsWorkCommand.NotifyCanExecuteChanged(); ReviewErrorRememberedCommand.NotifyCanExecuteChanged(); } }
+    public DistractionData? SelectedDistraction { get => _selectedDistraction; set { Set(ref _selectedDistraction, value); ResolveDistractionCommand.NotifyCanExecuteChanged(); } }
     public PdfDocumentData? SelectedPdf { get => _selectedPdf; set { Set(ref _selectedPdf, value); PdfSearchHits.Clear(); OnPropertyChanged(nameof(HasSelectedPdf)); SearchPdfCommand.NotifyCanExecuteChanged(); AskPdfCommand.NotifyCanExecuteChanged(); } }
     public BackupInfo? SelectedBackup { get => _selectedBackup; set { Set(ref _selectedBackup, value); VerifyBackupCommand.NotifyCanExecuteChanged(); } }
 
@@ -93,6 +103,10 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
     public string ErrorIncorrectInput { get => _errorIncorrectInput; set => Set(ref _errorIncorrectInput, value); }
     public string ErrorCorrectInput { get => _errorCorrectInput; set => Set(ref _errorCorrectInput, value); }
     public string ErrorCauseInput { get => _errorCauseInput; set => Set(ref _errorCauseInput, value); }
+    public string DistractionInput { get => _distractionInput; set => Set(ref _distractionInput, value); }
+    public string EnergyNoteInput { get => _energyNoteInput; set => Set(ref _energyNoteInput, value); }
+    public int EnergyLevelInput { get => _energyLevelInput; set => Set(ref _energyLevelInput, value); }
+    public int SelfFocusLevelInput { get => _selfFocusLevelInput; set => Set(ref _selfFocusLevelInput, value); }
     public bool FlashcardRevealed { get => _flashcardRevealed; set => Set(ref _flashcardRevealed, value); }
     public string PdfSearchQuery { get => _pdfSearchQuery; set => Set(ref _pdfSearchQuery, value); }
     public string PdfQuestionInput { get => _pdfQuestionInput; set => Set(ref _pdfQuestionInput, value); }
@@ -137,6 +151,9 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
     public AsyncRelayCommand AddErrorEntryCommand { get; }
     public AsyncRelayCommand ReviewErrorNeedsWorkCommand { get; }
     public AsyncRelayCommand ReviewErrorRememberedCommand { get; }
+    public AsyncRelayCommand AddEnergyCheckInCommand { get; }
+    public AsyncRelayCommand AddDistractionCommand { get; }
+    public AsyncRelayCommand ResolveDistractionCommand { get; }
     public AsyncRelayCommand ReviewAgainCommand { get; }
     public AsyncRelayCommand ReviewHardCommand { get; }
     public AsyncRelayCommand ReviewGoodCommand { get; }
@@ -151,6 +168,8 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
         FocusSessionService focus,
         StudyTaskService tasks,
         ErrorJournalService errors,
+        DistractionService distractions,
+        EnergyService energy,
         FlashcardService flashcards,
         ProgressService progress,
         PdfImportService pdfImport,
@@ -162,6 +181,8 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
         _focus = focus;
         _tasks = tasks;
         _errors = errors;
+        _distractions = distractions;
+        _energy = energy;
         _flashcards = flashcards;
         _progress = progress;
         _pdfImport = pdfImport;
@@ -182,6 +203,9 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
         AddErrorEntryCommand = new AsyncRelayCommand(AddErrorEntryAsync);
         ReviewErrorNeedsWorkCommand = new AsyncRelayCommand(() => ReviewErrorAsync(false), () => SelectedErrorEntry is not null);
         ReviewErrorRememberedCommand = new AsyncRelayCommand(() => ReviewErrorAsync(true), () => SelectedErrorEntry is not null);
+        AddEnergyCheckInCommand = new AsyncRelayCommand(AddEnergyCheckInAsync);
+        AddDistractionCommand = new AsyncRelayCommand(AddDistractionAsync);
+        ResolveDistractionCommand = new AsyncRelayCommand(ResolveDistractionAsync, () => SelectedDistraction is not null);
         ReviewAgainCommand = new AsyncRelayCommand(() => ReviewFlashcardAsync(RecallRating.Again), () => SelectedDueFlashcard is not null);
         ReviewHardCommand = new AsyncRelayCommand(() => ReviewFlashcardAsync(RecallRating.Hard), () => SelectedDueFlashcard is not null);
         ReviewGoodCommand = new AsyncRelayCommand(() => ReviewFlashcardAsync(RecallRating.Good), () => SelectedDueFlashcard is not null);
@@ -371,6 +395,47 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
         catch (Exception ex) { WorkspaceStatus = $"Errore non registrato: {ex.Message}"; }
     }
 
+    private async Task AddEnergyCheckInAsync()
+    {
+        try
+        {
+            _energy.Add(_data, EnergyLevelInput, SelfFocusLevelInput, EnergyNoteInput);
+            await SaveAsync();
+            EnergyNoteInput = string.Empty;
+            RefreshCollections();
+            WorkspaceStatus = "Check-in salvato.";
+        }
+        catch (Exception ex) { WorkspaceStatus = $"Check-in non salvato: {ex.Message}"; }
+    }
+
+    private async Task AddDistractionAsync()
+    {
+        if (string.IsNullOrWhiteSpace(DistractionInput)) return;
+        try
+        {
+            var active = _focus.GetActive(_data);
+            _distractions.Add(_data, DistractionInput, active?.Id);
+            await SaveAsync();
+            DistractionInput = string.Empty;
+            RefreshCollections();
+            WorkspaceStatus = "Distrazione annotata.";
+        }
+        catch (Exception ex) { WorkspaceStatus = $"Annotazione non salvata: {ex.Message}"; }
+    }
+
+    private async Task ResolveDistractionAsync()
+    {
+        if (SelectedDistraction is null) return;
+        try
+        {
+            _distractions.Resolve(_data, SelectedDistraction.Id);
+            await SaveAsync();
+            SelectedDistraction = null;
+            RefreshCollections();
+        }
+        catch (Exception ex) { WorkspaceStatus = $"Annotazione non aggiornata: {ex.Message}"; }
+    }
+
     private async Task ReviewErrorAsync(bool recalled)
     {
         if (SelectedErrorEntry is null) return;
@@ -481,6 +546,12 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
         OpenErrorEntries.Clear();
         foreach (var item in _data.ErrorJournalEntries.Where(x => x.Status != ErrorReviewStatus.Resolved).OrderBy(x => x.NextReviewAt ?? DateTimeOffset.MaxValue))
             OpenErrorEntries.Add(item);
+        OpenDistractions.Clear();
+        foreach (var item in _data.Distractions.Where(x => x.ResolvedAt is null).OrderByDescending(x => x.CreatedAt))
+            OpenDistractions.Add(item);
+        RecentEnergyCheckIns.Clear();
+        foreach (var item in _data.EnergyCheckIns.OrderByDescending(x => x.RecordedAt).Take(5))
+            RecentEnergyCheckIns.Add(item);
         OnPropertyChanged(nameof(HasActiveTasks));
         OnPropertyChanged(nameof(HasDueFlashcards));
         OnPropertyChanged(nameof(PdfDocuments));
