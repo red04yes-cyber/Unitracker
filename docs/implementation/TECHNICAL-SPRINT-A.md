@@ -153,10 +153,12 @@ dimensioni, CSV injection con whitespace/control character, offset CSV e
 colonne ISO XLSX, segmenti aperti nei tre formati, JSON versionato, round-trip
 e migrazione su database con dati preesistenti.
 
-Non eseguiti: runtime WPF su Windows, smoke test visuale, crash injection a metà
-transazione e osservazione della CI Windows di questa revisione. La CI della
-base precedente era verde; il nuovo commit deve essere verificato su GitHub.
-La PR #41 resta in draft finché la review non è conclusa.
+Non eseguiti: runtime WPF su Windows, smoke test visuale e crash injection a
+metà transazione. La CI Windows del commit di codice `3645d3f` è verde sia sul
+run `push` #20 sia sul run `pull_request` #21: restore, test Release, build WPF
+Release, publish self-contained `win-x64` e caricamento dell’artifact sono
+completati con successo. La PR #41 resta in draft e non è stata sottoposta a
+merge.
 
 ## 6. Contratti UI
 
