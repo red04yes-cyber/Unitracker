@@ -1,12 +1,14 @@
+using UniToStudyHub.Models;
+
 namespace UniToStudyHub.Presentation.ViewModels;
 
 public sealed class CalendarDayCell
 {
-    public CalendarDayCell(DateTime date, bool isCurrentPeriod, int eventCount)
+    public CalendarDayCell(DateTime date, bool isCurrentPeriod, IReadOnlyList<CalendarEvent> events)
     {
         Date = date.Date;
         IsCurrentPeriod = isCurrentPeriod;
-        EventCount = eventCount;
+        Events = events ?? Array.Empty<CalendarEvent>();
     }
 
     public DateTime Date { get; }
@@ -14,7 +16,8 @@ public sealed class CalendarDayCell
     public string DayName => Date.ToString("ddd", System.Globalization.CultureInfo.GetCultureInfo("it-IT"));
     public bool IsCurrentPeriod { get; }
     public bool IsToday => Date == DateTime.Today;
-    public int EventCount { get; }
+    public IReadOnlyList<CalendarEvent> Events { get; }
+    public int EventCount => Events.Count;
     public string EventSummary => EventCount switch
     {
         0 => "—",
