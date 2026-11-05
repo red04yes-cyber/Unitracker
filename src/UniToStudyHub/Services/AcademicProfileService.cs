@@ -115,8 +115,7 @@ public sealed class AcademicProfileService
         }
 
         course.Status = status;
-        if (status == CourseStatus.Passed) course.Completed = true;
-        if (status == CourseStatus.Failed) course.Completed = false;
+        course.Completed = status == CourseStatus.Passed;
         course.UpdatedAt = DateTime.UtcNow;
     }
 
