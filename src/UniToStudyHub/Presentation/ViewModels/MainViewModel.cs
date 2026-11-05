@@ -98,7 +98,8 @@ public sealed class MainViewModel : INotifyPropertyChanged
     }
     public string SelectedDayDisplay => SelectedCalendarDate.ToString("dddd d MMMM yyyy", CultureInfo.GetCultureInfo("it-IT"));
     public int CalendarGridColumns => CalendarViewMode == "Day" ? 1 : 7;
-    public bool ShowCalendarWeekHeader => CalendarViewMode != "Day";
+    public bool ShowCalendarWeekHeader => CalendarViewMode == "Month";
+    public string CalendarAgendaTitle => CalendarViewMode == "Week" ? "Agenda settimanale" : "Agenda del giorno";
     public bool IsMonthCalendar => CalendarViewMode == "Month";
     public bool IsWeekCalendar => CalendarViewMode == "Week";
     public bool IsDayCalendar => CalendarViewMode == "Day";
@@ -571,6 +572,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(SelectedDayDisplay));
         OnPropertyChanged(nameof(CalendarGridColumns));
         OnPropertyChanged(nameof(ShowCalendarWeekHeader));
+        OnPropertyChanged(nameof(CalendarAgendaTitle));
         OnPropertyChanged(nameof(IsMonthCalendar));
         OnPropertyChanged(nameof(IsWeekCalendar));
         OnPropertyChanged(nameof(IsDayCalendar));
