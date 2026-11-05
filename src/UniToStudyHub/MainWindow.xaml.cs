@@ -49,6 +49,23 @@ public partial class MainWindow : Window
             await viewModel.Workspace.ImportPdfAsync(dialog.FileName);
     }
 
+    private void DisconnectMoodle_Click(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is not MainViewModel viewModel)
+            return;
+
+        var result = MessageBox.Show(
+            "Disconnettere Moodle? Il token salvato verrà eliminato e i riferimenti di collegamento rimossi. Corsi, voti, eventi importati e storico locale saranno conservati.",
+            "Conferma disconnessione Moodle",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Warning,
+            MessageBoxResult.No);
+        if (result != MessageBoxResult.Yes) return;
+
+        viewModel.DisconnectMoodleCommand.Execute(null);
+        MoodleTokenBox.Clear();
+    }
+
     private void RestoreBackup_Click(object sender, RoutedEventArgs e)
     {
         if (DataContext is not MainViewModel viewModel || viewModel.Workspace.SelectedBackup is null)
