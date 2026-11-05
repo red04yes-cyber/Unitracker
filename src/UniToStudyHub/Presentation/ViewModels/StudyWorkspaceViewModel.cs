@@ -62,6 +62,7 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
     private string _aiStatus = "Provider AI non configurato: nessuna richiesta remota verrà effettuata.";
     private string _aiResponseText = string.Empty;
     private string _backupStatus = "I backup locali non sono ancora stati verificati.";
+    private string _backupManifestSummary = "Seleziona e verifica un backup per leggere il manifest.";
     private string _workspaceStatus = string.Empty;
     private string _degreeProgramNameInput = string.Empty;
     private string _degreeProgramCodeInput = string.Empty;
@@ -127,6 +128,7 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
     public string AiStatusMessage { get => _aiStatus; private set => Set(ref _aiStatus, value); }
     public string AiResponseText { get => _aiResponseText; private set => Set(ref _aiResponseText, value); }
     public string BackupStatus { get => _backupStatus; private set => Set(ref _backupStatus, value); }
+    public string BackupManifestSummary { get => _backupManifestSummary; private set => Set(ref _backupManifestSummary, value); }
     public string DegreeProgramNameInput { get => _degreeProgramNameInput; set => Set(ref _degreeProgramNameInput, value); }
     public string DegreeProgramCodeInput { get => _degreeProgramCodeInput; set => Set(ref _degreeProgramCodeInput, value); }
     public string EnrollmentYearInput { get => _enrollmentYearInput; set => Set(ref _enrollmentYearInput, value); }
@@ -591,6 +593,8 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
                 ? $"Backup creato e verificato · {created.FilePath}"
                 : $"Backup creato, ma l'integrità non è stata verificata · {created.FilePath}";
             if (created.IntegrityVerified) _verifiedBackups.Add(created.FilePath);
+            var manifest = await _backups.ReadManifestAsync(created.FilePath);
+            BackupManifestSummary = manifest is null ? "Manifest non disponibile." : $"Formato v{manifest.FormatVersion} · SHA-256 {manifest.Sha256}";
             ReloadBackups();
             SelectedBackup = BackupItems.FirstOrDefault(x => x.FilePath == created.FilePath);
         }
@@ -605,6 +609,8 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
             var path = SelectedBackup.FilePath;
             var verified = await _backups.VerifyBackupAsync(path);
             if (verified) _verifiedBackups.Add(path); else _verifiedBackups.Remove(path);
+            var manifest = verified ? await _backups.ReadManifestAsync(path) : null;
+            BackupManifestSummary = manifest is null ? "Manifest assente o backup non verificato." : $"Formato v{manifest.FormatVersion} · SHA-256 {manifest.Sha256}";
             BackupStatus = verified
                 ? $"Integrità SQLite verificata · {SelectedBackup.FilePath}"
                 : $"Verifica non superata · {SelectedBackup.FilePath}";
