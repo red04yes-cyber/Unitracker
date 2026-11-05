@@ -1001,6 +1001,23 @@
                         </DataTemplate></ItemsControl.ItemTemplate>
                     </ItemsControl><TextBlock Text="Le statistiche sono calcolate sugli ultimi sette giorni (da lunedì a oggi). Le metriche vuote restano indicate come dati insufficienti." FontSize="10" Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap" Margin="0,12,0,0"/></StackPanel></Border>
         </Grid>
+        <Border Style="{StaticResource CardBorderStyle}" Margin="0,14,0,0">
+            <StackPanel>
+                <TextBlock Text="Focus giornaliero · ultimi sette giorni" Style="{StaticResource SectionTitleStyle}"/>
+                <ItemsControl ItemsSource="{Binding Workspace.DailyProgressRows}">
+                    <ItemsControl.ItemTemplate><DataTemplate>
+                        <Grid Margin="0,8,0,0">
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="100"/><ColumnDefinition Width="*"/><ColumnDefinition Width="65"/></Grid.ColumnDefinitions>
+                            <TextBlock Text="{Binding DayLabel}" FontSize="10" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center"/>
+                            <ProgressBar Grid.Column="1" Value="{Binding FocusPercent}" Maximum="100" Height="7" VerticalAlignment="Center"/>
+                            <TextBlock Grid.Column="2" Text="{Binding FocusMinutes, StringFormat={}{0} min}" FontSize="10" Foreground="{StaticResource InkBrush}" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                        </Grid>
+                    </DataTemplate></ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <Button Content="Esporta report XLSX (ultimi 7 giorni)" Click="ExportProgress_Click" HorizontalAlignment="Left" Margin="0,14,0,0"/>
+                <TextBlock Text="{Binding Workspace.ExportStatus}" FontSize="10" Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap" Margin="0,7,0,0"/>
+            </StackPanel>
+        </Border>
     </StackPanel>
 </ScrollViewer>
         </TabItem>
