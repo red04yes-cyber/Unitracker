@@ -84,7 +84,7 @@ jobs:
           set -euo pipefail
           report="$(dotnet list src/UniToStudyHub/UniToStudyHub.csproj package --vulnerable --include-transitive)"
           printf '%s\n' "$report"
-          if printf '%s\n' "$report" | grep -Eqi 'https://github.com/advisories/GHSA-|https://nvd.nist.gov/vuln/detail/'; then
+          if printf '%s\n' "$report" | grep -Eqi 'GHSA-|CVE-|NU190[1-4]|has the following vulnerable packages'; then
             echo "Vulnerable packages detected in the application dependency graph."
             exit 1
           fi
