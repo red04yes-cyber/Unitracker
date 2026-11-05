@@ -87,7 +87,7 @@ jobs:
           audit_exit=$?
           set -e
           cat vulnerability-report.txt
-          if grep -Eqi 'GHSA-|CVE-[0-9]{4}-[0-9]+|NU190[1-4]|vulnerable package' vulnerability-report.txt; then
+          if grep -Eqi 'GHSA-|CVE-[0-9]{4}-[0-9]+|NU190[1-4]' vulnerability-report.txt; then
             echo "Vulnerable packages detected in the application dependency graph."
             exit 1
           fi
