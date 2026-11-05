@@ -1,0 +1,531 @@
+using System.Security.Cryptography;
+using System.Text;
+using UniToStudyHub.Models;
+
+namespace UniToStudyHub.Services;
+
+/// <summary>
+/// Builds and applies deterministic study plans using the user's explicit
+/// recurring availability, existing commitments, task estimates and study
+/// budgets. Preview is side-effect free; Apply writes indicative CalendarEvents.
+/// </summary>
+public sealed class StudyPlannerService
+{
+    private const string GeneratedExternalIdPrefix = "study-plan:v1:";
+    private readonly ActivityLedgerService _ledger = new();
+
+    public StudyPlanPreview CreatePreview(
+        StudyData data,
+        StudyPlannerOptions options,
+        DateTimeOffset? generatedAt = null)
+    {
+        ArgumentNullException.ThrowIfNull(data);
+        ArgumentNullException.ThrowIfNull(options);
+
+        var now = generatedAt ?? DateTimeOffset.Now;
+        var normalized = ValidateOptions(options);
+        var zone = TimeZoneInfo.FindSystemTimeZoneById(normalized.TimeZoneId);
+        var weeklyBudget = normalized.WeeklyStudyMinutes ?? Math.Max(0, data.WeeklyStudyHours) * 60;
+        var dailyBudget = normalized.MaxDailyStudyMinutes ?? Math.Max(0, data.MaxDailyStudyMinutes);
+        var warnings = new List<string>();
+
+        if (normalized.WeeklyAvailability.Count == 0)
+            warnings.Add("Nessuna disponibilità settimanale configurata: il planner non inventa fasce orarie.");
+        if (weeklyBudget == 0)
+            warnings.Add("Il budget settimanale è zero: aumenta le ore disponibili nelle impostazioni o nelle opzioni.");
+        if (dailyBudget == 0)
+            warnings.Add("Il limite giornaliero è zero: non è possibile pianificare blocchi di studio.");
+
+        var commitments = data.CalendarEvents
+            .Where(x => !x.IsCancelled)
+            .Where(x => !normalized.ReplaceExistingGeneratedBlocks || !IsUnchangedGeneratedPlannerBlock(x))
+            .OrderBy(x => x.StartsAt)
+            .ToList();
+
+        int RecordedMinutes(DateOnly from, DateOnly to) =>
+            _ledger.Summarize(data, from, to, now, normalized.TimeZoneId).RecordedSeconds / 60;
+
+        int FutureStudyMinutes(DateOnly from, DateOnly to)
+        {
+            var start = StartOfLocalDay(from, zone);
+            var end = StartOfLocalDay(to.AddDays(1), zone);
+            var intervals = commitments
+                .Where(IsStudyCommitment)
+                .Select(x => new TimeRange(x.StartsAt < now ? now : x.StartsAt, x.EndsAt))
+                .Where(x => x.End > x.Start && x.End > start && x.Start < end)
+                .Select(x => new TimeRange(x.Start < start ? start : x.Start, x.End > end ? end : x.End));
+            return UnionMinutes(intervals);
+        }
+
+        var dailyUsed = new Dictionary<DateOnly, int>();
+        var weeklyUsed = new Dictionary<DateOnly, int>();
+        var recordedByWeek = new Dictionary<DateOnly, int>();
+        var futureStudyByWeek = new Dictionary<DateOnly, int>();
+        for (var day = normalized.From; day <= normalized.To; day = day.AddDays(1))
+        {
+            var week = MondayOf(day);
+            dailyUsed[day] = RecordedMinutes(day, day) + FutureStudyMinutes(day, day);
+            if (!recordedByWeek.ContainsKey(week))
+            {
+                recordedByWeek[week] = RecordedMinutes(week, week.AddDays(6));
+                futureStudyByWeek[week] = FutureStudyMinutes(week, week.AddDays(6));
+                weeklyUsed[week] = recordedByWeek[week] + futureStudyByWeek[week];
+            }
+        }
+
+        var freeByDay = new Dictionary<DateOnly, List<TimeRange>>();
+        for (var day = normalized.From; day <= normalized.To; day = day.AddDays(1))
+        {
+            var windows = BuildAvailability(day, normalized.WeeklyAvailability, zone, warnings);
+            var free = new List<TimeRange>();
+            foreach (var window in MergeRanges(windows))
+            {
+                // Never schedule into the past, including when the requested
+                // planning range starts before today's local date.
+                var start = window.Start < now ? now : window.Start;
+                if (window.End <= start) continue;
+                free.AddRange(SubtractCommitments(new TimeRange(start, window.End), commitments));
+            }
+            freeByDay[day] = free.OrderBy(x => x.Start).ToList();
+        }
+
+        var blocks = new List<StudyPlanBlock>();
+        var unscheduled = new List<StudyPlanUnscheduledTask>();
+        var blocksByDay = new Dictionary<DateOnly, int>();
+
+        var tasks = data.StudyTasks
+            .Where(x => x.Status is StudyTaskStatus.Todo or StudyTaskStatus.InProgress)
+            .OrderBy(x => x.DueAt?.UtcDateTime ?? DateTime.MaxValue)
+            .ThenByDescending(x => x.Priority)
+            .ThenBy(x => x.CreatedAt)
+            .ThenBy(x => x.Id, StringComparer.Ordinal)
+            .ToList();
+
+        foreach (var task in tasks)
+        {
+            if (string.IsNullOrWhiteSpace(task.Title))
+            {
+                unscheduled.Add(new StudyPlanUnscheduledTask(task.Id, task.Title, task.EstimatedMinutes,
+                    "Il task non ha un titolo valido."));
+                continue;
+            }
+            if (task.EstimatedMinutes <= 0)
+            {
+                unscheduled.Add(new StudyPlanUnscheduledTask(task.Id, task.Title, 0,
+                    "Manca una stima della durata: inserisci i minuti previsti prima di pianificarlo."));
+                continue;
+            }
+
+            if (task.DueAt is { } dueAt && dueAt < now)
+                warnings.Add($"Il task \"{task.Title}\" è già oltre la scadenza: i blocchi proposti sono recuperi, non rispettano la scadenza originale.");
+
+            var remaining = task.EstimatedMinutes;
+            var courseName = data.Courses.FirstOrDefault(x =>
+                string.Equals(x.Id, task.CourseId, StringComparison.Ordinal))?.Name ?? string.Empty;
+
+            for (var day = normalized.From; day <= normalized.To && remaining > 0; day = day.AddDays(1))
+            {
+                var week = MondayOf(day);
+                var dayRemaining = dailyBudget - dailyUsed.GetValueOrDefault(day);
+                var weekRemaining = weeklyBudget - weeklyUsed.GetValueOrDefault(week);
+                if (dayRemaining <= 0 || weekRemaining <= 0 ||
+                    blocksByDay.GetValueOrDefault(day) >= normalized.MaxBlocksPerDay)
+                    continue;
+
+                var free = freeByDay[day];
+                for (var index = 0; index < free.Count && remaining > 0; index++)
+                {
+                    var range = free[index];
+                    var start = range.Start < now ? now : range.Start;
+                    if (start >= range.End) continue;
+
+                    var rangeMinutes = (int)Math.Floor((range.End - start).TotalMinutes);
+                    var maxMinutes = Math.Min(
+                        normalized.PreferredBlockMinutes,
+                        Math.Min(remaining, Math.Min(rangeMinutes, Math.Min(dayRemaining, weekRemaining))));
+
+                    if (task.DueAt is { } deadline && deadline > now)
+                    {
+                        if (start >= deadline) continue;
+                        var beforeDeadline = (int)Math.Floor((deadline - start).TotalMinutes);
+                        maxMinutes = Math.Min(maxMinutes, beforeDeadline);
+                    }
+
+                    if (maxMinutes <= 0) continue;
+                    if (maxMinutes < normalized.MinimumBlockMinutes && maxMinutes < remaining)
+                        continue;
+
+                    var end = start.AddMinutes(maxMinutes);
+                    if (task.DueAt is { } due && due > now && end > due) continue;
+
+                    blocks.Add(new StudyPlanBlock(
+                        task.Id,
+                        task.Title,
+                        task.CourseId,
+                        courseName,
+                        start,
+                        end,
+                        maxMinutes,
+                        Math.Clamp(task.Priority, 1, 5),
+                        task.DueAt));
+
+                    remaining -= maxMinutes;
+                    dailyUsed[day] = dailyUsed.GetValueOrDefault(day) + maxMinutes;
+                    weeklyUsed[week] = weeklyUsed.GetValueOrDefault(week) + maxMinutes;
+                    dayRemaining -= maxMinutes;
+                    weekRemaining -= maxMinutes;
+                    blocksByDay[day] = blocksByDay.GetValueOrDefault(day) + 1;
+
+                    var nextStart = end.AddMinutes(normalized.BreakMinutes);
+                    if (nextStart >= range.End)
+                    {
+                        free.RemoveAt(index);
+                        index--;
+                    }
+                    else
+                    {
+                        free[index] = new TimeRange(nextStart, range.End);
+                    }
+
+                    if (blocksByDay[day] >= normalized.MaxBlocksPerDay || dayRemaining <= 0 || weekRemaining <= 0)
+                        break;
+                }
+            }
+
+            if (remaining > 0)
+            {
+                var reason = normalized.WeeklyAvailability.Count == 0
+                    ? "Non hai configurato fasce di disponibilità."
+                    : weeklyBudget == 0 || dailyBudget == 0
+                        ? "Il budget settimanale o il limite giornaliero non consente altre sessioni."
+                        : "Le fasce libere e i limiti giornalieri/settimanali non bastano entro il periodo selezionato.";
+                unscheduled.Add(new StudyPlanUnscheduledTask(task.Id, task.Title, remaining, reason));
+            }
+        }
+
+        if (blocks.Count == 0 && tasks.Count == 0)
+            warnings.Add("Non ci sono task aperti da pianificare.");
+        if (unscheduled.Count > 0)
+            warnings.Add($"{unscheduled.Count} task non sono stati pianificati completamente.");
+
+        return new StudyPlanPreview(
+            normalized.From,
+            normalized.To,
+            normalized.TimeZoneId,
+            now,
+            weeklyBudget,
+            dailyBudget,
+            normalized,
+            blocks.OrderBy(x => x.StartsAt).ThenByDescending(x => x.Priority).ToArray(),
+            unscheduled,
+            warnings.Distinct(StringComparer.Ordinal).ToArray());
+    }
+
+    /// <summary>
+    /// Adds preview blocks to the shared calendar snapshot. Existing commitments
+    /// are rechecked because the calendar may have changed after preview.
+    /// </summary>
+    public StudyPlanApplyResult Apply(StudyData data, StudyPlanPreview preview, DateTimeOffset? appliedAt = null)
+    {
+        ArgumentNullException.ThrowIfNull(data);
+        ArgumentNullException.ThrowIfNull(preview);
+        var now = appliedAt ?? DateTimeOffset.Now;
+        var warnings = new List<string>(preview.Warnings);
+
+        if (preview.Options.ReplaceExistingGeneratedBlocks)
+            ClearGeneratedPlan(data, preview.From, preview.To, preview.TimeZoneId);
+
+        var added = 0;
+        var alreadyPresent = 0;
+        var conflicts = 0;
+        var skipped = 0;
+
+        foreach (var block in preview.Blocks)
+        {
+            var task = data.StudyTasks.FirstOrDefault(x =>
+                string.Equals(x.Id, block.TaskId, StringComparison.Ordinal));
+            if (task is null || task.Status is StudyTaskStatus.Completed or StudyTaskStatus.Cancelled)
+            {
+                skipped++;
+                warnings.Add($"Il task \"{block.Title}\" non esiste più o non è più aperto; blocco ignorato.");
+                continue;
+            }
+
+            if (block.EndsAt <= block.StartsAt || block.PlannedMinutes <= 0)
+            {
+                skipped++;
+                warnings.Add($"Il blocco di \"{block.Title}\" non è valido ed è stato ignorato.");
+                continue;
+            }
+
+            var externalId = BuildExternalId(block);
+            if (data.CalendarEvents.Any(x =>
+                    string.Equals(x.ExternalId, externalId, StringComparison.Ordinal)))
+            {
+                alreadyPresent++;
+                continue;
+            }
+
+            if (data.CalendarEvents.Any(x =>
+                    !x.IsCancelled && x.StartsAt < block.EndsAt && x.EndsAt > block.StartsAt))
+            {
+                conflicts++;
+                warnings.Add($"Il calendario è cambiato: il blocco di \"{block.Title}\" alle {block.StartsAt:t} è in conflitto e non è stato salvato.");
+                continue;
+            }
+
+            var item = new CalendarEvent
+            {
+                Id = BuildEventId(externalId),
+                Title = block.Title,
+                Category = CalendarEventCategory.Study,
+                StartsAt = block.StartsAt,
+                EndsAt = block.EndsAt,
+                CourseId = string.IsNullOrWhiteSpace(block.CourseId) ? null : block.CourseId,
+                CourseName = block.CourseName,
+                Source = CalendarEventSource.Planner,
+                Verification = CalendarEventVerification.Indicative,
+                TimeZoneId = preview.TimeZoneId,
+                ExternalId = externalId,
+                Notes = $"Blocco di studio indicativo collegato al task {block.TaskId}.",
+                CreatedAt = now,
+                UpdatedAt = now
+            };
+            CalendarService.Validate(item);
+            data.CalendarEvents.Add(item);
+            added++;
+        }
+
+        return new StudyPlanApplyResult(added, alreadyPresent, conflicts, skipped, warnings);
+    }
+
+    /// <summary>
+    /// Applies and persists the plan through the existing atomic SQLite store.
+    /// If persistence fails, the in-memory calendar snapshot is restored too.
+    /// </summary>
+    public async Task<StudyPlanApplyResult> ApplyAndSaveAsync(
+        StudyData data,
+        StudyPlanPreview preview,
+        IStudyDataStore store,
+        DateTimeOffset? appliedAt = null,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(data);
+        ArgumentNullException.ThrowIfNull(preview);
+        ArgumentNullException.ThrowIfNull(store);
+
+        var originalEvents = data.CalendarEvents.ToArray();
+        try
+        {
+            var result = Apply(data, preview, appliedAt);
+            await store.SaveAsync(data, cancellationToken);
+            return result;
+        }
+        catch
+        {
+            data.CalendarEvents.Clear();
+            foreach (var item in originalEvents)
+                data.CalendarEvents.Add(item);
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Explicitly removes only unmodified blocks generated by this planner in
+    /// the selected range. User-edited planner blocks are preserved.
+    /// </summary>
+    public int ClearGeneratedPlan(
+        StudyData data,
+        DateOnly from,
+        DateOnly to,
+        string? timeZoneId = null)
+    {
+        ArgumentNullException.ThrowIfNull(data);
+        if (to < from) throw new ArgumentOutOfRangeException(nameof(to));
+        var zone = TimeZoneInfo.FindSystemTimeZoneById(
+            string.IsNullOrWhiteSpace(timeZoneId) ? TimeZoneInfo.Local.Id : timeZoneId);
+        var start = StartOfLocalDay(from, zone);
+        var end = StartOfLocalDay(to.AddDays(1), zone);
+        var remove = data.CalendarEvents
+            .Where(IsUnchangedGeneratedPlannerBlock)
+            .Where(x => x.StartsAt < end && x.EndsAt > start)
+            .ToArray();
+        foreach (var item in remove)
+            data.CalendarEvents.Remove(item);
+        return remove.Length;
+    }
+
+    private static StudyPlannerOptions ValidateOptions(StudyPlannerOptions options)
+    {
+        if (options.To < options.From)
+            throw new ArgumentOutOfRangeException(nameof(options), "The plan end date must not precede its start date.");
+        if (options.To == DateOnly.MaxValue || options.To.DayNumber - options.From.DayNumber > 180)
+            throw new ArgumentOutOfRangeException(nameof(options), "A plan can cover at most 181 calendar days and cannot end at DateOnly.MaxValue.");
+        if (options.PreferredBlockMinutes is < 15 or > 180)
+            throw new ArgumentOutOfRangeException(nameof(options), "Preferred block length must be between 15 and 180 minutes.");
+        if (options.MinimumBlockMinutes is < 5 or > 180)
+            throw new ArgumentOutOfRangeException(nameof(options), "Minimum block length must be between 5 and 180 minutes.");
+        if (options.BreakMinutes is < 0 or > 60)
+            throw new ArgumentOutOfRangeException(nameof(options), "Break length must be between 0 and 60 minutes.");
+        if (options.MaxBlocksPerDay is < 1 or > 20)
+            throw new ArgumentOutOfRangeException(nameof(options), "Maximum blocks per day must be between 1 and 20.");
+        if (options.WeeklyStudyMinutes is < 0 or > 10080)
+            throw new ArgumentOutOfRangeException(nameof(options), "Weekly study budget is outside the supported range.");
+        if (options.MaxDailyStudyMinutes is < 0 or > 1440)
+            throw new ArgumentOutOfRangeException(nameof(options), "Daily study budget is outside the supported range.");
+
+        var zoneId = string.IsNullOrWhiteSpace(options.TimeZoneId) ? TimeZoneInfo.Local.Id : options.TimeZoneId.Trim();
+        _ = TimeZoneInfo.FindSystemTimeZoneById(zoneId);
+        var availability = options.WeeklyAvailability ?? Array.Empty<StudyAvailabilityWindow>();
+        foreach (var window in availability)
+        {
+            if (!Enum.IsDefined(window.Day) || window.End <= window.Start)
+                throw new ArgumentException("Availability windows must have a valid day and end after start.", nameof(options));
+        }
+
+        return new StudyPlannerOptions
+        {
+            From = options.From,
+            To = options.To,
+            TimeZoneId = zoneId,
+            WeeklyAvailability = availability.ToArray(),
+            WeeklyStudyMinutes = options.WeeklyStudyMinutes,
+            MaxDailyStudyMinutes = options.MaxDailyStudyMinutes,
+            PreferredBlockMinutes = options.PreferredBlockMinutes,
+            MinimumBlockMinutes = options.MinimumBlockMinutes,
+            BreakMinutes = options.BreakMinutes,
+            MaxBlocksPerDay = options.MaxBlocksPerDay,
+            ReplaceExistingGeneratedBlocks = options.ReplaceExistingGeneratedBlocks
+        };
+    }
+
+    private static List<TimeRange> BuildAvailability(
+        DateOnly day,
+        IReadOnlyList<StudyAvailabilityWindow> windows,
+        TimeZoneInfo zone,
+        List<string> warnings)
+    {
+        var result = new List<TimeRange>();
+        foreach (var window in windows.Where(x => x.Day == day.DayOfWeek))
+        {
+            var start = ResolveWallClock(day, window.Start, zone, isStart: true, out var startAdjusted);
+            var end = ResolveWallClock(day, window.End, zone, isStart: false, out var endAdjusted);
+            if (startAdjusted || endAdjusted)
+                warnings.Add($"Una fascia di disponibilità del {day:yyyy-MM-dd} è stata adattata al cambio di orario legale/solare.");
+            if (end > start)
+                result.Add(new TimeRange(start, end));
+        }
+        return result;
+    }
+
+    private static DateTimeOffset ResolveWallClock(
+        DateOnly day,
+        TimeOnly time,
+        TimeZoneInfo zone,
+        bool isStart,
+        out bool adjusted)
+    {
+        var local = day.ToDateTime(time, DateTimeKind.Unspecified);
+        adjusted = false;
+        var minutes = 0;
+        while (zone.IsInvalidTime(local) && minutes < 180)
+        {
+            local = local.AddMinutes(1);
+            minutes++;
+            adjusted = true;
+        }
+        if (zone.IsInvalidTime(local))
+            throw new ArgumentException("The availability window falls inside an invalid local-time interval.");
+
+        TimeSpan offset;
+        if (zone.IsAmbiguousTime(local))
+        {
+            var offsets = zone.GetAmbiguousTimeOffsets(local);
+            offset = isStart ? offsets.Max() : offsets.Min();
+            adjusted = true;
+        }
+        else
+        {
+            offset = zone.GetUtcOffset(local);
+        }
+        return new DateTimeOffset(local, offset);
+    }
+
+    private static List<TimeRange> MergeRanges(IEnumerable<TimeRange> source)
+    {
+        var sorted = source.OrderBy(x => x.Start).ThenBy(x => x.End).ToList();
+        var merged = new List<TimeRange>();
+        foreach (var range in sorted)
+        {
+            if (merged.Count == 0 || range.Start > merged[^1].End)
+            {
+                merged.Add(range);
+                continue;
+            }
+            var previous = merged[^1];
+            merged[^1] = new TimeRange(previous.Start, range.End > previous.End ? range.End : previous.End);
+        }
+        return merged;
+    }
+
+    private static IEnumerable<TimeRange> SubtractCommitments(TimeRange window, IReadOnlyList<CalendarEvent> commitments)
+    {
+        var free = new List<TimeRange> { window };
+        foreach (var eventItem in commitments)
+        {
+            if (eventItem.EndsAt <= window.Start || eventItem.StartsAt >= window.End)
+                continue;
+
+            var next = new List<TimeRange>();
+            foreach (var range in free)
+            {
+                if (eventItem.EndsAt <= range.Start || eventItem.StartsAt >= range.End)
+                {
+                    next.Add(range);
+                    continue;
+                }
+                if (eventItem.StartsAt > range.Start)
+                    next.Add(new TimeRange(range.Start, eventItem.StartsAt));
+                if (eventItem.EndsAt < range.End)
+                    next.Add(new TimeRange(eventItem.EndsAt, range.End));
+            }
+            free = next;
+        }
+        return free.Where(x => x.End > x.Start);
+    }
+
+    private static int UnionMinutes(IEnumerable<TimeRange> ranges) =>
+        MergeRanges(ranges).Sum(x => Math.Max(0, (int)Math.Floor((x.End - x.Start).TotalMinutes)));
+
+    private static bool IsStudyCommitment(CalendarEvent item) =>
+        !item.IsCancelled &&
+        (string.Equals(item.Category, CalendarEventCategory.Study, StringComparison.OrdinalIgnoreCase) ||
+         string.Equals(item.Category, CalendarEventCategory.Review, StringComparison.OrdinalIgnoreCase));
+
+    private static bool IsGeneratedPlannerBlock(CalendarEvent item) =>
+        string.Equals(item.Source, CalendarEventSource.Planner, StringComparison.OrdinalIgnoreCase) &&
+        item.ExternalId?.StartsWith(GeneratedExternalIdPrefix, StringComparison.Ordinal) == true;
+
+    private static bool IsUnchangedGeneratedPlannerBlock(CalendarEvent item) =>
+        IsGeneratedPlannerBlock(item) && item.UpdatedAt <= item.CreatedAt;
+
+    private static string BuildExternalId(StudyPlanBlock block) =>
+        $"{GeneratedExternalIdPrefix}{block.TaskId}:{block.StartsAt.UtcDateTime.Ticks}";
+
+    private static string BuildEventId(string externalId)
+    {
+        var hash = SHA256.HashData(Encoding.UTF8.GetBytes(externalId));
+        return $"planner-{Convert.ToHexString(hash.AsSpan(0, 16)).ToLowerInvariant()}";
+    }
+
+    private static DateTimeOffset StartOfLocalDay(DateOnly date, TimeZoneInfo zone) =>
+        ResolveWallClock(date, TimeOnly.MinValue, zone, isStart: true, out _);
+
+    private static DateOnly MondayOf(DateOnly date)
+    {
+        var offset = ((int)date.DayOfWeek + 6) % 7;
+        return date.AddDays(-offset);
+    }
+
+    private readonly record struct TimeRange(DateTimeOffset Start, DateTimeOffset End);
+}
