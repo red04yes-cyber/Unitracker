@@ -94,6 +94,8 @@ public sealed class MainViewModel : INotifyPropertyChanged
         return true;
     }
     public string SelectedDayDisplay => SelectedCalendarDate.ToString("dddd d MMMM yyyy", CultureInfo.GetCultureInfo("it-IT"));
+    public int CalendarGridColumns => CalendarViewMode == "Day" ? 1 : 7;
+    public bool ShowCalendarWeekHeader => CalendarViewMode != "Day";
     public DateTime? CalendarEventDate { get => _calendarEventDate; set => Set(ref _calendarEventDate, value); }
     public string CalendarEventTitle { get => _calendarEventTitle; set => Set(ref _calendarEventTitle, value); }
     public string CalendarEventCategoryInput { get => _calendarEventCategory; set => Set(ref _calendarEventCategory, value); }
@@ -555,6 +557,8 @@ public sealed class MainViewModel : INotifyPropertyChanged
         RefreshSelectedDayEvents();
         OnPropertyChanged(nameof(CalendarPeriodDisplay));
         OnPropertyChanged(nameof(SelectedDayDisplay));
+        OnPropertyChanged(nameof(CalendarGridColumns));
+        OnPropertyChanged(nameof(ShowCalendarWeekHeader));
     }
 
     private void RefreshSelectedDayEvents()
