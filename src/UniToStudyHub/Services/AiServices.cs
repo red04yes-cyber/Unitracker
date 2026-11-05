@@ -1,7 +1,9 @@
+using System.IO;
 using System.Net.Http;
 using System.Text;
 using System.Text.Json;
 using UniToStudyHub.Models;
+using UniToStudyHub.Security;
 
 namespace UniToStudyHub.Services;
 
@@ -56,13 +58,20 @@ public sealed class MockAiProvider(Func<AiRequest, string> response) : IAiProvid
     }
 }
 
+/// <summary>
+/// AI configuration. It stores only a reference to the credential (an
+/// environment variable name or a protected-store name), never the key value,
+/// and consent is explicit and revocable.
+/// </summary>
 public sealed record AiSettings(
     string Provider,
     string BaseUrl,
     string Model,
     string ApiKeyEnvironmentVariable,
     bool ConsentGranted,
-    int MaxRequestsPerDay = 50);
+    int MaxRequestsPerDay = 50,
+    string? ApiKeySecretName = null,
+    bool AllowLoopbackHttpEndpoint = false);
 
 /// <summary>
 /// Configuration is data-only. It contains the name of an environment variable,
@@ -71,16 +80,38 @@ public sealed record AiSettings(
 /// </summary>
 public sealed class AiSettingsService
 {
-    public bool IsReady(AiSettings? settings, Func<string, string?>? getEnvironmentVariable = null)
+    /// <summary>
+    /// Ready means: consent granted, provider/model present, a positive daily
+    /// limit, an endpoint accepted by <see cref="OutboundEndpointPolicy"/> and a
+    /// key that can actually be resolved. No content is sent otherwise.
+    /// </summary>
+    public bool IsReady(AiSettings? settings, Func<string, string?>? getEnvironmentVariable = null,
+        Func<string, string?>? getStoredSecret = null)
     {
         if (settings is null || !settings.ConsentGranted || string.IsNullOrWhiteSpace(settings.Provider) ||
-            string.IsNullOrWhiteSpace(settings.Model) || settings.MaxRequestsPerDay < 1) return false;
-        if (string.IsNullOrWhiteSpace(settings.ApiKeyEnvironmentVariable)) return false;
+            string.IsNullOrWhiteSpace(settings.Model) || settings.MaxRequestsPerDay is < 1 or > 1000) return false;
+        if (!OutboundEndpointPolicy.TryValidateBaseUrl(settings.BaseUrl, settings.AllowLoopbackHttpEndpoint,
+                out _, out _)) return false;
+        return !string.IsNullOrWhiteSpace(ResolveApiKey(settings, getEnvironmentVariable, getStoredSecret));
+    }
+
+    /// <summary>
+    /// Reads the key from the protected store or the environment at call time.
+    /// The value is never persisted, logged or included in an exception.
+    /// </summary>
+    public string? ResolveApiKey(AiSettings settings, Func<string, string?>? getEnvironmentVariable = null,
+        Func<string, string?>? getStoredSecret = null)
+    {
+        ArgumentNullException.ThrowIfNull(settings);
+        if (!string.IsNullOrWhiteSpace(settings.ApiKeySecretName) && getStoredSecret is not null)
+        {
+            var stored = getStoredSecret(settings.ApiKeySecretName);
+            if (!string.IsNullOrWhiteSpace(stored)) return stored.Trim();
+        }
+        if (string.IsNullOrWhiteSpace(settings.ApiKeyEnvironmentVariable)) return null;
         var getter = getEnvironmentVariable ?? Environment.GetEnvironmentVariable;
-        if (string.IsNullOrWhiteSpace(getter(settings.ApiKeyEnvironmentVariable))) return false;
-        if (!Uri.TryCreate(settings.BaseUrl, UriKind.Absolute, out var uri)) return false;
-        return uri.Scheme == Uri.UriSchemeHttps ||
-               (uri.Scheme == Uri.UriSchemeHttp && uri.IsLoopback);
+        var value = getter(settings.ApiKeyEnvironmentVariable);
+        return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
     }
 }
 
@@ -99,20 +130,36 @@ public sealed class OpenAiCompatibleProvider : IAiProvider, IDisposable
     public OpenAiCompatibleProvider(AiSettings settings, string apiKey, HttpClient? client = null)
     {
         _settings = settings ?? throw new ArgumentNullException(nameof(settings));
-        _apiKey = string.IsNullOrWhiteSpace(apiKey) ? throw new ArgumentException("API key is required.", nameof(apiKey)) : apiKey;
-        if (!new AiSettingsService().IsReady(settings, _ => apiKey))
+        _apiKey = string.IsNullOrWhiteSpace(apiKey)
+            ? throw new ArgumentException("API key is required.", nameof(apiKey))
+            : apiKey.Trim();
+        if (!new AiSettingsService().IsReady(settings, _ => _apiKey))
             throw new ArgumentException("The AI settings are incomplete or have not been consented.", nameof(settings));
-        _client = client ?? new HttpClient { Timeout = TimeSpan.FromSeconds(45) };
+        // Redirects are never followed: a provider must not be able to bounce
+        // the request (and its bearer token) to another host.
+        _client = client ?? new HttpClient(new HttpClientHandler { AllowAutoRedirect = false },
+            disposeHandler: true)
+        {
+            Timeout = TimeSpan.FromSeconds(45)
+        };
     }
 
     public bool IsConfigured => true;
     public string Name => _settings.Provider;
 
+    public const int MaximumPromptCharacters = 120_000;
+    public const int MaximumResponseBytes = 4 * 1024 * 1024;
+
     public async Task<AiResponse> CompleteAsync(AiRequest request, CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(request);
+        if (request.UserPrompt.Length + request.SystemPrompt.Length > MaximumPromptCharacters)
+            return new AiResponse(AiStatus.Refused, string.Empty, Name,
+                "Il contenuto selezionato è troppo grande per una richiesta AI: riduci le pagine o la domanda.");
         try
         {
-            using var message = new HttpRequestMessage(HttpMethod.Post, new Uri(new Uri(_settings.BaseUrl.TrimEnd('/') + "/"), "chat/completions"));
+            using var message = new HttpRequestMessage(HttpMethod.Post,
+                new Uri(new Uri(_settings.BaseUrl.TrimEnd('/') + "/"), "chat/completions"));
             message.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", _apiKey);
             message.Content = new StringContent(JsonSerializer.Serialize(new
             {
@@ -122,24 +169,44 @@ public sealed class OpenAiCompatibleProvider : IAiProvider, IDisposable
                     new { role = "system", content = request.SystemPrompt },
                     new { role = "user", content = request.UserPrompt }
                 },
-                max_tokens = request.MaxTokens,
-                temperature = request.Temperature
+                max_tokens = Math.Clamp(request.MaxTokens, 1, 4000),
+                temperature = Math.Clamp(request.Temperature, 0, 2)
             }), Encoding.UTF8, "application/json");
-            using var response = await _client.SendAsync(message, cancellationToken);
+            using var response = await _client.SendAsync(message, cancellationToken).ConfigureAwait(false);
             if (!response.IsSuccessStatusCode)
-                return new AiResponse(AiStatus.Error, string.Empty, Name, $"Il provider ha risposto {(int)response.StatusCode}.");
-            using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
-            using var json = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken);
-            var content = json.RootElement.GetProperty("choices")[0].GetProperty("message").GetProperty("content").GetString() ?? string.Empty;
+                return new AiResponse(AiStatus.Error, string.Empty, Name,
+                    $"Il provider AI ha rifiutato la richiesta ({(int)response.StatusCode}).");
+            if (response.Content.Headers.ContentLength is > MaximumResponseBytes)
+                return new AiResponse(AiStatus.Error, string.Empty, Name,
+                    "La risposta del provider AI supera il limite consentito.");
+            await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
+            using var buffer = new MemoryStream();
+            var chunk = new byte[81920];
+            var total = 0;
+            int read;
+            while ((read = await stream.ReadAsync(chunk.AsMemory(), cancellationToken).ConfigureAwait(false)) > 0)
+            {
+                total += read;
+                if (total > MaximumResponseBytes)
+                    return new AiResponse(AiStatus.Error, string.Empty, Name,
+                        "La risposta del provider AI supera il limite consentito.");
+                buffer.Write(chunk, 0, read);
+            }
+            using var json = JsonDocument.Parse(buffer.ToArray());
+            var content = json.RootElement.GetProperty("choices")[0].GetProperty("message")
+                .GetProperty("content").GetString() ?? string.Empty;
             return new AiResponse(AiStatus.Configured, content, Name);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
             throw;
         }
-        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException or KeyNotFoundException)
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException
+                                       or KeyNotFoundException or InvalidOperationException or IndexOutOfRangeException)
         {
-            return new AiResponse(AiStatus.Error, string.Empty, Name, "Il provider AI non è raggiungibile o ha restituito una risposta non valida.");
+            AppDiagnostics.Warning("ai", "Richiesta al provider AI non riuscita.", ex);
+            return new AiResponse(AiStatus.Error, string.Empty, Name,
+                "Il provider AI non è raggiungibile o ha restituito una risposta non valida.");
         }
     }
 
@@ -180,9 +247,52 @@ public static class PromptSafety
     }
 }
 
-public sealed class AiStudyService(IAiProvider provider)
+/// <summary>
+/// Per-day request budget. It is enforced before any content leaves the machine
+/// so a configured provider cannot be used more often than the user allowed.
+/// </summary>
+public sealed class AiRequestLimiter
 {
-    private readonly IAiProvider _provider = provider ?? throw new ArgumentNullException(nameof(provider));
+    private readonly object _gate = new();
+    private readonly Dictionary<DateOnly, int> _usage = new();
+
+    public bool TryAcquire(int maximumPerDay, DateTimeOffset now, out int remaining)
+    {
+        remaining = 0;
+        if (maximumPerDay < 1) return false;
+        var day = DateOnly.FromDateTime(now.UtcDateTime);
+        lock (_gate)
+        {
+            _usage.TryGetValue(day, out var used);
+            if (used >= maximumPerDay) return false;
+            _usage[day] = ++used;
+            foreach (var stale in _usage.Keys.Where(key => key < day).ToList()) _usage.Remove(stale);
+            remaining = maximumPerDay - used;
+            return true;
+        }
+    }
+
+    public int Used(DateOnly day)
+    {
+        lock (_gate) return _usage.TryGetValue(day, out var used) ? used : 0;
+    }
+}
+
+public sealed class AiStudyService
+{
+    private readonly IAiProvider _provider;
+    private readonly AiSettings? _settings;
+    private readonly AiRequestLimiter _limiter;
+    private readonly Func<DateTimeOffset> _clock;
+
+    public AiStudyService(IAiProvider provider, AiSettings? settings = null,
+        AiRequestLimiter? limiter = null, Func<DateTimeOffset>? clock = null)
+    {
+        _provider = provider ?? throw new ArgumentNullException(nameof(provider));
+        _settings = settings;
+        _limiter = limiter ?? new AiRequestLimiter();
+        _clock = clock ?? (() => DateTimeOffset.UtcNow);
+    }
 
     public bool IsConfigured => _provider.IsConfigured;
 
@@ -197,6 +307,15 @@ public sealed class AiStudyService(IAiProvider provider)
             throw new ArgumentException("La domanda è obbligatoria.", nameof(question));
         if (!_provider.IsConfigured)
             return await _provider.CompleteAsync(new AiRequest(PromptSafety.SystemPrompt, string.Empty), cancellationToken);
+        if (_settings is not null)
+        {
+            if (!_settings.ConsentGranted)
+                return new AiResponse(AiStatus.Refused, string.Empty, _provider.Name,
+                    "Nessun consenso esplicito all'invio di contenuti a un servizio AI: configurazione richiesta.");
+            if (!_limiter.TryAcquire(_settings.MaxRequestsPerDay, _clock(), out _))
+                return new AiResponse(AiStatus.Refused, string.Empty, _provider.Name,
+                    $"Limite giornaliero di {_settings.MaxRequestsPerDay} richieste AI raggiunto.");
+        }
 
         var selected = pageNumbers?.ToHashSet();
         var pages = document.Pages

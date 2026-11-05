@@ -21,6 +21,7 @@
     <Compile Include="../../src/UniToStudyHub/Infrastructure/Data/Migrations/*.cs" Link="Linked/Infrastructure/Data/Migrations/%(Filename)%(Extension)" />
     <Compile Include="../../src/UniToStudyHub/Infrastructure/CompositionRoot.cs" Link="Linked/Infrastructure/CompositionRoot.cs" />
     <Compile Include="../../src/UniToStudyHub/Models/*.cs" Link="Linked/Models/%(Filename)%(Extension)" />
+    <Compile Include="../../src/UniToStudyHub/Security/*.cs" Link="Linked/Security/%(Filename)%(Extension)" />
     <Compile Include="../../src/UniToStudyHub/Services/*.cs" Link="Linked/Services/%(Filename)%(Extension)" />
     <Compile Include="../../src/UniToStudyHub/Presentation/Commands/*.cs" Link="Linked/Presentation/Commands/%(Filename)%(Extension)" />
     <Compile Include="../../src/UniToStudyHub/Presentation/ViewModels/MainViewModel.cs" Link="Linked/Presentation/ViewModels/MainViewModel.cs" />

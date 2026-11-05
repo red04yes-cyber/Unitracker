@@ -5,6 +5,7 @@ using System.Runtime.CompilerServices;
 using UniToStudyHub.Domain.Services;
 using UniToStudyHub.Models;
 using UniToStudyHub.Presentation.Commands;
+using UniToStudyHub.Security;
 using UniToStudyHub.Services;
 
 namespace UniToStudyHub.Presentation.ViewModels;
@@ -218,7 +219,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
         catch (Exception ex)
         {
             Courses.Remove(course);
-            StatusMessage = $"Salvataggio non riuscito: {ex.Message}";
+            StatusMessage = $"Salvataggio non riuscito: {SecurityRedaction.ForUser(ex)}";
         }
         RefreshCourseSummary();
         RefreshVisibleCourses();
@@ -254,7 +255,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
         {
             Grades.Remove(item);
             course.Completed = previousCompleted;
-            StatusMessage = $"Salvataggio non riuscito: {ex.Message}";
+            StatusMessage = $"Salvataggio non riuscito: {SecurityRedaction.ForUser(ex)}";
         }
         RefreshCourseSummary();
         RefreshCareerSummary();
@@ -273,7 +274,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
         }
         catch (Exception ex)
         {
-            StatusMessage = $"Pianificazione non riuscita: {ex.Message}";
+            StatusMessage = $"Pianificazione non riuscita: {SecurityRedaction.ForUser(ex)}";
         }
     }
 
@@ -286,10 +287,12 @@ public sealed class MainViewModel : INotifyPropertyChanged
             await SaveAsync();
             MoodleStatus = $"Collegato: {siteName}";
             StatusMessage = "Token verificato e salvato in Windows DPAPI.";
+            // Do not keep the token in the view-model longer than the save.
+            MoodleToken = string.Empty;
         }
         catch (Exception ex)
         {
-            MoodleStatus = ex.Message;
+            MoodleStatus = SecurityRedaction.ForUser(ex);
         }
     }
 
@@ -322,7 +325,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
         }
         catch (Exception ex)
         {
-            MoodleStatus = ex.Message;
+            MoodleStatus = SecurityRedaction.ForUser(ex);
         }
     }
 
@@ -384,7 +387,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
             CalendarDate = day;
             RefreshCalendar();
         }
-        catch (Exception ex) { StatusMessage = $"Evento non salvato: {ex.Message}"; }
+        catch (Exception ex) { StatusMessage = $"Evento non salvato: {SecurityRedaction.ForUser(ex)}"; }
     }
 
     private async Task DeleteCalendarEventAsync()
@@ -402,7 +405,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
         catch (Exception ex)
         {
             CalendarEvents.Add(item);
-            StatusMessage = $"Eliminazione non riuscita: {ex.Message}";
+            StatusMessage = $"Eliminazione non riuscita: {SecurityRedaction.ForUser(ex)}";
         }
     }
 

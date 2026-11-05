@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using UniToStudyHub.Infrastructure.Data;
 using UniToStudyHub.Infrastructure.Data.Entities;
 using UniToStudyHub.Models;
+using UniToStudyHub.Security;
 
 namespace UniToStudyHub.Services;
 
@@ -16,6 +17,7 @@ namespace UniToStudyHub.Services;
 public sealed class LegacyJsonMigrator
 {
     public const string MigrationKey = "legacy-studydata-json-v1";
+    public const long MaximumFileBytes = 64 * 1024 * 1024;
     private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };
 
     private readonly IDbContextFactory<StudyHubDbContext> _factory;
@@ -51,7 +53,14 @@ public sealed class LegacyJsonMigrator
 
             var folder = Path.GetDirectoryName(_legacyPath);
             if (string.IsNullOrWhiteSpace(folder))
-                throw new InvalidDataException($"The legacy path '{_legacyPath}' has no containing folder.");
+                throw new InvalidDataException(
+                    $"The legacy path '{SecurityRedaction.ForLog(_legacyPath)}' has no containing folder.");
+
+            var legacyInfo = new FileInfo(_legacyPath);
+            if (legacyInfo.Length > MaximumFileBytes)
+                throw new InvalidDataException(
+                    $"The legacy data file exceeds the {MaximumFileBytes / 1024 / 1024} MB import limit. " +
+                    "It was preserved; nothing was imported.");
 
             byte[] bytes;
             try
@@ -61,7 +70,9 @@ public sealed class LegacyJsonMigrator
             }
             catch (IOException ex)
             {
-                throw new InvalidDataException($"The legacy data file could not be read. It was preserved: {_legacyPath}", ex);
+                throw new InvalidDataException(
+                    "The legacy data file could not be read. It was preserved: " +
+                    SecurityRedaction.ForLog(_legacyPath), ex);
             }
 
             var backupPath = Path.Combine(
@@ -74,8 +85,15 @@ public sealed class LegacyJsonMigrator
             catch (IOException ex)
             {
                 throw new InvalidDataException(
-                    $"A backup of the legacy data file could not be created; nothing was imported. Source: {_legacyPath}", ex);
+                    "A backup of the legacy data file could not be created; nothing was imported. Source: " +
+                    SecurityRedaction.ForLog(_legacyPath), ex);
             }
+
+            // The recovery copy is written before the content is judged, so even
+            // an empty or invalid legacy file leaves the user something to keep.
+            if (bytes.Length == 0)
+                throw new InvalidDataException(
+                    "The legacy data file is empty. It was preserved together with its backup; nothing was imported.");
 
             var sourceHash = Convert.ToHexString(SHA256.HashData(bytes));
             StudyData? legacy;
@@ -87,12 +105,14 @@ public sealed class LegacyJsonMigrator
             catch (Exception ex) when (ex is JsonException or NotSupportedException)
             {
                 throw new InvalidDataException(
-                    $"Legacy data file is invalid. The original file is preserved; backup: {backupPath}", ex);
+                    "Legacy data file is invalid. The original file is preserved; backup: " +
+                    SecurityRedaction.ForLog(Path.GetFileName(backupPath)), ex);
             }
 
             if (legacy is null)
                 throw new InvalidDataException(
-                    $"Legacy data file does not contain a StudyData object. The original file is preserved; backup: {backupPath}.");
+                    "Legacy data file does not contain a StudyData object. The original file is preserved; backup: " +
+                    SecurityRedaction.ForLog(Path.GetFileName(backupPath)) + ".");
 
             try
             {
@@ -101,7 +121,8 @@ public sealed class LegacyJsonMigrator
             catch (Exception ex) when (ex is ArgumentException or InvalidDataException)
             {
                 throw new InvalidDataException(
-                    $"Legacy data validation failed. The original file is preserved; backup: {backupPath}", ex);
+                    "Legacy data validation failed. The original file is preserved; backup: " +
+                    SecurityRedaction.ForLog(Path.GetFileName(backupPath)), ex);
             }
 
             await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
@@ -120,8 +141,8 @@ public sealed class LegacyJsonMigrator
             catch (DbUpdateException ex)
             {
                 throw new InvalidDataException(
-                    $"Legacy data could not be imported; the transaction was rolled back. The original file is preserved; backup: {backupPath}",
-                    ex);
+                    "Legacy data could not be imported; the transaction was rolled back. The original file is " +
+                    "preserved; backup: " + SecurityRedaction.ForLog(Path.GetFileName(backupPath)), ex);
             }
 
             // Keep data.json unchanged: it remains a recovery copy until the user removes it.

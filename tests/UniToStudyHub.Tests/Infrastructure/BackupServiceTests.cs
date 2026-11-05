@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using UniToStudyHub.Models;
 using UniToStudyHub.Services;
+using UniToStudyHub.Tests.Security;
 using Xunit;
 
 namespace UniToStudyHub.Tests.Infrastructure;
@@ -23,7 +24,7 @@ public sealed class BackupServiceTests
         var store = new SqliteStudyDataStore(database.Factory);
         await store.SaveAsync(Data());
         var backups = Path.Combine(Path.GetDirectoryName(path)!, "backups");
-        var service = new BackupService(database.Factory, path, backups);
+        var service = new BackupService(database.Factory, path, backups, new TestBackupKeyProtector());
 
         var backup = await service.CreateBackupAsync();
 
@@ -58,7 +59,7 @@ public sealed class BackupServiceTests
         Directory.CreateDirectory(backups);
         var corrupt = Path.Combine(backups, "corrupt.db");
         await File.WriteAllTextAsync(corrupt, "not a sqlite database");
-        var service = new BackupService(database.Factory, path, backups);
+        var service = new BackupService(database.Factory, path, backups, new TestBackupKeyProtector());
 
         Assert.False(await service.VerifyBackupAsync(corrupt));
         await Assert.ThrowsAsync<InvalidDataException>(() => service.RestoreAsync(corrupt));

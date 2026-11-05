@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using UniToStudyHub.Domain.Services;
 using UniToStudyHub.Infrastructure.Data;
+using UniToStudyHub.Security;
 using UniToStudyHub.Services;
 
 namespace UniToStudyHub.Infrastructure;
@@ -17,13 +18,18 @@ public static class CompositionRoot
     public static IServiceCollection AddUniToStudyHubCore(this IServiceCollection services, string? databasePath = null)
     {
         var resolvedDatabasePath = databasePath ?? StudyHubDatabase.GetDatabasePath();
+        var dataDirectory = Path.GetDirectoryName(resolvedDatabasePath) ?? ".";
+        LocalFileSecurity.EnsurePrivateDirectory(dataDirectory);
+        AppDiagnostics.Configure(Path.Combine(dataDirectory, "logs"));
+
         services.AddDbContextFactory<StudyHubDbContext>(options =>
-            options.UseSqlite($"Data Source={resolvedDatabasePath}"));
+            options.UseSqlite(StudyHubDatabase.CreateConnectionString(resolvedDatabasePath)));
         services.AddSingleton(new CareerCalculationOptions());
         services.AddSingleton<CareerCalculatorService>();
         services.AddSingleton(sp => new LegacyJsonMigrator(
             sp.GetRequiredService<IDbContextFactory<StudyHubDbContext>>()));
         services.AddSingleton<IStudyDataStore, SqliteStudyDataStore>();
+        services.AddSingleton<IMoodleTokenStore>(_ => new MoodleTokenVault(dataDirectory));
         services.AddSingleton<MoodleApplicationService>();
         services.AddSingleton<AcademicProfileService>();
         services.AddSingleton<CareerApplicationService>();
@@ -57,7 +63,15 @@ public static class CompositionRoot
         services.AddSingleton(sp => new BackupService(
             sp.GetRequiredService<IDbContextFactory<StudyHubDbContext>>(),
             resolvedDatabasePath,
-            Path.Combine(Path.GetDirectoryName(resolvedDatabasePath) ?? ".", "backups")));
+            Path.Combine(dataDirectory, "backups"),
+            new DpapiBackupKeyProtector()));
+        services.AddSingleton(_ => new AiCredentialStore(dataDirectory));
+        services.AddSingleton(sp => new PrivacyService(
+            sp.GetRequiredService<IStudyDataStore>(),
+            sp.GetRequiredService<IMoodleTokenStore>(),
+            sp.GetRequiredService<AiCredentialStore>(),
+            sp.GetRequiredService<BackupService>(),
+            dataDirectory));
         return services;
     }
 }

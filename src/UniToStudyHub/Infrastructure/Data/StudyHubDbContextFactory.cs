@@ -3,8 +3,21 @@ using System.Data.Common;
 using System.IO;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
+using UniToStudyHub.Security;
 
 namespace UniToStudyHub.Infrastructure.Data;
+
+/// <summary>
+/// Truthful description of how the database is protected. The application does
+/// not encrypt SQLite: claiming otherwise would be a security lie. Encryption at
+/// rest relies on BitLocker/EFS plus the per-user ACL and DPAPI vault; encrypted
+/// backups are handled separately by <c>BackupService</c>.
+/// </summary>
+public sealed record DatabaseProtectionStatus(
+    bool EncryptedAtRest,
+    bool PerUserAcl,
+    string Algorithm,
+    string Recommendation);
 
 public static class StudyHubDatabase
 {
@@ -21,27 +34,63 @@ public static class StudyHubDatabase
     /// <summary>
     /// Returns the profile directory used by the app. Tests and the Windows CI
     /// smoke run can redirect it to an isolated temporary directory; normal
-    /// startup keeps using %LOCALAPPDATA%\UniToStudyHub.
+    /// startup keeps using %LOCALAPPDATA%\UniToStudyHub. The folder is created
+    /// and restricted to the current user, and abandoned temporary files from
+    /// an interrupted save are removed.
     /// </summary>
     public static string GetDataDirectory()
     {
         var configured = Environment.GetEnvironmentVariable(DataDirectoryEnvironmentVariable);
-        return string.IsNullOrWhiteSpace(configured)
-            ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "UniToStudyHub")
+        var folder = string.IsNullOrWhiteSpace(configured)
+            ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "UniToStudyHub")
             : Path.GetFullPath(configured);
+        LocalFileSecurity.EnsurePrivateDirectory(folder);
+        LocalFileSecurity.CleanupStaleTemporaryFiles(folder, TimeSpan.FromHours(1),
+            "*.tmp", "*.part", "*.restore-*.tmp");
+        return folder;
     }
 
     public static string GetDatabasePath()
     {
         var folder = GetDataDirectory();
         Directory.CreateDirectory(folder);
-        return Path.Combine(folder, "unitracker.db");
+        var path = Path.Combine(folder, "unitracker.db");
+        if (File.Exists(path)) LocalFileSecurity.TryRestrictFile(path);
+        return path;
+    }
+
+    /// <summary>
+    /// Connection string without credentials. SQLite has no password, so nothing
+    /// secret belongs here; foreign keys are enabled explicitly and pooling is
+    /// kept enabled only for the live database file.
+    /// </summary>
+    public static string CreateConnectionString(string databasePath)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(databasePath);
+        var builder = new Microsoft.Data.Sqlite.SqliteConnectionStringBuilder
+        {
+            DataSource = Path.GetFullPath(databasePath),
+            Mode = Microsoft.Data.Sqlite.SqliteOpenMode.ReadWriteCreate,
+            ForeignKeys = true,
+            Pooling = true
+        };
+        return builder.ToString();
     }
 
     public static DbContextOptions<StudyHubDbContext> CreateOptions(string? databasePath = null) =>
         new DbContextOptionsBuilder<StudyHubDbContext>()
-            .UseSqlite($"Data Source={databasePath ?? GetDatabasePath()}")
+            .UseSqlite(CreateConnectionString(databasePath ?? GetDatabasePath()))
             .Options;
+
+    public static DatabaseProtectionStatus DescribeProtection() =>
+        new(
+            EncryptedAtRest: false,
+            PerUserAcl: OperatingSystem.IsWindows(),
+            Algorithm: "none",
+            Recommendation:
+            "Il database SQLite non è cifrato dall'applicazione. Abilita BitLocker o EFS per il profilo " +
+            "utente e usa le copie di sicurezza cifrate per l'archivio. Non dichiarare il database cifrato.");
 
     /// <summary>
     /// Renames migration-history rows created by the preliminary 12-digit

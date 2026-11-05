@@ -101,7 +101,7 @@ public sealed class IcsCalendarParser
 
         var startProperty = startProperties[0];
         var uid = Get(props, "UID");
-        var summary = Unescape(Get(props, "SUMMARY"));
+        var summary = Sanitize(Unescape(Get(props, "SUMMARY")), 400);
         if (string.IsNullOrWhiteSpace(summary)) summary = "Evento importato";
         var allDay = IsDateOnly(startProperty.Value);
         var start = ParseDate(startProperty, allDay);
@@ -133,9 +133,9 @@ public sealed class IcsCalendarParser
                 EndsAt = occurrenceEnd,
                 IsAllDay = allDay,
                 CourseId = null,
-                CourseName = Get(props, "X-UNITO-COURSE") ?? string.Empty,
-                Location = Unescape(Get(props, "LOCATION")),
-                Notes = Unescape(Get(props, "DESCRIPTION")),
+                CourseName = Sanitize(Unescape(Get(props, "X-UNITO-COURSE")), 200),
+                Location = Sanitize(Unescape(Get(props, "LOCATION")), 400),
+                Notes = Sanitize(Unescape(Get(props, "DESCRIPTION")), 12000),
                 Source = CalendarEventSource.Ics,
                 Verification = CalendarEventVerification.Unverified,
                 TimeZoneId = startProperty.Parameters.TryGetValue("TZID", out var tzid) && !string.IsNullOrWhiteSpace(tzid)
@@ -366,6 +366,24 @@ public sealed class IcsCalendarParser
 
     private static bool IsDateOnly(string value) => value.Length == 8 && value.All(char.IsDigit);
 
+    /// <summary>
+    /// Imported calendar text is untrusted: control characters are removed and
+    /// each field is capped to the length the persistence validator accepts, so
+    /// a hostile ICS file cannot inject terminal/newline sequences or fail the
+    /// whole import on one overlong field.
+    /// </summary>
+    private static string Sanitize(string? value, int maximumLength)
+    {
+        if (string.IsNullOrEmpty(value)) return string.Empty;
+        var builder = new StringBuilder(Math.Min(value.Length, maximumLength));
+        foreach (var character in value)
+        {
+            if (builder.Length >= maximumLength) break;
+            if (character is '\n' or '\r' or '\t' || !char.IsControl(character)) builder.Append(character);
+        }
+        return builder.ToString().Trim();
+    }
+
     private static string MapCategory(string? categories, string summary)
     {
         var text = $"{categories} {summary}".ToUpperInvariant();
@@ -418,6 +436,9 @@ public sealed class IcsImportService
         DateTimeOffset? windowEnd = null)
     {
         ArgumentNullException.ThrowIfNull(data);
+        if (content is null) throw new ArgumentNullException(nameof(content));
+        if (content.Length > MaximumFileBytes)
+            throw new InvalidDataException("Il contenuto ICS supera il limite di 10 MB.");
         var parsed = new IcsCalendarParser().Parse(content, windowStart, windowEnd);
         var warnings = parsed.Warnings.ToList();
         var added = 0;
