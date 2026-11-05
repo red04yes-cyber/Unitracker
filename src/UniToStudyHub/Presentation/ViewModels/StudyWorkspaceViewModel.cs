@@ -46,6 +46,7 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
     private string _aiStatus = "Provider AI non configurato: nessuna richiesta remota verrà effettuata.";
     private string _aiResponseText = string.Empty;
     private string _backupStatus = "I backup locali non sono ancora stati verificati.";
+    private string _workspaceStatus = string.Empty;
     private ProgressSnapshot? _progressSnapshot;
 
     public event PropertyChangedEventHandler? PropertyChanged;
@@ -60,7 +61,7 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
     public Course? SelectedCourse { get => _selectedCourse; set => Set(ref _selectedCourse, value); }
     public StudyTaskData? SelectedTask { get => _selectedTask; set { Set(ref _selectedTask, value); CompleteTaskCommand.NotifyCanExecuteChanged(); RemoveTaskCommand.NotifyCanExecuteChanged(); } }
     public FlashcardData? SelectedDueFlashcard { get => _selectedDueFlashcard; set { Set(ref _selectedDueFlashcard, value); FlashcardRevealed = false; NotifyReviewCommands(); } }
-    public PdfDocumentData? SelectedPdf { get => _selectedPdf; set { Set(ref _selectedPdf, value); PdfSearchHits.Clear(); OnPropertyChanged(nameof(HasSelectedPdf)); } }
+    public PdfDocumentData? SelectedPdf { get => _selectedPdf; set { Set(ref _selectedPdf, value); PdfSearchHits.Clear(); OnPropertyChanged(nameof(HasSelectedPdf)); SearchPdfCommand.NotifyCanExecuteChanged(); AskPdfCommand.NotifyCanExecuteChanged(); } }
     public BackupInfo? SelectedBackup { get => _selectedBackup; set { Set(ref _selectedBackup, value); VerifyBackupCommand.NotifyCanExecuteChanged(); } }
 
     public string FocusTopicInput { get => _focusTopicInput; set => Set(ref _focusTopicInput, value); }
@@ -82,9 +83,10 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
     public string PdfSearchQuery { get => _pdfSearchQuery; set => Set(ref _pdfSearchQuery, value); }
     public string PdfQuestionInput { get => _pdfQuestionInput; set => Set(ref _pdfQuestionInput, value); }
     public string PdfStatus { get => _pdfStatus; private set => Set(ref _pdfStatus, value); }
-    public string AiStatus { get => _aiStatus; private set => Set(ref _aiStatus, value); }
+    public string AiStatusMessage { get => _aiStatus; private set => Set(ref _aiStatus, value); }
     public string AiResponseText { get => _aiResponseText; private set => Set(ref _aiResponseText, value); }
     public string BackupStatus { get => _backupStatus; private set => Set(ref _backupStatus, value); }
+    public string WorkspaceStatus { get => _workspaceStatus; private set => Set(ref _workspaceStatus, value); }
     public string BackupDirectory => _backups.BackupDirectory;
     public ProgressSnapshot? CurrentProgress => _progressSnapshot;
     public bool HasProgressData => _progressSnapshot is { } p && (p.FocusMinutes > 0 || p.CompletedSessions > 0 || p.CompletedTasks > 0);
@@ -225,8 +227,7 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
     {
         if (!int.TryParse(FocusMinutesInput, out var minutes) || minutes is < 1 or > 1440)
         {
-            AiStatus = AiStatus;
-            BackupStatus = BackupStatus;
+            WorkspaceStatus = "La durata deve essere compresa tra 1 e 1440 minuti.";
             return;
         }
         try
@@ -236,7 +237,7 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
             FocusTopicInput = string.Empty;
             RefreshFocusSnapshot();
         }
-        catch (Exception ex) { PdfStatus = $"Sessione non avviata: {ex.Message}"; }
+        catch (Exception ex) { WorkspaceStatus = $"Sessione non avviata: {ex.Message}"; }
     }
 
     private async Task ChangeFocusAsync(string action)
@@ -257,7 +258,7 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
             RefreshProgress();
             RefreshCollections();
         }
-        catch (Exception ex) { PdfStatus = $"Sessione non aggiornata: {ex.Message}"; }
+        catch (Exception ex) { WorkspaceStatus = $"Sessione non aggiornata: {ex.Message}"; }
     }
 
     private async Task AddTaskAsync()
@@ -278,21 +279,21 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
             RefreshCollections();
             RefreshProgress();
         }
-        catch (Exception ex) { PdfStatus = $"Task non salvato: {ex.Message}"; }
+        catch (Exception ex) { WorkspaceStatus = $"Task non salvato: {ex.Message}"; }
     }
 
     private async Task CompleteTaskAsync()
     {
         if (SelectedTask is null) return;
         try { _tasks.Complete(_data, SelectedTask.Id); await SaveAsync(); SelectedTask = null; RefreshCollections(); RefreshProgress(); }
-        catch (Exception ex) { PdfStatus = $"Task non completato: {ex.Message}"; }
+        catch (Exception ex) { WorkspaceStatus = $"Task non completato: {ex.Message}"; }
     }
 
     private async Task RemoveTaskAsync()
     {
         if (SelectedTask is null) return;
         try { _tasks.Remove(_data, SelectedTask.Id); await SaveAsync(); SelectedTask = null; RefreshCollections(); }
-        catch (Exception ex) { PdfStatus = $"Task non rimosso: {ex.Message}"; }
+        catch (Exception ex) { WorkspaceStatus = $"Task non rimosso: {ex.Message}"; }
     }
 
     private async Task AddFlashcardAsync()
@@ -312,7 +313,7 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
             RefreshCollections();
             RefreshProgress();
         }
-        catch (Exception ex) { PdfStatus = $"Flashcard non salvata: {ex.Message}"; }
+        catch (Exception ex) { WorkspaceStatus = $"Flashcard non salvata: {ex.Message}"; }
     }
 
     private async Task ReviewFlashcardAsync(RecallRating rating)
@@ -326,7 +327,7 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
             RefreshCollections();
             RefreshProgress();
         }
-        catch (Exception ex) { PdfStatus = $"Ripasso non salvato: {ex.Message}"; }
+        catch (Exception ex) { WorkspaceStatus = $"Ripasso non salvato: {ex.Message}"; }
     }
 
     private async Task SearchPdfAsync()
@@ -347,7 +348,7 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
         try
         {
             var response = await _aiStudy.AnswerFromDocumentAsync(SelectedPdf, PdfQuestionInput);
-            AiStatus = response.Status switch
+            AiStatusMessage = response.Status switch
             {
                 AiStatus.NotConfigured => "AI non configurata. Nessun contenuto è stato inviato e non è stata generata una risposta.",
                 AiStatus.Configured => $"Risposta da {response.Provider}. Verifica sempre i passaggi nel testo originale.",
@@ -358,7 +359,7 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
         }
         catch (Exception ex)
         {
-            AiStatus = $"Richiesta non completata: {ex.Message}";
+            AiStatusMessage = $"Richiesta non completata: {ex.Message}";
             AiResponseText = string.Empty;
         }
     }
