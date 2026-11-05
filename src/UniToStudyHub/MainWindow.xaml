@@ -1010,7 +1010,7 @@
         <Border Style="{StaticResource CardBorderStyle}" MaxWidth="860" HorizontalAlignment="Left">
             <StackPanel>
                 <TextBlock Text="Dati e backup" Style="{StaticResource SectionTitleStyle}"/>
-                <TextBlock Text="Le copie sono locali e includono un manifest di formato e checksum. I backup non sono cifrati." FontSize="11" Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap" Margin="0,6,0,12"/>
+                <TextBlock Text="Le copie sono locali e cifrate con AES-256-GCM. Il manifest include versione e checksum; la chiave è protetta con Windows DPAPI." FontSize="11" Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap" Margin="0,6,0,12"/>
                 <TextBlock Text="Cartella backup" Style="{StaticResource KpiLabelStyle}"/>
                 <TextBox Text="{Binding Workspace.BackupDirectory, Mode=OneWay}" IsReadOnly="True" Margin="0,5,0,10"/>
                 <Button Content="Crea backup e verifica integrità" Command="{Binding Workspace.CreateBackupCommand}" HorizontalAlignment="Left"/>
@@ -1019,9 +1019,9 @@
                     <ListBox.ItemTemplate><DataTemplate><StackPanel Margin="5"><TextBlock Text="{Binding FilePath}" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource InkBrush}" TextWrapping="Wrap"/><TextBlock Text="{Binding CreatedAt, StringFormat={}{0:dd/MM/yyyy HH:mm}}" FontSize="10" Foreground="{StaticResource MutedBrush}"/><TextBlock Text="{Binding SizeBytes, StringFormat={}{0:N0} byte}" FontSize="9" Foreground="{StaticResource MutedBrush}"/><TextBlock Text="{Binding Sha256, StringFormat='SHA-256 · {0}'}" FontSize="8" Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap"/><TextBlock Text="{Binding IntegrityVerified, StringFormat=Integrità verificata: {0}}" FontSize="9" Foreground="{StaticResource MutedBrush}"/></StackPanel></DataTemplate></ListBox.ItemTemplate>
                 </ListBox>
                 <TextBlock Text="Non hai ancora creato backup locali." Visibility="{Binding Workspace.NoBackups, Converter={StaticResource BooleanToVisibilityConverter}}" FontSize="10" Foreground="{StaticResource MutedBrush}" Margin="2,7,2,0"/>
-                <WrapPanel Margin="0,9,0,0"><Button Content="Verifica backup selezionato" Command="{Binding Workspace.VerifyBackupCommand}" Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,8,0"/><Button Content="Ripristino non disponibile" IsEnabled="False" Style="{StaticResource QuietButtonStyle}" ToolTip="In attesa che il contratto tecnico restituisca il percorso del backup di sicurezza"/></WrapPanel>
+                <WrapPanel Margin="0,9,0,0"><Button Content="Verifica backup selezionato" Command="{Binding Workspace.VerifyBackupCommand}" Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,8,0"/><Button Content="Ripristina backup selezionato" Click="RestoreBackup_Click" IsEnabled="{Binding Workspace.HasSelectedBackup}" Style="{StaticResource QuietButtonStyle}" Margin="0,0,8,0" ToolTip="Il backup viene verificato; prima della sostituzione viene creata una copia di sicurezza"/></WrapPanel>
                 <TextBlock Text="{Binding Workspace.BackupStatus}" FontSize="11" Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap" Margin="0,12,0,0"/><TextBlock Text="{Binding Workspace.BackupManifestSummary}" FontSize="9" Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap" Margin="0,7,0,0"/>
-                <TextBlock Text="Il ripristino resta disattivato finché il servizio non espone alla UI il percorso effettivo del backup di sicurezza creato prima della sostituzione del database." FontSize="10" Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap" Margin="0,7,0,0"/>
+                <TextBlock Text="Prima di ripristinare, chiudi le altre istanze dell'app. Il sistema crea una copia di sicurezza del database corrente, verifica la copia selezionata e poi ricarica i dati." FontSize="10" Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap" Margin="0,7,0,0"/>
             </StackPanel>
         </Border>
     </StackPanel>
