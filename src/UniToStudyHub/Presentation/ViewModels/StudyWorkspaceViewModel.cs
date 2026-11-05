@@ -77,7 +77,8 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
     public ObservableCollection<PdfDocumentData> PdfDocuments => _data.PdfDocuments;
 
     public Course? SelectedCourse { get => _selectedCourse; set => Set(ref _selectedCourse, value); }
-    public StudyTaskData? SelectedTask { get => _selectedTask; set { Set(ref _selectedTask, value); CompleteTaskCommand.NotifyCanExecuteChanged(); RemoveTaskCommand.NotifyCanExecuteChanged(); } }
+    public StudyTaskData? SelectedTask { get => _selectedTask; set { if (!Set(ref _selectedTask, value)) return; OnPropertyChanged(nameof(HasSelectedTask)); CompleteTaskCommand.NotifyCanExecuteChanged(); RemoveTaskCommand.NotifyCanExecuteChanged(); } }
+    public bool HasSelectedTask => SelectedTask is not null;
     public FlashcardData? SelectedDueFlashcard { get => _selectedDueFlashcard; set { Set(ref _selectedDueFlashcard, value); FlashcardRevealed = false; NotifyReviewCommands(); } }
     public ErrorJournalEntryData? SelectedErrorEntry { get => _selectedErrorEntry; set { Set(ref _selectedErrorEntry, value); ReviewErrorNeedsWorkCommand.NotifyCanExecuteChanged(); ReviewErrorRememberedCommand.NotifyCanExecuteChanged(); } }
     public DistractionData? SelectedDistraction { get => _selectedDistraction; set { Set(ref _selectedDistraction, value); ResolveDistractionCommand.NotifyCanExecuteChanged(); } }
