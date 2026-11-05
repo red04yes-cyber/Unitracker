@@ -49,6 +49,32 @@ public partial class MainWindow : Window
             await viewModel.Workspace.ImportPdfAsync(dialog.FileName);
     }
 
+    private async void ExportProgress_Click(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is not MainViewModel viewModel) return;
+        var dialog = new SaveFileDialog
+        {
+            Title = "Esporta report di studio",
+            Filter = "Cartella di lavoro Excel (*.xlsx)|*.xlsx",
+            DefaultExt = ".xlsx",
+            AddExtension = true,
+            FileName = $"UniToStudyHub-progressi-{DateTime.Today:yyyyMMdd}.xlsx",
+            OverwritePrompt = true
+        };
+        if (dialog.ShowDialog(this) != true) return;
+        try
+        {
+            await viewModel.Workspace.ExportProgressAsync(dialog.FileName);
+            MessageBox.Show(this, "Report esportato correttamente.", "Esportazione completata",
+                MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, $"Esportazione non riuscita: {ex.Message}", "Errore esportazione",
+                MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
     private void DisconnectMoodle_Click(object sender, RoutedEventArgs e)
     {
         if (DataContext is not MainViewModel viewModel)
