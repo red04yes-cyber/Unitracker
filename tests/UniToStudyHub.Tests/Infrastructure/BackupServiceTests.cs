@@ -31,6 +31,10 @@ public sealed class BackupServiceTests
         Assert.True(File.Exists(backup.FilePath));
         Assert.True(await service.VerifyBackupAsync(backup.FilePath));
         Assert.Single(service.ListBackups());
+        var manifest = await service.ReadManifestAsync(backup.FilePath);
+        Assert.NotNull(manifest);
+        Assert.Equal(BackupService.CurrentFormatVersion, manifest!.FormatVersion);
+        Assert.Equal(backup.Sha256, manifest.Sha256);
 
         var changed = await store.LoadAsync();
         changed.Courses[0].Name = "Modificata";

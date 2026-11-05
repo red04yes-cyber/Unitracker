@@ -1,6 +1,7 @@
 using System.Data;
 using System.IO;
 using System.Security.Cryptography;
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using UniToStudyHub.Infrastructure.Data;
@@ -13,6 +14,17 @@ public sealed record BackupInfo(
     long SizeBytes,
     string Sha256,
     bool IntegrityVerified);
+
+/// <summary>
+/// Human-readable sidecar that makes the backup format and checksum explicit.
+/// It contains no credentials and the SQLite file remains independently
+/// verifiable if the sidecar is missing.
+/// </summary>
+public sealed record BackupManifest(
+    int FormatVersion,
+    DateTimeOffset CreatedAt,
+    string Sha256,
+    long SizeBytes);
 
 /// <summary>
 /// Creates consistent SQLite snapshots with VACUUM INTO, verifies them with
@@ -30,6 +42,7 @@ public sealed class BackupService(
     private readonly string _backupDirectory = Path.GetFullPath(backupDirectory ??
         Path.Combine(Path.GetDirectoryName(databasePath) ?? throw new ArgumentException("Database path has no folder.", nameof(databasePath)), "backups"));
 
+    public const int CurrentFormatVersion = 1;
     public string BackupDirectory => _backupDirectory;
 
     public async Task<BackupInfo> CreateBackupAsync(CancellationToken cancellationToken = default)
@@ -70,7 +83,9 @@ public sealed class BackupService(
         }
 
         var verified = await VerifyBackupAsync(target, cancellationToken);
-        return new BackupInfo(target, DateTimeOffset.UtcNow, new FileInfo(target).Length, ComputeSha256(target), verified);
+        var info = new BackupInfo(target, DateTimeOffset.UtcNow, new FileInfo(target).Length, ComputeSha256(target), verified);
+        await WriteManifestAsync(info, cancellationToken);
+        return info;
     }
 
     public IReadOnlyList<BackupInfo> ListBackups()
@@ -117,6 +132,14 @@ public sealed class BackupService(
             throw new FileNotFoundException("Backup not found.", backupPath);
         if (!await VerifyBackupAsync(backupPath, cancellationToken))
             throw new InvalidDataException("The selected backup failed SQLite integrity verification.");
+        var manifest = await ReadManifestAsync(backupPath, cancellationToken);
+        if (manifest is not null)
+        {
+            if (manifest.FormatVersion > CurrentFormatVersion)
+                throw new InvalidDataException("The selected backup was created by a newer backup format.");
+            if (!string.Equals(manifest.Sha256, ComputeSha256(backupPath), StringComparison.OrdinalIgnoreCase))
+                throw new InvalidDataException("The selected backup does not match its checksum manifest.");
+        }
 
         var safety = await CreateBackupAsync(cancellationToken);
         var temporary = _databasePath + ".restore-" + Guid.NewGuid().ToString("N") + ".tmp";
@@ -141,6 +164,30 @@ public sealed class BackupService(
         if (!await VerifyBackupAsync(_databasePath, cancellationToken))
             throw new InvalidDataException(
                 $"The restored database failed verification. The safety backup is available at {safety.FilePath}.");
+    }
+
+    public static string ManifestPath(string backupPath) => backupPath + ".manifest.json";
+
+    public async Task<BackupManifest?> ReadManifestAsync(string backupPath, CancellationToken cancellationToken = default)
+    {
+        var path = ManifestPath(backupPath);
+        if (!File.Exists(path)) return null;
+        try
+        {
+            await using var stream = File.OpenRead(path);
+            return await JsonSerializer.DeserializeAsync<BackupManifest>(stream, cancellationToken: cancellationToken);
+        }
+        catch (JsonException ex)
+        {
+            throw new InvalidDataException("The backup manifest is not valid JSON.", ex);
+        }
+    }
+
+    private async Task WriteManifestAsync(BackupInfo info, CancellationToken cancellationToken)
+    {
+        var manifest = new BackupManifest(CurrentFormatVersion, info.CreatedAt, info.Sha256, info.SizeBytes);
+        await using var stream = File.Create(ManifestPath(info.FilePath));
+        await JsonSerializer.SerializeAsync(stream, manifest, new JsonSerializerOptions { WriteIndented = true }, cancellationToken);
     }
 
     private static string ComputeSha256(string path)

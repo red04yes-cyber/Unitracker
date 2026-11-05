@@ -31,6 +31,25 @@ public static class CompositionRoot
         services.AddSingleton<QuestionBankService>();
         services.AddSingleton<ExamReadinessService>();
         services.AddSingleton<TimeBudgetService>();
+        services.AddSingleton<CalendarApplicationService>();
+        services.AddSingleton<CalendarEventStore>();
+        services.AddSingleton<IcsImportService>();
+        services.AddSingleton<FocusSessionService>();
+        services.AddSingleton<StudyTaskService>();
+        services.AddSingleton<ErrorJournalService>();
+        services.AddSingleton<FlashcardService>();
+        services.AddSingleton<DistractionService>();
+        services.AddSingleton<EnergyService>();
+        services.AddSingleton<ProgressService>();
+        services.AddSingleton<ErrorPatternService>();
+        services.AddSingleton<WeeklyReviewService>();
+        services.AddSingleton<IPdfTextExtractor, PdfPigTextExtractor>();
+        services.AddSingleton<PdfImportService>();
+        services.AddSingleton<PdfIntelligenceService>();
+        services.AddSingleton<AiSettingsService>();
+        services.AddSingleton<IAiProvider, UnavailableAiProvider>();
+        services.AddSingleton<AiStudyService>();
+        services.AddSingleton<StudyDirectorService>();
         services.AddSingleton(sp => new BackupService(
             sp.GetRequiredService<IDbContextFactory<StudyHubDbContext>>(),
             resolvedDatabasePath,

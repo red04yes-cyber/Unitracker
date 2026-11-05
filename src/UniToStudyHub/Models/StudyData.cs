@@ -14,9 +14,18 @@ public sealed class StudyData
     public ObservableCollection<CoursePrerequisiteData> CoursePrerequisites { get; set; } = new();
     public ObservableCollection<SyllabusTopicData> SyllabusTopics { get; set; } = new();
     public ObservableCollection<QuestionBankItemData> Questions { get; set; } = new();
+    public ObservableCollection<StudySessionData> StudySessions { get; set; } = new();
+    public ObservableCollection<StudyTaskData> StudyTasks { get; set; } = new();
+    public ObservableCollection<ErrorJournalEntryData> ErrorJournalEntries { get; set; } = new();
+    public ObservableCollection<FlashcardData> Flashcards { get; set; } = new();
+    public ObservableCollection<FlashcardReviewData> FlashcardReviews { get; set; } = new();
+    public ObservableCollection<DistractionData> Distractions { get; set; } = new();
+    public ObservableCollection<EnergyCheckInData> EnergyCheckIns { get; set; } = new();
+    public ObservableCollection<PdfDocumentData> PdfDocuments { get; set; } = new();
 
     public DateTime GraduationTarget { get; set; } = new(2027, 10, 1);
     public string MoodleBaseUrl { get; set; } = string.Empty;
+    public ObservableCollection<CalendarEvent> CalendarEvents { get; set; } = new();
 
     // University profile. Empty values mean "not configured" and must not be
     // rendered as if they were official university data.

@@ -55,6 +55,93 @@ namespace UniToStudyHub.Infrastructure.Data.Migrations
                     b.ToTable("Announcements", (string)null);
                 });
 
+            modelBuilder.Entity("UniToStudyHub.Infrastructure.Data.Entities.CalendarEventEntity", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Category")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("CourseId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("CourseName")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTimeOffset>("EndsAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ExternalId")
+                        .HasMaxLength(400)
+                        .HasColumnType("TEXT");
+
+                    b.Property<long>("ExternalSequence")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("IsAllDay")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("IsCancelled")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Location")
+                        .IsRequired()
+                        .HasMaxLength(400)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Notes")
+                        .IsRequired()
+                        .HasMaxLength(12000)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("RecurrenceRule")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTimeOffset>("StartsAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("TimeZoneId")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(400)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Verification")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("StartsAt");
+
+                    b.HasIndex("Source", "ExternalId");
+
+                    b.ToTable("CalendarEvents", (string)null);
+                });
+
             modelBuilder.Entity("UniToStudyHub.Infrastructure.Data.Entities.CareerExamEntity", b =>
                 {
                     b.Property<string>("Id")
@@ -205,6 +292,127 @@ namespace UniToStudyHub.Infrastructure.Data.Migrations
                     b.ToTable("CoursePrerequisites", (string)null);
                 });
 
+            modelBuilder.Entity("UniToStudyHub.Infrastructure.Data.Entities.DistractionEntity", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTimeOffset?>("ResolvedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("SessionId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Text")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedAt");
+
+                    b.ToTable("Distractions", (string)null);
+                });
+
+            modelBuilder.Entity("UniToStudyHub.Infrastructure.Data.Entities.EnergyCheckInEntity", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("EnergyLevel")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("FocusLevel")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Note")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTimeOffset>("RecordedAt")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RecordedAt");
+
+                    b.ToTable("EnergyCheckIns", (string)null);
+                });
+
+            modelBuilder.Entity("UniToStudyHub.Infrastructure.Data.Entities.ErrorJournalEntryEntity", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("CorrectAnswer")
+                        .IsRequired()
+                        .HasMaxLength(12000)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("CourseId")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ErrorType")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("IncorrectAnswer")
+                        .IsRequired()
+                        .HasMaxLength(12000)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTimeOffset?>("NextReviewAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Question")
+                        .IsRequired()
+                        .HasMaxLength(12000)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("ReviewCount")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("RootCause")
+                        .IsRequired()
+                        .HasMaxLength(4000)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("SyllabusTopicId")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Topic")
+                        .IsRequired()
+                        .HasMaxLength(400)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Status", "NextReviewAt");
+
+                    b.ToTable("ErrorJournalEntries", (string)null);
+                });
+
             modelBuilder.Entity("UniToStudyHub.Infrastructure.Data.Entities.ExamAttemptEntity", b =>
                 {
                     b.Property<string>("Id")
@@ -243,6 +451,101 @@ namespace UniToStudyHub.Infrastructure.Data.Migrations
                     b.HasIndex("ExamId", "AttemptedAt");
 
                     b.ToTable("ExamAttempts", (string)null);
+                });
+
+            modelBuilder.Entity("UniToStudyHub.Infrastructure.Data.Entities.FlashcardEntity", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Back")
+                        .IsRequired()
+                        .HasMaxLength(12000)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("CourseId")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTimeOffset?>("DueAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<double>("EaseFactor")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("REAL")
+                        .HasDefaultValue(2.5);
+
+                    b.Property<string>("Front")
+                        .IsRequired()
+                        .HasMaxLength(12000)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("IntervalDays")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("IsSuspended")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Lapses")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTimeOffset?>("LastReviewedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Repetitions")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("SyllabusTopicId")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("IsSuspended", "DueAt");
+
+                    b.ToTable("Flashcards", (string)null);
+                });
+
+            modelBuilder.Entity("UniToStudyHub.Infrastructure.Data.Entities.FlashcardReviewEntity", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal>("EaseFactorAfter")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("FlashcardId")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("NewIntervalDays")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("PreviousIntervalDays")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Rating")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTimeOffset>("ReviewedAt")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FlashcardId", "ReviewedAt");
+
+                    b.ToTable("FlashcardReviews", (string)null);
                 });
 
             modelBuilder.Entity("UniToStudyHub.Infrastructure.Data.Entities.GradeEntity", b =>
@@ -295,6 +598,44 @@ namespace UniToStudyHub.Infrastructure.Data.Migrations
                     b.HasKey("Key");
 
                     b.ToTable("LegacyImports", (string)null);
+                });
+
+            modelBuilder.Entity("UniToStudyHub.Infrastructure.Data.Entities.PdfDocumentEntity", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("CourseId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("FileName")
+                        .IsRequired()
+                        .HasMaxLength(512)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTimeOffset>("ImportedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("PageCount")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("PagesJson")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Sha256")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Sha256")
+                        .IsUnique();
+
+                    b.ToTable("PdfDocuments", (string)null);
                 });
 
             modelBuilder.Entity("UniToStudyHub.Infrastructure.Data.Entities.PlannedExamEntity", b =>
@@ -450,6 +791,121 @@ namespace UniToStudyHub.Infrastructure.Data.Migrations
                     b.HasIndex("CourseId", "SyllabusTopicId");
 
                     b.ToTable("QuestionBankItems", (string)null);
+                });
+
+            modelBuilder.Entity("UniToStudyHub.Infrastructure.Data.Entities.StudySessionEntity", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("AccumulatedFocusSeconds")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("AccumulatedPauseSeconds")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("CourseId")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTimeOffset?>("EndedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTimeOffset?>("LastResumedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Notes")
+                        .IsRequired()
+                        .HasMaxLength(12000)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Outcome")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTimeOffset?>("PausedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("PlannedMinutes")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTimeOffset>("StartedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("State")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Topic")
+                        .IsRequired()
+                        .HasMaxLength(400)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("StartedAt");
+
+                    b.HasIndex("State", "StartedAt");
+
+                    b.ToTable("StudySessions", (string)null);
+                });
+
+            modelBuilder.Entity("UniToStudyHub.Infrastructure.Data.Entities.StudyTaskEntity", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTimeOffset?>("CompletedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("CourseId")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(12000)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTimeOffset?>("DueAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("EstimatedMinutes")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Priority")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(400)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Status", "DueAt");
+
+                    b.ToTable("StudyTasks", (string)null);
                 });
 
             modelBuilder.Entity("UniToStudyHub.Infrastructure.Data.Entities.SyllabusTopicEntity", b =>

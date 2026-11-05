@@ -20,7 +20,7 @@
     <Compile Include="../../src/UniToStudyHub/Infrastructure/Data/StudyDataEntityMapper.cs" Link="Linked/Infrastructure/Data/StudyDataEntityMapper.cs" />
     <Compile Include="../../src/UniToStudyHub/Infrastructure/Data/Migrations/*.cs" Link="Linked/Infrastructure/Data/Migrations/%(Filename)%(Extension)" />
     <Compile Include="../../src/UniToStudyHub/Infrastructure/CompositionRoot.cs" Link="Linked/Infrastructure/CompositionRoot.cs" />
-    <Compile Include="../../src/UniToStudyHub/Models/StudyData.cs" Link="Linked/Models/StudyData.cs" />
+    <Compile Include="../../src/UniToStudyHub/Models/*.cs" Link="Linked/Models/%(Filename)%(Extension)" />
     <Compile Include="../../src/UniToStudyHub/Services/*.cs" Link="Linked/Services/%(Filename)%(Extension)" />
     <Compile Include="../../src/UniToStudyHub/Presentation/Commands/*.cs" Link="Linked/Presentation/Commands/%(Filename)%(Extension)" />
     <Compile Include="../../src/UniToStudyHub/Presentation/ViewModels/MainViewModel.cs" Link="Linked/Presentation/ViewModels/MainViewModel.cs" />
@@ -33,6 +33,7 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.14" />
+    <PackageReference Include="PdfPig" Version="0.1.16" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
     <PackageReference Include="xunit" Version="2.9.3" />
     <PackageReference Include="xunit.runner.visualstudio" Version="3.1.5">

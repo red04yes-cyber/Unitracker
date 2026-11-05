@@ -32,6 +32,15 @@ public static class StudyDataEntityMapper
         data.CoursePrerequisites ??= new ObservableCollection<CoursePrerequisiteData>();
         data.SyllabusTopics ??= new ObservableCollection<SyllabusTopicData>();
         data.Questions ??= new ObservableCollection<QuestionBankItemData>();
+        data.CalendarEvents ??= new ObservableCollection<CalendarEvent>();
+        data.StudySessions ??= new ObservableCollection<StudySessionData>();
+        data.StudyTasks ??= new ObservableCollection<StudyTaskData>();
+        data.ErrorJournalEntries ??= new ObservableCollection<ErrorJournalEntryData>();
+        data.Flashcards ??= new ObservableCollection<FlashcardData>();
+        data.FlashcardReviews ??= new ObservableCollection<FlashcardReviewData>();
+        data.Distractions ??= new ObservableCollection<DistractionData>();
+        data.EnergyCheckIns ??= new ObservableCollection<EnergyCheckInData>();
+        data.PdfDocuments ??= new ObservableCollection<PdfDocumentData>();
 
         EnsureNoNullItems(data.Courses, "course");
         EnsureNoNullItems(data.Grades, "grade");
@@ -41,6 +50,15 @@ public static class StudyDataEntityMapper
         EnsureNoNullItems(data.CoursePrerequisites, "course prerequisite");
         EnsureNoNullItems(data.SyllabusTopics, "syllabus topic");
         EnsureNoNullItems(data.Questions, "question");
+        EnsureNoNullItems(data.CalendarEvents, "calendar event");
+        EnsureNoNullItems(data.StudySessions, "study session");
+        EnsureNoNullItems(data.StudyTasks, "study task");
+        EnsureNoNullItems(data.ErrorJournalEntries, "error journal entry");
+        EnsureNoNullItems(data.Flashcards, "flashcard");
+        EnsureNoNullItems(data.FlashcardReviews, "flashcard review");
+        EnsureNoNullItems(data.Distractions, "distraction");
+        EnsureNoNullItems(data.EnergyCheckIns, "energy check-in");
+        EnsureNoNullItems(data.PdfDocuments, "PDF document");
 
         EnsureUniqueIds(data.Courses, x => x.Id, "course");
         EnsureUniqueIds(data.Grades, x => x.Id, "grade");
@@ -49,6 +67,15 @@ public static class StudyDataEntityMapper
         EnsureUniqueIds(data.CareerExams, x => x.Id, "career exam");
         EnsureUniqueIds(data.SyllabusTopics, x => x.Id, "syllabus topic");
         EnsureUniqueIds(data.Questions, x => x.Id, "question");
+        EnsureUniqueIds(data.CalendarEvents, x => x.Id, "calendar event");
+        EnsureUniqueIds(data.StudySessions, x => x.Id, "study session");
+        EnsureUniqueIds(data.StudyTasks, x => x.Id, "study task");
+        EnsureUniqueIds(data.ErrorJournalEntries, x => x.Id, "error journal entry");
+        EnsureUniqueIds(data.Flashcards, x => x.Id, "flashcard");
+        EnsureUniqueIds(data.FlashcardReviews, x => x.Id, "flashcard review");
+        EnsureUniqueIds(data.Distractions, x => x.Id, "distraction");
+        EnsureUniqueIds(data.EnergyCheckIns, x => x.Id, "energy check-in");
+        EnsureUniqueIds(data.PdfDocuments, x => x.Id, "PDF document");
 
         var courseIds = new HashSet<string>(data.Courses.Select(x => x.Id), StringComparer.Ordinal);
         foreach (var course in data.Courses)
@@ -118,6 +145,7 @@ public static class StudyDataEntityMapper
         ValidatePrerequisites(data);
         ValidateSyllabus(data);
         ValidateQuestions(data);
+        ValidateCalendarAndStudyLab(data);
 
         if (string.IsNullOrWhiteSpace(data.MoodleBaseUrl)) data.MoodleBaseUrl = string.Empty;
         if (data.GraduationTarget == default)
@@ -289,6 +317,129 @@ public static class StudyDataEntityMapper
                 if (string.IsNullOrWhiteSpace(question.CorrectAnswer) || !question.Options.Contains(question.CorrectAnswer))
                     throw new InvalidDataException($"Closed question '{question.Id}' must designate one of its options as the correct answer.");
             }
+        }
+    }
+
+    private static void ValidateCalendarAndStudyLab(StudyData data)
+    {
+        var courseIds = new HashSet<string>(data.Courses.Select(x => x.Id), StringComparer.Ordinal);
+        foreach (var item in data.CalendarEvents)
+        {
+            if (string.IsNullOrWhiteSpace(item.Id) || string.IsNullOrWhiteSpace(item.Title))
+                throw new InvalidDataException("A calendar event has no id or title.");
+            if (item.EndsAt <= item.StartsAt)
+                throw new InvalidDataException($"Calendar event '{item.Id}' ends before it starts.");
+            if (item.StartsAt == default || item.EndsAt == default)
+                throw new InvalidDataException($"Calendar event '{item.Id}' has invalid timestamps.");
+            if (item.Title.Length > 400 || item.Location.Length > 400 || item.Notes.Length > 12000)
+                throw new InvalidDataException($"Calendar event '{item.Id}' contains an overlong field.");
+            if (!string.IsNullOrWhiteSpace(item.CourseId) && !courseIds.Contains(item.CourseId))
+                throw new InvalidDataException($"Calendar event '{item.Id}' refers to a course that does not exist.");
+            if (string.IsNullOrWhiteSpace(item.Category) || string.IsNullOrWhiteSpace(item.Source) ||
+                string.IsNullOrWhiteSpace(item.Verification))
+                throw new InvalidDataException($"Calendar event '{item.Id}' has no category, source or verification state.");
+            item.CourseName ??= string.Empty;
+            item.Location ??= string.Empty;
+            item.Notes ??= string.Empty;
+            item.Source ??= CalendarEventSource.Manual;
+            item.Verification ??= CalendarEventVerification.Unverified;
+            item.TimeZoneId = string.IsNullOrWhiteSpace(item.TimeZoneId) ? TimeZoneInfo.Local.Id : item.TimeZoneId;
+            try { _ = TimeZoneInfo.FindSystemTimeZoneById(item.TimeZoneId); }
+            catch (TimeZoneNotFoundException) { throw new InvalidDataException($"Calendar event '{item.Id}' has an unknown time zone."); }
+            catch (InvalidTimeZoneException) { throw new InvalidDataException($"Calendar event '{item.Id}' has an invalid time zone."); }
+        }
+
+        foreach (var session in data.StudySessions)
+        {
+            if (session.PlannedMinutes is < 1 or > 1440)
+                throw new InvalidDataException($"Study session '{session.Id}' has an invalid planned duration.");
+            if (session.AccumulatedFocusSeconds < 0 || session.AccumulatedPauseSeconds < 0)
+                throw new InvalidDataException($"Study session '{session.Id}' has negative accumulated time.");
+            if (!string.IsNullOrWhiteSpace(session.CourseId) && !courseIds.Contains(session.CourseId))
+                throw new InvalidDataException($"Study session '{session.Id}' refers to a course that does not exist.");
+            if (!Enum.IsDefined(session.State))
+                throw new InvalidDataException($"Study session '{session.Id}' has an unknown state.");
+            if (session.State == StudySessionState.Running && session.PausedAt is not null)
+                throw new InvalidDataException($"Study session '{session.Id}' is running but marked paused.");
+            if (session.State == StudySessionState.Paused && session.PausedAt is null)
+                throw new InvalidDataException($"Study session '{session.Id}' is paused without a pause timestamp.");
+        }
+
+        foreach (var task in data.StudyTasks)
+        {
+            if (string.IsNullOrWhiteSpace(task.Title))
+                throw new InvalidDataException($"Study task '{task.Id}' has no title.");
+            if (task.EstimatedMinutes is < 0 or > 14400 || task.Priority is < 1 or > 5)
+                throw new InvalidDataException($"Study task '{task.Id}' has an invalid estimate or priority.");
+            if (!Enum.IsDefined(task.Status))
+                throw new InvalidDataException($"Study task '{task.Id}' has an unknown status.");
+            if (!string.IsNullOrWhiteSpace(task.CourseId) && !courseIds.Contains(task.CourseId))
+                throw new InvalidDataException($"Study task '{task.Id}' refers to a course that does not exist.");
+        }
+
+        var topicIds = new HashSet<string>(data.SyllabusTopics.Select(x => x.Id), StringComparer.Ordinal);
+        foreach (var entry in data.ErrorJournalEntries)
+        {
+            if (string.IsNullOrWhiteSpace(entry.Question) || string.IsNullOrWhiteSpace(entry.CorrectAnswer))
+                throw new InvalidDataException($"Error journal entry '{entry.Id}' is incomplete.");
+            if (!string.IsNullOrWhiteSpace(entry.CourseId) && !courseIds.Contains(entry.CourseId))
+                throw new InvalidDataException($"Error journal entry '{entry.Id}' refers to a course that does not exist.");
+            if (!string.IsNullOrWhiteSpace(entry.SyllabusTopicId) && !topicIds.Contains(entry.SyllabusTopicId))
+                throw new InvalidDataException($"Error journal entry '{entry.Id}' refers to a syllabus topic that does not exist.");
+            if (!Enum.IsDefined(entry.Status) || entry.ReviewCount < 0)
+                throw new InvalidDataException($"Error journal entry '{entry.Id}' has invalid review data.");
+        }
+
+        var cardIds = new HashSet<string>(data.Flashcards.Select(x => x.Id), StringComparer.Ordinal);
+        foreach (var card in data.Flashcards)
+        {
+            if (string.IsNullOrWhiteSpace(card.Front) || string.IsNullOrWhiteSpace(card.Back))
+                throw new InvalidDataException($"Flashcard '{card.Id}' is missing its front or back.");
+            if (card.EaseFactor is < 1.3m or > 2.8m || card.IntervalDays < 0 || card.Repetitions < 0 || card.Lapses < 0)
+                throw new InvalidDataException($"Flashcard '{card.Id}' has invalid scheduling data.");
+            if (!string.IsNullOrWhiteSpace(card.CourseId) && !courseIds.Contains(card.CourseId))
+                throw new InvalidDataException($"Flashcard '{card.Id}' refers to a course that does not exist.");
+        }
+
+        foreach (var review in data.FlashcardReviews)
+        {
+            if (!cardIds.Contains(review.FlashcardId))
+                throw new InvalidDataException($"Flashcard review '{review.Id}' refers to a missing flashcard.");
+            if (!Enum.IsDefined(review.Rating) || review.ReviewedAt == default)
+                throw new InvalidDataException($"Flashcard review '{review.Id}' is invalid.");
+        }
+
+        foreach (var distraction in data.Distractions)
+        {
+            if (string.IsNullOrWhiteSpace(distraction.Text))
+                throw new InvalidDataException($"Distraction '{distraction.Id}' has no text.");
+            if (!string.IsNullOrWhiteSpace(distraction.SessionId) &&
+                !data.StudySessions.Any(x => string.Equals(x.Id, distraction.SessionId, StringComparison.Ordinal)))
+                throw new InvalidDataException($"Distraction '{distraction.Id}' refers to a missing session.");
+        }
+
+        foreach (var checkIn in data.EnergyCheckIns)
+        {
+            if (checkIn.EnergyLevel is < 1 or > 5 || checkIn.FocusLevel is < 1 or > 5)
+                throw new InvalidDataException($"Energy check-in '{checkIn.Id}' must use 1–5 levels.");
+            if (checkIn.RecordedAt == default)
+                throw new InvalidDataException($"Energy check-in '{checkIn.Id}' has no timestamp.");
+        }
+
+        var hashes = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var document in data.PdfDocuments)
+        {
+            if (string.IsNullOrWhiteSpace(document.FileName) || string.IsNullOrWhiteSpace(document.Sha256) ||
+                document.Sha256.Length != 64 || document.PageCount < 1)
+                throw new InvalidDataException("A PDF document has invalid metadata.");
+            if (!hashes.Add(document.Sha256))
+                throw new InvalidDataException($"The same PDF was imported more than once: {document.FileName}.");
+            if (!string.IsNullOrWhiteSpace(document.CourseId) && !courseIds.Contains(document.CourseId))
+                throw new InvalidDataException($"PDF '{document.FileName}' refers to a course that does not exist.");
+            document.Pages ??= new ObservableCollection<PdfPageData>();
+            if (document.Pages.Count != document.PageCount ||
+                document.Pages.Select(x => x.PageNumber).Distinct().Count() != document.PageCount)
+                throw new InvalidDataException($"PDF '{document.FileName}' has inconsistent page data.");
         }
     }
 
@@ -482,6 +633,133 @@ public static class StudyDataEntityMapper
             CreatedAt = x.CreatedAt,
             UpdatedAt = x.UpdatedAt
         }));
+        db.CalendarEvents.AddRange(data.CalendarEvents.Select(x => new CalendarEventEntity
+        {
+            Id = x.Id,
+            Title = x.Title,
+            Category = x.Category,
+            StartsAt = x.StartsAt,
+            EndsAt = x.EndsAt,
+            IsAllDay = x.IsAllDay,
+            CourseId = x.CourseId,
+            CourseName = x.CourseName,
+            Location = x.Location,
+            Notes = x.Notes,
+            Source = x.Source,
+            Verification = x.Verification,
+            TimeZoneId = x.TimeZoneId,
+            ExternalId = x.ExternalId,
+            ExternalSequence = x.ExternalSequence,
+            IsCancelled = x.IsCancelled,
+            RecurrenceRule = x.RecurrenceRule,
+            CreatedAt = x.CreatedAt,
+            UpdatedAt = x.UpdatedAt
+        }));
+        db.StudySessions.AddRange(data.StudySessions.Select(x => new StudySessionEntity
+        {
+            Id = x.Id,
+            CourseId = x.CourseId,
+            Topic = x.Topic,
+            PlannedMinutes = x.PlannedMinutes,
+            StartedAt = x.StartedAt,
+            LastResumedAt = x.LastResumedAt,
+            PausedAt = x.PausedAt,
+            EndedAt = x.EndedAt,
+            AccumulatedFocusSeconds = x.AccumulatedFocusSeconds,
+            AccumulatedPauseSeconds = x.AccumulatedPauseSeconds,
+            State = (int)x.State,
+            Outcome = x.Outcome,
+            Notes = x.Notes,
+            CreatedAt = x.CreatedAt,
+            UpdatedAt = x.UpdatedAt
+        }));
+        db.StudyTasks.AddRange(data.StudyTasks.Select(x => new StudyTaskEntity
+        {
+            Id = x.Id,
+            CourseId = x.CourseId,
+            Title = x.Title,
+            Description = x.Description,
+            DueAt = x.DueAt,
+            EstimatedMinutes = x.EstimatedMinutes,
+            Priority = x.Priority,
+            Status = (int)x.Status,
+            CompletedAt = x.CompletedAt,
+            Source = x.Source,
+            CreatedAt = x.CreatedAt,
+            UpdatedAt = x.UpdatedAt
+        }));
+        db.ErrorJournalEntries.AddRange(data.ErrorJournalEntries.Select(x => new ErrorJournalEntryEntity
+        {
+            Id = x.Id,
+            CourseId = x.CourseId,
+            SyllabusTopicId = x.SyllabusTopicId,
+            Topic = x.Topic,
+            Question = x.Question,
+            IncorrectAnswer = x.IncorrectAnswer,
+            CorrectAnswer = x.CorrectAnswer,
+            ErrorType = x.ErrorType,
+            RootCause = x.RootCause,
+            NextReviewAt = x.NextReviewAt,
+            ReviewCount = x.ReviewCount,
+            Status = (int)x.Status,
+            Source = x.Source,
+            CreatedAt = x.CreatedAt,
+            UpdatedAt = x.UpdatedAt
+        }));
+        db.Flashcards.AddRange(data.Flashcards.Select(x => new FlashcardEntity
+        {
+            Id = x.Id,
+            CourseId = x.CourseId,
+            SyllabusTopicId = x.SyllabusTopicId,
+            Front = x.Front,
+            Back = x.Back,
+            Source = x.Source,
+            EaseFactor = x.EaseFactor,
+            IntervalDays = x.IntervalDays,
+            Repetitions = x.Repetitions,
+            Lapses = x.Lapses,
+            DueAt = x.DueAt,
+            LastReviewedAt = x.LastReviewedAt,
+            IsSuspended = x.IsSuspended,
+            CreatedAt = x.CreatedAt,
+            UpdatedAt = x.UpdatedAt
+        }));
+        db.FlashcardReviews.AddRange(data.FlashcardReviews.Select(x => new FlashcardReviewEntity
+        {
+            Id = x.Id,
+            FlashcardId = x.FlashcardId,
+            ReviewedAt = x.ReviewedAt,
+            Rating = (int)x.Rating,
+            PreviousIntervalDays = x.PreviousIntervalDays,
+            NewIntervalDays = x.NewIntervalDays,
+            EaseFactorAfter = x.EaseFactorAfter
+        }));
+        db.Distractions.AddRange(data.Distractions.Select(x => new DistractionEntity
+        {
+            Id = x.Id,
+            SessionId = x.SessionId,
+            Text = x.Text,
+            CreatedAt = x.CreatedAt,
+            ResolvedAt = x.ResolvedAt
+        }));
+        db.EnergyCheckIns.AddRange(data.EnergyCheckIns.Select(x => new EnergyCheckInEntity
+        {
+            Id = x.Id,
+            RecordedAt = x.RecordedAt,
+            EnergyLevel = x.EnergyLevel,
+            FocusLevel = x.FocusLevel,
+            Note = x.Note
+        }));
+        db.PdfDocuments.AddRange(data.PdfDocuments.Select(x => new PdfDocumentEntity
+        {
+            Id = x.Id,
+            FileName = x.FileName,
+            Sha256 = x.Sha256,
+            PageCount = x.PageCount,
+            ImportedAt = x.ImportedAt,
+            CourseId = x.CourseId,
+            PagesJson = JsonSerializer.Serialize(x.Pages)
+        }));
     }
 
     public static async Task<StudyData> ReadFromContextAsync(StudyHubDbContext db, CancellationToken cancellationToken)
@@ -597,6 +875,154 @@ public static class StudyDataEntityMapper
                 IsOfficial = x.IsOfficial,
                 CreatedAt = x.CreatedAt,
                 UpdatedAt = x.UpdatedAt
+            });
+        }
+        foreach (var x in await db.CalendarEvents.AsNoTracking().ToListAsync(cancellationToken))
+            result.CalendarEvents.Add(new CalendarEvent
+            {
+                Id = x.Id,
+                Title = x.Title,
+                Category = x.Category,
+                StartsAt = x.StartsAt,
+                EndsAt = x.EndsAt,
+                IsAllDay = x.IsAllDay,
+                CourseId = x.CourseId,
+                CourseName = x.CourseName,
+                Location = x.Location,
+                Notes = x.Notes,
+                Source = x.Source,
+                Verification = x.Verification,
+                TimeZoneId = x.TimeZoneId,
+                ExternalId = x.ExternalId,
+                ExternalSequence = x.ExternalSequence,
+                IsCancelled = x.IsCancelled,
+                RecurrenceRule = x.RecurrenceRule,
+                CreatedAt = x.CreatedAt,
+                UpdatedAt = x.UpdatedAt
+            });
+        foreach (var x in await db.StudySessions.AsNoTracking().ToListAsync(cancellationToken))
+            result.StudySessions.Add(new StudySessionData
+            {
+                Id = x.Id,
+                CourseId = x.CourseId,
+                Topic = x.Topic,
+                PlannedMinutes = x.PlannedMinutes,
+                StartedAt = x.StartedAt,
+                LastResumedAt = x.LastResumedAt,
+                PausedAt = x.PausedAt,
+                EndedAt = x.EndedAt,
+                AccumulatedFocusSeconds = x.AccumulatedFocusSeconds,
+                AccumulatedPauseSeconds = x.AccumulatedPauseSeconds,
+                State = (StudySessionState)x.State,
+                Outcome = x.Outcome,
+                Notes = x.Notes,
+                CreatedAt = x.CreatedAt,
+                UpdatedAt = x.UpdatedAt
+            });
+        foreach (var x in await db.StudyTasks.AsNoTracking().ToListAsync(cancellationToken))
+            result.StudyTasks.Add(new StudyTaskData
+            {
+                Id = x.Id,
+                CourseId = x.CourseId,
+                Title = x.Title,
+                Description = x.Description,
+                DueAt = x.DueAt,
+                EstimatedMinutes = x.EstimatedMinutes,
+                Priority = x.Priority,
+                Status = (StudyTaskStatus)x.Status,
+                CompletedAt = x.CompletedAt,
+                Source = x.Source,
+                CreatedAt = x.CreatedAt,
+                UpdatedAt = x.UpdatedAt
+            });
+        foreach (var x in await db.ErrorJournalEntries.AsNoTracking().ToListAsync(cancellationToken))
+            result.ErrorJournalEntries.Add(new ErrorJournalEntryData
+            {
+                Id = x.Id,
+                CourseId = x.CourseId,
+                SyllabusTopicId = x.SyllabusTopicId,
+                Topic = x.Topic,
+                Question = x.Question,
+                IncorrectAnswer = x.IncorrectAnswer,
+                CorrectAnswer = x.CorrectAnswer,
+                ErrorType = x.ErrorType,
+                RootCause = x.RootCause,
+                NextReviewAt = x.NextReviewAt,
+                ReviewCount = x.ReviewCount,
+                Status = (ErrorReviewStatus)x.Status,
+                Source = x.Source,
+                CreatedAt = x.CreatedAt,
+                UpdatedAt = x.UpdatedAt
+            });
+        foreach (var x in await db.Flashcards.AsNoTracking().ToListAsync(cancellationToken))
+            result.Flashcards.Add(new FlashcardData
+            {
+                Id = x.Id,
+                CourseId = x.CourseId,
+                SyllabusTopicId = x.SyllabusTopicId,
+                Front = x.Front,
+                Back = x.Back,
+                Source = x.Source,
+                EaseFactor = x.EaseFactor,
+                IntervalDays = x.IntervalDays,
+                Repetitions = x.Repetitions,
+                Lapses = x.Lapses,
+                DueAt = x.DueAt,
+                LastReviewedAt = x.LastReviewedAt,
+                IsSuspended = x.IsSuspended,
+                CreatedAt = x.CreatedAt,
+                UpdatedAt = x.UpdatedAt
+            });
+        foreach (var x in await db.FlashcardReviews.AsNoTracking().ToListAsync(cancellationToken))
+            result.FlashcardReviews.Add(new FlashcardReviewData
+            {
+                Id = x.Id,
+                FlashcardId = x.FlashcardId,
+                ReviewedAt = x.ReviewedAt,
+                Rating = (RecallRating)x.Rating,
+                PreviousIntervalDays = x.PreviousIntervalDays,
+                NewIntervalDays = x.NewIntervalDays,
+                EaseFactorAfter = x.EaseFactorAfter
+            });
+        foreach (var x in await db.Distractions.AsNoTracking().ToListAsync(cancellationToken))
+            result.Distractions.Add(new DistractionData
+            {
+                Id = x.Id,
+                SessionId = x.SessionId,
+                Text = x.Text,
+                CreatedAt = x.CreatedAt,
+                ResolvedAt = x.ResolvedAt
+            });
+        foreach (var x in await db.EnergyCheckIns.AsNoTracking().ToListAsync(cancellationToken))
+            result.EnergyCheckIns.Add(new EnergyCheckInData
+            {
+                Id = x.Id,
+                RecordedAt = x.RecordedAt,
+                EnergyLevel = x.EnergyLevel,
+                FocusLevel = x.FocusLevel,
+                Note = x.Note
+            });
+        foreach (var x in await db.PdfDocuments.AsNoTracking().ToListAsync(cancellationToken))
+        {
+            ObservableCollection<PdfPageData> pages;
+            try
+            {
+                pages = JsonSerializer.Deserialize<ObservableCollection<PdfPageData>>(x.PagesJson, JsonOptions)
+                    ?? new ObservableCollection<PdfPageData>();
+            }
+            catch (JsonException ex)
+            {
+                throw new InvalidDataException($"PDF '{x.FileName}' has invalid page data.", ex);
+            }
+            result.PdfDocuments.Add(new PdfDocumentData
+            {
+                Id = x.Id,
+                FileName = x.FileName,
+                Sha256 = x.Sha256,
+                PageCount = x.PageCount,
+                ImportedAt = x.ImportedAt,
+                CourseId = x.CourseId,
+                Pages = pages
             });
         }
 

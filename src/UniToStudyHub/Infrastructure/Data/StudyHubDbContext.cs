@@ -15,6 +15,15 @@ public sealed class StudyHubDbContext(DbContextOptions<StudyHubDbContext> option
     public DbSet<CoursePrerequisiteEntity> CoursePrerequisites => Set<CoursePrerequisiteEntity>();
     public DbSet<SyllabusTopicEntity> SyllabusTopics => Set<SyllabusTopicEntity>();
     public DbSet<QuestionBankItemEntity> QuestionBankItems => Set<QuestionBankItemEntity>();
+    public DbSet<CalendarEventEntity> CalendarEvents => Set<CalendarEventEntity>();
+    public DbSet<StudySessionEntity> StudySessions => Set<StudySessionEntity>();
+    public DbSet<StudyTaskEntity> StudyTasks => Set<StudyTaskEntity>();
+    public DbSet<ErrorJournalEntryEntity> ErrorJournalEntries => Set<ErrorJournalEntryEntity>();
+    public DbSet<FlashcardEntity> Flashcards => Set<FlashcardEntity>();
+    public DbSet<FlashcardReviewEntity> FlashcardReviews => Set<FlashcardReviewEntity>();
+    public DbSet<DistractionEntity> Distractions => Set<DistractionEntity>();
+    public DbSet<EnergyCheckInEntity> EnergyCheckIns => Set<EnergyCheckInEntity>();
+    public DbSet<PdfDocumentEntity> PdfDocuments => Set<PdfDocumentEntity>();
     public DbSet<LegacyImportEntity> LegacyImports => Set<LegacyImportEntity>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder) => ConfigureModel(modelBuilder);
@@ -143,6 +152,103 @@ public sealed class StudyHubDbContext(DbContextOptions<StudyHubDbContext> option
             b.HasOne<CourseEntity>().WithMany()
                 .HasForeignKey(x => x.CourseId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<CalendarEventEntity>(b =>
+        {
+            b.ToTable("CalendarEvents");
+            b.HasKey(x => x.Id);
+            b.Property(x => x.Title).HasMaxLength(400).IsRequired();
+            b.Property(x => x.Category).HasMaxLength(40).IsRequired();
+            b.Property(x => x.CourseName).HasMaxLength(300).IsRequired();
+            b.Property(x => x.Location).HasMaxLength(400).IsRequired();
+            b.Property(x => x.Notes).HasMaxLength(12000).IsRequired();
+            b.Property(x => x.Source).HasMaxLength(40).IsRequired();
+            b.Property(x => x.Verification).HasMaxLength(40).IsRequired();
+            b.Property(x => x.TimeZoneId).HasMaxLength(100).IsRequired();
+            b.Property(x => x.ExternalId).HasMaxLength(400);
+            b.Property(x => x.RecurrenceRule).HasMaxLength(2000).IsRequired();
+            b.HasIndex(x => x.StartsAt);
+            b.HasIndex(x => new { x.Source, x.ExternalId });
+        });
+
+        modelBuilder.Entity<StudySessionEntity>(b =>
+        {
+            b.ToTable("StudySessions");
+            b.HasKey(x => x.Id);
+            b.Property(x => x.Topic).HasMaxLength(400).IsRequired();
+            b.Property(x => x.Outcome).HasMaxLength(2000).IsRequired();
+            b.Property(x => x.Notes).HasMaxLength(12000).IsRequired();
+            b.HasIndex(x => x.StartedAt);
+            b.HasIndex(x => new { x.State, x.StartedAt });
+        });
+
+        modelBuilder.Entity<StudyTaskEntity>(b =>
+        {
+            b.ToTable("StudyTasks");
+            b.HasKey(x => x.Id);
+            b.Property(x => x.Title).HasMaxLength(400).IsRequired();
+            b.Property(x => x.Description).HasMaxLength(12000).IsRequired();
+            b.Property(x => x.Source).HasMaxLength(40).IsRequired();
+            b.HasIndex(x => new { x.Status, x.DueAt });
+        });
+
+        modelBuilder.Entity<ErrorJournalEntryEntity>(b =>
+        {
+            b.ToTable("ErrorJournalEntries");
+            b.HasKey(x => x.Id);
+            b.Property(x => x.Topic).HasMaxLength(400).IsRequired();
+            b.Property(x => x.Question).HasMaxLength(12000).IsRequired();
+            b.Property(x => x.IncorrectAnswer).HasMaxLength(12000).IsRequired();
+            b.Property(x => x.CorrectAnswer).HasMaxLength(12000).IsRequired();
+            b.Property(x => x.ErrorType).HasMaxLength(80).IsRequired();
+            b.Property(x => x.RootCause).HasMaxLength(4000).IsRequired();
+            b.Property(x => x.Source).HasMaxLength(200).IsRequired();
+            b.HasIndex(x => new { x.Status, x.NextReviewAt });
+        });
+
+        modelBuilder.Entity<FlashcardEntity>(b =>
+        {
+            b.ToTable("Flashcards");
+            b.HasKey(x => x.Id);
+            b.Property(x => x.Front).HasMaxLength(12000).IsRequired();
+            b.Property(x => x.Back).HasMaxLength(12000).IsRequired();
+            b.Property(x => x.Source).HasMaxLength(200).IsRequired();
+            b.Property(x => x.EaseFactor).HasConversion<double>().HasDefaultValue(2.5);
+            b.HasIndex(x => new { x.IsSuspended, x.DueAt });
+        });
+
+        modelBuilder.Entity<FlashcardReviewEntity>(b =>
+        {
+            b.ToTable("FlashcardReviews");
+            b.HasKey(x => x.Id);
+            b.HasIndex(x => new { x.FlashcardId, x.ReviewedAt });
+        });
+
+        modelBuilder.Entity<DistractionEntity>(b =>
+        {
+            b.ToTable("Distractions");
+            b.HasKey(x => x.Id);
+            b.Property(x => x.Text).HasMaxLength(2000).IsRequired();
+            b.HasIndex(x => x.CreatedAt);
+        });
+
+        modelBuilder.Entity<EnergyCheckInEntity>(b =>
+        {
+            b.ToTable("EnergyCheckIns");
+            b.HasKey(x => x.Id);
+            b.HasIndex(x => x.RecordedAt);
+        });
+
+        modelBuilder.Entity<PdfDocumentEntity>(b =>
+        {
+            b.ToTable("PdfDocuments");
+            b.HasKey(x => x.Id);
+            b.Property(x => x.FileName).HasMaxLength(512).IsRequired();
+            b.Property(x => x.Sha256).HasMaxLength(64).IsRequired();
+            b.Property(x => x.CourseId).HasMaxLength(64).IsRequired();
+            b.Property(x => x.PagesJson).IsRequired();
+            b.HasIndex(x => x.Sha256).IsUnique();
         });
 
         modelBuilder.Entity<LegacyImportEntity>(b =>
