@@ -569,6 +569,8 @@
                                     <ControlTemplate.Triggers>
                                         <Trigger Property="IsSelected" Value="True"><Setter TargetName="DaySurface" Property="Background" Value="{StaticResource AccentSoftBrush}"/><Setter TargetName="DaySurface" Property="BorderBrush" Value="{StaticResource AccentBrush}"/></Trigger>
                                         <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="DaySurface" Property="Opacity" Value="0.82"/></Trigger>
+                                        <DataTrigger Binding="{Binding IsCurrentPeriod}" Value="False"><Setter TargetName="DaySurface" Property="Opacity" Value="0.38"/></DataTrigger>
+                                        <DataTrigger Binding="{Binding IsToday}" Value="True"><Setter TargetName="DaySurface" Property="BorderBrush" Value="{StaticResource AccentBrush}"/><Setter TargetName="DaySurface" Property="BorderThickness" Value="2"/></DataTrigger>
                                     </ControlTemplate.Triggers>
                                 </ControlTemplate>
                             </Setter.Value></Setter>
