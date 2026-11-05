@@ -75,8 +75,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          dotnet restore src/UniToStudyHub/UniToStudyHub.csproj -warnaserror:NU1901,NU1902,NU1903,NU1904
-          dotnet restore tests/UniToStudyHub.Tests/UniToStudyHub.Tests.csproj -warnaserror:NU1901,NU1902,NU1903,NU1904
+          dotnet restore src/UniToStudyHub/UniToStudyHub.csproj -p:EnableWindowsTargeting=true -warnaserror:NU1901,NU1902,NU1903,NU1904
+          dotnet restore tests/UniToStudyHub.Tests/UniToStudyHub.Tests.csproj -p:EnableWindowsTargeting=true -warnaserror:NU1901,NU1902,NU1903,NU1904
 
       - name: Fail on vulnerable direct or transitive packages (application)
         shell: bash
