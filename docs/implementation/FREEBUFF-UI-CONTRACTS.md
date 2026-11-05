@@ -212,7 +212,38 @@ volontario, non un punteggio automatico.
 
 Non esiste ancora un ViewModel dedicato: la schermata Studio Lab deve usare i servizi e salvare con
 `IStudyDataStore.SaveAsync`. Non modificare `MainWindow.xaml` per questa slice; i contratti sono pronti per una
-schermata separata. Gli export CSV/XLSX e il Pomodoro a cicli non sono ancora disponibili.
+schermata separata.
+
+## Sprint A — Pomodoro, diario, progressi ed export
+
+### Pomodoro
+
+`StudyData.PomodoroSettings`, `StudyData.PomodoroTimer` e `StudyData.PomodoroCycles` sono persistiti.
+`PomodoroService` espone `Start`, `Pause`, `Resume`, `StartNextFocus`, `CompletePhase`, `SkipPhase`, `Reconcile`,
+`Reset` e `Snapshot`. Il timer visuale deve usare le scadenze assolute e `Reconcile`, non un countdown separato.
+Dopo una pausa conclusa il timer resta `Completed`: mostrare un’azione esplicita per il focus successivo. Non
+avviare automaticamente un focus mentre l’app è chiusa; non esistono notifiche arretrate simulate.
+
+### Diario
+
+`ActivityLedgerService.AddQuickLog(...)` e `GetDiary(...)` sono i contratti per la registrazione rapida. I tipi
+`Exercise` e `Reading` sono valori additivi dell’enum. La privacy è per attività; le note private non devono essere
+mostrate/esportate senza consenso esplicito.
+
+### Progressi
+
+`ProgressSnapshot.RecordedSeconds`/`RecordedMinutes` sono il totale unico del ledger. `OverlapSeconds` è il tempo
+condiviso. `RecordedSecondsByType`, `ByCourse` e `ByTopic` sono aggregazioni per dimensione e non vanno sommate.
+`Daily` contiene solo giorni del periodo richiesto con metriche derivate; i giorni senza dati valgono zero, non sono
+dati demo. `EstimatedSessionMinutes` e `CompletedTaskEstimatedMinutes` sono stime dichiarate, non tempo svolto.
+`FocusMinutes` resta la metrica delle sessioni e non va sommato a `RecordedMinutes`.
+
+### Export
+
+`StudyDataExportService.Export(data, request, format, now)` restituisce `StudyExportBundle`. Il formato CSV produce
+più file (`activities.csv`, `sessions.csv`, `segments.csv`, `summary.csv`, `pomodoro-cycles.csv`); XLSX è un workbook
+con fogli separati; JSON ha schema versionato. Le note private sono escluse per default e il CSV neutralizza le
+formule. La UI deve salvare tutti i file del bundle CSV, non presentarli come un unico file.
 
 ## Stati e messaggi richiesti
 

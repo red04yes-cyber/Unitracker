@@ -16,6 +16,8 @@ public enum StudyActivityType
     Task,
     Mission,
     Simulation,
+    Exercise,
+    Reading,
     Other
 }
 

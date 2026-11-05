@@ -181,20 +181,20 @@ public sealed class ActivityAndMissionPersistenceTests
                 Source = "manual"
             });
             var legacyStart = new DateTimeOffset(2026, 11, 1, 9, 0, 0, TimeSpan.Zero);
-            context.StudySessions.Add(new UniToStudyHub.Infrastructure.Data.Entities.StudySessionEntity
-            {
-                Id = "session-legacy",
-                CourseId = "course-existing",
-                Topic = "Limiti legacy",
-                PlannedMinutes = 25,
-                StartedAt = legacyStart,
-                EndedAt = legacyStart.AddMinutes(20),
-                AccumulatedFocusSeconds = 1200,
-                State = (int)StudySessionState.Completed,
-                Outcome = "Completata prima della migrazione",
-                CreatedAt = legacyStart,
-                UpdatedAt = legacyStart.AddMinutes(20)
-            });
+            await context.SaveChangesAsync();
+
+            // The old schema has no NotesArePrivate column, so seed that row with
+            // SQL rather than the current entity model (which includes the new flag).
+            await context.Database.ExecuteSqlRawAsync("""
+                INSERT INTO "StudySessions"
+                    ("Id", "CourseId", "Topic", "PlannedMinutes", "StartedAt", "LastResumedAt", "PausedAt", "EndedAt",
+                     "AccumulatedFocusSeconds", "AccumulatedPauseSeconds", "State", "Outcome", "Notes", "CreatedAt", "UpdatedAt")
+                VALUES
+                    ('session-legacy', 'course-existing', 'Limiti legacy', 25,
+                     '2026-11-01 09:00:00+00:00', NULL, NULL, '2026-11-01 09:20:00+00:00',
+                     1200, 0, 2, 'Completata prima della migrazione', '',
+                     '2026-11-01 09:00:00+00:00', '2026-11-01 09:20:00+00:00');
+                """);
             context.StudyActivities.Add(new UniToStudyHub.Infrastructure.Data.Entities.StudyActivityEntity
             {
                 Id = "activity-legacy",
@@ -225,6 +225,9 @@ public sealed class ActivityAndMissionPersistenceTests
             Assert.Equal(1200, (await migrated.StudyActivities.SingleAsync()).EffectiveSeconds);
             Assert.True(await migrated.StudySessionSegments.AnyAsync() == false);
             Assert.True(await migrated.StudyMissions.AnyAsync() == false);
+            Assert.True(await migrated.PomodoroSettings.AnyAsync() == false);
+            Assert.True(await migrated.PomodoroTimers.AnyAsync() == false);
+            Assert.True(await migrated.PomodoroCycles.AnyAsync() == false);
         }
 
         var loaded = await new SqliteStudyDataStore(database.Factory).LoadAsync();

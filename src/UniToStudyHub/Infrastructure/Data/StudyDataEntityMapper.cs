@@ -37,6 +37,8 @@ public static class StudyDataEntityMapper
         data.StudyTasks ??= new ObservableCollection<StudyTaskData>();
         data.StudyActivities ??= new ObservableCollection<StudyActivityData>();
         data.StudyMissions ??= new ObservableCollection<StudyMissionData>();
+        data.PomodoroSettings ??= new PomodoroSettingsData();
+        data.PomodoroCycles ??= new ObservableCollection<PomodoroCycleData>();
         data.ActivityRevisions ??= new ObservableCollection<ActivityRevisionData>();
         data.ErrorJournalEntries ??= new ObservableCollection<ErrorJournalEntryData>();
         data.Flashcards ??= new ObservableCollection<FlashcardData>();
@@ -58,6 +60,7 @@ public static class StudyDataEntityMapper
         EnsureNoNullItems(data.StudyTasks, "study task");
         EnsureNoNullItems(data.StudyActivities, "study activity");
         EnsureNoNullItems(data.StudyMissions, "study mission");
+        EnsureNoNullItems(data.PomodoroCycles, "Pomodoro cycle");
         EnsureNoNullItems(data.ActivityRevisions, "activity revision");
         EnsureNoNullItems(data.ErrorJournalEntries, "error journal entry");
         EnsureNoNullItems(data.Flashcards, "flashcard");
@@ -78,6 +81,7 @@ public static class StudyDataEntityMapper
         EnsureUniqueIds(data.StudyTasks, x => x.Id, "study task");
         EnsureUniqueIds(data.StudyActivities, x => x.Id, "study activity");
         EnsureUniqueIds(data.StudyMissions, x => x.Id, "study mission");
+        EnsureUniqueIds(data.PomodoroCycles, x => x.Id, "Pomodoro cycle");
         EnsureUniqueIds(data.ActivityRevisions, x => x.Id, "activity revision");
         EnsureUniqueIds(data.ErrorJournalEntries, x => x.Id, "error journal entry");
         EnsureUniqueIds(data.Flashcards, x => x.Id, "flashcard");
@@ -358,6 +362,8 @@ public static class StudyDataEntityMapper
             catch (InvalidTimeZoneException) { throw new InvalidDataException($"Calendar event '{item.Id}' has an invalid time zone."); }
         }
 
+        ValidatePomodoro(data);
+
         var segmentIds = new HashSet<string>(StringComparer.Ordinal);
         foreach (var session in data.StudySessions)
         {
@@ -581,6 +587,84 @@ public static class StudyDataEntityMapper
         }
     }
 
+    private static void ValidatePomodoro(StudyData data)
+    {
+        var settings = data.PomodoroSettings;
+        if (settings.FocusMinutes is < 1 or > 1440 ||
+            settings.ShortBreakMinutes is < 1 or > 240 ||
+            settings.LongBreakMinutes is < 1 or > 240 ||
+            settings.SessionsBeforeLongBreak is < 1 or > 12)
+            throw new InvalidDataException("Pomodoro settings are outside the supported range.");
+
+        var sessions = data.StudySessions.ToDictionary(x => x.Id, StringComparer.Ordinal);
+        foreach (var cycle in data.PomodoroCycles)
+        {
+            if (!sessions.ContainsKey(cycle.SessionId))
+                throw new InvalidDataException($"Pomodoro cycle '{cycle.Id}' refers to a missing session.");
+            if (cycle.CycleNumber < 1 || cycle.FocusStartedAt == default || cycle.FocusEndedAt < cycle.FocusStartedAt)
+                throw new InvalidDataException($"Pomodoro cycle '{cycle.Id}' has invalid focus timestamps.");
+            if (!Enum.IsDefined(cycle.BreakType) || cycle.BreakType == PomodoroPhase.Focus)
+                throw new InvalidDataException($"Pomodoro cycle '{cycle.Id}' has an invalid break type.");
+            var focusInterval = (int)Math.Floor((cycle.FocusEndedAt - cycle.FocusStartedAt).TotalSeconds);
+            if (cycle.FocusSeconds is < 0 || cycle.FocusSeconds > focusInterval)
+                throw new InvalidDataException($"Pomodoro cycle '{cycle.Id}' credits more focus time than its interval.");
+            if (cycle.BreakStartedAt is { } breakStart && breakStart < cycle.FocusEndedAt)
+                throw new InvalidDataException($"Pomodoro cycle '{cycle.Id}' starts its break before focus ends.");
+            if (cycle.BreakEndedAt is { } breakEnd &&
+                (cycle.BreakStartedAt is null || breakEnd < cycle.BreakStartedAt))
+                throw new InvalidDataException($"Pomodoro cycle '{cycle.Id}' has an invalid break interval.");
+            var breakInterval = cycle.BreakStartedAt is { } start && cycle.BreakEndedAt is { } end
+                ? (int)Math.Floor((end - start).TotalSeconds)
+                : 0;
+            if (cycle.BreakSeconds is < 0 || cycle.BreakSeconds > breakInterval && cycle.BreakEndedAt is not null)
+                throw new InvalidDataException($"Pomodoro cycle '{cycle.Id}' credits more break time than its interval.");
+            if (cycle.IsCompleted && (cycle.BreakEndedAt is null || cycle.CompletedAt is null))
+                throw new InvalidDataException($"Pomodoro cycle '{cycle.Id}' is marked completed without its break.");
+            if (cycle.CompletedAt is { } completedAt && completedAt < (cycle.BreakEndedAt ?? cycle.FocusEndedAt))
+                throw new InvalidDataException($"Pomodoro cycle '{cycle.Id}' was completed before its break ended.");
+        }
+
+        if (data.PomodoroTimer is not { } timer) return;
+        if (string.IsNullOrWhiteSpace(timer.Id) || timer.Id != "current")
+            throw new InvalidDataException("The active Pomodoro timer must use the stable id 'current'.");
+        if (!sessions.TryGetValue(timer.SessionId, out var session))
+            throw new InvalidDataException("The active Pomodoro timer refers to a missing session.");
+        if (!Enum.IsDefined(timer.Phase) || !Enum.IsDefined(timer.Status))
+            throw new InvalidDataException("The active Pomodoro timer has an invalid phase or status.");
+        if (timer.PhaseWindowStartedAt == default || timer.PhaseStartedAt == default || timer.UpdatedAt == default)
+            throw new InvalidDataException("The active Pomodoro timer has invalid timestamps.");
+        if (timer.ActiveSeconds < 0 || timer.RemainingSeconds < 0)
+            throw new InvalidDataException("The active Pomodoro timer has negative seconds.");
+        if (timer.CycleNumber < 1 || timer.FocusesCompletedInSet < 0 ||
+            timer.FocusesCompletedInSet > settings.SessionsBeforeLongBreak)
+            throw new InvalidDataException("The active Pomodoro timer has invalid cycle counters.");
+        if (timer.Status is PomodoroTimerStatus.Running or PomodoroTimerStatus.Paused && timer.RemainingSeconds == 0)
+            throw new InvalidDataException("A running or paused Pomodoro phase must have remaining time.");
+        if (timer.Status == PomodoroTimerStatus.Paused && timer.PhaseEndsAt is not null)
+            throw new InvalidDataException("A paused Pomodoro phase cannot have an absolute end.");
+        if (timer.Status == PomodoroTimerStatus.Running && timer.PhaseEndsAt is null)
+            throw new InvalidDataException("A running Pomodoro phase needs an absolute end.");
+        if (timer.Status == PomodoroTimerStatus.Completed && timer.PhaseEndsAt is null)
+            throw new InvalidDataException("A completed Pomodoro phase needs an absolute end.");
+        if (!string.IsNullOrWhiteSpace(timer.CurrentCycleId) &&
+            !data.PomodoroCycles.Any(x => string.Equals(x.Id, timer.CurrentCycleId, StringComparison.Ordinal) &&
+                                          string.Equals(x.SessionId, timer.SessionId, StringComparison.Ordinal)))
+            throw new InvalidDataException("The active Pomodoro timer refers to a missing cycle.");
+
+        var expectedState = timer.Status switch
+        {
+            PomodoroTimerStatus.Running when timer.Phase == PomodoroPhase.Focus => StudySessionState.Running,
+            PomodoroTimerStatus.Running => StudySessionState.Paused,
+            PomodoroTimerStatus.Paused => StudySessionState.Paused,
+            _ => (StudySessionState?)null
+        };
+        if (expectedState is { } state && session.State != state)
+            throw new InvalidDataException("The active Pomodoro timer and its focus session are out of sync.");
+        if (timer.Status == PomodoroTimerStatus.Completed &&
+            session.State is not (StudySessionState.Paused or StudySessionState.Completed))
+            throw new InvalidDataException("A completed Pomodoro cycle must leave its focus session paused or completed.");
+    }
+
     private static void EnsureNoNullItems<T>(IEnumerable<T> items, string label) where T : class
     {
         if (items.Any(x => x is null))
@@ -793,6 +877,14 @@ public static class StudyDataEntityMapper
             CreatedAt = x.CreatedAt,
             UpdatedAt = x.UpdatedAt
         }));
+        db.PomodoroSettings.Add(new PomodoroSettingsEntity
+        {
+            Id = 1,
+            FocusMinutes = data.PomodoroSettings.FocusMinutes,
+            ShortBreakMinutes = data.PomodoroSettings.ShortBreakMinutes,
+            LongBreakMinutes = data.PomodoroSettings.LongBreakMinutes,
+            SessionsBeforeLongBreak = data.PomodoroSettings.SessionsBeforeLongBreak
+        });
         db.StudySessions.AddRange(data.StudySessions.Select(x => new StudySessionEntity
         {
             Id = x.Id,
@@ -808,6 +900,7 @@ public static class StudyDataEntityMapper
             State = (int)x.State,
             Outcome = x.Outcome,
             Notes = x.Notes,
+            NotesArePrivate = x.NotesArePrivate,
             CreatedAt = x.CreatedAt,
             UpdatedAt = x.UpdatedAt,
             Segments = x.Segments.Select(segment => new StudySessionSegmentEntity
@@ -818,6 +911,39 @@ public static class StudyDataEntityMapper
                 StartedAt = segment.StartedAt,
                 EndedAt = segment.EndedAt
             }).ToList()
+        }));
+        if (data.PomodoroTimer is { } timer)
+            db.PomodoroTimers.Add(new PomodoroTimerEntity
+            {
+                Id = timer.Id,
+                SessionId = timer.SessionId,
+                Phase = (int)timer.Phase,
+                Status = (int)timer.Status,
+                PhaseWindowStartedAt = timer.PhaseWindowStartedAt,
+                PhaseStartedAt = timer.PhaseStartedAt,
+                PhaseEndsAt = timer.PhaseEndsAt,
+                RemainingSeconds = timer.RemainingSeconds,
+                ActiveSeconds = timer.ActiveSeconds,
+                FocusesCompletedInSet = timer.FocusesCompletedInSet,
+                CycleNumber = timer.CycleNumber,
+                CurrentCycleId = timer.CurrentCycleId,
+                UpdatedAt = timer.UpdatedAt
+            });
+        db.PomodoroCycles.AddRange(data.PomodoroCycles.Select(x => new PomodoroCycleEntity
+        {
+            Id = x.Id,
+            SessionId = x.SessionId,
+            CycleNumber = x.CycleNumber,
+            FocusStartedAt = x.FocusStartedAt,
+            FocusEndedAt = x.FocusEndedAt,
+            FocusSeconds = x.FocusSeconds,
+            BreakType = (int)x.BreakType,
+            BreakStartedAt = x.BreakStartedAt,
+            BreakEndedAt = x.BreakEndedAt,
+            BreakSeconds = x.BreakSeconds,
+            WasSkipped = x.WasSkipped,
+            IsCompleted = x.IsCompleted,
+            CompletedAt = x.CompletedAt
         }));
         db.StudyTasks.AddRange(data.StudyTasks.Select(x => new StudyTaskEntity
         {
@@ -1114,6 +1240,51 @@ public static class StudyDataEntityMapper
                 CreatedAt = x.CreatedAt,
                 UpdatedAt = x.UpdatedAt
             });
+        var pomodoroSettings = await db.PomodoroSettings.AsNoTracking().FirstOrDefaultAsync(x => x.Id == 1, cancellationToken);
+        result.PomodoroSettings = pomodoroSettings is null
+            ? new PomodoroSettingsData()
+            : new PomodoroSettingsData
+            {
+                FocusMinutes = pomodoroSettings.FocusMinutes,
+                ShortBreakMinutes = pomodoroSettings.ShortBreakMinutes,
+                LongBreakMinutes = pomodoroSettings.LongBreakMinutes,
+                SessionsBeforeLongBreak = pomodoroSettings.SessionsBeforeLongBreak
+            };
+        var pomodoroTimer = await db.PomodoroTimers.AsNoTracking().FirstOrDefaultAsync(cancellationToken);
+        if (pomodoroTimer is not null)
+            result.PomodoroTimer = new PomodoroTimerData
+            {
+                Id = pomodoroTimer.Id,
+                SessionId = pomodoroTimer.SessionId,
+                Phase = (PomodoroPhase)pomodoroTimer.Phase,
+                Status = (PomodoroTimerStatus)pomodoroTimer.Status,
+                PhaseWindowStartedAt = pomodoroTimer.PhaseWindowStartedAt,
+                PhaseStartedAt = pomodoroTimer.PhaseStartedAt,
+                PhaseEndsAt = pomodoroTimer.PhaseEndsAt,
+                RemainingSeconds = pomodoroTimer.RemainingSeconds,
+                ActiveSeconds = pomodoroTimer.ActiveSeconds,
+                FocusesCompletedInSet = pomodoroTimer.FocusesCompletedInSet,
+                CycleNumber = pomodoroTimer.CycleNumber,
+                CurrentCycleId = pomodoroTimer.CurrentCycleId,
+                UpdatedAt = pomodoroTimer.UpdatedAt
+            };
+        foreach (var x in await db.PomodoroCycles.AsNoTracking().ToListAsync(cancellationToken))
+            result.PomodoroCycles.Add(new PomodoroCycleData
+            {
+                Id = x.Id,
+                SessionId = x.SessionId,
+                CycleNumber = x.CycleNumber,
+                FocusStartedAt = x.FocusStartedAt,
+                FocusEndedAt = x.FocusEndedAt,
+                FocusSeconds = x.FocusSeconds,
+                BreakType = (PomodoroPhase)x.BreakType,
+                BreakStartedAt = x.BreakStartedAt,
+                BreakEndedAt = x.BreakEndedAt,
+                BreakSeconds = x.BreakSeconds,
+                WasSkipped = x.WasSkipped,
+                IsCompleted = x.IsCompleted,
+                CompletedAt = x.CompletedAt
+            });
         foreach (var x in await db.StudySessions.Include(x => x.Segments).AsNoTracking().ToListAsync(cancellationToken))
             result.StudySessions.Add(new StudySessionData
             {
@@ -1130,6 +1301,7 @@ public static class StudyDataEntityMapper
                 State = (StudySessionState)x.State,
                 Outcome = x.Outcome,
                 Notes = x.Notes,
+                NotesArePrivate = x.NotesArePrivate,
                 Segments = new ObservableCollection<StudySessionSegmentData>(x.Segments
                     .OrderBy(segment => segment.StartedAt)
                     .Select(segment => new StudySessionSegmentData

@@ -500,7 +500,19 @@ public sealed record CourseProgress(
     int CompletedSessions,
     int CompletedTasks,
     int DueFlashcards,
-    int OpenErrors);
+    int OpenErrors)
+{
+    public int RecordedSeconds { get; init; }
+    public int EstimatedSessionMinutes { get; init; }
+}
+
+public sealed record DailyProgressMetric(
+    DateOnly Day,
+    int RecordedSeconds,
+    int OverlapSeconds,
+    int CompletedSessions,
+    int PlannedSessionMinutes,
+    int CompletedPomodoroCycles);
 
 public sealed record ProgressSnapshot(
     DateOnly From,
@@ -516,6 +528,24 @@ public sealed record ProgressSnapshot(
 {
     public bool WeeklyGoalConfigured => WeeklyGoalMinutes > 0;
     public int FocusMinutesRemaining => WeeklyGoalConfigured ? Math.Max(0, WeeklyGoalMinutes - FocusMinutes) : 0;
+
+    /// <summary>Unique seconds from the activity ledger, including manual and timer work.</summary>
+    public int RecordedSeconds { get; init; }
+    public int RecordedMinutes => RecordedSeconds / 60;
+    public int OverlapSeconds { get; init; }
+    public int RecordedMinutesRemaining => WeeklyGoalConfigured
+        ? Math.Max(0, WeeklyGoalMinutes - RecordedMinutes)
+        : 0;
+    public IReadOnlyDictionary<StudyActivityType, int> RecordedSecondsByType { get; init; } =
+        new Dictionary<StudyActivityType, int>();
+    public IReadOnlyDictionary<string, int> RecordedSecondsByCourse { get; init; } =
+        new Dictionary<string, int>();
+    public IReadOnlyDictionary<string, int> RecordedSecondsByTopic { get; init; } =
+        new Dictionary<string, int>();
+    public IReadOnlyList<DailyProgressMetric> Daily { get; init; } = Array.Empty<DailyProgressMetric>();
+    public int EstimatedSessionMinutes { get; init; }
+    public int CompletedTaskEstimatedMinutes { get; init; }
+    public int CompletedPomodoroCycles { get; init; }
 }
 
 /// <summary>
@@ -538,6 +568,23 @@ public sealed class ProgressService
             .ToList();
         var completed = sessions.Where(x => x.State == StudySessionState.Completed).ToList();
         var focusSeconds = sessions.Sum(x => FocusSessionService.ElapsedSeconds(x, at));
+        var ledgerSummary = new ActivityLedgerService().Summarize(data, from, to, at, TimeZoneInfo.Local.Id);
+        var cycles = data.PomodoroCycles
+            .Where(x => x.IsCompleted && x.CompletedAt is { } completedAt &&
+                        InRange(LocalDate(completedAt), from, to))
+            .ToList();
+        var daily = new List<DailyProgressMetric>();
+        for (var day = from; day <= to; day = day.AddDays(1))
+        {
+            var daySummary = new ActivityLedgerService().Summarize(data, day, day, at, TimeZoneInfo.Local.Id);
+            daily.Add(new DailyProgressMetric(
+                day,
+                daySummary.RecordedSeconds,
+                daySummary.OverlapSeconds,
+                sessions.Count(x => x.State == StudySessionState.Completed && LocalDate(x.StartedAt) == day),
+                sessions.Where(x => LocalDate(x.StartedAt) == day).Sum(x => x.PlannedMinutes),
+                cycles.Count(x => x.CompletedAt is { } completedAt && LocalDate(completedAt) == day)));
+        }
         var tasks = data.StudyTasks
             .Where(x => x.CompletedAt is not null && InRange(LocalDate(x.CompletedAt.Value), from, to))
             .ToList();
@@ -556,7 +603,11 @@ public sealed class ProgressService
                     data.Flashcards.Count(x => string.Equals(x.CourseId, course.Id, StringComparison.Ordinal) &&
                                                !x.IsSuspended && x.DueAt is not null && x.DueAt <= at),
                     data.ErrorJournalEntries.Count(x => string.Equals(x.CourseId, course.Id, StringComparison.Ordinal) &&
-                                                        x.Status != ErrorReviewStatus.Resolved));
+                                                        x.Status != ErrorReviewStatus.Resolved))
+                {
+                    RecordedSeconds = ledgerSummary.ByCourse.GetValueOrDefault(course.Id),
+                    EstimatedSessionMinutes = courseSessions.Sum(x => x.PlannedMinutes)
+                };
             })
             .OrderBy(x => x.CourseName, StringComparer.CurrentCultureIgnoreCase)
             .ToList();
@@ -571,7 +622,18 @@ public sealed class ProgressService
             openErrors,
             CalculateStreak(data, at),
             Math.Max(0, data.WeeklyStudyHours) * 60,
-            courses);
+            courses)
+        {
+            RecordedSeconds = ledgerSummary.RecordedSeconds,
+            OverlapSeconds = ledgerSummary.OverlapSeconds,
+            RecordedSecondsByType = ledgerSummary.ByType,
+            RecordedSecondsByCourse = ledgerSummary.ByCourse,
+            RecordedSecondsByTopic = ledgerSummary.ByTopic,
+            Daily = daily,
+            EstimatedSessionMinutes = sessions.Sum(x => x.PlannedMinutes),
+            CompletedTaskEstimatedMinutes = tasks.Sum(x => x.EstimatedMinutes),
+            CompletedPomodoroCycles = cycles.Count
+        };
     }
 
     /// <summary>
@@ -652,17 +714,24 @@ public sealed class WeeklyReviewService
         var patterns = new ErrorPatternService().Detect(data);
         var observations = new List<string>
         {
-            $"Focus completato: {progress.FocusMinutes} minuti in {progress.CompletedSessions} sessioni.",
-            $"Task completati: {progress.CompletedTasks}; flashcard in scadenza: {progress.DueFlashcards}."
+            $"Tempo Focus (sessioni): {progress.FocusMinutes} minuti in {progress.CompletedSessions} sessioni.",
+            $"Tempo di studio registrato unico: {progress.RecordedMinutes} minuti; sovrapposizioni: {progress.OverlapSeconds / 60} minuti.",
+            $"Task completati: {progress.CompletedTasks}; flashcard in scadenza: {progress.DueFlashcards}.",
+            $"Cicli Pomodoro completati: {progress.CompletedPomodoroCycles}."
         };
+        if (progress.EstimatedSessionMinutes > 0)
+            observations.Add(
+                $"Tempo pianificato nelle sessioni: {progress.EstimatedSessionMinutes} minuti; tempo di studio registrato unico: {progress.RecordedMinutes} minuti.");
         if (progress.WeeklyGoalConfigured)
-            observations.Add(progress.FocusMinutes >= progress.WeeklyGoalMinutes
-                ? "L'obiettivo settimanale configurato è stato raggiunto."
-                : $"Mancano {progress.FocusMinutesRemaining} minuti all'obiettivo settimanale configurato.");
+            observations.Add(progress.RecordedMinutes >= progress.WeeklyGoalMinutes
+                ? $"Obiettivo settimanale: {progress.WeeklyGoalMinutes} minuti; raggiunto con {progress.RecordedMinutes} minuti di studio registrato unico. Tempo Focus: {progress.FocusMinutes} minuti; sovrapposizioni: {progress.OverlapSeconds / 60} minuti."
+                : $"Obiettivo settimanale: {progress.WeeklyGoalMinutes} minuti; mancano {progress.RecordedMinutesRemaining} minuti. Tempo di studio registrato unico: {progress.RecordedMinutes} minuti; tempo Focus: {progress.FocusMinutes} minuti; sovrapposizioni: {progress.OverlapSeconds / 60} minuti.");
         var suggestions = new List<string>();
         if (progress.DueFlashcards > 0) suggestions.Add("Programma una sessione di ripasso per le flashcard scadute.");
         if (progress.OpenErrors > 0) suggestions.Add("Rivedi il diario errori e collega gli errori ricorrenti a un ripasso.");
         if (patterns.Count > 0) suggestions.Add("Approfondisci il pattern di errore con più evidenze prima del prossimo esame.");
+        if (progress.OverlapSeconds > 0)
+            suggestions.Add("Controlla le attività sovrapposte: il totale unico non le somma, ma la loro pianificazione può essere corretta.");
         if (suggestions.Count == 0) suggestions.Add("Mantieni il ritmo attuale e registra solo attività realmente svolte.");
         return new WeeklyReview(start, progress, patterns, observations, suggestions);
     }
