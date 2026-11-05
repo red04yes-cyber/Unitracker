@@ -93,11 +93,11 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
     public string ProgressPeriodDisplay => _progressSnapshot is { } p
         ? $"{p.From:dd/MM} – {p.To:dd/MM/yyyy}"
         : "Ultimi sette giorni";
-    public string FocusMinutesDisplay => _progressSnapshot is { } p ? $"{p.FocusMinutes} min" : "—";
-    public string CompletedSessionsDisplay => _progressSnapshot?.CompletedSessions.ToString(CultureInfo.CurrentCulture) ?? "—";
-    public string CompletedTasksDisplay => _progressSnapshot?.CompletedTasks.ToString(CultureInfo.CurrentCulture) ?? "—";
-    public string DueFlashcardsDisplay => _progressSnapshot?.DueFlashcards.ToString(CultureInfo.CurrentCulture) ?? "—";
-    public string OpenErrorsDisplay => _progressSnapshot?.OpenErrors.ToString(CultureInfo.CurrentCulture) ?? "—";
+    public string FocusMinutesDisplay => HasProgressData && _progressSnapshot is { } p ? $"{p.FocusMinutes} min" : "Dati insufficienti";
+    public string CompletedSessionsDisplay => HasProgressData && _progressSnapshot is { } p ? p.CompletedSessions.ToString(CultureInfo.CurrentCulture) : "Dati insufficienti";
+    public string CompletedTasksDisplay => HasProgressData && _progressSnapshot is { } p ? p.CompletedTasks.ToString(CultureInfo.CurrentCulture) : "Dati insufficienti";
+    public string DueFlashcardsDisplay => HasProgressData && _progressSnapshot is { } p ? p.DueFlashcards.ToString(CultureInfo.CurrentCulture) : "Dati insufficienti";
+    public string OpenErrorsDisplay => HasProgressData && _progressSnapshot is { } p ? p.OpenErrors.ToString(CultureInfo.CurrentCulture) : "Dati insufficienti";
     public string FocusStreakDisplay => _progressSnapshot is { } p ? $"{p.FocusStreakDays} giorni" : "—";
     public string WeeklyGoalDisplay => _progressSnapshot is { WeeklyGoalConfigured: true } p
         ? $"{p.FocusMinutes} / {p.WeeklyGoalMinutes} min"
