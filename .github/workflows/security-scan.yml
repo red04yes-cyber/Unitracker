@@ -56,7 +56,7 @@ jobs:
           ./gitleaks dir --config .gitleaks.toml --redact --no-banner --exit-code 1 .
 
   dependency-audit:
-    name: Vulnerable package audit (report-only)
+    name: Vulnerable package audit (blocking)
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
@@ -71,11 +71,31 @@ jobs:
         with:
           dotnet-version: 10.0.x
 
-      - name: Restore test project
-        run: dotnet restore tests/UniToStudyHub.Tests/UniToStudyHub.Tests.csproj
+      - name: Restore application and test projects (NuGet advisories are errors)
+        shell: bash
+        run: |
+          set -euo pipefail
+          dotnet restore src/UniToStudyHub/UniToStudyHub.csproj -warnaserror:NU1901,NU1902,NU1903,NU1904
+          dotnet restore tests/UniToStudyHub.Tests/UniToStudyHub.Tests.csproj -warnaserror:NU1901,NU1902,NU1903,NU1904
 
-      # Report-only: the command lists advisories and exits 0 either way. The
-      # upgrade decision stays with the maintainers (no automatic dependency
-      # upgrades in a security-only change).
-      - name: List vulnerable direct and transitive packages
-        run: dotnet list tests/UniToStudyHub.Tests/UniToStudyHub.Tests.csproj package --vulnerable --include-transitive
+      - name: Fail on vulnerable direct or transitive packages (application)
+        shell: bash
+        run: |
+          set -euo pipefail
+          report="$(dotnet list src/UniToStudyHub/UniToStudyHub.csproj package --vulnerable --include-transitive)"
+          printf '%s\n' "$report"
+          if printf '%s\n' "$report" | grep -Eqi 'https://github.com/advisories/GHSA-|https://nvd.nist.gov/vuln/detail/'; then
+            echo "Vulnerable packages detected in the application dependency graph."
+            exit 1
+          fi
+
+      - name: Fail on vulnerable direct or transitive packages (tests)
+        shell: bash
+        run: |
+          set -euo pipefail
+          report="$(dotnet list tests/UniToStudyHub.Tests/UniToStudyHub.Tests.csproj package --vulnerable --include-transitive)"
+          printf '%s\n' "$report"
+          if printf '%s\n' "$report" | grep -Eqi 'https://github.com/advisories/GHSA-|https://nvd.nist.gov/vuln/detail/'; then
+            echo "Vulnerable packages detected in the test dependency graph."
+            exit 1
+          fi
