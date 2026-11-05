@@ -656,6 +656,7 @@
                             <DataTemplate.Triggers><DataTrigger Binding="{Binding IsAllDay}" Value="True"><Setter TargetName="EventTime" Property="Text" Value="Tutto il giorno"/></DataTrigger></DataTemplate.Triggers>
                         </DataTemplate></ListBox.ItemTemplate>
                     </ListBox>
+                    <TextBlock Text="Nessun evento in questa data. Puoi aggiungerne uno dal pannello a destra." Visibility="{Binding NoSelectedDayEvents, Converter={StaticResource BooleanToVisibilityConverter}}" FontSize="10" Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap" Margin="2,7,2,0"/>
                     <TextBlock Text="Gli eventi Pianificati sono stime organizzative; solo quelli verificati come ufficiali vanno considerati confermati." FontSize="10" Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap" Margin="0,8,0,0"/>
                 </StackPanel>
             </Border>
