@@ -3,6 +3,7 @@ using System.ComponentModel;
 using System.Globalization;
 using System.Runtime.CompilerServices;
 using UniToStudyHub.Domain.Enums;
+using UniToStudyHub.Domain.Enums;
 using UniToStudyHub.Models;
 using UniToStudyHub.Presentation.Commands;
 using UniToStudyHub.Services;
@@ -29,6 +30,9 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
     private readonly AiStudyService _aiStudy;
     private readonly BackupService _backups;
     private readonly StudyPlannerService _planner;
+    private readonly SyllabusTrackerService _syllabus;
+    private readonly QuestionBankService _questionBank;
+    private readonly ExamReadinessService _readiness;
     private readonly HashSet<string> _verifiedBackups = new(StringComparer.OrdinalIgnoreCase);
     private StudyData _data = new();
     private Course? _selectedCourse;
@@ -43,6 +47,16 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
     private DateTime _plannerToInput = DateTime.Today.AddDays(13);
     private string _plannerStatus = "Imposta le tue fasce reali di disponibilità per creare un'anteprima.";
     private StudyPlanPreview? _currentPlanPreview;
+    private SyllabusTopicData? _selectedSyllabusTopic;
+    private QuestionBankItemData? _selectedQuestion;
+    private string _syllabusTitleInput = string.Empty;
+    private string _syllabusMinutesInput = "30";
+    private string _questionTextInput = string.Empty;
+    private string _questionOptionsInput = string.Empty;
+    private string _questionCorrectAnswerInput = string.Empty;
+    private string _questionAnswerInput = string.Empty;
+    private string _questionStatus = "Le risposte aperte richiedono revisione manuale.";
+    private string _readinessStatus = "Seleziona una materia per leggere la preparazione.";
     private string _focusTopicInput = string.Empty;
     private string _focusMinutesInput = "25";
     private string _focusRemainingDisplay = "25:00";
@@ -95,10 +109,41 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
     public ObservableCollection<PdfSearchHit> PdfSearchHits { get; } = new();
     public ObservableCollection<BackupInfo> BackupItems { get; } = new();
     public ObservableCollection<CourseProgressRow> CourseProgressRows { get; } = new();
+    public ObservableCollection<SyllabusTopicData> SyllabusTopics { get; } = new();
+    public ObservableCollection<QuestionBankItemData> QuestionBankItems { get; } = new();
     public ObservableCollection<Course> Courses => _data.Courses;
     public ObservableCollection<PdfDocumentData> PdfDocuments => _data.PdfDocuments;
 
-    public Course? SelectedCourse { get => _selectedCourse; set => Set(ref _selectedCourse, value); }
+    public Course? SelectedCourse
+    {
+        get => _selectedCourse;
+        set
+        {
+            if (!Set(ref _selectedCourse, value)) return;
+            RefreshSyllabusAndQuestions();
+            RefreshReadiness();
+            AddSyllabusTopicCommand?.NotifyCanExecuteChanged();
+            AddQuestionCommand?.NotifyCanExecuteChanged();
+        }
+    }
+    public SyllabusTopicData? SelectedSyllabusTopic
+    {
+        get => _selectedSyllabusTopic;
+        set { Set(ref _selectedSyllabusTopic, value); CompleteSyllabusTopicCommand?.NotifyCanExecuteChanged(); }
+    }
+    public QuestionBankItemData? SelectedQuestion
+    {
+        get => _selectedQuestion;
+        set { Set(ref _selectedQuestion, value); EvaluateQuestionCommand?.NotifyCanExecuteChanged(); }
+    }
+    public string SyllabusTitleInput { get => _syllabusTitleInput; set => Set(ref _syllabusTitleInput, value); }
+    public string SyllabusMinutesInput { get => _syllabusMinutesInput; set => Set(ref _syllabusMinutesInput, value); }
+    public string QuestionTextInput { get => _questionTextInput; set => Set(ref _questionTextInput, value); }
+    public string QuestionOptionsInput { get => _questionOptionsInput; set => Set(ref _questionOptionsInput, value); }
+    public string QuestionCorrectAnswerInput { get => _questionCorrectAnswerInput; set => Set(ref _questionCorrectAnswerInput, value); }
+    public string QuestionAnswerInput { get => _questionAnswerInput; set => Set(ref _questionAnswerInput, value); }
+    public string QuestionStatus { get => _questionStatus; private set => Set(ref _questionStatus, value); }
+    public string ReadinessStatus { get => _readinessStatus; private set => Set(ref _readinessStatus, value); }
     public StudyTaskData? SelectedTask { get => _selectedTask; set { if (ReferenceEquals(_selectedTask, value)) return; _selectedTask = value; OnPropertyChanged(); OnPropertyChanged(nameof(HasSelectedTask)); CompleteTaskCommand.NotifyCanExecuteChanged(); RemoveTaskCommand.NotifyCanExecuteChanged(); } }
     public bool HasSelectedTask => SelectedTask is not null;
     public FlashcardData? SelectedDueFlashcard { get => _selectedDueFlashcard; set { Set(ref _selectedDueFlashcard, value); FlashcardRevealed = false; NotifyReviewCommands(); } }
@@ -233,6 +278,10 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
     public AsyncRelayCommand RestoreBackupCommand { get; }
     public AsyncRelayCommand PreviewStudyPlanCommand { get; }
     public AsyncRelayCommand ApplyStudyPlanCommand { get; }
+    public AsyncRelayCommand AddSyllabusTopicCommand { get; }
+    public AsyncRelayCommand CompleteSyllabusTopicCommand { get; }
+    public AsyncRelayCommand AddQuestionCommand { get; }
+    public AsyncRelayCommand EvaluateQuestionCommand { get; }
 
     public StudyWorkspaceViewModel(
         IStudyDataStore store,
@@ -248,7 +297,10 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
         PdfIntelligenceService pdfIntelligence,
         AiStudyService aiStudy,
         BackupService backups,
-        StudyPlannerService planner)
+        StudyPlannerService planner,
+        SyllabusTrackerService syllabus,
+        QuestionBankService questionBank,
+        ExamReadinessService readiness)
     {
         _store = store;
         _academicProfile = academicProfile;
@@ -264,6 +316,9 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
         _aiStudy = aiStudy;
         _backups = backups;
         _planner = planner;
+        _syllabus = syllabus;
+        _questionBank = questionBank;
+        _readiness = readiness;
 
         StartFocusCommand = new AsyncRelayCommand(StartFocusAsync, () => !HasActiveFocusSession);
         PauseFocusCommand = new AsyncRelayCommand(() => ChangeFocusAsync("pause"), () => CanPauseFocus);
@@ -293,6 +348,10 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
         RestoreBackupCommand = new AsyncRelayCommand(RestoreBackupAsync, () => SelectedBackup is not null);
         PreviewStudyPlanCommand = new AsyncRelayCommand(PreviewStudyPlanAsync);
         ApplyStudyPlanCommand = new AsyncRelayCommand(ApplyStudyPlanAsync, () => HasPlanPreview);
+        AddSyllabusTopicCommand = new AsyncRelayCommand(AddSyllabusTopicAsync, () => SelectedCourse is not null);
+        CompleteSyllabusTopicCommand = new AsyncRelayCommand(CompleteSyllabusTopicAsync, () => SelectedSyllabusTopic is not null);
+        AddQuestionCommand = new AsyncRelayCommand(AddQuestionAsync, () => SelectedCourse is not null);
+        EvaluateQuestionCommand = new AsyncRelayCommand(EvaluateQuestionAsync, () => SelectedQuestion is not null);
     }
 
     public void Initialize(StudyData data)
