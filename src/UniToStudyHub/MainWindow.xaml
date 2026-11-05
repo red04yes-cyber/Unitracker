@@ -982,14 +982,21 @@
         </Border>
         <Border Style="{StaticResource CardBorderStyle}" MaxWidth="860" HorizontalAlignment="Left" Margin="0,0,0,14">
             <StackPanel>
-                <TextBlock Text="Connessione Moodle" Style="{StaticResource SectionTitleStyle}"/>
-                <TextBlock Text="Collega il tuo spazio Moodle UniTo per sincronizzare i corsi e accedere ai materiali consentiti." Style="{StaticResource PageSubtitleStyle}" Margin="0,7,0,16"/>
-                <TextBlock Text="URL della piattaforma" Style="{StaticResource KpiLabelStyle}" Margin="0,0,0,5"/>
-                <TextBox Text="{Binding MoodleUrlInput, UpdateSourceTrigger=PropertyChanged}" MaxWidth="600" HorizontalAlignment="Stretch"/>
-                <TextBlock Text="Token Web Services" Style="{StaticResource KpiLabelStyle}" Margin="0,14,0,5"/>
-                <PasswordBox x:Name="MoodleTokenBox" MaxWidth="600" HorizontalAlignment="Stretch" Padding="11,9" PasswordChanged="MoodleTokenBox_PasswordChanged"/>
-                <WrapPanel Margin="0,16,0,0"><Button Content="Verifica e salva token" Command="{Binding ConnectMoodleCommand}" Margin="0,0,8,0"/><Button Content="Sincronizza corsi" Style="{StaticResource SecondaryButtonStyle}" Command="{Binding SyncMoodleCommand}"/></WrapPanel>
-                <Border Background="{StaticResource SubtleBrush}" CornerRadius="8" Padding="12" Margin="0,16,0,0"><TextBlock Text="{Binding MoodleStatus}" FontSize="12" Foreground="{StaticResource InkBrush}" TextWrapping="Wrap"/></Border>
+                <ToggleButton Content="Moodle · Integrazione opzionale" IsChecked="{Binding IsMoodlePanelExpanded, Mode=TwoWay}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="12" FontWeight="SemiBold" ToolTip="Apri o chiudi la configurazione Moodle"/>
+                <StackPanel Visibility="{Binding IsMoodlePanelExpanded, Converter={StaticResource BooleanToVisibilityConverter}}" Margin="12,12,12,6">
+                    <TextBlock Text="Moodle resta facoltativo. Puoi usare tutte le altre funzioni senza collegare l'account universitario." Style="{StaticResource PageSubtitleStyle}" Margin="0,0,0,14"/>
+                    <TextBlock Text="URL della piattaforma" Style="{StaticResource KpiLabelStyle}" Margin="0,0,0,5"/>
+                    <TextBox Text="{Binding MoodleUrlInput, UpdateSourceTrigger=PropertyChanged}" MaxWidth="600" HorizontalAlignment="Stretch"/>
+                    <TextBlock Text="Token Web Services" Style="{StaticResource KpiLabelStyle}" Margin="0,14,0,5"/>
+                    <PasswordBox x:Name="MoodleTokenBox" MaxWidth="600" HorizontalAlignment="Stretch" Padding="11,9" PasswordChanged="MoodleTokenBox_PasswordChanged"/>
+                    <WrapPanel Margin="0,16,0,0">
+                        <Button Content="Verifica e salva token" Command="{Binding ConnectMoodleCommand}" Margin="0,0,8,0"/>
+                        <Button Content="Sincronizza corsi" Style="{StaticResource SecondaryButtonStyle}" Command="{Binding SyncMoodleCommand}"/>
+                    </WrapPanel>
+                    <Border Background="{StaticResource SubtleBrush}" CornerRadius="8" Padding="12" Margin="0,16,0,0">
+                        <TextBlock Text="{Binding MoodleStatus}" FontSize="12" Foreground="{StaticResource InkBrush}" TextWrapping="Wrap"/>
+                    </Border>
+                </StackPanel>
             </StackPanel>
         </Border>
         <Border Style="{StaticResource CardBorderStyle}" MaxWidth="860" HorizontalAlignment="Left">
