@@ -73,6 +73,7 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
     public ObservableCollection<EnergyCheckInData> RecentEnergyCheckIns { get; } = new();
     public ObservableCollection<PdfSearchHit> PdfSearchHits { get; } = new();
     public ObservableCollection<BackupInfo> BackupItems { get; } = new();
+    public ObservableCollection<CourseProgressRow> CourseProgressRows { get; } = new();
     public ObservableCollection<Course> Courses => _data.Courses;
     public ObservableCollection<PdfDocumentData> PdfDocuments => _data.PdfDocuments;
 
@@ -132,6 +133,9 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
     public string WeeklyGoalDisplay => _progressSnapshot is { WeeklyGoalConfigured: true } p
         ? $"{p.FocusMinutes} / {p.WeeklyGoalMinutes} min"
         : "Obiettivo settimanale non configurato";
+    public int WeeklyGoalProgressPercent => _progressSnapshot is { WeeklyGoalConfigured: true } p
+        ? Math.Clamp((int)Math.Round(p.FocusMinutes * 100d / p.WeeklyGoalMinutes), 0, 100)
+        : 0;
     public bool HasSelectedPdf => SelectedPdf is not null;
     public bool HasDueFlashcards => DueFlashcards.Count > 0;
     public bool HasActiveTasks => ActiveTasks.Count > 0;
@@ -570,6 +574,15 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
         var today = DateOnly.FromDateTime(DateTime.Today);
         var monday = today.AddDays(-(((int)today.DayOfWeek + 6) % 7));
         _progressSnapshot = _progress.Calculate(_data, monday, today);
+        CourseProgressRows.Clear();
+        var maxFocusMinutes = _progressSnapshot.Courses.Count == 0 ? 0 : _progressSnapshot.Courses.Max(x => x.FocusMinutes);
+        foreach (var course in _progressSnapshot.Courses)
+        {
+            var percentage = maxFocusMinutes == 0 ? 0 : (int)Math.Round(course.FocusMinutes * 100d / maxFocusMinutes);
+            CourseProgressRows.Add(new CourseProgressRow(course.CourseName, $"{course.FocusMinutes} min", percentage));
+        }
+        OnPropertyChanged(nameof(CourseProgressRows));
+        OnPropertyChanged(nameof(WeeklyGoalProgressPercent));
         OnPropertyChanged(nameof(CurrentProgress));
         OnPropertyChanged(nameof(HasProgressData));
         OnPropertyChanged(nameof(ProgressPeriodDisplay));
