@@ -15,6 +15,7 @@ namespace UniToStudyHub.Presentation.ViewModels;
 public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
 {
     private readonly IStudyDataStore _store;
+    private readonly AcademicProfileService _academicProfile;
     private readonly FocusSessionService _focus;
     private readonly StudyTaskService _tasks;
     private readonly ErrorJournalService _errors;
@@ -62,6 +63,15 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
     private string _aiResponseText = string.Empty;
     private string _backupStatus = "I backup locali non sono ancora stati verificati.";
     private string _workspaceStatus = string.Empty;
+    private string _degreeProgramNameInput = string.Empty;
+    private string _degreeProgramCodeInput = string.Empty;
+    private string _enrollmentYearInput = string.Empty;
+    private string _currentAcademicYearInput = string.Empty;
+    private string _degreeTotalCfuInput = string.Empty;
+    private DateTime _graduationTargetInput = new(2027, 10, 1);
+    private string _studyPreferencesInput = string.Empty;
+    private string _weeklyStudyHoursInput = "20";
+    private string _maxDailyStudyMinutesInput = "240";
     private ProgressSnapshot? _progressSnapshot;
 
     public event PropertyChangedEventHandler? PropertyChanged;
@@ -117,6 +127,15 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
     public string AiStatusMessage { get => _aiStatus; private set => Set(ref _aiStatus, value); }
     public string AiResponseText { get => _aiResponseText; private set => Set(ref _aiResponseText, value); }
     public string BackupStatus { get => _backupStatus; private set => Set(ref _backupStatus, value); }
+    public string DegreeProgramNameInput { get => _degreeProgramNameInput; set => Set(ref _degreeProgramNameInput, value); }
+    public string DegreeProgramCodeInput { get => _degreeProgramCodeInput; set => Set(ref _degreeProgramCodeInput, value); }
+    public string EnrollmentYearInput { get => _enrollmentYearInput; set => Set(ref _enrollmentYearInput, value); }
+    public string CurrentAcademicYearInput { get => _currentAcademicYearInput; set => Set(ref _currentAcademicYearInput, value); }
+    public string DegreeTotalCfuInput { get => _degreeTotalCfuInput; set => Set(ref _degreeTotalCfuInput, value); }
+    public DateTime GraduationTargetInput { get => _graduationTargetInput; set => Set(ref _graduationTargetInput, value); }
+    public string StudyPreferencesInput { get => _studyPreferencesInput; set => Set(ref _studyPreferencesInput, value); }
+    public string WeeklyStudyHoursInput { get => _weeklyStudyHoursInput; set => Set(ref _weeklyStudyHoursInput, value); }
+    public string MaxDailyStudyMinutesInput { get => _maxDailyStudyMinutesInput; set => Set(ref _maxDailyStudyMinutesInput, value); }
     public string WorkspaceStatus { get => _workspaceStatus; private set => Set(ref _workspaceStatus, value); }
     public string BackupDirectory => _backups.BackupDirectory;
     public ProgressSnapshot? CurrentProgress => _progressSnapshot;
@@ -166,11 +185,13 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
     public AsyncRelayCommand ReviewEasyCommand { get; }
     public AsyncRelayCommand SearchPdfCommand { get; }
     public AsyncRelayCommand AskPdfCommand { get; }
+    public AsyncRelayCommand SaveAcademicProfileCommand { get; }
     public AsyncRelayCommand CreateBackupCommand { get; }
     public AsyncRelayCommand VerifyBackupCommand { get; }
 
     public StudyWorkspaceViewModel(
         IStudyDataStore store,
+        AcademicProfileService academicProfile,
         FocusSessionService focus,
         StudyTaskService tasks,
         ErrorJournalService errors,
@@ -184,6 +205,7 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
         BackupService backups)
     {
         _store = store;
+        _academicProfile = academicProfile;
         _focus = focus;
         _tasks = tasks;
         _errors = errors;
@@ -218,6 +240,7 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
         ReviewEasyCommand = new AsyncRelayCommand(() => ReviewFlashcardAsync(RecallRating.Easy), () => SelectedDueFlashcard is not null);
         SearchPdfCommand = new AsyncRelayCommand(SearchPdfAsync, () => SelectedPdf is not null);
         AskPdfCommand = new AsyncRelayCommand(AskPdfAsync, () => SelectedPdf is not null);
+        SaveAcademicProfileCommand = new AsyncRelayCommand(SaveAcademicProfileAsync);
         CreateBackupCommand = new AsyncRelayCommand(CreateBackupAsync);
         VerifyBackupCommand = new AsyncRelayCommand(VerifyBackupAsync, () => SelectedBackup is not null);
     }
@@ -225,6 +248,7 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
     public void Initialize(StudyData data)
     {
         _data = data ?? throw new ArgumentNullException(nameof(data));
+        LoadAcademicProfile();
         RefreshCollections();
         RefreshFocusSnapshot();
         RefreshProgress();
@@ -275,6 +299,60 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
         {
             PdfStatus = $"Importazione non riuscita: {ex.Message}";
         }
+    }
+
+    private void LoadAcademicProfile()
+    {
+        DegreeProgramNameInput = _data.DegreeProgramName;
+        DegreeProgramCodeInput = _data.DegreeProgramCode;
+        EnrollmentYearInput = _data.EnrollmentYear?.ToString(CultureInfo.CurrentCulture) ?? string.Empty;
+        CurrentAcademicYearInput = _data.CurrentAcademicYear?.ToString(CultureInfo.CurrentCulture) ?? string.Empty;
+        DegreeTotalCfuInput = _data.DegreeTotalCfu == 0 ? string.Empty : _data.DegreeTotalCfu.ToString(CultureInfo.CurrentCulture);
+        GraduationTargetInput = _data.GraduationTarget;
+        StudyPreferencesInput = _data.StudyPreferences;
+        WeeklyStudyHoursInput = _data.WeeklyStudyHours.ToString(CultureInfo.CurrentCulture);
+        MaxDailyStudyMinutesInput = _data.MaxDailyStudyMinutes.ToString(CultureInfo.CurrentCulture);
+    }
+
+    private async Task SaveAcademicProfileAsync()
+    {
+        if (!TryOptionalInt(EnrollmentYearInput, out var enrollmentYear) ||
+            !TryOptionalInt(CurrentAcademicYearInput, out var academicYear) ||
+            !int.TryParse(DegreeTotalCfuInput, out var totalCfu) && !string.IsNullOrWhiteSpace(DegreeTotalCfuInput) ||
+            !int.TryParse(WeeklyStudyHoursInput, out var weeklyHours) ||
+            !int.TryParse(MaxDailyStudyMinutesInput, out var dailyMinutes))
+        {
+            WorkspaceStatus = "Controlla gli anni, i CFU e i limiti di studio inseriti.";
+            return;
+        }
+
+        var previous = new AcademicProfileUpdate(
+            _data.DegreeProgramName, _data.DegreeProgramCode, _data.EnrollmentYear,
+            _data.CurrentAcademicYear, _data.DegreeTotalCfu, _data.GraduationTarget,
+            _data.StudyPreferences, _data.WeeklyStudyHours, _data.MaxDailyStudyMinutes);
+        var update = new AcademicProfileUpdate(
+            DegreeProgramNameInput, DegreeProgramCodeInput, enrollmentYear, academicYear,
+            totalCfu, GraduationTargetInput, StudyPreferencesInput, weeklyHours, dailyMinutes);
+        try
+        {
+            _academicProfile.Update(_data, update);
+            await _store.SaveAsync(_data);
+            WorkspaceStatus = "Profilo universitario salvato.";
+        }
+        catch (Exception ex)
+        {
+            _academicProfile.Update(_data, previous);
+            LoadAcademicProfile();
+            WorkspaceStatus = $"Profilo non salvato: {ex.Message}";
+        }
+    }
+
+    private static bool TryOptionalInt(string value, out int? result)
+    {
+        if (string.IsNullOrWhiteSpace(value)) { result = null; return true; }
+        if (int.TryParse(value, out var parsed)) { result = parsed; return true; }
+        result = null;
+        return false;
     }
 
     private async Task StartFocusAsync()
