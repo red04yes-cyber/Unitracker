@@ -32,7 +32,7 @@ non è un appello ufficiale. La chiave esterna stabile `exam:<id>` evita duplica
 
 `IcsCalendarParser` e `IcsImportService` supportano:
 
-- `VEVENT`, `DTSTART`, `DTEND`, `DURATION` di base, `UID`, `SEQUENCE`, `STATUS:CANCELLED`;
+- `VEVENT`, `DTSTART`, `DTEND`, `UID`, `SEQUENCE`, `STATUS:CANCELLED`; in assenza di `DTEND` viene usata una durata predefinita esplicita;
 - date tutto-il-giorno (`VALUE=DATE`), `TZID`, date UTC con `Z`;
 - `RRULE` `DAILY`, `WEEKLY`, `MONTHLY`, `YEARLY` con `INTERVAL`, `COUNT`, `UNTIL`, `BYDAY` (solo weekly),
   ed `EXDATE`;
