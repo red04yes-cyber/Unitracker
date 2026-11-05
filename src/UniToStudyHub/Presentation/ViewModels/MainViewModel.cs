@@ -24,7 +24,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
     private string _courseNameInput = string.Empty;
     private string _courseCfuInput = "6";
     private string _gradeValueInput = "28";
-    private string _attemptModeInput = "PassedAccepted";
+    private string _attemptModeInput = "Superato · accettato";
     private string _moodleUrlInput = string.Empty;
     private string _moodleToken = string.Empty;
     private string _moodleStatus = "Non collegato";
