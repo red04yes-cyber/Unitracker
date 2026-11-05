@@ -394,11 +394,11 @@ public sealed class MainViewModel : INotifyPropertyChanged
                 course.Id,
                 outcome,
                 decision,
-                numericGrade,
+                numericGrade: numericGrade,
                 honors: false,
-                isPassFail,
-                attemptedAt,
-                recordedAt);
+                isPassFail: isPassFail,
+                attemptedAt: attemptedAt,
+                recordedAt: recordedAt);
 
             await SaveAsync();
             StatusMessage = AttemptModeInput switch
