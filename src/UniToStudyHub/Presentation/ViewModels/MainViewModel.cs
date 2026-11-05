@@ -85,8 +85,12 @@ public sealed class MainViewModel : INotifyPropertyChanged
         get => _selectedCalendarDay;
         set
         {
-            if (!SetCalendarDay(value)) return;
-            if (value is not null) SelectedCalendarDate = value.Date;
+            if (!SetCalendarDay(value) || value is null) return;
+            var date = value.Date;
+            if (CalendarViewMode == "Month" &&
+                (date.Month != CalendarDate.Month || date.Year != CalendarDate.Year))
+                CalendarDate = date;
+            SelectedCalendarDate = date;
         }
     }
     private bool SetCalendarDay(CalendarDayCell? value)
