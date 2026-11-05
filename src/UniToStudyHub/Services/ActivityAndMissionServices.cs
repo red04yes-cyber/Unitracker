@@ -48,6 +48,9 @@ public sealed record ActivitySummary(
 {
     /// <summary>Seconds covered by two or more activities; included in RecordedSeconds only once.</summary>
     public int OverlapSeconds { get; init; }
+
+    /// <summary>Unique seconds per syllabus topic; activities without a topic are omitted.</summary>
+    public IReadOnlyDictionary<string, int> ByTopic { get; init; } = new Dictionary<string, int>();
 }
 
 /// <summary>
@@ -58,6 +61,62 @@ public sealed record ActivitySummary(
 public sealed class ActivityLedgerService
 {
     private static readonly JsonSerializerOptions RevisionJsonOptions = new();
+
+    /// <summary>
+    /// Convenience entry point for the diary/quick-log screen. It deliberately
+    /// delegates to <see cref="AddManual"/> so permissions, revisions, privacy
+    /// and interval validation stay in one place.
+    /// </summary>
+    public StudyActivityData AddQuickLog(
+        StudyData data,
+        StudyActivityType type,
+        string title,
+        DateTimeOffset startedAt,
+        DateTimeOffset endedAt,
+        string? courseId = null,
+        string? syllabusTopicId = null,
+        string? taskId = null,
+        string? missionId = null,
+        string? note = null,
+        string? result = null,
+        IEnumerable<string>? tags = null,
+        bool isPrivate = false,
+        int? focusRating = null,
+        int? difficultyRating = null,
+        int? qualityRating = null,
+        int? energyRating = null,
+        DateTimeOffset? now = null)
+    {
+        ArgumentNullException.ThrowIfNull(data);
+        if (type is not (StudyActivityType.Study or StudyActivityType.Exercise or StudyActivityType.Review or
+                         StudyActivityType.Reading or StudyActivityType.Simulation or StudyActivityType.Quiz))
+            throw new ArgumentOutOfRangeException(nameof(type), "The selected type is not a quick-log study type.");
+        if (endedAt <= startedAt)
+            throw new ArgumentException("The quick log must end after it starts.", nameof(endedAt));
+
+        var activity = new StudyActivityData
+        {
+            Type = type,
+            Title = string.IsNullOrWhiteSpace(title) ? type.ToString() : title.Trim(),
+            CourseId = courseId?.Trim() ?? string.Empty,
+            SyllabusTopicId = syllabusTopicId?.Trim() ?? string.Empty,
+            TaskId = taskId?.Trim() ?? string.Empty,
+            MissionId = missionId?.Trim() ?? string.Empty,
+            StartedAt = startedAt,
+            EndedAt = endedAt,
+            EffectiveSeconds = Math.Max(0, (int)Math.Floor((endedAt - startedAt).TotalSeconds)),
+            TimeZoneId = TimeZoneInfo.Local.Id,
+            Note = note?.Trim() ?? string.Empty,
+            Result = result?.Trim() ?? string.Empty,
+            Tags = new ObservableCollection<string>(tags ?? Array.Empty<string>()),
+            IsPrivate = isPrivate,
+            FocusRating = focusRating,
+            DifficultyRating = difficultyRating,
+            QualityRating = qualityRating,
+            EnergyRating = energyRating
+        };
+        return AddManual(data, activity, now);
+    }
 
     public StudyActivityData AddManual(StudyData data, StudyActivityData activity, DateTimeOffset? now = null)
     {
@@ -219,6 +278,26 @@ public sealed class ActivityLedgerService
             .Where(x => !x.IsDeleted && x.Status == StudyActivityStatus.Running)
             .OrderBy(x => x.StartedAt)
             .ToList();
+
+    public IReadOnlyList<StudyActivityData> GetDiary(
+        StudyData data,
+        DateOnly from,
+        DateOnly to,
+        bool includePrivate = true,
+        string? timeZoneId = null)
+    {
+        ArgumentNullException.ThrowIfNull(data);
+        if (to < from) throw new ArgumentOutOfRangeException(nameof(to), "The end date must not precede the start date.");
+        var zone = ResolveTimeZone(timeZoneId);
+        var start = StartOfDay(from, zone);
+        var end = StartOfDay(to.AddDays(1), zone);
+        return data.StudyActivities
+            .Where(x => !x.IsDeleted && x.StartedAt < end && (x.EndedAt ?? DateTimeOffset.MaxValue) > start)
+            .Where(x => includePrivate || !x.IsPrivate)
+            .OrderBy(x => x.StartedAt)
+            .ThenBy(x => x.Id, StringComparer.Ordinal)
+            .ToList();
+    }
 
     public IReadOnlyList<StudyActivityData> GetForDay(
         StudyData data,
@@ -413,6 +492,13 @@ public sealed class ActivityLedgerService
                 x => x.Key,
                 x => UnionSeconds(x.Select(y => (y.Start, y.End))),
                 StringComparer.Ordinal);
+        var byTopic = intervals
+            .Where(x => !string.IsNullOrWhiteSpace(x.Activity.SyllabusTopicId))
+            .GroupBy(x => x.Activity.SyllabusTopicId, StringComparer.Ordinal)
+            .ToDictionary(
+                x => x.Key,
+                x => UnionSeconds(x.Select(y => (y.Start, y.End))),
+                StringComparer.Ordinal);
         return new ActivitySummary(
             from,
             to,
@@ -421,7 +507,8 @@ public sealed class ActivityLedgerService
             byType,
             byCourse)
         {
-            OverlapSeconds = OverlapSeconds(intervals.Select(x => (x.Start, x.End)))
+            OverlapSeconds = OverlapSeconds(intervals.Select(x => (x.Start, x.End))),
+            ByTopic = byTopic
         };
     }
 

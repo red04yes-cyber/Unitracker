@@ -225,6 +225,9 @@ public sealed class ActivityAndMissionPersistenceTests
             Assert.Equal(1200, (await migrated.StudyActivities.SingleAsync()).EffectiveSeconds);
             Assert.True(await migrated.StudySessionSegments.AnyAsync() == false);
             Assert.True(await migrated.StudyMissions.AnyAsync() == false);
+            Assert.True(await migrated.PomodoroSettings.AnyAsync() == false);
+            Assert.True(await migrated.PomodoroTimers.AnyAsync() == false);
+            Assert.True(await migrated.PomodoroCycles.AnyAsync() == false);
         }
 
         var loaded = await new SqliteStudyDataStore(database.Factory).LoadAsync();

@@ -29,6 +29,9 @@ public sealed class StudyHubDbContext(DbContextOptions<StudyHubDbContext> option
     public DbSet<StudyMissionEntity> StudyMissions => Set<StudyMissionEntity>();
     public DbSet<MissionStepEntity> MissionSteps => Set<MissionStepEntity>();
     public DbSet<PdfDocumentEntity> PdfDocuments => Set<PdfDocumentEntity>();
+    public DbSet<PomodoroSettingsEntity> PomodoroSettings => Set<PomodoroSettingsEntity>();
+    public DbSet<PomodoroTimerEntity> PomodoroTimers => Set<PomodoroTimerEntity>();
+    public DbSet<PomodoroCycleEntity> PomodoroCycles => Set<PomodoroCycleEntity>();
     public DbSet<LegacyImportEntity> LegacyImports => Set<LegacyImportEntity>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder) => ConfigureModel(modelBuilder);
@@ -314,6 +317,41 @@ public sealed class StudyHubDbContext(DbContextOptions<StudyHubDbContext> option
             b.Property(x => x.CourseId).HasMaxLength(64).IsRequired();
             b.Property(x => x.PagesJson).IsRequired();
             b.HasIndex(x => x.Sha256).IsUnique();
+        });
+
+        modelBuilder.Entity<PomodoroSettingsEntity>(b =>
+        {
+            b.ToTable("PomodoroSettings");
+            b.HasKey(x => x.Id);
+            b.Property(x => x.Id).ValueGeneratedNever();
+            b.Property(x => x.FocusMinutes).HasDefaultValue(25);
+            b.Property(x => x.ShortBreakMinutes).HasDefaultValue(5);
+            b.Property(x => x.LongBreakMinutes).HasDefaultValue(15);
+            b.Property(x => x.SessionsBeforeLongBreak).HasDefaultValue(4);
+        });
+
+        modelBuilder.Entity<PomodoroTimerEntity>(b =>
+        {
+            b.ToTable("PomodoroTimer");
+            b.HasKey(x => x.Id);
+            b.Property(x => x.SessionId).IsRequired();
+            b.Property(x => x.CurrentCycleId).HasMaxLength(64).IsRequired();
+            b.HasIndex(x => x.SessionId);
+            b.HasOne<StudySessionEntity>().WithMany()
+                .HasForeignKey(x => x.SessionId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<PomodoroCycleEntity>(b =>
+        {
+            b.ToTable("PomodoroCycles");
+            b.HasKey(x => x.Id);
+            b.Property(x => x.SessionId).IsRequired();
+            b.HasIndex(x => new { x.SessionId, x.CycleNumber });
+            b.HasIndex(x => x.CompletedAt);
+            b.HasOne<StudySessionEntity>().WithMany()
+                .HasForeignKey(x => x.SessionId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<LegacyImportEntity>(b =>

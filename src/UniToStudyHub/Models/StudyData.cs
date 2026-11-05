@@ -18,6 +18,9 @@ public sealed class StudyData
     public ObservableCollection<StudyTaskData> StudyTasks { get; set; } = new();
     public ObservableCollection<StudyActivityData> StudyActivities { get; set; } = new();
     public ObservableCollection<StudyMissionData> StudyMissions { get; set; } = new();
+    public PomodoroSettingsData PomodoroSettings { get; set; } = new();
+    public PomodoroTimerData? PomodoroTimer { get; set; }
+    public ObservableCollection<PomodoroCycleData> PomodoroCycles { get; set; } = new();
     public ObservableCollection<ActivityRevisionData> ActivityRevisions { get; set; } = new();
     public ObservableCollection<ErrorJournalEntryData> ErrorJournalEntries { get; set; } = new();
     public ObservableCollection<FlashcardData> Flashcards { get; set; } = new();

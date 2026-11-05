@@ -37,6 +37,8 @@ public static class CompositionRoot
         services.AddSingleton<FocusSessionService>();
         services.AddSingleton<StudyTaskService>();
         services.AddSingleton<ActivityLedgerService>();
+        services.AddSingleton<PomodoroService>();
+        services.AddSingleton<StudyDataExportService>();
         services.AddSingleton<StudyMissionService>();
         services.AddSingleton<ErrorJournalService>();
         services.AddSingleton<FlashcardService>();

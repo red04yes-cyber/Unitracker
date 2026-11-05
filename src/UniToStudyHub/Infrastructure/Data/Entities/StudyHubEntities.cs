@@ -354,6 +354,49 @@ public sealed class PdfDocumentEntity
     public string PagesJson { get; set; } = "[]";
 }
 
+public sealed class PomodoroSettingsEntity
+{
+    public int Id { get; set; } = 1;
+    public int FocusMinutes { get; set; } = 25;
+    public int ShortBreakMinutes { get; set; } = 5;
+    public int LongBreakMinutes { get; set; } = 15;
+    public int SessionsBeforeLongBreak { get; set; } = 4;
+}
+
+public sealed class PomodoroTimerEntity
+{
+    public string Id { get; set; } = "current";
+    public string SessionId { get; set; } = string.Empty;
+    public int Phase { get; set; }
+    public int Status { get; set; }
+    public DateTimeOffset PhaseWindowStartedAt { get; set; }
+    public DateTimeOffset PhaseStartedAt { get; set; }
+    public DateTimeOffset? PhaseEndsAt { get; set; }
+    public int RemainingSeconds { get; set; }
+    public int ActiveSeconds { get; set; }
+    public int FocusesCompletedInSet { get; set; }
+    public int CycleNumber { get; set; }
+    public string CurrentCycleId { get; set; } = string.Empty;
+    public DateTimeOffset UpdatedAt { get; set; }
+}
+
+public sealed class PomodoroCycleEntity
+{
+    public string Id { get; set; } = string.Empty;
+    public string SessionId { get; set; } = string.Empty;
+    public int CycleNumber { get; set; }
+    public DateTimeOffset FocusStartedAt { get; set; }
+    public DateTimeOffset FocusEndedAt { get; set; }
+    public int FocusSeconds { get; set; }
+    public int BreakType { get; set; }
+    public DateTimeOffset? BreakStartedAt { get; set; }
+    public DateTimeOffset? BreakEndedAt { get; set; }
+    public int BreakSeconds { get; set; }
+    public bool WasSkipped { get; set; }
+    public bool IsCompleted { get; set; }
+    public DateTimeOffset? CompletedAt { get; set; }
+}
+
 public sealed class LegacyImportEntity
 {
     public string Key { get; set; } = string.Empty;
