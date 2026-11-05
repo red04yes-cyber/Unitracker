@@ -742,6 +742,7 @@
                     <ListBox ItemsSource="{Binding Workspace.ActiveTasks}" SelectedItem="{Binding Workspace.SelectedTask}" MinHeight="140" MaxHeight="220">
                         <ListBox.ItemTemplate><DataTemplate><StackPanel Margin="4"><TextBlock Text="{Binding Title}" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource InkBrush}" TextWrapping="Wrap"/><TextBlock Text="{Binding EstimatedMinutes, StringFormat={}{0} min stimati}" FontSize="10" Foreground="{StaticResource MutedBrush}"/><TextBlock Text="{Binding DueAt, StringFormat='Scadenza · {0:dd/MM/yyyy}', TargetNullValue='Senza scadenza'}" FontSize="9" Foreground="{StaticResource MutedBrush}"/><TextBlock Text="{Binding Priority, StringFormat='Priorità {0}/5'}" FontSize="9" Foreground="{StaticResource MutedBrush}"/></StackPanel></DataTemplate></ListBox.ItemTemplate>
                     </ListBox>
+                    <TextBlock Text="Nessuna attività aperta. Aggiungi un task per organizzare il prossimo passo." Visibility="{Binding Workspace.NoActiveTasks, Converter={StaticResource BooleanToVisibilityConverter}}" FontSize="10" Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap" Margin="2,7,2,0"/>
                     <WrapPanel Margin="0,8,0,0"><Button Content="Completa" Command="{Binding Workspace.CompleteTaskCommand}" Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,8,0"/><Button Content="Rimuovi" Click="RemoveStudyTask_Click" IsEnabled="{Binding Workspace.HasSelectedTask}" Style="{StaticResource QuietButtonStyle}"/></WrapPanel>
                 </StackPanel>
             </Border>
@@ -751,6 +752,7 @@
                 <StackPanel>
                     <TextBlock Text="Ripasso flashcard" Style="{StaticResource SectionTitleStyle}"/>
                     <ListBox ItemsSource="{Binding Workspace.DueFlashcards}" SelectedItem="{Binding Workspace.SelectedDueFlashcard}" MaxHeight="110" Margin="0,10,0,0"><ListBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding Front}" FontSize="11" TextWrapping="Wrap" Margin="4"/></DataTemplate></ListBox.ItemTemplate></ListBox>
+                    <TextBlock Text="Nessuna flashcard in scadenza." Visibility="{Binding Workspace.NoDueFlashcards, Converter={StaticResource BooleanToVisibilityConverter}}" FontSize="10" Foreground="{StaticResource MutedBrush}" Margin="2,7,2,0"/>
                     <Button Content="Mostra / nascondi risposta" Command="{Binding Workspace.RevealFlashcardCommand}" Style="{StaticResource QuietButtonStyle}" Margin="0,8,0,0"/>
                     <TextBlock Text="{Binding Workspace.SelectedDueFlashcard.Back}" Visibility="{Binding Workspace.FlashcardRevealed, Converter={StaticResource BooleanToVisibilityConverter}}" TextWrapping="Wrap" Foreground="{StaticResource InkBrush}" Margin="0,8,0,0"/>
                     <WrapPanel Margin="0,10,0,0"><Button Content="Again" Command="{Binding Workspace.ReviewAgainCommand}" Style="{StaticResource QuietButtonStyle}" Margin="0,0,6,6"/><Button Content="Hard" Command="{Binding Workspace.ReviewHardCommand}" Style="{StaticResource QuietButtonStyle}" Margin="0,0,6,6"/><Button Content="Good" Command="{Binding Workspace.ReviewGoodCommand}" Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,6,6"/><Button Content="Easy" Command="{Binding Workspace.ReviewEasyCommand}" Margin="0,0,6,6"/></WrapPanel>
@@ -766,6 +768,7 @@
                     <TextBox Text="{Binding Workspace.ErrorTopicInput, UpdateSourceTrigger=PropertyChanged}" ToolTip="Argomento"/><TextBox Text="{Binding Workspace.ErrorQuestionInput, UpdateSourceTrigger=PropertyChanged}" ToolTip="Domanda o esercizio" Margin="0,7,0,0"/><TextBox Text="{Binding Workspace.ErrorIncorrectInput, UpdateSourceTrigger=PropertyChanged}" ToolTip="Risposta errata (facoltativa)" Margin="0,7,0,0"/><TextBox Text="{Binding Workspace.ErrorCorrectInput, UpdateSourceTrigger=PropertyChanged}" ToolTip="Risposta corretta" Margin="0,7,0,0"/><TextBox Text="{Binding Workspace.ErrorCauseInput, UpdateSourceTrigger=PropertyChanged}" ToolTip="Causa (facoltativa)" Margin="0,7,0,0"/>
                     <Button Content="Registra errore" Command="{Binding Workspace.AddErrorEntryCommand}" Margin="0,9,0,12"/>
                     <ListBox ItemsSource="{Binding Workspace.OpenErrorEntries}" SelectedItem="{Binding Workspace.SelectedErrorEntry}" MaxHeight="120"><ListBox.ItemTemplate><DataTemplate><StackPanel Margin="4"><TextBlock Text="{Binding Topic}" FontSize="10" Foreground="{StaticResource AccentBrush}"/><TextBlock Text="{Binding Question}" FontSize="11" Foreground="{StaticResource InkBrush}" TextWrapping="Wrap"/></StackPanel></DataTemplate></ListBox.ItemTemplate></ListBox>
+                    <TextBlock Text="Nessun errore da ripassare." Visibility="{Binding Workspace.NoOpenErrorEntries, Converter={StaticResource BooleanToVisibilityConverter}}" FontSize="10" Foreground="{StaticResource MutedBrush}" Margin="2,7,2,0"/>
                     <WrapPanel Margin="0,8,0,0"><Button Content="Da ripassare" Command="{Binding Workspace.ReviewErrorNeedsWorkCommand}" Style="{StaticResource QuietButtonStyle}" Margin="0,0,6,0"/><Button Content="Ricordato" Command="{Binding Workspace.ReviewErrorRememberedCommand}" Style="{StaticResource SecondaryButtonStyle}"/></WrapPanel>
                 </StackPanel>
             </Border>
@@ -806,6 +809,7 @@
                             </StackPanel>
                         </DataTemplate></ListBox.ItemTemplate>
                     </ListBox>
+                    <TextBlock Text="Nessuna distrazione annotata." Visibility="{Binding Workspace.NoOpenDistractions, Converter={StaticResource BooleanToVisibilityConverter}}" FontSize="10" Foreground="{StaticResource MutedBrush}" Margin="2,7,2,0"/>
                     <Button Content="Segna come risolta" Command="{Binding Workspace.ResolveDistractionCommand}" Style="{StaticResource SecondaryButtonStyle}" HorizontalAlignment="Left" Margin="0,8,0,0"/>
                 </StackPanel>
             </Border>
@@ -843,6 +847,7 @@
                     <ListBox ItemsSource="{Binding Workspace.PdfDocuments}" SelectedItem="{Binding Workspace.SelectedPdf}" Margin="0,12,0,0" MinHeight="230">
                         <ListBox.ItemTemplate><DataTemplate><StackPanel Margin="5"><TextBlock Text="{Binding FileName}" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource InkBrush}" TextWrapping="Wrap"/><TextBlock Text="{Binding PageCount, StringFormat={}{0} pagine}" FontSize="10" Foreground="{StaticResource MutedBrush}" Margin="0,3,0,0"/><TextBlock Text="{Binding HasExtractableText, StringFormat='Testo estraibile: {0}'}" FontSize="9" Foreground="{StaticResource MutedBrush}"/></StackPanel></DataTemplate></ListBox.ItemTemplate>
                     </ListBox>
+                    <TextBlock Text="La libreria è vuota: importa il primo PDF." Visibility="{Binding Workspace.NoPdfDocuments, Converter={StaticResource BooleanToVisibilityConverter}}" FontSize="10" Foreground="{StaticResource MutedBrush}" Margin="2,7,2,0"/>
                     <TextBlock Text="{Binding Workspace.PdfDocumentSummary}" FontSize="10" Foreground="{StaticResource MutedBrush}" Margin="0,10,0,0"/>
                     <TextBlock Text="Anteprima del testo estratto" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource InkBrush}" Margin="0,14,0,6"/>
                     <ListBox ItemsSource="{Binding Workspace.SelectedPdf.Pages}" MaxHeight="250">
@@ -863,6 +868,7 @@
                         <TextBlock Text="Gli estratti provengono dal testo memorizzato pagina per pagina." FontSize="11" Foreground="{StaticResource MutedBrush}" Margin="0,5,0,12"/>
                         <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBox Text="{Binding Workspace.PdfSearchQuery, UpdateSourceTrigger=PropertyChanged}" ToolTip="Cerca una frase o un concetto"/><Button Grid.Column="1" Content="Cerca" Command="{Binding Workspace.SearchPdfCommand}" Margin="8,0,0,0"/></Grid>
                         <ListBox ItemsSource="{Binding Workspace.PdfSearchHits}" MaxHeight="230" Margin="0,12,0,0"><ListBox.ItemTemplate><DataTemplate><StackPanel Margin="5"><TextBlock Text="{Binding PageNumber, StringFormat='Pagina {0}'}" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource AccentBrush}"/><TextBlock Text="{Binding Snippet}" FontSize="11" Foreground="{StaticResource InkBrush}" TextWrapping="Wrap"/></StackPanel></DataTemplate></ListBox.ItemTemplate></ListBox>
+                        <TextBlock Text="Nessun risultato da mostrare." Visibility="{Binding Workspace.NoPdfSearchHits, Converter={StaticResource BooleanToVisibilityConverter}}" FontSize="10" Foreground="{StaticResource MutedBrush}" Margin="2,7,2,0"/>
                     </StackPanel>
                 </Border>
                 <Border Style="{StaticResource CardBorderStyle}" Margin="0,12,0,0">
@@ -995,6 +1001,7 @@
                 <ListBox ItemsSource="{Binding Workspace.BackupItems}" SelectedItem="{Binding Workspace.SelectedBackup}" MinHeight="90" MaxHeight="220">
                     <ListBox.ItemTemplate><DataTemplate><StackPanel Margin="5"><TextBlock Text="{Binding FilePath}" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource InkBrush}" TextWrapping="Wrap"/><TextBlock Text="{Binding CreatedAt, StringFormat={}{0:dd/MM/yyyy HH:mm}}" FontSize="10" Foreground="{StaticResource MutedBrush}"/><TextBlock Text="{Binding SizeBytes, StringFormat={}{0:N0} byte}" FontSize="9" Foreground="{StaticResource MutedBrush}"/><TextBlock Text="{Binding Sha256, StringFormat='SHA-256 · {0}'}" FontSize="8" Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap"/><TextBlock Text="{Binding IntegrityVerified, StringFormat=Integrità verificata: {0}}" FontSize="9" Foreground="{StaticResource MutedBrush}"/></StackPanel></DataTemplate></ListBox.ItemTemplate>
                 </ListBox>
+                <TextBlock Text="Non hai ancora creato backup locali." Visibility="{Binding Workspace.NoBackups, Converter={StaticResource BooleanToVisibilityConverter}}" FontSize="10" Foreground="{StaticResource MutedBrush}" Margin="2,7,2,0"/>
                 <WrapPanel Margin="0,9,0,0"><Button Content="Verifica backup selezionato" Command="{Binding Workspace.VerifyBackupCommand}" Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,8,0"/><Button Content="Ripristino non disponibile" IsEnabled="False" Style="{StaticResource QuietButtonStyle}" ToolTip="In attesa che il contratto tecnico restituisca il percorso del backup di sicurezza"/></WrapPanel>
                 <TextBlock Text="{Binding Workspace.BackupStatus}" FontSize="11" Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap" Margin="0,12,0,0"/><TextBlock Text="{Binding Workspace.BackupManifestSummary}" FontSize="9" Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap" Margin="0,7,0,0"/>
                 <TextBlock Text="Il ripristino resta disattivato finché il servizio non espone alla UI il percorso effettivo del backup di sicurezza creato prima della sostituzione del database." FontSize="10" Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap" Margin="0,7,0,0"/>
