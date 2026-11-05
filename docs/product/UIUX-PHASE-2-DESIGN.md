@@ -20,7 +20,7 @@ Header con titolo del periodo, navigazione precedente/successivo e azione Oggi. 
 Griglia 7 colonne con intestazioni lun-dom, celle con numero del giorno e indicatori evento. Il giorno selezionato ha superficie blu tenue; oggi ha un anello/indicatore distinto. Il pannello laterale o inferiore mostra gli eventi del giorno selezionato, ordinati per ora.
 
 ### Settimana e giorno
-Settimana con colonne per giorno e asse orario; giorno con singola colonna e scala oraria. Gli eventi che attraversano la mezzanotte devono essere rappresentati in entrambe le date senza duplicare il record. Eventi all-day in fascia dedicata.
+La prima integrazione usa un’agenda settimanale a sette colonne e un’agenda giornaliera a colonna singola, con orari, titoli e provenienza. Non è ancora una griglia temporale verticale: resta una possibile rifinitura. Gli eventi che attraversano la mezzanotte sono filtrati per intervallo di ciascun giorno senza duplicare il record. Gli eventi all-day sono etichettati separatamente.
 
 ### Evento
 Editor in dialog/pannello con titolo, categoria, data, ora inizio/fine, tutto il giorno. Per eventi importati/Planner mostrare origine e stato di verifica in sola lettura. Le azioni Modifica/Elimina devono rispettare i comandi reali del ViewModel. Planner/Indicative usa badge neutro “Pianificato”, Official “Verificato”, Unverified “Da verificare”; non codificare lo stato solo con il colore.
@@ -45,7 +45,7 @@ Errori raggruppati per materia/argomento con causa, stato di revisione e prossim
 Elenco documenti con nome, materia, data importazione, pagine e stato estrazione. Duplicato, OCR richiesto, importazione fallita e documento pronto hanno stati distinti e descrittivi.
 
 ### Lettore e ricerca
-Vista a due pannelli: documento/pagine e risultati di ricerca. Ogni risultato mostra numero pagina e snippet. Citazioni riportano pagina e testo verificato; azione “Apri pagina” porta al punto di origine.
+Vista a due pannelli: libreria documenti con anteprima del testo estratto pagina per pagina e risultati di ricerca. Ogni risultato mostra numero pagina e snippet. La UI non etichetta ancora le risposte AI come citazioni verificate; il provider predefinito resta non configurato.
 
 ### Assistente
 Input domanda/riassunto con selezione documento. Stati obbligatori:
@@ -57,7 +57,7 @@ Mostrare consenso e destinazione del trattamento prima di inviare contenuti a un
 
 ## Progressi
 
-Dashboard con selettore periodo e card: tempo focus, sessioni completate, task completati, flashcard ripassate e goal settimanale. Grafici semplici e leggibili: minuti per giorno e distribuzione per materia. Ogni grafico riporta periodo e unità. Le metriche derivano esclusivamente da `ProgressService`.
+Dashboard sul periodo settimanale corrente con card di tempo focus, sessioni completate, task completati, flashcard dovute, errori aperti e streak. Il goal settimanale e i minuti di focus per materia sono resi con barre di avanzamento. Le metriche derivano esclusivamente da `ProgressService`; non è ancora presente un selettore periodo o una serie giornaliera.
 
 Se il campione è insufficiente, sostituire il numero con “Dati insufficienti” e indicare quale attività serve registrare. Pattern errori solo se supera il minimo campione; weekly review presenta osservazioni e azioni come suggerimenti, non diagnosi.
 
