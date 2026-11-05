@@ -730,8 +730,8 @@
                     <Grid Margin="0,8,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="76"/><ColumnDefinition Width="82"/></Grid.ColumnDefinitions>
                         <ComboBox ItemsSource="{Binding Workspace.Courses}" DisplayMemberPath="Name" SelectedItem="{Binding Workspace.SelectedCourse}" ToolTip="Materia"/>
                         <TextBox Grid.Column="1" Text="{Binding Workspace.TaskMinutesInput, UpdateSourceTrigger=PropertyChanged}" Margin="7,0,0,0" ToolTip="Minuti stimati"/>
-                        <ComboBox Grid.Column="2" SelectedValuePath="Tag" SelectedValue="{Binding Workspace.TaskPriorityInput}" Margin="7,0,0,0" ToolTip="Priorità">
-                            <ComboBoxItem Content="P1" Tag="5"/><ComboBoxItem Content="P2" Tag="4"/><ComboBoxItem Content="P3" Tag="3"/><ComboBoxItem Content="P4" Tag="2"/><ComboBoxItem Content="P5" Tag="1"/>
+                        <ComboBox Grid.Column="2" ItemsSource="{Binding Workspace.TaskPriorityOptions}" SelectedItem="{Binding Workspace.TaskPriorityInput}" Margin="7,0,0,0" ToolTip="Priorità">
+                            <ComboBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding StringFormat='P{0}'}"/></DataTemplate></ComboBox.ItemTemplate>
                         </ComboBox>
                     </Grid>
                     <DatePicker SelectedDate="{Binding Workspace.TaskDueDateInput}" ToolTip="Scadenza (facoltativa)" Margin="0,8,0,0"/>
