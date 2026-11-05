@@ -19,6 +19,14 @@ public partial class MainWindow : Window
         Closed += (_, _) => _focusRefreshTimer.Stop();
     }
 
+    private async void ConnectMoodle_Click(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is not MainViewModel viewModel) return;
+        await viewModel.ConnectMoodleAsync();
+        if (viewModel.IsMoodleConnected)
+            MoodleTokenBox.Clear();
+    }
+
     private void MoodleTokenBox_PasswordChanged(object sender, RoutedEventArgs e)
     {
         if (DataContext is MainViewModel viewModel && sender is PasswordBox passwordBox)
