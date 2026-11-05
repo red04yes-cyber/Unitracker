@@ -3,7 +3,7 @@ on:
   push:
     branches: [ main, develop, 'work/**' ]
   pull_request:
-    branches: [ main, work/** ]
+    branches: [ main, develop, 'work/**' ]
   workflow_dispatch:
 permissions:
   contents: read
