@@ -618,7 +618,7 @@
                                     <ItemsControl.ItemTemplate><DataTemplate>
                                         <Grid Margin="0,0,0,8">
                                             <Grid.ColumnDefinitions><ColumnDefinition Width="90"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-                                            <TextBlock Text="{Binding StartsAt, StringFormat='HH:mm'}" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource AccentBrush}"/>
+                                            <TextBlock x:Name="EventTime" Text="{Binding StartsAt, StringFormat='HH:mm'}" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource AccentBrush}"/>
                                             <TextBlock Grid.Column="1" Text="{Binding Title}" FontSize="12" Foreground="{StaticResource InkBrush}" TextWrapping="Wrap"/>
                                         </Grid>
                                         <DataTemplate.Triggers><DataTrigger Binding="{Binding IsAllDay}" Value="True"><Setter TargetName="EventTime" Property="Text" Value="Tutto il giorno"/></DataTrigger></DataTemplate.Triggers>
