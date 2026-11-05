@@ -7,6 +7,7 @@ using UniToStudyHub.Domain.Enums;
 using UniToStudyHub.Models;
 using UniToStudyHub.Presentation.Commands;
 using UniToStudyHub.Services;
+using UniToStudyHub.Security;
 
 namespace UniToStudyHub.Presentation.ViewModels;
 
@@ -425,6 +426,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
             // importing courses and calendar events.
             var contentsByCourse = new Dictionary<int, IReadOnlyList<MoodleCourseSection>>();
             var discussionsByForum = new Dictionary<int, IReadOnlyList<MoodleForumDiscussion>>();
+            var forumCourseById = new Dictionary<int, int>();
             var optionalErrors = 0;
             foreach (var remote in remoteCourses)
             {
@@ -435,6 +437,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
                     foreach (var forum in sections.SelectMany(x => x.modules).Where(x =>
                                  string.Equals(x.modname, "forum", StringComparison.OrdinalIgnoreCase) && x.instance > 0))
                     {
+                        forumCourseById[forum.instance] = remote.id;
                         if (discussionsByForum.ContainsKey(forum.instance)) continue;
                         discussionsByForum[forum.instance] =
                             await _moodle.GetForumDiscussionsAsync(MoodleUrlInput, forum.instance);
@@ -544,7 +547,9 @@ public sealed class MainViewModel : INotifyPropertyChanged
                     Announcements.Add(update);
                     addedUpdates++;
                 }
-                update.CourseName = Courses.FirstOrDefault(c => c.MoodleCourseId == discussion.forumid)?.Name ?? update.CourseName;
+                update.CourseName = forumCourseById.TryGetValue(pair.Key, out var moodleCourseId)
+                    ? Courses.FirstOrDefault(c => c.MoodleCourseId == moodleCourseId)?.Name ?? update.CourseName
+                    : update.CourseName;
                 update.Title = string.IsNullOrWhiteSpace(discussion.firstpost?.subject) ? discussion.name : discussion.firstpost.subject;
                 update.Summary = "Discussione Moodle · aggiornamento " +
                                  DateTimeOffset.FromUnixTimeSeconds(Math.Max(0, discussion.timemodified)).ToLocalTime().ToString("g", CultureInfo.GetCultureInfo("it-IT"));
