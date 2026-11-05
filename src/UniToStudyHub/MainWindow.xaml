@@ -748,6 +748,31 @@
                 </StackPanel>
             </Border>
         </Grid>
+        <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,16">
+            <StackPanel>
+                <TextBlock Text="Planner di studio · anteprima" Style="{StaticResource SectionTitleStyle}"/>
+                <TextBlock Text="Inserisci le tue fasce giornaliere reali nel formato HH:mm-HH:mm; più fasce si separano con ;. Saranno ripetute per i giorni del periodo selezionato." FontSize="10" Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap" Margin="0,5,0,10"/>
+                <TextBox Text="{Binding Workspace.PlannerAvailabilityInput, UpdateSourceTrigger=PropertyChanged}" ToolTip="Per esempio 08:30-12:00;15:00-18:00" Margin="0,0,0,10"/>
+                <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                    <StackPanel><TextBlock Text="Dal" Style="{StaticResource KpiLabelStyle}"/><DatePicker SelectedDate="{Binding Workspace.PlannerFromInput}"/></StackPanel>
+                    <StackPanel Grid.Column="1" Margin="10,0,0,0"><TextBlock Text="Al" Style="{StaticResource KpiLabelStyle}"/><DatePicker SelectedDate="{Binding Workspace.PlannerToInput}"/></StackPanel>
+                </Grid>
+                <WrapPanel Margin="0,10,0,0">
+                    <Button Content="Genera anteprima" Command="{Binding Workspace.PreviewStudyPlanCommand}" Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,8,6"/>
+                    <Button Content="Applica al calendario" Command="{Binding Workspace.ApplyStudyPlanCommand}" IsEnabled="{Binding Workspace.HasPlanPreview}" Margin="0,0,8,6"/>
+                </WrapPanel>
+                <TextBlock Text="{Binding Workspace.PlannerStatus}" FontSize="11" Foreground="{StaticResource InkBrush}" TextWrapping="Wrap" Margin="0,4,0,0"/>
+                <TextBlock Text="{Binding Workspace.PlanPreviewSummary}" FontSize="10" Foreground="{StaticResource MutedBrush}" Margin="0,7,0,0"/>
+                <TextBlock Text="Blocchi proposti" Style="{StaticResource KpiLabelStyle}" Margin="0,10,0,5"/>
+                <ListBox ItemsSource="{Binding Workspace.CurrentPlanPreview.Blocks}" MaxHeight="135">
+                    <ListBox.ItemTemplate><DataTemplate><StackPanel Margin="4"><TextBlock Text="{Binding Title}" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource InkBrush}"/><TextBlock Text="{Binding StartsAt, StringFormat={}{0:ddd dd/MM HH:mm}} · {Binding EndsAt, StringFormat={}{0:HH:mm}}" FontSize="9" Foreground="{StaticResource MutedBrush}"/></StackPanel></DataTemplate></ListBox.ItemTemplate>
+                </ListBox>
+                <TextBlock Text="Task non pianificati" Style="{StaticResource KpiLabelStyle}" Margin="0,10,0,5"/>
+                <ItemsControl ItemsSource="{Binding Workspace.CurrentPlanPreview.UnscheduledTasks}">
+                    <ItemsControl.ItemTemplate><DataTemplate><StackPanel Margin="3"><TextBlock Text="{Binding Title}" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource InkBrush}"/><TextBlock Text="{Binding Reason}" FontSize="9" Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap"/></StackPanel></DataTemplate></ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+        </Border>
         <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
             <Border Grid.Column="0" Style="{StaticResource CardBorderStyle}" Margin="0,0,12,0">
                 <StackPanel>
@@ -892,6 +917,44 @@
                 </Border>
             </StackPanel>
         </Grid>
+        <Border Style="{StaticResource CardBorderStyle}" Margin="0,14,0,0">
+            <StackPanel>
+                <TextBlock Text="Syllabus e preparazione all'esame" Style="{StaticResource SectionTitleStyle}"/>
+                <TextBlock Text="Scegli una materia: il syllabus e la banca domande sono salvati localmente. La percentuale di preparazione è una stima trasparente basata solo sui dati inseriti." FontSize="10" Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap" Margin="0,5,0,10"/>
+                <ComboBox ItemsSource="{Binding Workspace.Courses}" DisplayMemberPath="Name" SelectedItem="{Binding Workspace.SelectedCourse}" ToolTip="Materia" Margin="0,0,0,10"/>
+                <TextBlock Text="{Binding Workspace.ReadinessStatus}" FontSize="11" Foreground="{StaticResource InkBrush}" TextWrapping="Wrap" Margin="0,0,0,12"/>
+                <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                    <Border Grid.Column="0" Background="{StaticResource SubtleBrush}" CornerRadius="8" Padding="12" Margin="0,0,8,0">
+                        <StackPanel>
+                            <TextBlock Text="Programma / syllabus" Style="{StaticResource SectionTitleStyle}"/>
+                            <TextBox Text="{Binding Workspace.SyllabusTitleInput, UpdateSourceTrigger=PropertyChanged}" ToolTip="Argomento" Margin="0,9,0,0"/>
+                            <TextBox Text="{Binding Workspace.SyllabusMinutesInput, UpdateSourceTrigger=PropertyChanged}" ToolTip="Minuti stimati" Margin="0,6,0,0"/>
+                            <Button Content="Aggiungi argomento" Command="{Binding Workspace.AddSyllabusTopicCommand}" Margin="0,8,0,8"/>
+                            <ListBox ItemsSource="{Binding Workspace.SyllabusTopics}" SelectedItem="{Binding Workspace.SelectedSyllabusTopic}" MaxHeight="180">
+                                <ListBox.ItemTemplate><DataTemplate><StackPanel Margin="4"><TextBlock Text="{Binding Title}" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource InkBrush}"/><TextBlock Text="{Binding Status}" FontSize="9" Foreground="{StaticResource MutedBrush}"/><TextBlock Text="{Binding EstimatedMinutes, StringFormat={}{0} min stimati}" FontSize="9" Foreground="{StaticResource MutedBrush}"/></StackPanel></DataTemplate></ListBox.ItemTemplate>
+                            </ListBox>
+                            <Button Content="Segna completato" Command="{Binding Workspace.CompleteSyllabusTopicCommand}" IsEnabled="{Binding Workspace.SelectedSyllabusTopic, Converter={StaticResource NullToBooleanConverter}}" Style="{StaticResource SecondaryButtonStyle}" Margin="0,8,0,0"/>
+                        </StackPanel>
+                    </Border>
+                    <Border Grid.Column="1" Background="{StaticResource SubtleBrush}" CornerRadius="8" Padding="12" Margin="8,0,0,0">
+                        <StackPanel>
+                            <TextBlock Text="Banca domande / quiz" Style="{StaticResource SectionTitleStyle}"/>
+                            <TextBox Text="{Binding Workspace.QuestionTextInput, UpdateSourceTrigger=PropertyChanged}" ToolTip="Domanda" Margin="0,9,0,0"/>
+                            <TextBox Text="{Binding Workspace.QuestionOptionsInput, UpdateSourceTrigger=PropertyChanged}" ToolTip="Opzioni chiuse separate da ; (vuoto = risposta aperta)" Margin="0,6,0,0"/>
+                            <TextBox Text="{Binding Workspace.QuestionCorrectAnswerInput, UpdateSourceTrigger=PropertyChanged}" ToolTip="Risposta corretta (per scelta chiusa)" Margin="0,6,0,0"/>
+                            <Button Content="Aggiungi domanda" Command="{Binding Workspace.AddQuestionCommand}" Margin="0,8,0,8"/>
+                            <ListBox ItemsSource="{Binding Workspace.QuestionBankItems}" SelectedItem="{Binding Workspace.SelectedQuestion}" MaxHeight="110">
+                                <ListBox.ItemTemplate><DataTemplate><StackPanel Margin="4"><TextBlock Text="{Binding Text}" FontSize="10" Foreground="{StaticResource InkBrush}" TextWrapping="Wrap"/><TextBlock Text="{Binding Type}" FontSize="9" Foreground="{StaticResource MutedBrush}"/></StackPanel></DataTemplate></ListBox.ItemTemplate>
+                            </ListBox>
+                            <TextBox Text="{Binding Workspace.QuestionAnswerInput, UpdateSourceTrigger=PropertyChanged}" ToolTip="La tua risposta" Margin="0,8,0,0"/>
+                            <Button Content="Verifica / valuta" Command="{Binding Workspace.EvaluateQuestionCommand}" Margin="0,7,0,0"/>
+                            <TextBlock Text="{Binding Workspace.QuestionStatus}" FontSize="10" Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap" Margin="0,8,0,0"/>
+                        </StackPanel>
+                    </Border>
+                </Grid>
+                <TextBlock Text="{Binding Workspace.WorkspaceStatus}" FontSize="10" Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap" Margin="0,10,0,0"/>
+            </StackPanel>
+        </Border>
     </StackPanel>
 </ScrollViewer>
         </TabItem>
