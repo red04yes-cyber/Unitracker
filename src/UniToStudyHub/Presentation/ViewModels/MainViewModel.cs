@@ -97,6 +97,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
         return true;
     }
     public string SelectedDayDisplay => SelectedCalendarDate.ToString("dddd d MMMM yyyy", CultureInfo.GetCultureInfo("it-IT"));
+    public bool NoSelectedDayEvents => SelectedDayEvents.Count == 0;
     public int CalendarGridColumns => CalendarViewMode == "Day" ? 1 : 7;
     public bool ShowCalendarWeekHeader => CalendarViewMode == "Month";
     public string CalendarAgendaTitle => CalendarViewMode == "Week" ? "Agenda settimanale" : "Agenda del giorno";
@@ -590,6 +591,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
         foreach (var item in CalendarService.GetEventsInRange(CalendarEvents, start, end).OrderBy(x => x.StartsAt))
             SelectedDayEvents.Add(item);
         OnPropertyChanged(nameof(SelectedDayDisplay));
+        OnPropertyChanged(nameof(NoSelectedDayEvents));
     }
 
     private static DateTime GetWeekStart(DateTime date) =>
