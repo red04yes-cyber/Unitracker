@@ -243,6 +243,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
         _calculator = calculator;
         _career = career;
         Workspace = workspace;
+        Workspace.DataReloaded += OnWorkspaceDataReloaded;
         AddCourseCommand = new AsyncRelayCommand(AddCourseAsync);
         AddGradeCommand = new AsyncRelayCommand(AddGradeAsync, () => SelectedGradeCourse is not null);
         PlanExamsCommand = new AsyncRelayCommand(PlanExamsAsync);
@@ -678,6 +679,18 @@ public sealed class MainViewModel : INotifyPropertyChanged
 
         OnPropertyChanged(nameof(NoVisibleCourses));
         OnPropertyChanged(nameof(CourseEmptyMessage));
+    }
+
+    private void OnWorkspaceDataReloaded(StudyData data)
+    {
+        _data = data;
+        RefreshCollections();
+        RefreshVisibleCourses();
+        RefreshCourseSummary();
+        RefreshCareerSummary();
+        RefreshExamSummary();
+        RefreshCalendar();
+        OnPropertyChanged(nameof(AcquiredCreditsValue));
     }
 
     private async Task SaveAsync(CancellationToken cancellationToken = default) =>
