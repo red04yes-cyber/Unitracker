@@ -1062,11 +1062,16 @@
                     <PasswordBox x:Name="MoodleTokenBox" MaxWidth="600" HorizontalAlignment="Stretch" Padding="11,9" PasswordChanged="MoodleTokenBox_PasswordChanged"/>
                     <WrapPanel Margin="0,16,0,0">
                         <Button Content="Verifica e salva token" Command="{Binding ConnectMoodleCommand}" Margin="0,0,8,0"/>
-                        <Button Content="Sincronizza corsi" Style="{StaticResource SecondaryButtonStyle}" Command="{Binding SyncMoodleCommand}"/>
+                        <Button Content="Sincronizza Moodle" Style="{StaticResource SecondaryButtonStyle}" Command="{Binding SyncMoodleCommand}" Margin="0,0,8,0"/>
+                        <Button Content="Disconnetti" Style="{StaticResource QuietButtonStyle}" Click="DisconnectMoodle_Click" IsEnabled="{Binding IsMoodleConnected}"/>
                     </WrapPanel>
                     <Border Background="{StaticResource SubtleBrush}" CornerRadius="8" Padding="12" Margin="0,16,0,0">
                         <TextBlock Text="{Binding MoodleStatus}" FontSize="12" Foreground="{StaticResource InkBrush}" TextWrapping="Wrap"/>
                     </Border>
+                    <TextBlock Text="Materiali e discussioni importati" Style="{StaticResource KpiLabelStyle}" Margin="0,14,0,6"/>
+                    <ItemsControl ItemsSource="{Binding Announcements}">
+                        <ItemsControl.ItemTemplate><DataTemplate><Border BorderBrush="{StaticResource SubtleBrush}" BorderThickness="0,0,0,1" Padding="7"><StackPanel><TextBlock Text="{Binding Title}" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource InkBrush}" TextWrapping="Wrap"/><TextBlock Text="{Binding CourseName}" FontSize="9" Foreground="{StaticResource AccentBrush}"/><TextBlock Text="{Binding Summary}" FontSize="10" Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap"/></StackPanel></Border></DataTemplate></ItemsControl.ItemTemplate>
+                    </ItemsControl>
                 </StackPanel>
             </StackPanel>
         </Border>
