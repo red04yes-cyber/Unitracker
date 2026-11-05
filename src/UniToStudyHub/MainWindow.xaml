@@ -1087,7 +1087,7 @@
                     <TextBlock Text="Token Web Services" Style="{StaticResource KpiLabelStyle}" Margin="0,14,0,5"/>
                     <PasswordBox x:Name="MoodleTokenBox" MaxWidth="600" HorizontalAlignment="Stretch" Padding="11,9" PasswordChanged="MoodleTokenBox_PasswordChanged"/>
                     <WrapPanel Margin="0,16,0,0">
-                        <Button Content="Verifica e salva token" Command="{Binding ConnectMoodleCommand}" Margin="0,0,8,0"/>
+                        <Button Content="Verifica e salva token" Click="ConnectMoodle_Click" Margin="0,0,8,0"/>
                         <Button Content="Sincronizza Moodle" Style="{StaticResource SecondaryButtonStyle}" Command="{Binding SyncMoodleCommand}" Margin="0,0,8,0"/>
                         <Button Content="Disconnetti" Style="{StaticResource QuietButtonStyle}" Click="DisconnectMoodle_Click" IsEnabled="{Binding IsMoodleConnected}"/>
                     </WrapPanel>
