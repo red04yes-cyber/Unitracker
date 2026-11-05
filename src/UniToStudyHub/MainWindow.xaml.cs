@@ -49,6 +49,38 @@ public partial class MainWindow : Window
             await viewModel.Workspace.ImportPdfAsync(dialog.FileName);
     }
 
+    private void DeleteCalendarEvent_Click(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is not MainViewModel viewModel || viewModel.SelectedCalendarEvent is null)
+            return;
+
+        var title = viewModel.SelectedCalendarEvent.Title;
+        var result = MessageBox.Show(
+            $"Vuoi eliminare l'evento \"{title}\"?",
+            "Conferma eliminazione",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Warning,
+            MessageBoxResult.No);
+        if (result == MessageBoxResult.Yes)
+            viewModel.DeleteCalendarEventCommand.Execute(null);
+    }
+
+    private void RemoveStudyTask_Click(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is not MainViewModel viewModel || viewModel.Workspace.SelectedTask is null)
+            return;
+
+        var title = viewModel.Workspace.SelectedTask.Title;
+        var result = MessageBox.Show(
+            $"Vuoi rimuovere l'attività \"{title}\"?",
+            "Conferma rimozione",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Warning,
+            MessageBoxResult.No);
+        if (result == MessageBoxResult.Yes)
+            viewModel.Workspace.RemoveTaskCommand.Execute(null);
+    }
+
     private void NavigateToSubjects_Click(object sender, RoutedEventArgs e)
     {
         MainTabs.SelectedIndex = 1;
