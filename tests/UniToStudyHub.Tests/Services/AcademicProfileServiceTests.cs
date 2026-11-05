@@ -93,6 +93,26 @@ public sealed class AcademicProfileServiceTests
     }
 
     [Fact]
+    public void CourseWithLegacyGradesOrExamsRequiresExplicitDeletionConfirmation()
+    {
+        var data = Data();
+        data.Grades.Add(new Grade { Id = "legacy-grade", CourseId = "course-1", CourseName = "Analisi", Cfu = 6, Value = 24 });
+        data.Exams.Add(new Exam { Id = "legacy-exam", CourseId = "course-1", CourseName = "Analisi", Name = "Orale" });
+        var service = new AcademicProfileService();
+
+        Assert.Throws<InvalidOperationException>(() => service.RemoveCourse(data, "course-1"));
+
+        Assert.Contains(data.Courses, x => x.Id == "course-1");
+        Assert.Contains(data.Grades, x => x.Id == "legacy-grade");
+        Assert.Contains(data.Exams, x => x.Id == "legacy-exam");
+
+        service.RemoveCourse(data, "course-1", removeCareerHistory: true);
+        Assert.DoesNotContain(data.Courses, x => x.Id == "course-1");
+        Assert.DoesNotContain(data.Grades, x => x.Id == "legacy-grade");
+        Assert.DoesNotContain(data.Exams, x => x.Id == "legacy-exam");
+    }
+
+    [Fact]
     public void CourseWithCareerHistoryRequiresExplicitDeletionConfirmation()
     {
         var data = Data();
