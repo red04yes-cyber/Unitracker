@@ -34,7 +34,8 @@
 
         <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
 
-        <Style TargetType="{x:Type Button}">\n            <Setter Property="MinWidth" Value="42"/>
+        <Style TargetType="{x:Type Button}">
+            <Setter Property="MinWidth" Value="42"/>
             <Setter Property="Padding" Value="16,10"/>
             <Setter Property="Margin" Value="0"/>
             <Setter Property="MinHeight" Value="40"/>
