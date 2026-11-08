@@ -97,6 +97,7 @@ public sealed class PrivacyService
     private readonly BackupService? _backups;
     private readonly string? _dataDirectory;
     private readonly string _moodleFilesDirectory;
+    private readonly AiProviderPreferencesStore? _aiPreferences;
 
     public PrivacyService(
         IStudyDataStore store,
@@ -104,7 +105,8 @@ public sealed class PrivacyService
         AiCredentialStore? aiKeys = null,
         BackupService? backups = null,
         string? dataDirectory = null,
-        string? moodleFilesDirectory = null)
+        string? moodleFilesDirectory = null,
+        AiProviderPreferencesStore? aiPreferences = null)
     {
         _store = store ?? throw new ArgumentNullException(nameof(store));
         _tokens = tokens;
@@ -113,6 +115,7 @@ public sealed class PrivacyService
         _dataDirectory = string.IsNullOrWhiteSpace(dataDirectory) ? null : Path.GetFullPath(dataDirectory);
         _moodleFilesDirectory = Path.GetFullPath(moodleFilesDirectory ??
             Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "UniToStudyHub", "Moodle"));
+        _aiPreferences = aiPreferences;
     }
 
     public async Task<PrivacyInventory> DescribeAsync(CancellationToken cancellationToken = default)
@@ -170,6 +173,8 @@ public sealed class PrivacyService
     {
         var data = await _store.LoadAsync(cancellationToken).ConfigureAwait(false);
         var records = CountRecords(data);
+        if (_aiPreferences?.Load() is { } preferences)
+            _aiPreferences.Save(preferences with { ConsentGranted = false });
 
         // Replaces the dataset in one validated transaction instead of deleting
         // rows ad hoc, so a failure leaves the previous data intact.
