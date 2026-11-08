@@ -12,6 +12,7 @@ public partial class MainWindow : Window
     public MainWindow(MainViewModel viewModel)
     {
         InitializeComponent();
+        ThemeToggleButton.Content = ThemeManager.IsDarkMode ? "Modalità chiara" : "Modalità scura";
         DataContext = viewModel;
         _focusRefreshTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
         _focusRefreshTimer.Tick += (_, _) => viewModel.Workspace.RefreshFocusSnapshot();
