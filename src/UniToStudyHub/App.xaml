@@ -32,6 +32,29 @@
         <SolidColorBrush x:Key="GlassBrush" Color="#D91A2A40"/>
         <SolidColorBrush x:Key="GlassBorderBrush" Color="#554D6680"/>
 
+        <Pen x:Key="UnitrackerIconUStroke" Brush="#16BDE5" Thickness="5"
+             StartLineCap="Round" EndLineCap="Round" LineJoin="Round"/>
+        <Pen x:Key="UnitrackerIconTasselStroke" Brush="#D36A61" Thickness="1.8"
+             StartLineCap="Round" EndLineCap="Round"/>
+        <DrawingImage x:Key="UnitrackerAppIcon">
+            <DrawingImage.Drawing>
+                <DrawingGroup>
+                    <GeometryDrawing Brush="#0D1726"
+                        Geometry="M 14,1 H 50 Q 63,1 63,14 V 50 Q 63,63 50,63 H 14 Q 1,63 1,50 V 14 Q 1,1 14,1 Z"/>
+                    <GeometryDrawing Pen="#554D6680" Geometry="M 14,2 H 50 Q 62,2 62,14 V 50 Q 62,62 50,62 H 14 Q 2,62 2,50 V 14 Q 2,2 14,2 Z"/>
+                    <GeometryDrawing Geometry="M 17,17 L 17,36 C 17,47 47,47 47,36 L 47,17"
+                                    Pen="{StaticResource UnitrackerIconUStroke}"/>
+                    <GeometryDrawing Brush="#3978F6" Geometry="M 26,36 H 29 V 42 H 26 Z"/>
+                    <GeometryDrawing Brush="#3978F6" Geometry="M 32,31 H 35 V 42 H 32 Z"/>
+                    <GeometryDrawing Brush="#3978F6" Geometry="M 38,26 H 41 V 42 H 38 Z"/>
+                    <GeometryDrawing Brush="#D36A61" Geometry="M 7,13 L 20,7 L 34,13 L 20,19 Z"/>
+                    <GeometryDrawing Brush="#A94740" Geometry="M 11,15 L 20,19 L 29,15 L 29,19 L 20,23 L 11,19 Z"/>
+                    <GeometryDrawing Geometry="M 31,14 L 33,26" Pen="{StaticResource UnitrackerIconTasselStroke}"/>
+                    <GeometryDrawing Brush="#D36A61" Geometry="M 32,25 C 30,27 30,29 32,30 C 34,29 34,27 32,25 Z"/>
+                </DrawingGroup>
+            </DrawingImage.Drawing>
+        </DrawingImage>
+
         <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
 
         <Style TargetType="{x:Type Button}">
