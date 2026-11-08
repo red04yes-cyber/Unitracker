@@ -59,6 +59,7 @@ public static class CompositionRoot
         services.AddSingleton<PdfIntelligenceService>();
         services.AddSingleton<AiSettingsService>();
         services.AddSingleton(_ => new AiCredentialStore(dataDirectory));
+        services.AddSingleton(_ => new AiProviderPreferencesStore(dataDirectory));
         services.AddSingleton<AiProviderFactory>();
         services.AddSingleton(sp => sp.GetRequiredService<AiProviderFactory>().CreateFromEnvironment());
         services.AddSingleton<IAiProvider>(sp => sp.GetRequiredService<AiProviderRuntime>().Provider);
