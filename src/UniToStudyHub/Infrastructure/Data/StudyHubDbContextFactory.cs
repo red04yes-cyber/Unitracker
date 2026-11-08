@@ -103,7 +103,7 @@ public static class StudyHubDatabase
 
     private static string ResolveKeyDirectory(string databasePath)
     {
-        var current = new DirectoryInfo(Path.GetDirectoryName(Path.GetFullPath(databasePath))!);
+        DirectoryInfo? current = new DirectoryInfo(Path.GetDirectoryName(Path.GetFullPath(databasePath))!);
         var first = current.FullName;
         while (current is not null)
         {
