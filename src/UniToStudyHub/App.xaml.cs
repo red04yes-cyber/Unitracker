@@ -74,13 +74,13 @@ public partial class App : System.Windows.Application
 
     private void ApplyCustomThemePalette(ApplicationTheme theme)
     {
-        if (theme == Wpf.Ui.Controls.ApplicationTheme.HighContrast)
+        if (theme == ApplicationTheme.HighContrast)
         {
             ApplyHighContrastPalette();
             return;
         }
 
-        ApplyPalette(theme == Wpf.Ui.Controls.ApplicationTheme.Dark ? DarkPalette : LightPalette);
+        ApplyPalette(theme == ApplicationTheme.Dark ? DarkPalette : LightPalette);
     }
 
     private void ApplyHighContrastPalette()
