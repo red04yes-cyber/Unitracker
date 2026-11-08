@@ -12,8 +12,10 @@ public partial class MainWindow : Window
     public MainWindow(MainViewModel viewModel)
     {
         InitializeComponent();
-        UpdateThemeToggleButtonContent();
         DataContext = viewModel;
+        MainTabs.SelectionChanged += MainTabs_SelectionChanged;
+        UpdateThemeToggleButtonContent();
+        UpdatePageHeader();
         _focusRefreshTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
         _focusRefreshTimer.Tick += (_, _) => viewModel.Workspace.RefreshFocusSnapshot();
         _focusRefreshTimer.Start();
@@ -36,9 +38,45 @@ public partial class MainWindow : Window
         if (MainTabs.Template.FindName("ThemeToggleButton", MainTabs) is Button themeButton)
         {
             themeButton.Content = ThemeManager.IsDarkMode
-                ? "Modalità chiara"
-                : "Modalità scura";
+                ? "☀ Modalità chiara"
+                : "☾ Modalità scura";
         }
+    }
+
+    private void MainTabs_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (!ReferenceEquals(e.OriginalSource, MainTabs))
+            return;
+
+        UpdatePageHeader();
+    }
+
+    private void UpdatePageHeader()
+    {
+        MainTabs.ApplyTemplate();
+        if (MainTabs.SelectedItem is not TabItem selected ||
+            selected.Header is not StackPanel header)
+            return;
+
+        var labelsContainer = header.Children.OfType<StackPanel>().FirstOrDefault();
+        var labels = labelsContainer?.Children.OfType<TextBlock>().ToArray();
+        if (labels is null || labels.Length < 2)
+            return;
+
+        if (MainTabs.Template.FindName("PageHeading", MainTabs) is TextBlock heading)
+            heading.Text = labels[0].Text;
+        if (MainTabs.Template.FindName("PageSubheading", MainTabs) is TextBlock subheading)
+            subheading.Text = labels[1].Text;
+    }
+
+    private void NavigateToCalendar_Click(object sender, RoutedEventArgs e)
+    {
+        MainTabs.SelectedIndex = 2;
+    }
+
+    private void NavigateToStudyLab_Click(object sender, RoutedEventArgs e)
+    {
+        MainTabs.SelectedIndex = 3;
     }
 
     private async void ConnectMoodle_Click(object sender, RoutedEventArgs e)
