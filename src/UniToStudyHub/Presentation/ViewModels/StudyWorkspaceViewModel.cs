@@ -38,6 +38,9 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
     private readonly HashSet<string> _verifiedBackups = new(StringComparer.OrdinalIgnoreCase);
     private StudyData _data = new();
     private Course? _selectedCourse;
+    private Course? _selectedFocusCourse;
+    private Course? _selectedTaskCourse;
+    private string _focusPresetInput = "25 min";
     private StudyTaskData? _selectedTask;
     private FlashcardData? _selectedDueFlashcard;
     private ErrorJournalEntryData? _selectedErrorEntry;
@@ -136,6 +139,19 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
             RefreshReadiness();
             AddSyllabusTopicCommand?.NotifyCanExecuteChanged();
             AddQuestionCommand?.NotifyCanExecuteChanged();
+        }
+    }
+    public Course? SelectedFocusCourse { get => _selectedFocusCourse; set => Set(ref _selectedFocusCourse, value); }
+    public Course? SelectedTaskCourse { get => _selectedTaskCourse; set => Set(ref _selectedTaskCourse, value); }
+    public IReadOnlyList<string> FocusPresetOptions { get; } = new[] { "25 min", "50 min", "90 min" };
+    public string FocusPresetInput
+    {
+        get => _focusPresetInput;
+        set
+        {
+            Set(ref _focusPresetInput, value);
+            var minutes = value switch { "25 min" => 25, "50 min" => 50, "90 min" => 90, _ => 0 };
+            if (minutes > 0) FocusMinutesInput = minutes.ToString(CultureInfo.InvariantCulture);
         }
     }
     public SyllabusTopicData? SelectedSyllabusTopic
@@ -391,6 +407,8 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
     public void Initialize(StudyData data)
     {
         _data = data ?? throw new ArgumentNullException(nameof(data));
+        if (SelectedFocusCourse is null || !_data.Courses.Contains(SelectedFocusCourse)) SelectedFocusCourse = _data.Courses.FirstOrDefault();
+        if (SelectedTaskCourse is null || !_data.Courses.Contains(SelectedTaskCourse)) SelectedTaskCourse = _data.Courses.FirstOrDefault();
         LoadAcademicProfile();
         RefreshCollections();
         RefreshFocusSnapshot();
@@ -508,7 +526,7 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
         }
         try
         {
-            _focus.Start(_data, SelectedCourse?.Id, FocusTopicInput, minutes);
+            _focus.Start(_data, SelectedFocusCourse?.Id, FocusTopicInput, minutes);
             await SaveAsync();
             FocusTopicInput = string.Empty;
             RefreshFocusSnapshot();
@@ -554,7 +572,7 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
                 EstimatedMinutes = minutes,
                 DueAt = TaskDueDateInput is DateTime dueDate ? new DateTimeOffset(dueDate, TimeZoneInfo.Local.GetUtcOffset(dueDate)) : null,
                 Priority = TaskPriorityInput,
-                CourseId = SelectedCourse?.Id ?? string.Empty
+                CourseId = SelectedTaskCourse?.Id ?? string.Empty
             });
             await SaveAsync();
             TaskTitleInput = string.Empty;
