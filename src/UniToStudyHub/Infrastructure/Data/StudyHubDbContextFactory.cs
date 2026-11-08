@@ -183,14 +183,26 @@ public static class StudyHubDatabase
             .UseSqlite(CreateConnectionString(databasePath ?? GetDatabasePath()))
             .Options;
 
-    public static DatabaseProtectionStatus DescribeProtection() =>
-        new(
-            EncryptedAtRest: OperatingSystem.IsWindows(),
-            PerUserAcl: OperatingSystem.IsWindows(),
-            Algorithm: OperatingSystem.IsWindows() ? "SQLCipher v4 · AES-256-CBC + HMAC-SHA512 · chiave DPAPI" : "non disponibile",
-            Recommendation: OperatingSystem.IsWindows()
-                ? "Database cifrato con chiave casuale protetta da DPAPI per l'account Windows corrente. Conserva una copia di sicurezza cifrata: la chiave DPAPI non è trasferibile a un altro account o PC."
-                : "La cifratura del database richiede Windows DPAPI.");
+    public static DatabaseProtectionStatus DescribeProtection()
+    {
+        var path = GetDatabasePath();
+        var encrypted = OperatingSystem.IsWindows() && File.Exists(path) && !IsPlaintextSqlite(path);
+        var acl = encrypted && LocalFileSecurity.TryRestrictFile(path);
+        return new DatabaseProtectionStatus(
+            EncryptedAtRest: encrypted,
+            PerUserAcl: acl,
+            Algorithm: encrypted ? "SQLCipher v4 · AES-256-CBC + HMAC-SHA512 · chiave DPAPI" : "non verificato",
+            Recommendation: encrypted
+                ? "Database cifrato con chiave casuale protetta da DPAPI per l'account Windows corrente. I backup con password sono portabili; conserva la password."
+                : "Il database non risulta ancora verificato come cifrato. Avvia l'app su Windows per completare la protezione.");
+    }
+
+    private static bool IsPlaintextSqlite(string path)
+    {
+        Span<byte> header = stackalloc byte[16];
+        using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+        return stream.Read(header) == 16 && header.SequenceEqual("SQLite format 3\\0"u8);
+    }
 
     /// <summary>
     /// Renames migration-history rows created by the preliminary 12-digit
