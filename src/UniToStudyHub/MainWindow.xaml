@@ -1170,6 +1170,42 @@
                 <TextBlock Text="Prima di ripristinare, chiudi le altre istanze dell'app. Il sistema crea una copia di sicurezza del database corrente, verifica la copia selezionata e poi ricarica i dati." FontSize="10" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,7,0,0"/>
             </StackPanel>
         </Border>
+        <Border Style="{StaticResource CardBorderStyle}" MaxWidth="860" HorizontalAlignment="Left" Margin="0,14,0,0">
+            <StackPanel>
+                <TextBlock Text="Portabilità dei dati" Style="{StaticResource SectionTitleStyle}"/>
+                <TextBlock Text="Esporta tutti i dati personali in JSON oppure importa un'esportazione UniTo StudyHub. L'importazione mostra prima un'anteprima e non modifica nulla finché non confermi." FontSize="11" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,6,0,12"/>
+                <WrapPanel>
+                    <Button Content="Esporta tutti i dati (JSON)" Click="ExportAllData_Click" Margin="0,0,8,8"/>
+                    <Button Content="Importa dati (anteprima)" Click="ImportAllData_Click" Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,8,8"/>
+                </WrapPanel>
+                <TextBlock Text="Merge aggiunge solo record nuovi e conserva quelli locali in conflitto. Replace sostituisce i dati dopo aver creato un backup di sicurezza cifrato. Token Moodle e chiavi AI non vengono mai trasferiti." FontSize="10" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap"/>
+            </StackPanel>
+        </Border>
+        <Border Style="{StaticResource CardBorderStyle}" MaxWidth="860" HorizontalAlignment="Left" Margin="0,14,0,0">
+            <StackPanel>
+                <TextBlock Text="Privacy e diagnostica" Style="{StaticResource SectionTitleStyle}"/>
+                <TextBlock Text="Le operazioni sono locali. I reset richiedono conferma; puoi creare un backup prima di eliminare i dati selezionati." FontSize="11" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,6,0,12"/>
+                <TextBlock Text="Reset selettivo" Style="{StaticResource KpiLabelStyle}" Margin="0,0,0,5"/>
+                <ComboBox x:Name="PrivacyResetScopeBox" SelectedIndex="0" MaxWidth="420" HorizontalAlignment="Left">
+                    <ComboBoxItem Content="Studio Lab · sessioni, task, flashcard, errori"/>
+                    <ComboBoxItem Content="Calendario · eventi locali"/>
+                    <ComboBoxItem Content="Documenti · PDF e download Moodle gestiti"/>
+                    <ComboBoxItem Content="Connessione Moodle · token e riferimenti"/>
+                </ComboBox>
+                <CheckBox x:Name="PrivacySafetyBackupBox" Content="Crea un backup cifrato prima del reset" IsChecked="True" Margin="0,10,0,0"/>
+                <Button Content="Esegui reset selettivo" Click="ResetPrivacy_Click" Style="{StaticResource QuietButtonStyle}" HorizontalAlignment="Left" Margin="0,10,0,0"/>
+                <Button Content="Mostra inventario privacy" Click="ShowPrivacyInventory_Click" Style="{StaticResource SecondaryButtonStyle}" HorizontalAlignment="Left" Margin="0,10,0,0"/>
+                <Border Height="1" Background="{DynamicResource BorderBrush}" Margin="0,16,0,14"/>
+                <TextBlock Text="Pacchetto diagnostico facoltativo" Style="{StaticResource KpiLabelStyle}"/>
+                <TextBlock Text="L'anteprima mostra quali log sono disponibili. Puoi scegliere se includerli; vengono redatti nuovamente. Database, documenti e credenziali sono esclusi e non viene effettuato alcun upload." FontSize="10" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,5,0,9"/>
+                <Button Content="Esporta pacchetto diagnostico…" Click="ExportDiagnostics_Click" Style="{StaticResource SecondaryButtonStyle}" HorizontalAlignment="Left"/>
+                <Border Height="1" Background="{DynamicResource BorderBrush}" Margin="0,16,0,14"/>
+                <TextBlock Text="Cancellazione completa" Style="{StaticResource KpiLabelStyle}"/>
+                <CheckBox x:Name="PrivacyDeleteBackupsBox" Content="Elimina anche i backup cifrati" IsChecked="False" Margin="0,8,0,0"/>
+                <Button Content="Elimina tutti i dati e le credenziali…" Click="DeleteAllPrivacyData_Click" Style="{StaticResource QuietButtonStyle}" HorizontalAlignment="Left" Margin="0,10,0,0"/>
+                <TextBlock Text="Questa operazione elimina corsi, voti, note, file gestiti, backup (se selezionato), token Moodle, chiavi AI e revoca il consenso AI." FontSize="10" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,7,0,0"/>
+            </StackPanel>
+        </Border>
     </StackPanel>
 </ScrollViewer>
         </TabItem>

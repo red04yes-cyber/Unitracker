@@ -79,7 +79,11 @@ public static class CompositionRoot
             sp.GetRequiredService<IMoodleTokenStore>(),
             sp.GetRequiredService<AiCredentialStore>(),
             sp.GetRequiredService<BackupService>(),
-            dataDirectory));
+            dataDirectory,
+            aiPreferences: sp.GetRequiredService<AiProviderPreferencesStore>()));
+        services.AddSingleton(sp => new StudyDataImportService(
+            sp.GetRequiredService<IStudyDataStore>(),
+            sp.GetRequiredService<BackupService>()));
         return services;
     }
 }
