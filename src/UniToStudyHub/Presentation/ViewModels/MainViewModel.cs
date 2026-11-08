@@ -500,7 +500,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
                     try
                     {
                         snapshotsByCourse[remote.id] =
-                            await _moodle.GetCourseActivitySnapshotAsync(MoodleUrlInput, remote.id);
+                            await _moodle.GetCourseActivitySnapshotAsync(MoodleUrlInput, remote.id, sections);
                     }
                     catch (Exception ex)
                     {
