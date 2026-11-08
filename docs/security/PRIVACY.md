@@ -27,7 +27,7 @@ Se la conversione o la verifica fallisce, il database originale non viene sostit
 ## Backup e ripristino
 
 I backup sono contenitori AES-256-GCM autenticati. Il contenuto SQLite temporaneo viene scritto nella cartella staging privata, cifrato nel contenitore e sovrascritto/eliminato al termine (best effort).
-- **Backup con password:** portabile su un altro account Windows o PC. Al ripristino il database viene cifrato con la chiave DPAPI del dispositivo di destinazione.
+- **Backup con password:** protegge il contenitore esterno con AES-256-GCM, ma il database interno resta cifrato con la chiave SQLCipher protetta da DPAPI. Il ripristino richiede lo stesso account Windows.
 - **Backup DPAPI:** può essere aperto solo dall'account Windows che lo ha creato.
 - La password non è recuperabile. Usa una password robusta e conservala in un gestore password.
 
