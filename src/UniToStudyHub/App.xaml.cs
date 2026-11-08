@@ -1,6 +1,7 @@
 using System.IO;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using System.Windows;
 using UniToStudyHub.Infrastructure;
 using UniToStudyHub.Infrastructure.Data;
@@ -13,7 +14,7 @@ namespace UniToStudyHub;
 
 public partial class App : System.Windows.Application
 {
-    private ServiceProvider? _serviceProvider;
+    private IHost? _host;
 
     protected override async void OnStartup(StartupEventArgs e)
     {
@@ -29,14 +30,18 @@ public partial class App : System.Windows.Application
             AppDiagnostics.Configure(Path.Combine(dataDirectory, "logs"));
             AppDiagnostics.Info("startup", "Application startup started.");
 
-            var services = new ServiceCollection();
-            services.AddUniToStudyHubCore();
-            services.AddUniToStudyHubViewModels();
-            services.AddSingleton<MainWindow>();
+            _host = Host.CreateDefaultBuilder()
+                .ConfigureServices((_, services) =>
+                {
+                    services.AddUniToStudyHubCore();
+                    services.AddUniToStudyHubPresentation();
+                    services.AddSingleton<MainWindow>();
+                })
+                .Build();
 
-            _serviceProvider = services.BuildServiceProvider(validateScopes: true);
-            await using var scope = _serviceProvider.CreateAsyncScope();
+            await _host.StartAsync();
 
+            await using var scope = _host.Services.CreateAsyncScope();
             var factory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<StudyHubDbContext>>();
             await using (var db = await factory.CreateDbContextAsync())
             {
@@ -47,10 +52,10 @@ public partial class App : System.Windows.Application
             var migrator = scope.ServiceProvider.GetRequiredService<LegacyJsonMigrator>();
             await migrator.MigrateAsync();
 
-            var viewModel = _serviceProvider.GetRequiredService<MainViewModel>();
+            var viewModel = _host.Services.GetRequiredService<MainViewModel>();
             await viewModel.InitializeAsync();
 
-            var window = _serviceProvider.GetRequiredService<MainWindow>();
+            var window = _host.Services.GetRequiredService<MainWindow>();
             MainWindow = window;
             window.Show();
             AppDiagnostics.Info("startup", "Main window shown successfully.");
@@ -73,7 +78,14 @@ public partial class App : System.Windows.Application
 
     protected override void OnExit(ExitEventArgs e)
     {
-        _serviceProvider?.Dispose();
-        base.OnExit(e);
+        try
+        {
+            _host?.StopAsync().GetAwaiter().GetResult();
+        }
+        finally
+        {
+            _host?.Dispose();
+            base.OnExit(e);
+        }
     }
 }
