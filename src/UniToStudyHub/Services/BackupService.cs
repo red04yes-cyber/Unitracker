@@ -419,31 +419,31 @@ public sealed class BackupService
             if (source is not Microsoft.Data.Sqlite.SqliteConnection sqliteSource)
                 throw new InvalidOperationException("The configured SQLite provider does not support encrypted snapshots.");
 
-            // Export to a short-lived plaintext SQLite file inside the private
-            // staging folder. The enclosing backup is AES-256-GCM authenticated;
-            // restore re-encrypts the database with the destination DPAPI key.
-            await using var attach = sqliteSource.CreateCommand();
-            attach.CommandText = "ATTACH DATABASE $target AS plaintext KEY '';";
-            attach.Parameters.Add(new Microsoft.Data.Sqlite.SqliteParameter("$target", target));
-            await attach.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
-            try
-            {
-                await using var export = sqliteSource.CreateCommand();
-                export.CommandText = "SELECT sqlcipher_export('plaintext');";
-                await export.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false);
+            // VACUUM INTO creates a consistent one-file snapshot. Depending on
+            // the codec build it may inherit encryption; if so, rekey it to an
+            // empty passphrase while it is still inside the private staging
+            // folder. The surrounding backup container then encrypts it with
+            // AES-256-GCM, allowing password-protected backups to be portable.
+            await using var snapshot = sqliteSource.CreateCommand();
+            snapshot.CommandText = "VACUUM INTO $target";
+            snapshot.Parameters.Add(new Microsoft.Data.Sqlite.SqliteParameter("$target", target));
+            await snapshot.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
 
-                await using var check = sqliteSource.CreateCommand();
-                check.CommandText = "PRAGMA plaintext.integrity_check";
-                if (!string.Equals((await check.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false))?.ToString(),
-                        "ok", StringComparison.OrdinalIgnoreCase))
-                    throw new InvalidDataException("Il controllo d'integrità dello snapshot di backup non è riuscito.");
-            }
-            finally
+            if (!IsPlaintextSqliteFile(target))
             {
-                await using var detach = sqliteSource.CreateCommand();
-                detach.CommandText = "DETACH DATABASE plaintext;";
-                await detach.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+                await using var encrypted = new Microsoft.Data.Sqlite.SqliteConnection(
+                    StudyHubDatabase.CreateEncryptedConnectionString(
+                        target, Microsoft.Data.Sqlite.SqliteOpenMode.ReadWrite));
+                await encrypted.OpenAsync(cancellationToken).ConfigureAwait(false);
+                await using var decrypt = encrypted.CreateCommand();
+                decrypt.CommandText = "PRAGMA rekey = '';";
+                await decrypt.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+                await encrypted.CloseAsync().ConfigureAwait(false);
             }
+
+            if (!IsPlaintextSqliteFile(target) ||
+                !await VerifySqliteFileAsync(target, cancellationToken).ConfigureAwait(false))
+                throw new InvalidDataException("Lo snapshot SQLite non è stato esportato correttamente in formato portabile.");
 
             LocalFileSecurity.TryRestrictFile(target);
         }
