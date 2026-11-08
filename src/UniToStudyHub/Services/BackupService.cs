@@ -404,22 +404,32 @@ public sealed class BackupService
     private async Task SnapshotDatabaseAsync(string target, CancellationToken cancellationToken)
     {
         await using var db = await _factory.CreateDbContextAsync(cancellationToken).ConfigureAwait(false);
-        var connection = db.Database.GetDbConnection();
+        var source = db.Database.GetDbConnection();
         var openedHere = false;
         try
         {
-            if (connection.State != ConnectionState.Open)
+            if (source.State != ConnectionState.Open)
             {
-                await connection.OpenAsync(cancellationToken).ConfigureAwait(false);
+                await source.OpenAsync(cancellationToken).ConfigureAwait(false);
                 openedHere = true;
             }
-            await using var command = connection.CreateCommand();
-            command.CommandText = "VACUUM INTO @path";
-            var parameter = command.CreateParameter();
-            parameter.ParameterName = "@path";
-            parameter.Value = target;
-            command.Parameters.Add(parameter);
-            await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+
+            // The temporary snapshot is plaintext only inside the private,
+            // short-lived staging folder. The .utbk container encrypts the
+            // complete snapshot with AES-256-GCM, making password backups
+            // portable to another Windows account or PC. Restore re-encrypts
+            // the database with the destination account's DPAPI key.
+            await using var destination = new Microsoft.Data.Sqlite.SqliteConnection(
+                new Microsoft.Data.Sqlite.SqliteConnectionStringBuilder
+                {
+                    DataSource = target,
+                    Mode = Microsoft.Data.Sqlite.SqliteOpenMode.ReadWriteCreate,
+                    Pooling = false
+                }.ToString());
+            await destination.OpenAsync(cancellationToken).ConfigureAwait(false);
+            if (source is not Microsoft.Data.Sqlite.SqliteConnection sqliteSource)
+                throw new InvalidOperationException("The configured SQLite provider does not support encrypted snapshots.");
+            sqliteSource.BackupDatabase(destination);
         }
         catch
         {
@@ -428,7 +438,7 @@ public sealed class BackupService
         }
         finally
         {
-            if (openedHere) await connection.CloseAsync().ConfigureAwait(false);
+            if (openedHere) await source.CloseAsync().ConfigureAwait(false);
         }
     }
 
