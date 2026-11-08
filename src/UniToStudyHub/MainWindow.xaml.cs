@@ -242,6 +242,59 @@ public partial class MainWindow : Window
         }
     }
 
+    private async void ShowPrivacyInventory_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            var inventory = await _privacy.DescribeAsync();
+            var message =
+                $"Corsi: {inventory.Courses}\nVoti: {inventory.Grades}\nEsami carriera: {inventory.CareerExams}\n" +
+                $"Eventi calendario: {inventory.CalendarEvents}\nSessioni studio: {inventory.StudySessions}\n" +
+                $"Attività studio: {inventory.StudyActivities}\nNote personali: {inventory.PersonalNotes}\n" +
+                $"Documenti PDF: {inventory.PdfDocuments} ({inventory.PdfPages} pagine)\nFile Moodle locali: {inventory.MoodleFiles}\n" +
+                $"Flashcard: {inventory.Flashcards}\nDomande: {inventory.Questions}\nErrori registrati: {inventory.ErrorJournalEntries}\n\n" +
+                $"Moodle collegato: {(inventory.MoodleLinked ? "sì" : "no")}\nCredenziali AI presenti: {(inventory.AiConfigured ? "sì" : "no")}\n" +
+                $"Telemetria: {(inventory.TelemetryEnabled ? "attiva" : "disattivata")}\nProtezione database: {inventory.DatabaseProtection}";
+            MessageBox.Show(this, message, "Inventario dei dati locali",
+                MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, $"Impossibile leggere l'inventario privacy: {ex.Message}",
+                "Errore privacy", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private async void DeleteAllPrivacyData_Click(object sender, RoutedEventArgs e)
+    {
+        var includeBackups = PrivacyDeleteBackupsBox.IsChecked == true;
+        var backupText = includeBackups
+            ? "Anche tutti i backup cifrati verranno eliminati."
+            : "I backup cifrati esistenti resteranno sul dispositivo.";
+        var confirm = MessageBox.Show(this,
+            "ATTENZIONE: verranno eliminati tutti i corsi, voti, eventi, note, materiali e dati di studio. Saranno rimossi token Moodle e chiavi AI e revocato il consenso AI. " +
+            backupText + "\n\nQuesta operazione non è annullabile. Hai già esportato i dati che vuoi conservare?",
+            "Cancellazione completa dei dati", MessageBoxButton.YesNo,
+            MessageBoxImage.Stop, MessageBoxResult.No);
+        if (confirm != MessageBoxResult.Yes) return;
+
+        try
+        {
+            var result = await _privacy.DeleteAllAsync(includeBackups);
+            MessageBox.Show(this,
+                $"Cancellazione completata. Record: {result.DeletedRecords}; backup: {result.DeletedBackups}; " +
+                $"file Moodle: {result.DeletedMoodleFiles}; log: {result.DeletedLogFiles}. " +
+                "L'app verrà chiusa.",
+                "Dati eliminati", MessageBoxButton.OK, MessageBoxImage.Information);
+            Application.Current.Shutdown();
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, $"Cancellazione non riuscita: {ex.Message}",
+                "Errore privacy", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
     private async void ExportDiagnostics_Click(object sender, RoutedEventArgs e)
     {
         try
