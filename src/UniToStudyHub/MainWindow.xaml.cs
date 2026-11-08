@@ -3,6 +3,7 @@ using System.Windows.Controls;
 using System.Windows.Threading;
 using Microsoft.Win32;
 using UniToStudyHub.Presentation.ViewModels;
+using Wpf.Ui.Appearance;
 
 namespace UniToStudyHub;
 
@@ -12,11 +13,16 @@ public partial class MainWindow : Window
     public MainWindow(MainViewModel viewModel)
     {
         InitializeComponent();
+        SystemThemeWatcher.Watch(this, Wpf.Ui.Controls.WindowBackdropType.Mica);
         DataContext = viewModel;
         _focusRefreshTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
         _focusRefreshTimer.Tick += (_, _) => viewModel.Workspace.RefreshFocusSnapshot();
         _focusRefreshTimer.Start();
-        Closed += (_, _) => _focusRefreshTimer.Stop();
+        Closing += (_, _) =>
+        {
+            _focusRefreshTimer.Stop();
+            SystemThemeWatcher.UnWatch(this);
+        };
     }
 
     private async void ConnectMoodle_Click(object sender, RoutedEventArgs e)
