@@ -94,6 +94,15 @@ public sealed class CompositionRootTests
             Assert.False(dashboard.NavigateTo((StudyRoute)999));
             Assert.Equal(StudyRoute.Settings, shell.CurrentRoute);
 
+            var settingsStateChanged = false;
+            settings.PropertyChanged += (_, args) =>
+                settingsStateChanged |= args.PropertyName == nameof(SettingsViewModel.IsMoodlePanelExpanded);
+            settings.IsMoodlePanelExpanded = true;
+            Assert.True(state.IsMoodlePanelExpanded);
+            Assert.True(settingsStateChanged);
+            settings.IsMoodlePanelExpanded = false;
+            Assert.False(state.IsMoodlePanelExpanded);
+
             await state.InitializeAsync();
             Assert.Equal("—", state.AverageDisplay);
             Assert.Equal("CFU completati: 0", state.CreditsDisplay);
