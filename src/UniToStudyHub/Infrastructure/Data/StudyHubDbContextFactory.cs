@@ -138,26 +138,35 @@ public static class StudyHubDatabase
             var sourceBuilder = new Microsoft.Data.Sqlite.SqliteConnectionStringBuilder
             {
                 DataSource = databasePath,
-                Mode = Microsoft.Data.Sqlite.SqliteOpenMode.ReadOnly,
-                Pooling = false
-            };
-            var destinationBuilder = new Microsoft.Data.Sqlite.SqliteConnectionStringBuilder
-            {
-                DataSource = new Uri(temporary).AbsoluteUri + "?cipher=sqlcipher&legacy=4",
-                Mode = Microsoft.Data.Sqlite.SqliteOpenMode.ReadWriteCreate,
-                Password = key,
+                Mode = Microsoft.Data.Sqlite.SqliteOpenMode.ReadWrite,
                 Pooling = false
             };
             using (var source = new Microsoft.Data.Sqlite.SqliteConnection(sourceBuilder.ToString()))
             {
                 source.Open();
-                using var destination = new Microsoft.Data.Sqlite.SqliteConnection(destinationBuilder.ToString());
-                destination.Open();
-                source.BackupDatabase(destination);
-                using var check = destination.CreateCommand();
-                check.CommandText = "PRAGMA integrity_check";
-                if (!string.Equals(check.ExecuteScalar()?.ToString(), "ok", StringComparison.OrdinalIgnoreCase))
-                    throw new InvalidDataException("La conversione cifrata del database non ha superato il controllo di integrità.");
+                using var attach = source.CreateCommand();
+                attach.CommandText = "ATTACH DATABASE $target AS encrypted KEY $password;";
+                attach.Parameters.AddWithValue("$target", new Uri(temporary).AbsoluteUri + "?cipher=sqlcipher&legacy=4");
+                attach.Parameters.AddWithValue("$password", key);
+                attach.ExecuteNonQuery();
+
+                try
+                {
+                    using var export = source.CreateCommand();
+                    export.CommandText = "SELECT sqlcipher_export('encrypted');";
+                    export.ExecuteScalar();
+
+                    using var check = source.CreateCommand();
+                    check.CommandText = "PRAGMA encrypted.integrity_check";
+                    if (!string.Equals(check.ExecuteScalar()?.ToString(), "ok", StringComparison.OrdinalIgnoreCase))
+                        throw new InvalidDataException("La conversione cifrata del database non ha superato il controllo di integrità.");
+                }
+                finally
+                {
+                    using var detach = source.CreateCommand();
+                    detach.CommandText = "DETACH DATABASE encrypted;";
+                    detach.ExecuteNonQuery();
+                }
             }
 
             Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
