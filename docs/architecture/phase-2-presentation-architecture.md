@@ -24,7 +24,7 @@ Each original TabItem body now lives in its own XAML UserControl. The controls r
 | Progress | `Views/ProgressView.xaml` | `ProgressViewModel` |
 | Settings | `Views/SettingsView.xaml` | `SettingsViewModel` |
 
-Dialog and confirmation handlers formerly hosted by `MainWindow.xaml.cs` now live in the shared page-control base, rather than in the global shell window. The XAML markup and bindings were moved intact to preserve the current workflow and appearance.
+Dialog and confirmation handlers formerly hosted by `MainWindow.xaml.cs` now live in the shared page-control base, rather than in the global shell window. The XAML markup and bindings were moved intact to preserve the current workflow and appearance. The Moodle expander's open/closed UI state now belongs to `SettingsViewModel`, with a focused two-way property instead of binding that control directly through the legacy compatibility object.
 
 ## Explicit compatibility boundary
 
