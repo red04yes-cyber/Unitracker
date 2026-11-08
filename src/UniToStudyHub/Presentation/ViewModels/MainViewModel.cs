@@ -480,19 +480,50 @@ public sealed class MainViewModel : INotifyPropertyChanged
                 DateTime.Today.AddDays(-30),
                 DateTime.Today.AddDays(365));
 
-            // Fetch optional course content before changing the local snapshot.
-            // A permission error on one course is reported but does not stop
-            // importing courses and calendar events.
+            // Discover every module/activity, feature-detect activity-specific
+            // web services, retrieve per-user completion where permitted, and
+            // download all safe file resources before persisting the metadata.
             var contentsByCourse = new Dictionary<int, IReadOnlyList<MoodleCourseSection>>();
+            var snapshotsByCourse = new Dictionary<int, MoodleCourseActivitySnapshot>();
             var discussionsByForum = new Dictionary<int, IReadOnlyList<MoodleForumDiscussion>>();
             var forumCourseById = new Dictionary<int, int>();
             var optionalErrors = 0;
+            var downloadedFiles = 0;
+            var skippedFiles = 0;
+            var fileWarnings = 0;
             foreach (var remote in remoteCourses)
             {
                 try
                 {
                     var sections = await _moodle.GetCourseContentsAsync(MoodleUrlInput, remote.id);
                     contentsByCourse[remote.id] = sections;
+                    try
+                    {
+                        snapshotsByCourse[remote.id] =
+                            await _moodle.GetCourseActivitySnapshotAsync(MoodleUrlInput, remote.id);
+                    }
+                    catch (Exception ex)
+                    {
+                        optionalErrors++;
+                        AppDiagnostics.Warning("moodle", $"Stato attività non sincronizzato per corso {remote.id}.", ex);
+                    }
+
+                    try
+                    {
+                        var download = await _moodle.DownloadCourseFilesAsync(
+                            MoodleUrlInput,
+                            new Course { MoodleCourseId = remote.id, Name = remote.fullname },
+                            sections);
+                        downloadedFiles += download.Downloaded;
+                        skippedFiles += download.Skipped;
+                        fileWarnings += download.Warnings.Count;
+                    }
+                    catch (Exception ex)
+                    {
+                        optionalErrors++;
+                        AppDiagnostics.Warning("moodle", $"File del corso non scaricati per corso {remote.id}.", ex);
+                    }
+
                     foreach (var forum in sections.SelectMany(x => x.modules).Where(x =>
                                  string.Equals(x.modname, "forum", StringComparison.OrdinalIgnoreCase) && x.instance > 0))
                     {
@@ -513,7 +544,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
             var updatedCourses = 0;
             foreach (var remote in remoteCourses)
             {
-                var local = Courses.FirstOrDefault(c => c.MoodleCourseId == remote.id);
+                var local = Courses.FirstOrDefault(course => course.MoodleCourseId == remote.id);
                 if (local is null)
                 {
                     local = new Course { MoodleCourseId = remote.id, Source = "moodle" };
@@ -537,12 +568,17 @@ public sealed class MainViewModel : INotifyPropertyChanged
                 var externalId = $"moodle-event:{remote.id}";
                 var start = DateTimeOffset.FromUnixTimeSeconds(remote.timestart);
                 var end = start.AddSeconds(Math.Max(60, remote.timeduration));
-                var course = Courses.FirstOrDefault(x => x.MoodleCourseId == remote.courseid);
-                var existing = CalendarEvents.FirstOrDefault(x =>
-                    x.Source == CalendarEventSource.Moodle && x.ExternalId == externalId);
+                var course = Courses.FirstOrDefault(item => item.MoodleCourseId == remote.courseid);
+                var existing = CalendarEvents.FirstOrDefault(item =>
+                    item.Source == CalendarEventSource.Moodle && item.ExternalId == externalId);
                 if (existing is null)
                 {
-                    existing = new CalendarEvent { Id = Guid.NewGuid().ToString("N"), Source = CalendarEventSource.Moodle, ExternalId = externalId };
+                    existing = new CalendarEvent
+                    {
+                        Id = Guid.NewGuid().ToString("N"),
+                        Source = CalendarEventSource.Moodle,
+                        ExternalId = externalId
+                    };
                     CalendarEvents.Add(existing);
                     addedCalendar++;
                 }
@@ -569,28 +605,63 @@ public sealed class MainViewModel : INotifyPropertyChanged
             var addedUpdates = 0;
             foreach (var pair in contentsByCourse)
             {
-                var course = Courses.FirstOrDefault(x => x.MoodleCourseId == pair.Key);
+                var course = Courses.FirstOrDefault(item => item.MoodleCourseId == pair.Key);
                 if (course is null) continue;
+                var completion = snapshotsByCourse.TryGetValue(pair.Key, out var snapshot)
+                    ? snapshot.CompletionStatuses.ToDictionary(item => item.cmid)
+                    : new Dictionary<int, MoodleActivityCompletionStatus>();
+
                 foreach (var section in pair.Value)
                 foreach (var module in section.modules)
                 {
-                    var files = module.contents.Where(x => !string.IsNullOrWhiteSpace(x.filename)).ToList();
-                    if (files.Count == 0) continue;
-                    var sourceKey = $"moodle-resource:{pair.Key}:{module.id}";
-                    var summary = $"{section.name} · {string.Join(", ", files.Select(x => x.filename).Take(8))}";
-                    var update = Announcements.FirstOrDefault(x => x.SourceKey == sourceKey);
-                    if (update is null)
+                    completion.TryGetValue(module.id, out var status);
+                    var activityKey = $"moodle-activity:{pair.Key}:{module.id}";
+                    var activity = Announcements.FirstOrDefault(item => item.SourceKey == activityKey);
+                    if (activity is null)
                     {
-                        update = new Announcement { SourceKey = sourceKey, CourseName = course.Name };
-                        Announcements.Add(update);
+                        activity = new Announcement { SourceKey = activityKey };
+                        Announcements.Add(activity);
                         addedUpdates++;
                     }
-                    update.CourseName = course.Name;
-                    update.Title = module.name;
-                    update.Summary = summary;
-                    update.Url = course.SyllabusUrl;
-                    update.UpdatedAt = DateTime.UtcNow;
-                    update.IsNew = true;
+
+                    var visibility = module.visible == 0 || !module.uservisible ? " · nascosta/non disponibile" : string.Empty;
+                    var completionText = status is null
+                        ? "Completamento non esposto dal servizio Moodle"
+                        : status.state switch
+                        {
+                            1 => "Completata",
+                            2 => "Completata · superata",
+                            3 => "Completata · non superata",
+                            _ => "Da completare"
+                        };
+                    activity.CourseName = course.Name;
+                    activity.Title = string.IsNullOrWhiteSpace(module.name) ? module.modname : module.name;
+                    activity.Summary = $"{module.modname} · {section.name} · {completionText}{visibility}" +
+                                       (string.IsNullOrWhiteSpace(module.description) ? string.Empty : " · " +
+                                           SecurityRedaction.ForLog(module.description, 1200));
+                    activity.Url = BuildMoodleModuleUrl(MoodleUrlInput, module);
+                    activity.UpdatedAt = DateTime.UtcNow;
+                    activity.IsNew = status?.state is 0 or 3;
+                }
+
+                if (snapshotsByCourse.TryGetValue(pair.Key, out var activitySnapshot))
+                foreach (var detail in activitySnapshot.ActivityDetails)
+                {
+                    var sourceKey = $"moodle-activity-api:{pair.Key}:{detail.Key}";
+                    var item = Announcements.FirstOrDefault(value => value.SourceKey == sourceKey);
+                    if (item is null)
+                    {
+                        item = new Announcement { SourceKey = sourceKey };
+                        Announcements.Add(item);
+                        addedUpdates++;
+                    }
+                    item.CourseName = course.Name;
+                    item.Title = $"Dati attività · {detail.Key.Replace('_', ' ')}";
+                    var serialized = detail.Value.GetRawText();
+                    item.Summary = serialized.Length > 1800 ? serialized[..1800] + "…" : serialized;
+                    item.Url = course.SyllabusUrl;
+                    item.UpdatedAt = DateTime.UtcNow;
+                    item.IsNew = true;
                 }
             }
 
@@ -598,7 +669,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
             foreach (var discussion in pair.Value)
             {
                 var sourceKey = $"moodle-discussion:{discussion.id}";
-                var update = Announcements.FirstOrDefault(x => x.SourceKey == sourceKey);
+                var update = Announcements.FirstOrDefault(item => item.SourceKey == sourceKey);
                 var isNew = update is null;
                 if (update is null)
                 {
@@ -607,19 +678,28 @@ public sealed class MainViewModel : INotifyPropertyChanged
                     addedUpdates++;
                 }
                 update.CourseName = forumCourseById.TryGetValue(pair.Key, out var moodleCourseId)
-                    ? Courses.FirstOrDefault(c => c.MoodleCourseId == moodleCourseId)?.Name ?? update.CourseName
+                    ? Courses.FirstOrDefault(item => item.MoodleCourseId == moodleCourseId)?.Name ?? update.CourseName
                     : update.CourseName;
-                update.Title = string.IsNullOrWhiteSpace(discussion.firstpost?.subject) ? discussion.name : discussion.firstpost.subject;
+                update.Title = string.IsNullOrWhiteSpace(discussion.firstpost?.subject)
+                    ? discussion.name
+                    : discussion.firstpost.subject;
                 update.Summary = "Discussione Moodle · aggiornamento " +
-                                 DateTimeOffset.FromUnixTimeSeconds(Math.Max(0, discussion.timemodified)).ToLocalTime().ToString("g", CultureInfo.GetCultureInfo("it-IT"));
+                                 DateTimeOffset.FromUnixTimeSeconds(Math.Max(0, discussion.timemodified))
+                                     .ToLocalTime().ToString("g", CultureInfo.GetCultureInfo("it-IT"));
                 update.UpdatedAt = DateTime.UtcNow;
                 update.IsNew = isNew;
-                update.Url = string.IsNullOrWhiteSpace(MoodleUrlInput) ? string.Empty : $"{MoodleUrlInput.TrimEnd('/')}/mod/forum/view.php?id={discussion.forumid}";
+                update.Url = string.IsNullOrWhiteSpace(MoodleUrlInput)
+                    ? string.Empty
+                    : $"{MoodleUrlInput.TrimEnd('/')}/mod/forum/view.php?id={discussion.forumid}";
             }
 
             _data.MoodleBaseUrl = MoodleUrlInput.Trim();
             await SaveAsync();
-            MoodleStatus = $"Moodle: {addedCourses} corsi nuovi, {updatedCourses} aggiornati · {addedCalendar} eventi nuovi, {updatedCalendar} aggiornati · {addedUpdates} materiali/discussioni. Errori facoltativi: {optionalErrors}.";
+            MoodleStatus = $"Moodle: {addedCourses} corsi nuovi, {updatedCourses} aggiornati · " +
+                           $"{addedCalendar} eventi nuovi, {updatedCalendar} aggiornati · " +
+                           $"{addedUpdates} attività/materiali/discussioni indicizzati · " +
+                           $"{downloadedFiles} file scaricati, {skippedFiles} ignorati · " +
+                           $"{optionalErrors} errori facoltativi, {fileWarnings} avvisi download.";
             OnPropertyChanged(nameof(Courses));
             OnPropertyChanged(nameof(Announcements));
             OnPropertyChanged(nameof(IsMoodleConnected));
@@ -631,6 +711,17 @@ public sealed class MainViewModel : INotifyPropertyChanged
         {
             MoodleStatus = $"Sincronizzazione non completata: {ex.Message}";
         }
+    }
+
+    private static string BuildMoodleModuleUrl(string baseUrl, MoodleModule module)
+    {
+        var root = new Uri(baseUrl.TrimEnd('/') + "/", UriKind.Absolute);
+        var candidate = !string.IsNullOrWhiteSpace(module.url)
+            ? new Uri(root, module.url)
+            : new Uri(root, $"mod/{Uri.EscapeDataString(module.modname)}/view.php?id={module.id}");
+        return candidate.Scheme == root.Scheme && candidate.Host == root.Host && candidate.Port == root.Port
+            ? candidate.ToString()
+            : new Uri(root, $"mod/{Uri.EscapeDataString(module.modname)}/view.php?id={module.id}").ToString();
     }
 
     private async Task DisconnectMoodleAsync()
