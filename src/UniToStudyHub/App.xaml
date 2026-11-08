@@ -262,7 +262,6 @@
             <Setter Property="CanUserAddRows" Value="False"/>
             <Setter Property="AutoGenerateColumns" Value="False"/>
             <Setter Property="HeadersVisibility" Value="Column"/>
-            <Setter Property="GridLinesVisibility" Value="Horizontal"/>
             <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="Background" Value="{DynamicResource PanelBrush}"/>
@@ -271,7 +270,6 @@
             <Setter Property="AlternatingRowBackground" Value="{DynamicResource SubtleBrush}"/>
             <Setter Property="HorizontalGridLinesBrush" Value="{DynamicResource BorderBrush}"/>
             <Setter Property="VerticalGridLinesBrush" Value="Transparent"/>
-            <Setter Property="GridLinesVisibility" Value="Horizontal"/>
         </Style>
 
         <Style TargetType="{x:Type DataGridColumnHeader}">
