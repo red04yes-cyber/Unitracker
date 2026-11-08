@@ -1194,10 +1194,16 @@
                 </ComboBox>
                 <CheckBox x:Name="PrivacySafetyBackupBox" Content="Crea un backup cifrato prima del reset" IsChecked="True" Margin="0,10,0,0"/>
                 <Button Content="Esegui reset selettivo" Click="ResetPrivacy_Click" Style="{StaticResource QuietButtonStyle}" HorizontalAlignment="Left" Margin="0,10,0,0"/>
+                <Button Content="Mostra inventario privacy" Click="ShowPrivacyInventory_Click" Style="{StaticResource SecondaryButtonStyle}" HorizontalAlignment="Left" Margin="0,10,0,0"/>
                 <Border Height="1" Background="{DynamicResource BorderBrush}" Margin="0,16,0,14"/>
                 <TextBlock Text="Pacchetto diagnostico facoltativo" Style="{StaticResource KpiLabelStyle}"/>
                 <TextBlock Text="L'anteprima mostra quali log sono disponibili. Puoi scegliere se includerli; vengono redatti nuovamente. Database, documenti e credenziali sono esclusi e non viene effettuato alcun upload." FontSize="10" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,5,0,9"/>
                 <Button Content="Esporta pacchetto diagnostico…" Click="ExportDiagnostics_Click" Style="{StaticResource SecondaryButtonStyle}" HorizontalAlignment="Left"/>
+                <Border Height="1" Background="{DynamicResource BorderBrush}" Margin="0,16,0,14"/>
+                <TextBlock Text="Cancellazione completa" Style="{StaticResource KpiLabelStyle}"/>
+                <CheckBox x:Name="PrivacyDeleteBackupsBox" Content="Elimina anche i backup cifrati" IsChecked="False" Margin="0,8,0,0"/>
+                <Button Content="Elimina tutti i dati e le credenziali…" Click="DeleteAllPrivacyData_Click" Style="{StaticResource QuietButtonStyle}" HorizontalAlignment="Left" Margin="0,10,0,0"/>
+                <TextBlock Text="Questa operazione elimina corsi, voti, note, file gestiti, backup (se selezionato), token Moodle, chiavi AI e revoca il consenso AI." FontSize="10" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,7,0,0"/>
             </StackPanel>
         </Border>
     </StackPanel>
