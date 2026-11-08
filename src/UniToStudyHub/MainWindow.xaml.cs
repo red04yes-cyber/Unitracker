@@ -4,7 +4,6 @@ using System.Windows.Threading;
 using Microsoft.Win32;
 using UniToStudyHub.Presentation.ViewModels;
 using Wpf.Ui.Appearance;
-using Wpf.Ui.Controls;
 
 namespace UniToStudyHub;
 
@@ -19,7 +18,7 @@ public partial class MainWindow : Window
         _focusRefreshTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
         _focusRefreshTimer.Tick += (_, _) => viewModel.Workspace.RefreshFocusSnapshot();
         _focusRefreshTimer.Start();
-        Closed += (_, _) =>
+        Closing += (_, _) =>
         {
             _focusRefreshTimer.Stop();
             SystemThemeWatcher.UnWatch(this);
