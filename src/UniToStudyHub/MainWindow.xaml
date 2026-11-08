@@ -98,17 +98,39 @@
 
                             <StackPanel Grid.Row="0" Margin="24,26,20,20">
                                 <StackPanel Orientation="Horizontal">
-                                    <Border Width="42" Height="42" CornerRadius="13"
-                                            Background="{DynamicResource AccentBrush}" VerticalAlignment="Center">
-                                        <TextBlock Text="S" Foreground="White" FontSize="23"
-                                                   FontWeight="Bold" HorizontalAlignment="Center"
-                                                   VerticalAlignment="Center"/>
+                                    <Border Width="48" Height="48" CornerRadius="15"
+                                            BorderBrush="#554D6680" BorderThickness="1"
+                                            Background="{DynamicResource NavyBrush}" VerticalAlignment="Center">
+                                        <Grid>
+                                            <Path Data="M 10,10 L 10,26 C 10,35 36,35 36,26 L 36,10"
+                                                  Stroke="{DynamicResource AccentCyanBrush}"
+                                                  StrokeThickness="5" StrokeStartLineCap="Round"
+                                                  StrokeEndLineCap="Round" Fill="Transparent"/>
+                                            <StackPanel Orientation="Horizontal" VerticalAlignment="Bottom"
+                                                        HorizontalAlignment="Center" Margin="0,0,0,8">
+                                                <Rectangle Width="3" Height="7" RadiusX="1" RadiusY="1"
+                                                           Fill="{DynamicResource ElectricBlueBrush}" Margin="0,0,2,0"/>
+                                                <Rectangle Width="3" Height="12" RadiusX="1" RadiusY="1"
+                                                           Fill="{DynamicResource ElectricBlueBrush}" Margin="0,0,2,0"/>
+                                                <Rectangle Width="3" Height="16" RadiusX="1" RadiusY="1"
+                                                           Fill="{DynamicResource ElectricBlueBrush}"/>
+                                            </StackPanel>
+                                            <Canvas IsHitTestVisible="False">
+                                                <Polygon Points="4,11 17,5 30,11 17,17"
+                                                         Fill="{DynamicResource BrickAccentBrush}"/>
+                                                <Path Data="M 27,12 L 29,22"
+                                                      Stroke="{DynamicResource BrickAccentBrush}"
+                                                      StrokeThickness="1.8" StrokeStartLineCap="Round"/>
+                                                <Ellipse Width="3" Height="3" Canvas.Left="27.5" Canvas.Top="21"
+                                                         Fill="{DynamicResource BrickAccentBrush}"/>
+                                            </Canvas>
+                                        </Grid>
                                     </Border>
-                                    <StackPanel Margin="11,1,0,0" VerticalAlignment="Center">
-                                        <TextBlock Text="StudyHub" Foreground="White"
-                                                   FontSize="18" FontWeight="SemiBold"/>
-                                        <TextBlock Text="IL TUO SPAZIO UNIVERSITARIO" Foreground="{DynamicResource SidebarMutedBrush}"
-                                                   FontSize="10" FontWeight="SemiBold"
+                                    <StackPanel Margin="12,1,0,0" VerticalAlignment="Center">
+                                        <TextBlock Text="Unitracker" Foreground="White"
+                                                   FontSize="18" FontWeight="Bold"/>
+                                        <TextBlock Text="UniTo StudyHub" Foreground="{DynamicResource SidebarMutedBrush}"
+                                                   FontSize="11" FontWeight="Medium"
                                                    Margin="0,2,0,0"/>
                                     </StackPanel>
                                 </StackPanel>
