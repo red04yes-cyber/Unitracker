@@ -1,4 +1,9 @@
 using System.IO;
+using System.IO.Compression;
+using System.Reflection;
+using System.Runtime.InteropServices;
+using System.Security;
+using System.Text;
 using System.Text.Json;
 using UniToStudyHub.Infrastructure.Data;
 using UniToStudyHub.Models;
@@ -45,6 +50,31 @@ public sealed record PrivacyDeletionResult(
     int DeletedLegacyFiles,
     int DeletedLogFiles,
     int DeletedMoodleFiles);
+
+public enum PrivacyResetScope
+{
+    StudyLab,
+    Calendar,
+    Documents,
+    MoodleConnection
+}
+
+public sealed record PrivacyResetResult(
+    PrivacyResetScope Scope,
+    int DeletedRecords,
+    int DeletedFiles,
+    bool CredentialsRemoved,
+    string? SafetyBackupPath);
+
+public sealed record PrivacyDiagnosticPreview(
+    DateTimeOffset GeneratedAt,
+    string ApplicationVersion,
+    string OperatingSystem,
+    string Runtime,
+    int AvailableLogFiles,
+    long AvailableLogBytes,
+    bool IncludesPersonalDatabase = false,
+    bool IncludesCredentials = false);
 
 /// <summary>
 /// Local, user-driven privacy operations: inventory, complete export and
@@ -170,6 +200,171 @@ public sealed class PrivacyService
         var deletedLogs = AppDiagnostics.Clear();
         return new PrivacyDeletionResult(records, deletedBackups, credentialsRemoved, deletedLegacy, deletedLogs,
             deletedMoodleFiles);
+    }
+
+    /// <summary>
+    /// Preview metadata for an opt-in diagnostic bundle. No database content,
+    /// credentials, user name, machine name or file-system path is included.
+    /// </summary>
+    public PrivacyDiagnosticPreview PreviewDiagnosticBundle()
+    {
+        var files = GetSafeDiagnosticLogFiles();
+        var bytes = files.Sum(file => new FileInfo(file).Length);
+        return new PrivacyDiagnosticPreview(
+            DateTimeOffset.UtcNow,
+            Assembly.GetEntryAssembly()?.GetName().Version?.ToString() ?? "unknown",
+            SecurityRedaction.ForLog(RuntimeInformation.OSDescription, 160),
+            RuntimeInformation.FrameworkDescription,
+            files.Count,
+            bytes);
+    }
+
+    /// <summary>
+    /// Creates a redacted diagnostic archive only after explicit user consent.
+    /// The archive contains app/runtime metadata and optionally local redacted
+    /// logs; it never includes StudyData, database files, PDFs or credentials.
+    /// </summary>
+    public async Task<byte[]> CreateDiagnosticBundleAsync(
+        bool userConsent,
+        bool includeLogs,
+        CancellationToken cancellationToken = default)
+    {
+        if (!userConsent)
+            throw new InvalidOperationException("È necessario il consenso esplicito prima di creare il pacchetto diagnostico.");
+
+        var preview = PreviewDiagnosticBundle();
+        var metadata = new
+        {
+            schemaVersion = "1.0",
+            generatedAt = preview.GeneratedAt,
+            applicationVersion = preview.ApplicationVersion,
+            operatingSystem = preview.OperatingSystem,
+            runtime = preview.Runtime,
+            includedLogFiles = includeLogs ? preview.AvailableLogFiles : 0,
+            includesPersonalDatabase = false,
+            includesCredentials = false,
+            includesDocuments = false
+        };
+
+        await using var output = new MemoryStream();
+        using (var archive = new ZipArchive(output, ZipArchiveMode.Create, leaveOpen: true))
+        {
+            var metadataEntry = archive.CreateEntry("diagnostics.json", CompressionLevel.Optimal);
+            await using (var stream = metadataEntry.Open())
+                await JsonSerializer.SerializeAsync(stream, metadata, ExportJson, cancellationToken).ConfigureAwait(false);
+
+            if (includeLogs)
+            {
+                var logs = GetSafeDiagnosticLogFiles();
+                var combined = new StringBuilder();
+                foreach (var logPath in logs)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    var info = new FileInfo(logPath);
+                    if (info.Length > 512 * 1024 || combined.Length >= 2 * 1024 * 1024) continue;
+                    var content = await File.ReadAllTextAsync(logPath, cancellationToken).ConfigureAwait(false);
+                    foreach (var line in content.Split(new[] { "\r\n", "\n" }, StringSplitOptions.RemoveEmptyEntries))
+                    {
+                        if (combined.Length >= 2 * 1024 * 1024) break;
+                        combined.AppendLine(SecurityRedaction.ForLog(line, 2000));
+                    }
+                }
+
+                var logEntry = archive.CreateEntry("redacted-application.log", CompressionLevel.Optimal);
+                await using var stream = logEntry.Open();
+                await using var writer = new StreamWriter(stream, new UTF8Encoding(false));
+                await writer.WriteAsync(combined.ToString().AsMemory(), cancellationToken).ConfigureAwait(false);
+            }
+        }
+
+        return output.ToArray();
+    }
+
+    /// <summary>
+    /// Selective, confirmed reset. The optional safety copy is created before
+    /// any record or credential is removed; SQLite replacement remains atomic.
+    /// </summary>
+    public async Task<PrivacyResetResult> ResetAsync(
+        PrivacyResetScope scope,
+        bool confirmed,
+        bool createSafetyBackup = false,
+        string? backupPassword = null,
+        CancellationToken cancellationToken = default)
+    {
+        if (!confirmed)
+            throw new InvalidOperationException("L'operazione richiede una conferma esplicita.");
+        var data = await _store.LoadAsync(cancellationToken).ConfigureAwait(false);
+        var before = CountRecords(data);
+        string? safetyBackupPath = null;
+        if (createSafetyBackup)
+        {
+            if (_backups is null)
+                throw new InvalidOperationException("Il servizio di backup non è configurato.");
+            var backup = await _backups.CreateBackupAsync(backupPassword, cancellationToken).ConfigureAwait(false);
+            safetyBackupPath = backup.FilePath;
+        }
+
+        var credentialsRemoved = false;
+        var deleteMoodleToken = false;
+        var deleteManagedMoodleFiles = false;
+        var deletedFiles = 0;
+        switch (scope)
+        {
+            case PrivacyResetScope.StudyLab:
+                data.StudySessions.Clear();
+                data.StudyTasks.Clear();
+                data.StudyActivities.Clear();
+                data.StudyMissions.Clear();
+                data.PomodoroTimer = null;
+                data.PomodoroCycles.Clear();
+                data.ActivityRevisions.Clear();
+                data.ErrorJournalEntries.Clear();
+                data.Flashcards.Clear();
+                data.FlashcardReviews.Clear();
+                data.Distractions.Clear();
+                data.EnergyCheckIns.Clear();
+                break;
+            case PrivacyResetScope.Calendar:
+                data.CalendarEvents.Clear();
+                break;
+            case PrivacyResetScope.Documents:
+                data.PdfDocuments.Clear();
+                deleteManagedMoodleFiles = true;
+                break;
+            case PrivacyResetScope.MoodleConnection:
+                MoodleApplicationService.ClearLocalMoodleReferences(data);
+                deleteMoodleToken = true;
+                break;
+            default:
+                throw new ArgumentOutOfRangeException(nameof(scope));
+        }
+
+        await _store.SaveAsync(data, cancellationToken).ConfigureAwait(false);
+        if (deleteMoodleToken) credentialsRemoved = _tokens?.Delete() == true;
+        if (deleteManagedMoodleFiles) deletedFiles = DeleteMoodleFiles();
+        var after = CountRecords(data);
+        return new PrivacyResetResult(scope, Math.Max(0, before - after), deletedFiles,
+            credentialsRemoved, safetyBackupPath);
+    }
+
+    private static IReadOnlyList<string> GetSafeDiagnosticLogFiles()
+    {
+        var root = Path.GetFullPath(AppDiagnostics.Directory);
+        if (!Directory.Exists(root)) return Array.Empty<string>();
+        try
+        {
+            return Directory.EnumerateFiles(root, "unitracker*.log", SearchOption.TopDirectoryOnly)
+                .Where(logPath => LocalFileSecurity.IsInside(root, logPath))
+                .Where(logPath => (File.GetAttributes(logPath) & FileAttributes.ReparsePoint) == 0)
+                .Where(logPath => new FileInfo(logPath).Length <= 512 * 1024)
+                .OrderBy(logPath => logPath, StringComparer.OrdinalIgnoreCase)
+                .Take(3)
+                .ToArray();
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or SecurityException)
+        {
+            return Array.Empty<string>();
+        }
     }
 
     /// <summary>Applies the documented retention to encrypted backups.</summary>
