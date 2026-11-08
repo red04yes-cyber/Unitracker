@@ -1,6 +1,7 @@
 <Application x:Class="UniToStudyHub.App"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="clr-namespace:UniToStudyHub.Presentation.Controls">
     <Application.Resources>
         <!-- Shared design tokens. ThemeManager replaces these brushes at runtime. -->
         <SolidColorBrush x:Key="NavyBrush" Color="#111B2B"/>
@@ -341,6 +342,18 @@
             <Setter Property="Background" Value="{DynamicResource SubtleBrush}"/>
             <Setter Property="BorderThickness" Value="0"/>
             <Setter Property="Height" Value="8"/>
+        </Style>
+
+        <!-- Shared vector progress indicators used by Dashboard and Study Lab. -->
+        <Style x:Key="DashboardCreditsRingStyle" TargetType="{x:Type controls:ProgressRing}">
+            <Setter Property="StrokeThickness" Value="7"/>
+            <Setter Property="TrackBrush" Value="{DynamicResource SubtleBrush}"/>
+            <Setter Property="ProgressBrush" Value="{DynamicResource GoldAccentBrush}"/>
+        </Style>
+        <Style x:Key="FocusSessionRingStyle" TargetType="{x:Type controls:ProgressRing}">
+            <Setter Property="StrokeThickness" Value="9"/>
+            <Setter Property="TrackBrush" Value="#354A64"/>
+            <Setter Property="ProgressBrush" Value="{DynamicResource AccentCyanBrush}"/>
         </Style>
 
         <Style x:Key="GoldProgressBarStyle" TargetType="{x:Type ProgressBar}" BasedOn="{StaticResource {x:Type ProgressBar}}">
