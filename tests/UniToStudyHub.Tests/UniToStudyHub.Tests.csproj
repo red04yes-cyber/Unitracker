@@ -16,6 +16,7 @@
     <Compile Include="../../src/UniToStudyHub/Domain/**/*.cs" Link="Linked/Domain/%(RecursiveDir)%(Filename)%(Extension)" />
     <Compile Include="../../src/UniToStudyHub/Infrastructure/Data/Entities/StudyHubEntities.cs" Link="Linked/Infrastructure/Data/Entities/StudyHubEntities.cs" />
     <Compile Include="../../src/UniToStudyHub/Infrastructure/Data/StudyHubDbContext.cs" Link="Linked/Infrastructure/Data/StudyHubDbContext.cs" />
+    <Compile Include="../../src/UniToStudyHub/Infrastructure/Data/DatabaseKeyVault.cs" Link="Linked/Infrastructure/Data/DatabaseKeyVault.cs" />
     <Compile Include="../../src/UniToStudyHub/Infrastructure/Data/StudyHubDbContextFactory.cs" Link="Linked/Infrastructure/Data/StudyHubDbContextFactory.cs" />
     <Compile Include="../../src/UniToStudyHub/Infrastructure/Data/StudyDataEntityMapper.cs" Link="Linked/Infrastructure/Data/StudyDataEntityMapper.cs" />
     <Compile Include="../../src/UniToStudyHub/Infrastructure/Data/Migrations/*.cs" Link="Linked/Infrastructure/Data/Migrations/%(Filename)%(Extension)" />
