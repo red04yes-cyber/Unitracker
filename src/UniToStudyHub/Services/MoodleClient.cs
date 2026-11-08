@@ -66,7 +66,12 @@ public sealed class MoodleClient : IDisposable
     {
         var available = new HashSet<string>(availableFunctions ?? Array.Empty<string>(), StringComparer.Ordinal);
         var result = new Dictionary<string, JsonElement>(StringComparer.Ordinal);
-        foreach (var function in CourseActivityFunctions)
+        var candidates = CourseActivityFunctions
+            .Concat(available.Where(name => name.StartsWith("mod_", StringComparison.Ordinal) &&
+                                            name.EndsWith("_by_courses", StringComparison.Ordinal)))
+            .Distinct(StringComparer.Ordinal)
+            .Take(100);
+        foreach (var function in candidates)
         {
             ct.ThrowIfCancellationRequested();
             if (!available.Contains(function)) continue;
