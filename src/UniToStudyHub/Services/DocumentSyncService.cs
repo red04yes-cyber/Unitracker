@@ -45,22 +45,34 @@ public sealed class DocumentSyncService
         var warnings = new List<string>();
         var downloaded = 0;
         var skipped = 0;
+        long downloadedBytes = 0;
+        const long maximumCourseBytes = 1024L * 1024 * 1024;
+        const int maximumFilesPerCourse = 1000;
         var files = sections
             .Where(section => section.modules is not null)
-            .SelectMany(section => section.modules)
-            .Where(module => module.contents is not null)
-            .SelectMany(module => module.contents)
-            .Where(file => file.type.Equals("file", StringComparison.OrdinalIgnoreCase) &&
-                           !string.IsNullOrWhiteSpace(file.fileurl) &&
-                           !string.IsNullOrWhiteSpace(file.filename));
+            .SelectMany(section => section.modules.SelectMany(module =>
+                (module.contents ?? new List<MoodleContentFile>())
+                .Select(file => new { Section = section, Module = module, File = file })))
+            .Where(item => item.File.type.Equals("file", StringComparison.OrdinalIgnoreCase) &&
+                           !string.IsNullOrWhiteSpace(item.File.fileurl) &&
+                           !string.IsNullOrWhiteSpace(item.File.filename))
+            .Take(maximumFilesPerCourse + 1)
+            .ToList();
 
-        foreach (var file in files)
+        if (files.Count > maximumFilesPerCourse)
+        {
+            warnings.Add($"Il corso espone più di {maximumFilesPerCourse} file: il download è stato limitato per sicurezza.");
+            files.RemoveAt(files.Count - 1);
+        }
+
+        foreach (var item in files)
         {
             cancellationToken.ThrowIfCancellationRequested();
+            var file = item.File;
             var safeName = SafeName(file.filename);
             if (BlockedExtensions.Contains(Path.GetExtension(safeName)))
             {
-                warnings.Add($"Ignorato «{safeName}»: estensione eseguibile non consentita.");
+                warnings.Add($"Ignorato «{safeName}»: estensione eseguibile o macro non consentita.");
                 skipped++;
                 continue;
             }
@@ -70,15 +82,44 @@ public sealed class DocumentSyncService
                 skipped++;
                 continue;
             }
+            if (file.filesize > 0 && downloadedBytes + file.filesize > maximumCourseBytes)
+            {
+                warnings.Add("Raggiunto il limite di 1 GB per corso; i file rimanenti non sono stati scaricati.");
+                skipped += files.Count - downloaded - skipped;
+                break;
+            }
 
-            var destination = Path.Combine(root, Categorize(file.filename, file.mimetype), safeName);
+            var relative = Path.Combine(
+                SafeName(item.Section.name),
+                SafeName(item.Module.name),
+                Categorize(file.filename, file.mimetype));
+            if (!string.IsNullOrWhiteSpace(file.filepath))
+            {
+                var folders = file.filepath.Replace('\\', '/').Split('/', StringSplitOptions.RemoveEmptyEntries)
+                    .Where(part => part is not "." and not "..")
+                    .Select(SafeName).ToArray();
+                foreach (var folder in folders) relative = Path.Combine(relative, folder);
+            }
+            var destinationDirectory = Path.Combine(root, relative);
+            var destination = Path.Combine(destinationDirectory, safeName);
             if (!LocalFileSecurity.IsInside(root, destination))
             {
                 warnings.Add($"Ignorato «{safeName}»: percorso non valido.");
                 skipped++;
                 continue;
             }
-            if (File.Exists(destination))
+
+            if (File.Exists(destination) && file.timemodified > 0)
+            {
+                var existingTimestamp = new DateTimeOffset(File.GetLastWriteTimeUtc(destination), TimeSpan.Zero)
+                    .ToUnixTimeSeconds();
+                if (existingTimestamp >= file.timemodified)
+                {
+                    skipped++;
+                    continue;
+                }
+            }
+            else if (File.Exists(destination))
             {
                 skipped++;
                 continue;
@@ -86,12 +127,17 @@ public sealed class DocumentSyncService
 
             try
             {
+                LocalFileSecurity.EnsurePrivateDirectory(destinationDirectory);
                 await client.DownloadFileAsync(file.fileurl, destination, cancellationToken, root)
                     .ConfigureAwait(false);
+                var info = new FileInfo(destination);
+                downloadedBytes += info.Length;
+                if (file.timemodified > 0)
+                    File.SetLastWriteTimeUtc(destination, DateTimeOffset.FromUnixTimeSeconds(file.timemodified).UtcDateTime);
                 downloaded++;
             }
             catch (Exception ex) when (ex is HttpRequestException or InvalidOperationException or IOException
-                                           or InvalidDataException or TaskCanceledException)
+                                           or InvalidDataException or TaskCanceledException or ArgumentOutOfRangeException)
             {
                 LocalFileSecurity.TryDelete(destination);
                 warnings.Add($"«{safeName}» non scaricato: {SecurityRedaction.ForLog(ex.Message, 200)}");
