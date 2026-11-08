@@ -25,21 +25,22 @@ public sealed class AiProviderFactory(
         var providerName = (saved?.Provider ?? get(ProviderEnvironmentVariable))?.Trim().ToLowerInvariant();
         var consent = saved?.ConsentGranted ??
             string.Equals(get(ConsentEnvironmentVariable), "true", StringComparison.OrdinalIgnoreCase);
-        if (!consent || providerName is not ("openai" or "ollama"))
+        if (!consent || providerName is not ("openai" or "ollama" or "gemini"))
             return new AiProviderRuntime(new UnavailableAiProvider(), null);
 
         var isLocal = providerName == "ollama";
+        var isGemini = providerName == "gemini";
         var baseUrl = get("STUDYHUB_AI_BASE_URL") ??
-                      (isLocal ? "http://127.0.0.1:11434/v1" : "https://api.openai.com/v1");
+                      (isLocal ? "http://127.0.0.1:11434/v1" : isGemini ? "https://generativelanguage.googleapis.com/v1beta" : "https://api.openai.com/v1");
         var model = saved?.Model ?? get("STUDYHUB_AI_MODEL") ??
-                    (isLocal ? string.Empty : "gpt-4.1-mini");
+                    (isLocal ? string.Empty : isGemini ? "gemini-2.5-flash" : "gpt-4.1-mini");
         if (isLocal && (!Uri.TryCreate(baseUrl, UriKind.Absolute, out var localEndpoint) ||
                         !localEndpoint.IsLoopback))
             return new AiProviderRuntime(new UnavailableAiProvider(), null);
-        var secretName = isLocal ? null : "openai";
-        var keyEnvironmentVariable = isLocal ? "STUDYHUB_OLLAMA_LOCAL_TOKEN" : "STUDYHUB_OPENAI_API_KEY";
+        var secretName = isLocal ? null : isGemini ? "gemini" : "openai";
+        var keyEnvironmentVariable = isLocal ? "STUDYHUB_OLLAMA_LOCAL_TOKEN" : isGemini ? "STUDYHUB_GEMINI_API_KEY" : "STUDYHUB_OPENAI_API_KEY";
         var settings = new AiSettings(
-            Provider: isLocal ? "Ollama (locale)" : "OpenAI",
+            Provider: isLocal ? "Ollama (locale)" : isGemini ? "Gemini" : "OpenAI",
             BaseUrl: baseUrl,
             Model: model,
             ApiKeyEnvironmentVariable: keyEnvironmentVariable,
@@ -65,7 +66,9 @@ public sealed class AiProviderFactory(
 
         try
         {
-            return new AiProviderRuntime(new OpenAiCompatibleProvider(settings, key), settings);
+            return new AiProviderRuntime(isGemini
+                ? new GeminiProvider(settings, key)
+                : new OpenAiCompatibleProvider(settings, key), settings);
         }
         catch (ArgumentException)
         {
