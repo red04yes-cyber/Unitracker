@@ -13,13 +13,18 @@ public partial class MainWindow : Window
     private readonly DispatcherTimer _focusRefreshTimer;
     private readonly AiCredentialStore _aiCredentials;
     private readonly AiProviderPreferencesStore _aiPreferences;
+    private readonly PrivacyService _privacy;
+    private readonly StudyDataImportService _dataImport;
 
     public MainWindow(MainViewModel viewModel, AiCredentialStore aiCredentials,
-        AiProviderPreferencesStore aiPreferences)
+        AiProviderPreferencesStore aiPreferences, PrivacyService privacy,
+        StudyDataImportService dataImport)
     {
         InitializeComponent();
         _aiCredentials = aiCredentials;
         _aiPreferences = aiPreferences;
+        _privacy = privacy;
+        _dataImport = dataImport;
         var savedAi = _aiPreferences.Load();
         if (savedAi is not null)
         {
@@ -106,6 +111,171 @@ public partial class MainWindow : Window
         catch (Exception ex)
         {
             MessageBox.Show(this, $"Impossibile revocare il consenso: {ex.Message}", "Errore",
+                MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private async void ExportAllData_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new SaveFileDialog
+        {
+            Title = "Esporta tutti i dati personali",
+            Filter = "Esportazione UniTo StudyHub (*.json)|*.json",
+            DefaultExt = ".json",
+            AddExtension = true,
+            FileName = $"UniToStudyHub-dati-{DateTime.Today:yyyyMMdd}.json",
+            OverwritePrompt = true
+        };
+        if (dialog.ShowDialog(this) != true) return;
+        try
+        {
+            var bytes = await _privacy.ExportEverythingAsync();
+            await System.IO.File.WriteAllBytesAsync(dialog.FileName, bytes);
+            MessageBox.Show(this,
+                "Esportazione completata. Il file contiene dati personali e note private, ma non token Moodle né chiavi AI: conservalo in un luogo sicuro.",
+                "Esportazione completata", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, $"Esportazione non riuscita: {ex.Message}", "Errore",
+                MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private async void ImportAllData_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new OpenFileDialog
+        {
+            Title = "Importa un'esportazione UniTo StudyHub",
+            Filter = "Esportazione UniTo StudyHub (*.json)|*.json",
+            CheckFileExists = true,
+            Multiselect = false
+        };
+        if (dialog.ShowDialog(this) != true) return;
+
+        try
+        {
+            var bytes = await System.IO.File.ReadAllBytesAsync(dialog.FileName);
+            var preview = await _dataImport.PreviewAsync(bytes);
+            var counts = string.Join(Environment.NewLine,
+                preview.ItemCounts.Where(x => x.Value > 0).Select(x => $"• {x.Key}: {x.Value}"));
+            var conflicts = string.Join(Environment.NewLine,
+                preview.DuplicateCounts.Where(x => x.Value > 0).Select(x => $"• {x.Key}: {x.Value}"));
+            var warnings = string.Join(Environment.NewLine, preview.Warnings);
+            var summary = $"Versione: {preview.SchemaVersion}\nData esportazione: {preview.GeneratedAt?.ToLocalTime().ToString("g") ?? "non indicata"}\nRecord: {preview.TotalItems}\n\n{counts}";
+            if (!string.IsNullOrWhiteSpace(conflicts))
+                summary += $"\n\nConflitti con dati locali (prevarranno i dati locali in Merge):\n{conflicts}";
+            if (!string.IsNullOrWhiteSpace(warnings))
+                summary += $"\n\nAvvisi:\n{warnings}";
+
+            var choice = MessageBox.Show(this,
+                summary + "\n\nSÌ = Merge (aggiungi solo record nuovi)\nNO = Replace (sostituisci tutti i dati dopo backup cifrato)\nANNULLA = non modificare nulla.",
+                "Anteprima importazione · nessuna modifica ancora effettuata",
+                MessageBoxButton.YesNoCancel, MessageBoxImage.Information, MessageBoxResult.Cancel);
+            if (choice == MessageBoxResult.Cancel) return;
+
+            var strategy = choice == MessageBoxResult.Yes
+                ? StudyDataImportStrategy.Merge
+                : StudyDataImportStrategy.Replace;
+            if (strategy == StudyDataImportStrategy.Replace)
+            {
+                var confirm = MessageBox.Show(this,
+                    "ATTENZIONE: Replace sostituirà i dati locali con quelli del file. Prima verrà creato un backup cifrato. Vuoi continuare?",
+                    "Conferma sostituzione completa", MessageBoxButton.YesNo,
+                    MessageBoxImage.Warning, MessageBoxResult.No);
+                if (confirm != MessageBoxResult.Yes) return;
+            }
+
+            var result = await _dataImport.ApplyAsync(preview, strategy);
+            MessageBox.Show(this,
+                $"Importazione completata. Record aggiunti: {result.AddedRecords}. " +
+                (result.SafetyBackupPath is null ? string.Empty : $"Backup di sicurezza: {System.IO.Path.GetFileName(result.SafetyBackupPath)}. ") +
+                "L'app verrà riavviata per ricaricare i dati.",
+                "Importazione completata", MessageBoxButton.OK, MessageBoxImage.Information);
+            Application.Current.Shutdown();
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, $"Importazione non riuscita. I dati locali non sono stati sostituiti: {ex.Message}",
+                "Errore importazione", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private async void ResetPrivacy_Click(object sender, RoutedEventArgs e)
+    {
+        var scope = PrivacyResetScopeBox.SelectedIndex switch
+        {
+            0 => PrivacyResetScope.StudyLab,
+            1 => PrivacyResetScope.Calendar,
+            2 => PrivacyResetScope.Documents,
+            3 => PrivacyResetScope.MoodleConnection,
+            _ => throw new InvalidOperationException("Seleziona un ambito di reset valido.")
+        };
+        var description = scope switch
+        {
+            PrivacyResetScope.StudyLab => "sessioni, task, Pomodoro, flashcard, diario errori, distrazioni e check-in. Corsi e voti resteranno.",
+            PrivacyResetScope.Calendar => "eventi del calendario locale.",
+            PrivacyResetScope.Documents => "metadati PDF e file nella cartella Moodle gestita.",
+            _ => "token Moodle, URL e riferimenti di collegamento. Corsi e voti resteranno."
+        };
+        var confirm = MessageBox.Show(this,
+            $"Verranno eliminati {description}\n\nOperazione non annullabile. Continuare?",
+            "Conferma reset privacy", MessageBoxButton.YesNo,
+            MessageBoxImage.Warning, MessageBoxResult.No);
+        if (confirm != MessageBoxResult.Yes) return;
+
+        try
+        {
+            var result = await _privacy.ResetAsync(scope, confirmed: true,
+                createSafetyBackup: PrivacySafetyBackupBox.IsChecked == true);
+            MessageBox.Show(this,
+                $"Reset completato. Record rimossi: {result.DeletedRecords}. File rimossi: {result.DeletedFiles}. " +
+                (result.CredentialsRemoved ? "Credenziali Moodle rimosse. " : string.Empty) +
+                "L'app verrà chiusa per ricaricare i dati.",
+                "Reset completato", MessageBoxButton.OK, MessageBoxImage.Information);
+            Application.Current.Shutdown();
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, $"Reset non riuscito: {ex.Message}", "Errore privacy",
+                MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private async void ExportDiagnostics_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            var preview = _privacy.PreviewDiagnosticBundle();
+            var consent = MessageBox.Show(this,
+                $"Anteprima pacchetto diagnostico\n\nVersione: {preview.ApplicationVersion}\nSistema: {preview.OperatingSystem}\nRuntime: {preview.Runtime}\nLog disponibili: {preview.AvailableLogFiles}\nDimensione log: {preview.AvailableLogBytes:N0} byte\n\nNon saranno inclusi database personali, PDF, token o chiavi API. Nessun dato verrà inviato automaticamente. Vuoi creare il pacchetto?",
+                "Consenso diagnostica", MessageBoxButton.YesNo,
+                MessageBoxImage.Information, MessageBoxResult.No);
+            if (consent != MessageBoxResult.Yes) return;
+
+            var includeLogs = MessageBox.Show(this,
+                "Vuoi includere anche i log applicativi redatti? Puoi scegliere No per esportare solo i metadati tecnici.",
+                "Includere i log?", MessageBoxButton.YesNo,
+                MessageBoxImage.Question, MessageBoxResult.No) == MessageBoxResult.Yes;
+            var dialog = new SaveFileDialog
+            {
+                Title = "Salva pacchetto diagnostico",
+                Filter = "Pacchetto diagnostico ZIP (*.zip)|*.zip",
+                DefaultExt = ".zip",
+                AddExtension = true,
+                FileName = $"UniToStudyHub-diagnostics-{DateTime.Today:yyyyMMdd}.zip",
+                OverwritePrompt = true
+            };
+            if (dialog.ShowDialog(this) != true) return;
+
+            var bytes = await _privacy.CreateDiagnosticBundleAsync(userConsent: true, includeLogs);
+            await System.IO.File.WriteAllBytesAsync(dialog.FileName, bytes);
+            MessageBox.Show(this, "Pacchetto diagnostico creato localmente. Nessun upload è stato effettuato.",
+                "Diagnostica esportata", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, $"Creazione pacchetto non riuscita: {ex.Message}", "Errore diagnostica",
                 MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
