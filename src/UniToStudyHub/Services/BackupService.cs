@@ -278,6 +278,9 @@ public sealed class BackupService
             {
                 File.Copy(backupPath, temporary, overwrite: true);
             }
+            // Older v1 backups contain a plaintext SQLite file. Convert the
+            // temporary restore candidate before it can replace the live DB.
+            StudyHubDatabase.EnsureEncryptedDatabase(temporary);
             LocalFileSecurity.TryRestrictFile(temporary);
 
             if (!await VerifySqliteFileAsync(temporary, cancellationToken).ConfigureAwait(false))
