@@ -12,9 +12,11 @@
         <SolidColorBrush x:Key="NavyBrush" Color="#17243B"/>
         <SolidColorBrush x:Key="SidebarBrush" Color="#17243B"/>
         <SolidColorBrush x:Key="SidebarMutedBrush" Color="#AFC0D8"/>
+        <SolidColorBrush x:Key="SidebarDividerBrush" Color="#35445B"/>
         <SolidColorBrush x:Key="InkBrush" Color="#17243B"/>
         <SolidColorBrush x:Key="MutedBrush" Color="#718096"/>
         <SolidColorBrush x:Key="AccentBrush" Color="#3157D5"/>
+        <SolidColorBrush x:Key="AccentFillBrush" Color="#3157D5"/>
         <SolidColorBrush x:Key="AccentSoftBrush" Color="#EAF0FF"/>
         <SolidColorBrush x:Key="PanelBrush" Color="#FFFFFF"/>
         <SolidColorBrush x:Key="PageBrush" Color="#F3F6FB"/>
@@ -32,7 +34,7 @@
         <Style TargetType="{x:Type Button}">
             <Setter Property="Padding" Value="14,9"/>
             <Setter Property="Margin" Value="0"/>
-            <Setter Property="Background" Value="{DynamicResource AccentBrush}"/>
+            <Setter Property="Background" Value="{DynamicResource AccentFillBrush}"/>
             <Setter Property="Foreground" Value="White"/>
             <Setter Property="BorderThickness" Value="0"/>
             <Setter Property="Cursor" Value="Hand"/>
@@ -167,8 +169,8 @@
             <Setter Property="HeadersVisibility" Value="Column"/>
             <Setter Property="GridLinesVisibility" Value="Horizontal"/>
             <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
-            <Setter Property="RowBackground" Value="White"/>
-            <Setter Property="AlternatingRowBackground" Value="#F8FAFD"/>
+            <Setter Property="RowBackground" Value="{DynamicResource PanelBrush}"/>
+            <Setter Property="AlternatingRowBackground" Value="{DynamicResource SubtleBrush}"/>
         </Style>
         </ResourceDictionary>
     </Application.Resources>
