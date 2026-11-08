@@ -5,36 +5,52 @@ using UniToStudyHub.Presentation.Navigation;
 namespace UniToStudyHub.Presentation.ViewModels;
 
 /// <summary>
-/// Application shell state. LegacyContent is a temporary compatibility bridge
-/// while the existing tab content is extracted into page-specific views.
+/// Application shell state and page routing. The page view models are
+/// long-lived singletons so their presentation state survives navigation.
 /// </summary>
 public sealed class ShellViewModel : INotifyPropertyChanged
 {
     private readonly INavigationService _navigation;
 
     public ShellViewModel(
-        MainViewModel legacyContent,
+        DashboardViewModel dashboard,
+        CoursesViewModel courses,
+        CalendarViewModel calendar,
+        StudyLabViewModel studyLab,
+        AcademyViewModel academy,
+        ProgressViewModel progress,
+        SettingsViewModel settings,
         INavigationService navigation)
     {
-        LegacyContent = legacyContent ?? throw new ArgumentNullException(nameof(legacyContent));
+        Dashboard = dashboard ?? throw new ArgumentNullException(nameof(dashboard));
+        Courses = courses ?? throw new ArgumentNullException(nameof(courses));
+        Calendar = calendar ?? throw new ArgumentNullException(nameof(calendar));
+        StudyLab = studyLab ?? throw new ArgumentNullException(nameof(studyLab));
+        Academy = academy ?? throw new ArgumentNullException(nameof(academy));
+        Progress = progress ?? throw new ArgumentNullException(nameof(progress));
+        Settings = settings ?? throw new ArgumentNullException(nameof(settings));
         _navigation = navigation ?? throw new ArgumentNullException(nameof(navigation));
         _navigation.Navigated += OnNavigated;
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
+    public DashboardViewModel Dashboard { get; }
+    public CoursesViewModel Courses { get; }
+    public CalendarViewModel Calendar { get; }
+    public StudyLabViewModel StudyLab { get; }
+    public AcademyViewModel Academy { get; }
+    public ProgressViewModel Progress { get; }
+    public SettingsViewModel Settings { get; }
+
     /// <summary>
-    /// Temporary host for existing page bindings. Remove when all routes use
-    /// their own view models and UserControls.
+    /// Compatibility access for startup initialization. Remove after page
+    /// commands and data move into page-specific application APIs.
     /// </summary>
-    public MainViewModel LegacyContent { get; }
+    public MainViewModel LegacyContent => Dashboard.State;
 
     public StudyRoute CurrentRoute => _navigation.CurrentRoute;
 
-    /// <summary>
-    /// Mirrors the stable sidebar order to keep the current TabControl working
-    /// during the first navigation migration step.
-    /// </summary>
     public int SelectedPageIndex
     {
         get => (int)_navigation.CurrentRoute;
@@ -46,8 +62,6 @@ public sealed class ShellViewModel : INotifyPropertyChanged
             _navigation.NavigateTo((StudyRoute)value);
         }
     }
-
-    public bool NavigateTo(StudyRoute route) => _navigation.NavigateTo(route);
 
     private void OnNavigated(object? sender, NavigationChangedEventArgs e)
     {
