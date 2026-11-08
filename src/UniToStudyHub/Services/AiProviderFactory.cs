@@ -11,7 +11,8 @@ public sealed record AiProviderRuntime(IAiProvider Provider, AiSettings? Setting
 
 public sealed class AiProviderFactory(
     AiSettingsService settingsService,
-    AiCredentialStore credentials)
+    AiCredentialStore credentials,
+    AiProviderPreferencesStore? preferences = null)
 {
     public const string ProviderEnvironmentVariable = "STUDYHUB_AI_PROVIDER";
     public const string ConsentEnvironmentVariable = "STUDYHUB_AI_CONSENT";
@@ -20,15 +21,17 @@ public sealed class AiProviderFactory(
         Func<string, string?>? environment = null)
     {
         var get = environment ?? Environment.GetEnvironmentVariable;
-        var providerName = get(ProviderEnvironmentVariable)?.Trim().ToLowerInvariant();
-        var consent = string.Equals(get(ConsentEnvironmentVariable), "true", StringComparison.OrdinalIgnoreCase);
+        var saved = preferences?.Load();
+        var providerName = (saved?.Provider ?? get(ProviderEnvironmentVariable))?.Trim().ToLowerInvariant();
+        var consent = saved?.ConsentGranted ??
+            string.Equals(get(ConsentEnvironmentVariable), "true", StringComparison.OrdinalIgnoreCase);
         if (!consent || providerName is not ("openai" or "ollama"))
             return new AiProviderRuntime(new UnavailableAiProvider(), null);
 
         var isLocal = providerName == "ollama";
         var baseUrl = get("STUDYHUB_AI_BASE_URL") ??
                       (isLocal ? "http://127.0.0.1:11434/v1" : "https://api.openai.com/v1");
-        var model = get("STUDYHUB_AI_MODEL") ??
+        var model = saved?.Model ?? get("STUDYHUB_AI_MODEL") ??
                     (isLocal ? string.Empty : "gpt-4.1-mini");
         if (isLocal && (!Uri.TryCreate(baseUrl, UriKind.Absolute, out var localEndpoint) ||
                         !localEndpoint.IsLoopback))
