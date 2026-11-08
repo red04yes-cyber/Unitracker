@@ -99,7 +99,7 @@ public sealed class PrivacyService
             _aiKeys?.List().Count > 0,
             PrivacyDefaults.TelemetryEnabled,
             _dataDirectory ?? StudyHubDatabase.GetDataDirectory(),
-            StudyHubDatabase.DescribeProtection());
+            StudyHubDatabase.DescribeProtection(_dataDirectory is null ? null : Path.Combine(_dataDirectory, "unitracker.db")));
     }
 
     /// <summary>
