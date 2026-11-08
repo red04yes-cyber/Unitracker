@@ -183,9 +183,9 @@ public static class StudyHubDatabase
             .UseSqlite(CreateConnectionString(databasePath ?? GetDatabasePath()))
             .Options;
 
-    public static DatabaseProtectionStatus DescribeProtection()
+    public static DatabaseProtectionStatus DescribeProtection(string? databasePath = null)
     {
-        var path = GetDatabasePath();
+        var path = string.IsNullOrWhiteSpace(databasePath) ? GetDatabasePath() : Path.GetFullPath(databasePath);
         var encrypted = OperatingSystem.IsWindows() && File.Exists(path) && !IsPlaintextSqlite(path);
         var acl = encrypted && LocalFileSecurity.TryRestrictFile(path);
         return new DatabaseProtectionStatus(
