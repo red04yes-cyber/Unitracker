@@ -2,6 +2,7 @@ using System.IO;
 using System.IO.Compression;
 using System.Reflection;
 using System.Runtime.InteropServices;
+using System.Security;
 using System.Text;
 using System.Text.Json;
 using UniToStudyHub.Infrastructure.Data;
