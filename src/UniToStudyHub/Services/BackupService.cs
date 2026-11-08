@@ -289,6 +289,8 @@ public sealed class BackupService
             var safety = await CreateBackupAsync(password, cancellationToken).ConfigureAwait(false);
 
             Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
+            LocalFileSecurity.ScrubAndDelete(_databasePath + "-wal");
+            LocalFileSecurity.TryDelete(_databasePath + "-shm");
             if (File.Exists(_databasePath))
             {
                 try
@@ -430,10 +432,11 @@ public sealed class BackupService
             if (source is not Microsoft.Data.Sqlite.SqliteConnection sqliteSource)
                 throw new InvalidOperationException("The configured SQLite provider does not support encrypted snapshots.");
             sqliteSource.BackupDatabase(destination);
+            LocalFileSecurity.TryRestrictFile(target);
         }
         catch
         {
-            LocalFileSecurity.TryDelete(target);
+            LocalFileSecurity.ScrubAndDelete(target);
             throw;
         }
         finally
