@@ -27,7 +27,9 @@ if (-not (Test-Path -LiteralPath $executable -PathType Leaf)) {
 }
 if ([string]::IsNullOrWhiteSpace($Version)) {
     [xml]$project = Get-Content -LiteralPath (Join-Path $repoRoot 'src/UniToStudyHub/UniToStudyHub.csproj') -Raw
-    $Version = [string]$project.Project.PropertyGroup.Version
+    $versionNode = $project.SelectSingleNode('/Project/PropertyGroup/Version')
+    if ($null -eq $versionNode) { throw "Project version is not defined in the application project." }
+    $Version = $versionNode.InnerText.Trim()
 }
 if ($Version -notmatch '^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$') {
     throw "Version must be semantic (for example 0.2.0); received '$Version'."
