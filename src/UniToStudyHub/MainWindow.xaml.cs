@@ -64,9 +64,9 @@ public partial class MainWindow : Window
 
         try
         {
-            if (provider is "openai" or "gemini" && !string.IsNullOrWhiteSpace(AiApiKeyBox.Password))
+            if ((provider is "openai" or "gemini") && !string.IsNullOrWhiteSpace(AiApiKeyBox.Password))
                 _aiCredentials.SaveKey(provider, AiApiKeyBox.Password);
-            if (provider is "openai" or "gemini" && consent &&
+            if ((provider is "openai" or "gemini") && consent &&
                 string.IsNullOrWhiteSpace(_aiCredentials.LoadKey(provider)) &&
                 string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable(provider == "gemini" ? "STUDYHUB_GEMINI_API_KEY" : "STUDYHUB_OPENAI_API_KEY")))
             {
