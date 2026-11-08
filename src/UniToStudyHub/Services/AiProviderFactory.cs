@@ -30,6 +30,9 @@ public sealed class AiProviderFactory(
                       (isLocal ? "http://127.0.0.1:11434/v1" : "https://api.openai.com/v1");
         var model = get("STUDYHUB_AI_MODEL") ??
                     (isLocal ? string.Empty : "gpt-4.1-mini");
+        if (isLocal && (!Uri.TryCreate(baseUrl, UriKind.Absolute, out var localEndpoint) ||
+                        !localEndpoint.IsLoopback))
+            return new AiProviderRuntime(new UnavailableAiProvider(), null);
         var secretName = isLocal ? null : "openai";
         var keyEnvironmentVariable = isLocal ? "STUDYHUB_OLLAMA_LOCAL_TOKEN" : "STUDYHUB_OPENAI_API_KEY";
         var settings = new AiSettings(
