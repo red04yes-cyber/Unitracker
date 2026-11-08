@@ -705,7 +705,7 @@
                 </StackPanel>
             </TabItem.Header>
             <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-    <StackPanel Margin="32,30,32,36"><StackPanel Margin="32,30,32,36">
+    <StackPanel Margin="32,30,32,36">
         <TextBlock Text="STUDIO E MEMORIA" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource AccentBrush}"/>
         <TextBlock Text="Studio Lab" Style="{StaticResource PageTitleStyle}" Margin="0,7,0,4"/>
         <TextBlock Text="Concentrazione, attività, ripasso e diario degli errori. Le azioni vengono salvate nel profilo locale." Style="{StaticResource PageSubtitleStyle}" Margin="0,0,0,22"/>
