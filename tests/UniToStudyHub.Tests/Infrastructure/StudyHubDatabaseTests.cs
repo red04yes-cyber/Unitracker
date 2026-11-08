@@ -18,6 +18,7 @@ public sealed class StudyHubDatabaseTests
             await db.Database.ExecuteSqlRawAsync("INSERT INTO EncryptionProbe (Value) VALUES ('encrypted')");
         }
 
+        Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
         var header = new byte[16];
         await using (var file = File.OpenRead(path))
             Assert.Equal(16, await file.ReadAsync(header));
