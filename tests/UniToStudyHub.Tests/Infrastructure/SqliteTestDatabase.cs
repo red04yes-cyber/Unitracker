@@ -60,7 +60,7 @@ internal sealed class SqliteTestDatabase : IAsyncDisposable
     {
         if (DatabasePath is not null)
         {
-            await using var connection = new SqliteConnection($"Data Source={DatabasePath}");
+            await using var connection = new SqliteConnection(StudyHubDatabase.CreateEncryptedConnectionString(DatabasePath, SqliteOpenMode.ReadOnly));
             await connection.OpenAsync();
             using var command = connection.CreateCommand();
             command.CommandText = sql;
