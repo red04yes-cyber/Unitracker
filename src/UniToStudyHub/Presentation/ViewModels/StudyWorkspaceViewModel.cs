@@ -141,6 +141,8 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
             RefreshSyllabusAndQuestions();
             RefreshReadiness();
             AddSyllabusTopicCommand?.NotifyCanExecuteChanged();
+            GenerateAiPlanCommand?.NotifyCanExecuteChanged();
+            GenerateOralPracticeCommand?.NotifyCanExecuteChanged();
             AddQuestionCommand?.NotifyCanExecuteChanged();
         }
     }
@@ -349,6 +351,8 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
     public AsyncRelayCommand ReviewEasyCommand { get; }
     public AsyncRelayCommand SearchPdfCommand { get; }
     public AsyncRelayCommand AskPdfCommand { get; }
+    public AsyncRelayCommand GenerateAiPlanCommand { get; }
+    public AsyncRelayCommand GenerateOralPracticeCommand { get; }
     public AsyncRelayCommand SaveAcademicProfileCommand { get; }
     public AsyncRelayCommand CreateBackupCommand { get; }
     public AsyncRelayCommand VerifyBackupCommand { get; }
@@ -423,6 +427,8 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
         ReviewEasyCommand = new AsyncRelayCommand(() => ReviewFlashcardAsync(RecallRating.Easy), () => SelectedDueFlashcard is not null);
         SearchPdfCommand = new AsyncRelayCommand(SearchPdfAsync, () => SelectedPdf is not null);
         AskPdfCommand = new AsyncRelayCommand(AskPdfAsync, () => SelectedPdf is not null);
+        GenerateAiPlanCommand = new AsyncRelayCommand(GenerateAiPlanAsync, () => SelectedCourse is not null);
+        GenerateOralPracticeCommand = new AsyncRelayCommand(GenerateOralPracticeAsync, () => SelectedCourse is not null);
         SaveAcademicProfileCommand = new AsyncRelayCommand(SaveAcademicProfileAsync);
         CreateBackupCommand = new AsyncRelayCommand(CreateBackupAsync);
         VerifyBackupCommand = new AsyncRelayCommand(VerifyBackupAsync, () => SelectedBackup is not null);
@@ -834,6 +840,84 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
         catch (Exception ex)
         {
             AiStatusMessage = $"Richiesta non completata: {ex.Message}";
+            AiResponseText = string.Empty;
+        }
+    }
+
+    private async Task GenerateAiPlanAsync()
+    {
+        if (SelectedCourse is null) return;
+        var course = SelectedCourse;
+        var topics = _data.SyllabusTopics.Where(x => x.CourseId == course.Id).ToList();
+        var tasks = _data.StudyTasks.Where(x => x.CourseId == course.Id &&
+            x.Status is StudyTaskStatus.Todo or StudyTaskStatus.InProgress).ToList();
+        var context = $"""
+            Corso: {course.Name} ({course.Code})
+            Data appello registrata: {(course.AppealDate is null ? "non indicata" : course.AppealDate.Value.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture))}
+            Preferenze di studio: {_data.StudyPreferences}
+            Ore settimanali disponibili dichiarate: {_data.WeeklyStudyHours}
+            Limite giornaliero: {_data.MaxDailyStudyMinutes} minuti
+            Syllabus:
+            {string.Join("\n", topics.Select(x => $"- {x.Title} | stato: {x.Status} | stima: {x.EstimatedMinutes} min"))}
+            Attività aperte:
+            {string.Join("\n", tasks.Select(x => $"- {x.Title} | priorità: {x.Priority}/5 | stima: {x.EstimatedMinutes} min | scadenza: {(x.DueAt is null ? "non indicata" : x.DueAt.Value.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture))}"))}
+            """;
+        try
+        {
+            var response = await _aiStudy.AskAsync(
+                "Crea un piano di studio concreto per le prossime due settimane. Ordina gli argomenti per priorità, distribuisci il carico entro i limiti dichiarati, proponi sessioni e obiettivi verificabili. Non creare scadenze non presenti nei dati.",
+                context, maxTokens: 2200);
+            AiStatusMessage = response.Status switch
+            {
+                AiStatus.NotConfigured => "AI non configurata: scegli OpenAI o Ollama e autorizza esplicitamente l'invio.",
+                AiStatus.Configured => $"Piano proposto da {response.Provider}. È una proposta: controlla date e carico prima di applicarla.",
+                AiStatus.Refused => response.Error ?? "Richiesta non autorizzata o limite giornaliero raggiunto.",
+                _ => response.Error ?? "Errore durante la generazione del piano."
+            };
+            AiResponseText = response.Status == AiStatus.Configured ? response.Content : string.Empty;
+        }
+        catch (Exception ex)
+        {
+            AiStatusMessage = $"Piano AI non generato: {ex.Message}";
+            AiResponseText = string.Empty;
+        }
+    }
+
+    private async Task GenerateOralPracticeAsync()
+    {
+        if (SelectedCourse is null) return;
+        var course = SelectedCourse;
+        var topics = _data.SyllabusTopics.Where(x => x.CourseId == course.Id).ToList();
+        var documents = _data.PdfDocuments
+            .Where(x => x.CourseId == course.Id)
+            .Select(x => x.FileName)
+            .ToList();
+        var context = $"""
+            Corso: {course.Name} ({course.Code})
+            Syllabus:
+            {string.Join("\n", topics.Select(x => $"- {x.Title} | {x.Description} | stato: {x.Status}"))}
+            Materiali PDF importati (nomi, non contenuto):
+            {string.Join("\n", documents.Select(x => $"- {x}"))}
+            Banca domande esistente:
+            {string.Join("\n", _data.Questions.Where(x => x.CourseId == course.Id).Take(20).Select(x => $"- {x.Text}"))}
+            """;
+        try
+        {
+            var response = await _aiStudy.AskAsync(
+                "Prepara una simulazione orale con cinque domande progressive sugli argomenti del syllabus. Per ogni domanda indica cosa dovrebbe contenere una risposta completa e una breve griglia di valutazione. Non presentare le domande come ufficiali e non inventare contenuti assenti dal syllabus.",
+                context, maxTokens: 2200);
+            AiStatusMessage = response.Status switch
+            {
+                AiStatus.NotConfigured => "AI non configurata: scegli OpenAI o Ollama e autorizza esplicitamente l'invio.",
+                AiStatus.Configured => $"Simulazione generata da {response.Provider}. Le domande sono esercizi, non quesiti ufficiali.",
+                AiStatus.Refused => response.Error ?? "Richiesta non autorizzata o limite giornaliero raggiunto.",
+                _ => response.Error ?? "Errore durante la simulazione orale."
+            };
+            AiResponseText = response.Status == AiStatus.Configured ? response.Content : string.Empty;
+        }
+        catch (Exception ex)
+        {
+            AiStatusMessage = $"Simulazione non generata: {ex.Message}";
             AiResponseText = string.Empty;
         }
     }
