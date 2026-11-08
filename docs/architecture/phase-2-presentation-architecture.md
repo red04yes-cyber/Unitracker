@@ -1,20 +1,22 @@
 # Phase 2 — Presentation architecture and navigation
 
-Status: design contract for the next isolated implementation phase. This document does not claim that the current presentation layer has already been migrated.
+Status: Phase 2 foundation implemented; page extraction and view-model isolation remain in progress. This document distinguishes the compatibility bridge from the final target architecture.
 
 ## Current baseline
 
-The current WPF startup builds a bare `ServiceCollection` in `App.xaml.cs`. Presentation DI registers only `MainViewModel` and `StudyWorkspaceViewModel`. The seven navigation sections still live in `MainWindow.xaml`; their bindings route through those two large view models.
+The current WPF startup now creates one `IHost` with `Host.CreateDefaultBuilder` in `App.xaml.cs`. Core services and presentation services are registered into that host; startup migration, legacy JSON migration, diagnostics and shutdown are kept under the host lifetime.
 
-The existing composition is a compatibility baseline for Phase 1. Do not add further page features to either monolith while Phase 2 is underway.
+The window is bound to `ShellViewModel`. `ShellViewModel` uses `INavigationService` / `NavigationService`, whose typed `StudyRoute` keys do not depend on WPF. The existing tab content is temporarily exposed as `LegacyContent` and remains the data context of the tab control. This is a deliberate migration bridge, not the final page isolation.
+
+The seven navigation sections still live in `MainWindow.xaml`; their bindings still route through `MainViewModel` and `StudyWorkspaceViewModel`. Do not add new page features to either monolith while Phase 2 is underway.
 
 ## Target shell
 
-- Introduce `Microsoft.Extensions.Hosting` and create one `IHost` during WPF startup.
-- Keep database migration, legacy migration, diagnostics and shutdown under the host lifetime. Do not create a second service provider.
-- Register core/domain services once, then register presentation services through a dedicated `AddUniToStudyHubPresentation` extension.
-- Replace the tab-hosting `MainWindow` with a shell bound only to `ShellViewModel`.
-- Add `INavigationService` / `NavigationService` with an explicit route key, current page view model and navigation state. The service must not know about a WPF Window.
+- Keep one `IHost` for the WPF application's lifetime; do not create a second service provider.
+- Register core/domain services once, then register presentation services through `AddUniToStudyHubPresentation`.
+- Keep `MainWindow` bound only to `ShellViewModel`; remove the temporary `LegacyContent` bridge after the page migration.
+- Keep `INavigationService` / `NavigationService` independent from any WPF Window or control.
+- Replace the temporary tab-host with a shell `ContentControl` whose active page view model comes from navigation state.
 - Use application-level DataTemplates to map page view model types to their `UserControl` views. Page views must not reach into `MainWindow.DataContext`.
 
 ## Page ownership
@@ -42,15 +44,16 @@ Each page gets its own view model and view. Register one view-model instance per
 
 ## Migration order
 
-1. Add HostBuilder-based composition, `ShellViewModel`, route keys and `NavigationService`; keep the legacy content hosted temporarily so startup and all commands continue working.
+1. **Implemented foundation:** introduce HostBuilder-based composition, `ShellViewModel`, typed route keys and `NavigationService`; keep the legacy tab content hosted temporarily so startup and all commands continue working.
 2. Extract the seven existing page regions into separate `UserControl` files without changing their bindings first.
 3. Move each page's bindings and commands into its specific view model, migrating one route at a time. Split the current Study Lab / Academy / Progress / Settings responsibilities out of `StudyWorkspaceViewModel`; do not leave that 1,200-line monolith behind.
-4. Remove the legacy view models and old window-level navigation handlers only after every route uses its page-specific view model.
+4. Replace the temporary tab host with shell content templates, then remove the legacy view models and old window-level navigation handlers only after every route uses its page-specific view model.
 
 ## Acceptance tests
 
-- DI composition test: resolve shell, navigation service and all seven page view models without constructing a Window.
-- Navigation test: every route resolves to the expected view model, and returning to a route preserves its page state.
+- DI composition test: resolve the shell, navigation service and current compatibility view model without constructing a Window.
+- Navigation test: route changes are typed, invalid routes are rejected, and the selected sidebar index remains synchronized.
+- Final migration tests: every route resolves to the expected page view model, and returning to a route preserves its page state.
 - Binding/command tests per page, including Moodle sync and What-If projections.
 - Persistence regressions for SQLite, calendar events, PDF metadata, focus/task state, profile and backups.
 - Windows CI: test suite, Release WPF build, self-contained win-x64 publish and startup smoke test.
