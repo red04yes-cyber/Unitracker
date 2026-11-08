@@ -304,6 +304,8 @@ public sealed class PrivacyService
         }
 
         var credentialsRemoved = false;
+        var deleteMoodleToken = false;
+        var deleteManagedMoodleFiles = false;
         var deletedFiles = 0;
         switch (scope)
         {
@@ -326,17 +328,19 @@ public sealed class PrivacyService
                 break;
             case PrivacyResetScope.Documents:
                 data.PdfDocuments.Clear();
-                deletedFiles = DeleteMoodleFiles();
+                deleteManagedMoodleFiles = true;
                 break;
             case PrivacyResetScope.MoodleConnection:
                 MoodleApplicationService.ClearLocalMoodleReferences(data);
-                credentialsRemoved = _tokens?.Delete() == true;
+                deleteMoodleToken = true;
                 break;
             default:
                 throw new ArgumentOutOfRangeException(nameof(scope));
         }
 
         await _store.SaveAsync(data, cancellationToken).ConfigureAwait(false);
+        if (deleteMoodleToken) credentialsRemoved = _tokens?.Delete() == true;
+        if (deleteManagedMoodleFiles) deletedFiles = DeleteMoodleFiles();
         var after = CountRecords(data);
         return new PrivacyResetResult(scope, Math.Max(0, before - after), deletedFiles,
             credentialsRemoved, safetyBackupPath);
