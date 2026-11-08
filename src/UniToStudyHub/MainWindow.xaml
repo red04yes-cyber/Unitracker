@@ -489,8 +489,18 @@
                             <ColumnDefinition Width="2*"/>
                             <ColumnDefinition Width="3*"/>
                         </Grid.ColumnDefinitions>
-                        <TextBox Grid.Column="0" Text="{Binding CourseSearchText, UpdateSourceTrigger=PropertyChanged}"
-                                 ToolTip="Cerca per nome o codice" MinWidth="190"/>
+                        <Grid Grid.Column="0" MinWidth="190">
+                            <TextBox Text="{Binding CourseSearchText, UpdateSourceTrigger=PropertyChanged}"
+                                     ToolTip="Cerca per nome o codice" Padding="36,10,12,10"/>
+                            <Ellipse Width="10" Height="10" Stroke="{DynamicResource MutedBrush}"
+                                     StrokeThickness="1.6" HorizontalAlignment="Left"
+                                     VerticalAlignment="Center" Margin="13,0,0,0"
+                                     IsHitTestVisible="False"/>
+                            <Path Data="M 0,0 L 5,5" Stroke="{DynamicResource MutedBrush}"
+                                  StrokeThickness="1.6" Width="6" Height="6"
+                                  HorizontalAlignment="Left" VerticalAlignment="Center"
+                                  Margin="25,7,0,0" IsHitTestVisible="False"/>
+                        </Grid>
                         <StackPanel Grid.Column="1" Orientation="Horizontal"
                                     HorizontalAlignment="Right" VerticalAlignment="Center">
                             <RadioButton Content="{Binding ActiveCoursesCount, StringFormat='In corso ({0})'}"
@@ -563,6 +573,38 @@
                                 HorizontalAlignment="Stretch">
                         <Border Style="{StaticResource CardBorderStyle}" Padding="28">
                             <StackPanel HorizontalAlignment="Center">
+                                <Viewbox Width="164" Height="104" Stretch="Uniform" Margin="0,0,0,12">
+                                    <Canvas Width="164" Height="104">
+                                        <Ellipse Width="118" Height="14" Canvas.Left="23" Canvas.Top="84"
+                                                 Fill="{DynamicResource SubtleBrush}"/>
+                                        <Border Width="112" Height="6" Canvas.Left="26" Canvas.Top="73"
+                                                Background="{DynamicResource GoldAccentBrush}" CornerRadius="3"/>
+                                        <Rectangle Width="7" Height="18" Canvas.Left="38" Canvas.Top="78"
+                                                   Fill="{DynamicResource MutedBrush}"/>
+                                        <Rectangle Width="7" Height="18" Canvas.Left="119" Canvas.Top="78"
+                                                   Fill="{DynamicResource MutedBrush}"/>
+                                        <Border Width="60" Height="44" Canvas.Left="53" Canvas.Top="20"
+                                                Background="{DynamicResource PanelBrush}"
+                                                BorderBrush="{DynamicResource AccentCyanBrush}"
+                                                BorderThickness="2" CornerRadius="6" Padding="5">
+                                            <Grid>
+                                                <Border Background="{DynamicResource SubtleBrush}" CornerRadius="2"/>
+                                                <StackPanel Orientation="Horizontal" VerticalAlignment="Bottom"
+                                                            HorizontalAlignment="Center" Margin="0,0,0,5">
+                                                    <Rectangle Width="5" Height="8" Fill="{DynamicResource AccentCyanBrush}" Margin="0,0,3,0"/>
+                                                    <Rectangle Width="5" Height="13" Fill="{DynamicResource ElectricBlueBrush}" Margin="0,0,3,0"/>
+                                                    <Rectangle Width="5" Height="17" Fill="{DynamicResource BrickAccentBrush}"/>
+                                                </StackPanel>
+                                            </Grid>
+                                        </Border>
+                                        <Path Data="M 74,65 L 91,65 L 97,72 L 68,72 Z"
+                                              Fill="{DynamicResource BorderBrush}" Stroke="{DynamicResource MutedBrush}"
+                                              StrokeThickness="1"/>
+                                        <Path Data="M 20,70 C 29,60 39,60 47,68 C 55,60 64,60 73,70 L 73,80 C 63,73 55,73 47,80 C 39,73 29,73 20,80 Z"
+                                              Fill="{DynamicResource AccentSoftBrush}"
+                                              Stroke="{DynamicResource AccentCyanBrush}" StrokeThickness="1.5"/>
+                                    </Canvas>
+                                </Viewbox>
                                 <TextBlock Text="Nessuna materia da mostrare"
                                            FontSize="15" FontWeight="SemiBold"
                                            Foreground="{DynamicResource InkBrush}"
