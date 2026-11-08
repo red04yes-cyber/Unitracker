@@ -64,8 +64,10 @@ public sealed class AiProviderFactoryTests
         if (Directory.Exists(root)) Directory.Delete(root, recursive: true);
     }
 
-    [Fact]
-    public void OllamaCannotBeRedirectedToAnExternalHttpEndpoint()
+    [Theory]
+    [InlineData("http://example.com/v1")]
+    [InlineData("https://example.com/v1")]
+    public void OllamaCannotBeRedirectedToAnExternalEndpoint(string endpoint)
     {
         var root = Path.Combine(Path.GetTempPath(), "unitracker-ai-" + Guid.NewGuid().ToString("N"));
         var credentials = new AiCredentialStore(root, new TestSecretProtector());
@@ -74,7 +76,7 @@ public sealed class AiProviderFactoryTests
             [AiProviderFactory.ProviderEnvironmentVariable] = "ollama",
             [AiProviderFactory.ConsentEnvironmentVariable] = "true",
             ["STUDYHUB_AI_MODEL"] = "llama3.2",
-            ["STUDYHUB_AI_BASE_URL"] = "http://example.com/v1"
+            ["STUDYHUB_AI_BASE_URL"] = endpoint
         };
         var factory = new AiProviderFactory(new AiSettingsService(), credentials);
 
