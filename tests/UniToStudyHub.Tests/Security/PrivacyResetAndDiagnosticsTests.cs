@@ -112,7 +112,7 @@ public sealed class PrivacyResetAndDiagnosticsTests
 
             var bytes = await service.CreateDiagnosticBundleAsync(userConsent: true, includeLogs: true);
             using var archive = new ZipArchive(new MemoryStream(bytes), ZipArchiveMode.Read);
-            var logEntry = Assert.Single(archive.Entries.Where(x => x.FullName == "redacted-application.log"));
+            var logEntry = Assert.Single(archive.Entries, x => x.FullName == "redacted-application.log");
             using var reader = new StreamReader(logEntry.Open(), Encoding.UTF8);
             var log = await reader.ReadToEndAsync();
 
