@@ -513,7 +513,10 @@ public sealed class MainViewModel : INotifyPropertyChanged
                         var download = await _moodle.DownloadCourseFilesAsync(
                             MoodleUrlInput,
                             new Course { MoodleCourseId = remote.id, Name = remote.fullname },
-                            sections);
+                            sections,
+                            snapshotsByCourse.TryGetValue(remote.id, out var fileSnapshot)
+                                ? fileSnapshot.Files
+                                : Array.Empty<MoodleContentFile>());
                         downloadedFiles += download.Downloaded;
                         skippedFiles += download.Skipped;
                         fileWarnings += download.Warnings.Count;
