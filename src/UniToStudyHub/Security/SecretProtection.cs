@@ -86,7 +86,11 @@ public sealed class DpapiSecretProtector : ISecretProtector
         }
         finally
         {
-            if (output.Data != IntPtr.Zero) LocalFree(output.Data);
+            if (output.Data != IntPtr.Zero)
+            {
+                ZeroMemory(output.Data, output.Size);
+                LocalFree(output.Data);
+            }
             if (input.Data != IntPtr.Zero)
             {
                 ZeroMemory(input.Data, input.Size);
@@ -121,8 +125,14 @@ public sealed class DpapiSecretProtector : ISecretProtector
     [DllImport("kernel32.dll")]
     private static extern IntPtr LocalFree(IntPtr memory);
 
-    [DllImport("kernel32.dll", EntryPoint = "RtlSecureZeroMemory")]
-    private static extern void ZeroMemory(IntPtr destination, int length);
+    private static void ZeroMemory(IntPtr destination, int length)
+    {
+        if (destination == IntPtr.Zero || length <= 0) return;
+        // RtlSecureZeroMemory is a compiler intrinsic, not a kernel32 export.
+        // Marshal.Copy performs a native write and cannot be optimized away by
+        // the managed JIT; the buffer contains zeros only.
+        Marshal.Copy(new byte[length], 0, destination, length);
+    }
 }
 
 public enum SecretReadStatus
