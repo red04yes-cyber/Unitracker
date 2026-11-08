@@ -107,7 +107,7 @@ public partial class MainWindow : Window
 
         var backupName = System.IO.Path.GetFileName(viewModel.Workspace.SelectedBackup.FilePath);
         var result = MessageBox.Show(
-            $"Ripristinare il backup \\"{backupName}\\"? I dati correnti verranno sostituiti. Prima sarà creata una copia di sicurezza automatica.",
+            $"Ripristinare il backup \"{backupName}\"? I dati correnti verranno sostituiti. Prima sarà creata una copia di sicurezza automatica.",
             "Conferma ripristino backup",
             MessageBoxButton.YesNo,
             MessageBoxImage.Warning,
