@@ -705,12 +705,24 @@
                 </StackPanel>
             </TabItem.Header>
             <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-    <StackPanel Margin="32,30,32,36">
+    <StackPanel Margin="32,30,32,36"><StackPanel Margin="32,30,32,36">
         <TextBlock Text="STUDIO E MEMORIA" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource AccentBrush}"/>
         <TextBlock Text="Studio Lab" Style="{StaticResource PageTitleStyle}" Margin="0,7,0,4"/>
         <TextBlock Text="Concentrazione, attività, ripasso e diario degli errori. Le azioni vengono salvate nel profilo locale." Style="{StaticResource PageSubtitleStyle}" Margin="0,0,0,22"/>
-        <Grid Margin="0,0,0,16"><Grid.ColumnDefinitions><ColumnDefinition Width="1.2*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-            <Border Grid.Column="0" Background="{DynamicResource NavyBrush}" CornerRadius="14" Padding="24" Margin="0,0,12,0">
+        
+        <TabControl Margin="0,0,0,8" SelectedIndex="0">
+            <TabControl.Resources>
+                <Style TargetType="{x:Type TabItem}">
+                    <Setter Property="Width" Value="Auto"/>
+                    <Setter Property="Height" Value="Auto"/>
+                    <Setter Property="Padding" Value="18,10"/>
+                    <Setter Property="Margin" Value="0,0,8,12"/>
+                    <Setter Property="Foreground" Value="{DynamicResource InkBrush}"/>
+                </Style>
+            </TabControl.Resources>
+            <TabItem Header="Focus"><StackPanel>
+                <TextBlock Text="Una sessione alla volta: scegli la materia, imposta la durata e concentrati." Style="{StaticResource PageSubtitleStyle}" Margin="0,0,0,12"/>
+                <Border Background="{DynamicResource NavyBrush}" CornerRadius="14" Padding="24" Margin="0,0,12,0">
                 <StackPanel>
                     <TextBlock Text="SESSIONE DI FOCUS" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource SidebarMutedBrush}"/>
                     <TextBlock Text="{Binding Workspace.FocusRemainingDisplay}" FontSize="48" FontWeight="SemiBold" Foreground="White" Margin="0,12,0,0"/>
@@ -719,7 +731,7 @@
                     <TextBlock Text="{Binding Workspace.FocusElapsedDisplay}" FontSize="10" Foreground="{DynamicResource SidebarMutedBrush}" Margin="0,6,0,0"/>
                     <TextBox Text="{Binding Workspace.FocusTopicInput, UpdateSourceTrigger=PropertyChanged}" ToolTip="Argomento" Margin="0,16,0,0"/>
                     <Grid Margin="0,8,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="90"/></Grid.ColumnDefinitions>
-                        <ComboBox ItemsSource="{Binding Workspace.Courses}" DisplayMemberPath="Name" SelectedItem="{Binding Workspace.SelectedCourse}" ToolTip="Materia"/>
+                        <ComboBox ItemsSource="{Binding Workspace.Courses}" DisplayMemberPath="Name" SelectedItem="{Binding Workspace.SelectedFocusCourse}" ToolTip="Materia"/>
                         <TextBox Grid.Column="1" Text="{Binding Workspace.FocusMinutesInput, UpdateSourceTrigger=PropertyChanged}" Margin="8,0,0,0" ToolTip="Minuti"/>
                     </Grid>
                     <WrapPanel Margin="0,12,0,0">
@@ -731,12 +743,19 @@
                     </WrapPanel>
                 </StackPanel>
             </Border>
-            <Border Grid.Column="1" Style="{StaticResource CardBorderStyle}">
+                <WrapPanel Margin="0,10,0,0">
+                    <TextBlock Text="Preset rapidi:" VerticalAlignment="Center" Foreground="{DynamicResource MutedBrush}" Margin="0,0,10,0"/>
+                    <ComboBox Width="120" ItemsSource="{Binding Workspace.FocusPresetOptions}" SelectedItem="{Binding Workspace.FocusPresetInput}" ToolTip="Durata della sessione"/>
+                </WrapPanel>
+            </StackPanel></TabItem>
+            <TabItem Header="Attività"><StackPanel>
+                <TextBlock Text="Organizza i prossimi passi e pianifica i blocchi nel calendario." Style="{StaticResource PageSubtitleStyle}" Margin="0,0,0,12"/>
+                <Border Style="{StaticResource CardBorderStyle}">
                 <StackPanel>
                     <TextBlock Text="Attività aperte" Style="{StaticResource SectionTitleStyle}"/>
                     <TextBox Text="{Binding Workspace.TaskTitleInput, UpdateSourceTrigger=PropertyChanged}" ToolTip="Titolo attività" Margin="0,12,0,0"/>
                     <Grid Margin="0,8,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="76"/><ColumnDefinition Width="82"/></Grid.ColumnDefinitions>
-                        <ComboBox ItemsSource="{Binding Workspace.Courses}" DisplayMemberPath="Name" SelectedItem="{Binding Workspace.SelectedCourse}" ToolTip="Materia"/>
+                        <ComboBox ItemsSource="{Binding Workspace.Courses}" DisplayMemberPath="Name" SelectedItem="{Binding Workspace.SelectedTaskCourse}" ToolTip="Materia"/>
                         <TextBox Grid.Column="1" Text="{Binding Workspace.TaskMinutesInput, UpdateSourceTrigger=PropertyChanged}" Margin="7,0,0,0" ToolTip="Minuti stimati"/>
                         <ComboBox Grid.Column="2" ItemsSource="{Binding Workspace.TaskPriorityOptions}" SelectedItem="{Binding Workspace.TaskPriorityInput}" Margin="7,0,0,0" ToolTip="Priorità">
                             <ComboBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding StringFormat='P{0}'}"/></DataTemplate></ComboBox.ItemTemplate>
@@ -751,8 +770,7 @@
                     <WrapPanel Margin="0,8,0,0"><Button Content="Completa" Command="{Binding Workspace.CompleteTaskCommand}" Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,8,0"/><Button Content="Rimuovi" Click="RemoveStudyTask_Click" IsEnabled="{Binding Workspace.HasSelectedTask}" Style="{StaticResource QuietButtonStyle}"/></WrapPanel>
                 </StackPanel>
             </Border>
-        </Grid>
-        <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,16">
+                <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,16">
             <StackPanel>
                 <TextBlock Text="Planner di studio · anteprima" Style="{StaticResource SectionTitleStyle}"/>
                 <TextBlock Text="Inserisci le tue fasce giornaliere reali nel formato HH:mm-HH:mm; più fasce si separano con ;. Saranno ripetute per i giorni del periodo selezionato." FontSize="10" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,5,0,10"/>
@@ -777,7 +795,10 @@
                 </ItemsControl>
             </StackPanel>
         </Border>
-        <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+            </StackPanel></TabItem>
+            <TabItem Header="Ripasso"><StackPanel>
+                <TextBlock Text="Riprendi le flashcard dovute e trasforma gli errori in occasioni di apprendimento." Style="{StaticResource PageSubtitleStyle}" Margin="0,0,0,12"/>
+                <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
             <Border Grid.Column="0" Style="{StaticResource CardBorderStyle}" Margin="0,0,12,0">
                 <StackPanel>
                     <TextBlock Text="Ripasso flashcard" Style="{StaticResource SectionTitleStyle}"/>
@@ -803,7 +824,10 @@
                 </StackPanel>
             </Border>
         </Grid>
-        <Grid Margin="0,16,0,0">
+            </StackPanel></TabItem>
+            <TabItem Header="Benessere"><StackPanel>
+                <TextBlock Text="Tieni traccia delle energie e parcheggia le distrazioni senza interrompere lo studio." Style="{StaticResource PageSubtitleStyle}" Margin="0,0,0,12"/>
+                <Grid Margin="0,16,0,0">
             <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
             <Border Grid.Column="0" Style="{StaticResource CardBorderStyle}" Margin="0,0,12,0">
                 <StackPanel>
@@ -844,8 +868,9 @@
                 </StackPanel>
             </Border>
         </Grid>
-        <TextBlock Text="{Binding Workspace.WorkspaceStatus}" FontSize="11" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="2,14,2,0"/>
-    </StackPanel>
+            </StackPanel></TabItem>
+        </TabControl>
+        <TextBlock Text="{Binding Workspace.WorkspaceStatus}" FontSize="11" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="2,14,2,0"/></StackPanel>
 </ScrollViewer>
         </TabItem>
 
