@@ -9,12 +9,15 @@ namespace UniToStudyHub.Presentation.Views;
 /// <summary>
 /// Compatibility event host for dialogs and confirmation prompts while the
 /// page commands are being moved into their dedicated view models.
+/// It never throws while WPF is still establishing the inherited DataContext.
 /// </summary>
 public class LegacyPageControl : UserControl
 {
-    protected MainViewModel State =>
-        (DataContext as PageViewModelBase)?.State
-        ?? throw new InvalidOperationException("The page requires its dedicated page ViewModel.");
+    private bool TryGetState(out MainViewModel? state)
+    {
+        state = (DataContext as PageViewModelBase)?.State;
+        return state is not null;
+    }
 
     protected void NavigateToSubjects_Click(object sender, RoutedEventArgs e) =>
         NavigateTo(StudyRoute.Courses);
@@ -36,25 +39,30 @@ public class LegacyPageControl : UserControl
 
     protected async void ConnectMoodle_Click(object sender, RoutedEventArgs e)
     {
-        await State.ConnectMoodleAsync();
-        if (State.IsMoodleConnected && FindName("MoodleTokenBox") is PasswordBox tokenBox)
+        if (!TryGetState(out var state)) return;
+        await state!.ConnectMoodleAsync();
+        if (state.IsMoodleConnected && FindName("MoodleTokenBox") is PasswordBox tokenBox)
             tokenBox.Clear();
     }
 
     protected void MoodleTokenBox_PasswordChanged(object sender, RoutedEventArgs e)
     {
-        if (sender is PasswordBox passwordBox)
-            State.MoodleToken = passwordBox.Password;
+        if (TryGetState(out var state) && sender is PasswordBox passwordBox)
+            state!.MoodleToken = passwordBox.Password;
     }
 
     protected void CourseFilter_Checked(object sender, RoutedEventArgs e)
     {
-        if (sender is RadioButton radioButton && radioButton.Tag is string filter)
-            State.CourseFilter = filter;
+        if (TryGetState(out var state) &&
+            sender is RadioButton radioButton &&
+            radioButton.Tag is string filter)
+            state!.CourseFilter = filter;
     }
 
     protected async void ImportPdf_Click(object sender, RoutedEventArgs e)
     {
+        if (!TryGetState(out var state)) return;
+
         var dialog = new OpenFileDialog
         {
             Title = "Importa materiale didattico",
@@ -66,11 +74,13 @@ public class LegacyPageControl : UserControl
         var owner = Window.GetWindow(this);
         var selected = owner is null ? dialog.ShowDialog() : dialog.ShowDialog(owner);
         if (selected == true)
-            await State.Workspace.ImportPdfAsync(dialog.FileName);
+            await state!.Workspace.ImportPdfAsync(dialog.FileName);
     }
 
     protected async void ExportProgress_Click(object sender, RoutedEventArgs e)
     {
+        if (!TryGetState(out var state)) return;
+
         var dialog = new SaveFileDialog
         {
             Title = "Esporta report di studio",
@@ -86,7 +96,7 @@ public class LegacyPageControl : UserControl
 
         try
         {
-            await State.Workspace.ExportProgressAsync(dialog.FileName);
+            await state!.Workspace.ExportProgressAsync(dialog.FileName);
             MessageBox.Show("Report esportato correttamente.", "Esportazione completata",
                 MessageBoxButton.OK, MessageBoxImage.Information);
         }
@@ -99,6 +109,8 @@ public class LegacyPageControl : UserControl
 
     protected void DisconnectMoodle_Click(object sender, RoutedEventArgs e)
     {
+        if (!TryGetState(out var state)) return;
+
         var result = MessageBox.Show(
             "Disconnettere Moodle? Il token salvato verrà eliminato e i riferimenti di collegamento rimossi. Corsi, voti, eventi importati e storico locale saranno conservati.",
             "Conferma disconnessione Moodle",
@@ -107,17 +119,17 @@ public class LegacyPageControl : UserControl
             MessageBoxResult.No);
         if (result != MessageBoxResult.Yes) return;
 
-        State.DisconnectMoodleCommand.Execute(null);
+        state!.DisconnectMoodleCommand.Execute(null);
         if (FindName("MoodleTokenBox") is PasswordBox tokenBox)
             tokenBox.Clear();
     }
 
     protected void RestoreBackup_Click(object sender, RoutedEventArgs e)
     {
-        if (State.Workspace.SelectedBackup is null)
+        if (!TryGetState(out var state) || state!.Workspace.SelectedBackup is null)
             return;
 
-        var backupName = System.IO.Path.GetFileName(State.Workspace.SelectedBackup.FilePath);
+        var backupName = System.IO.Path.GetFileName(state.Workspace.SelectedBackup.FilePath);
         var result = MessageBox.Show(
             $"Ripristinare il backup \"{backupName}\"? I dati correnti verranno sostituiti. Prima sarà creata una copia di sicurezza automatica.",
             "Conferma ripristino backup",
@@ -125,15 +137,15 @@ public class LegacyPageControl : UserControl
             MessageBoxImage.Warning,
             MessageBoxResult.No);
         if (result == MessageBoxResult.Yes)
-            State.Workspace.RestoreBackupCommand.Execute(null);
+            state.Workspace.RestoreBackupCommand.Execute(null);
     }
 
     protected void DeleteCalendarEvent_Click(object sender, RoutedEventArgs e)
     {
-        if (State.SelectedCalendarEvent is null)
+        if (!TryGetState(out var state) || state!.SelectedCalendarEvent is null)
             return;
 
-        var title = State.SelectedCalendarEvent.Title;
+        var title = state.SelectedCalendarEvent.Title;
         var result = MessageBox.Show(
             $"Vuoi eliminare l'evento \"{title}\"?",
             "Conferma eliminazione",
@@ -141,15 +153,15 @@ public class LegacyPageControl : UserControl
             MessageBoxImage.Warning,
             MessageBoxResult.No);
         if (result == MessageBoxResult.Yes)
-            State.DeleteCalendarEventCommand.Execute(null);
+            state.DeleteCalendarEventCommand.Execute(null);
     }
 
     protected void RemoveStudyTask_Click(object sender, RoutedEventArgs e)
     {
-        if (State.Workspace.SelectedTask is null)
+        if (!TryGetState(out var state) || state!.Workspace.SelectedTask is null)
             return;
 
-        var title = State.Workspace.SelectedTask.Title;
+        var title = state.Workspace.SelectedTask.Title;
         var result = MessageBox.Show(
             $"Vuoi rimuovere l'attività \"{title}\"?",
             "Conferma rimozione",
@@ -157,6 +169,6 @@ public class LegacyPageControl : UserControl
             MessageBoxImage.Warning,
             MessageBoxResult.No);
         if (result == MessageBoxResult.Yes)
-            State.Workspace.RemoveTaskCommand.Execute(null);
+            state.Workspace.RemoveTaskCommand.Execute(null);
     }
 }
