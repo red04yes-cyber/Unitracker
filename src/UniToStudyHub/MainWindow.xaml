@@ -2,22 +2,23 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="UniTo StudyHub"
-        Height="900"
-        Width="1440"
-        MinHeight="700"
-        MinWidth="1024"
+        Height="920"
+        Width="1480"
+        MinHeight="740"
+        MinWidth="1040"
         WindowStartupLocation="CenterScreen"
         Background="{DynamicResource PageBrush}"
-        FontFamily="Segoe UI Variable"
+        Foreground="{DynamicResource InkBrush}"
+        FontFamily="Segoe UI"
         UseLayoutRounding="True"
         SnapsToDevicePixels="True">
     <Window.Resources>
         <Style TargetType="{x:Type TabItem}">
-            <Setter Property="Width" Value="228"/>
-            <Setter Property="Height" Value="56"/>
+            <Setter Property="Width" Value="244"/>
+            <Setter Property="Height" Value="66"/>
             <Setter Property="Margin" Value="0,3"/>
             <Setter Property="Padding" Value="0"/>
-            <Setter Property="Foreground" Value="#C5D1E2"/>
+            <Setter Property="Foreground" Value="{DynamicResource SidebarMutedBrush}"/>
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
             <Setter Property="VerticalContentAlignment" Value="Center"/>
@@ -27,22 +28,45 @@
                     <ControlTemplate TargetType="{x:Type TabItem}">
                         <Border x:Name="TabSurface"
                                 Background="{TemplateBinding Background}"
-                                CornerRadius="9"
-                                Padding="10,4">
-                            <ContentPresenter ContentSource="Header"
-                                              HorizontalAlignment="Stretch"
-                                              VerticalAlignment="Center"/>
+                                BorderBrush="Transparent"
+                                BorderThickness="1"
+                                CornerRadius="11"
+                                Padding="10,7">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="4"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <Border x:Name="ActiveIndicator"
+                                        Grid.Column="0"
+                                        Width="3"
+                                        CornerRadius="2"
+                                        Background="{DynamicResource AccentBrush}"
+                                        Visibility="Collapsed"
+                                        VerticalAlignment="Stretch"
+                                        Margin="0,5,0,5"/>
+                                <ContentPresenter Grid.Column="1"
+                                                  ContentSource="Header"
+                                                  HorizontalAlignment="Stretch"
+                                                  VerticalAlignment="Center"/>
+                            </Grid>
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsSelected" Value="True">
-                                <Setter TargetName="TabSurface" Property="Background" Value="#3157D5"/>
-                                <Setter Property="Foreground" Value="White"/>
+                                <Setter TargetName="TabSurface" Property="Background" Value="{DynamicResource SidebarActiveBrush}"/>
+                                <Setter TargetName="TabSurface" Property="BorderBrush" Value="{DynamicResource SidebarActiveBrush}"/>
+                                <Setter TargetName="ActiveIndicator" Property="Visibility" Value="Visible"/>
+                                <Setter Property="Foreground" Value="{DynamicResource SidebarTextBrush}"/>
                             </Trigger>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="TabSurface" Property="Opacity" Value="0.86"/>
+                                <Setter TargetName="TabSurface" Property="Background" Value="{DynamicResource SidebarHoverBrush}"/>
+                                <Setter TargetName="TabSurface" Property="BorderBrush" Value="{DynamicResource SidebarHoverBrush}"/>
+                            </Trigger>
+                            <Trigger Property="IsKeyboardFocused" Value="True">
+                                <Setter TargetName="TabSurface" Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
                             </Trigger>
                             <Trigger Property="IsEnabled" Value="False">
-                                <Setter TargetName="TabSurface" Property="Opacity" Value="0.55"/>
+                                <Setter TargetName="TabSurface" Property="Opacity" Value="0.48"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -60,7 +84,7 @@
             <ControlTemplate TargetType="{x:Type TabControl}">
                 <Grid SnapsToDevicePixels="True">
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="260"/>
+                        <ColumnDefinition Width="272"/>
                         <ColumnDefinition Width="*"/>
                     </Grid.ColumnDefinitions>
 
@@ -72,10 +96,10 @@
                                 <RowDefinition Height="Auto"/>
                             </Grid.RowDefinitions>
 
-                            <StackPanel Grid.Row="0" Margin="22,24,18,16">
+                            <StackPanel Grid.Row="0" Margin="24,26,20,20">
                                 <StackPanel Orientation="Horizontal">
-                                    <Border Width="40" Height="40" CornerRadius="11"
-                                            Background="#3157D5" VerticalAlignment="Center">
+                                    <Border Width="42" Height="42" CornerRadius="13"
+                                            Background="{DynamicResource AccentBrush}" VerticalAlignment="Center">
                                         <TextBlock Text="S" Foreground="White" FontSize="23"
                                                    FontWeight="Bold" HorizontalAlignment="Center"
                                                    VerticalAlignment="Center"/>
@@ -83,29 +107,29 @@
                                     <StackPanel Margin="11,1,0,0" VerticalAlignment="Center">
                                         <TextBlock Text="StudyHub" Foreground="White"
                                                    FontSize="18" FontWeight="SemiBold"/>
-                                        <TextBlock Text="UNITO WORKSPACE" Foreground="#AFC0D8"
+                                        <TextBlock Text="IL TUO SPAZIO UNIVERSITARIO" Foreground="{DynamicResource SidebarMutedBrush}"
                                                    FontSize="9" FontWeight="SemiBold"
                                                    Margin="0,2,0,0"/>
                                     </StackPanel>
                                 </StackPanel>
                                 <TextBlock Text="IL TUO PERCORSO UNIVERSITARIO"
-                                           Foreground="#8094B2" FontSize="9"
-                                           FontWeight="SemiBold" Margin="2,27,0,0"/>
+                                           Foreground="{DynamicResource SidebarMutedBrush}" FontSize="9"
+                                           FontWeight="Bold" Margin="2,24,0,0"/>
                             </StackPanel>
 
                             <TabPanel x:Name="HeaderPanel"
                                       Grid.Row="1"
                                       IsItemsHost="True"
                                       KeyboardNavigation.TabIndex="1"
-                                      Margin="12,0,12,8"/>
+                                      Margin="12,4,12,8"/>
 
-                            <StackPanel Grid.Row="2" Margin="22,12,20,22">
-                                <Border Height="1" Background="#35445B" Margin="0,0,0,14"/>
-                                <TextBlock Text="Un passo alla volta."
-                                           Foreground="#D6DFEC" FontSize="12"
+                            <StackPanel Grid.Row="2" Margin="24,12,22,24">
+                                <Border Height="1" Background="{DynamicResource BorderBrush}" Opacity="0.55" Margin="0,0,0,14"/>
+                                <TextBlock Text="Organizza. Studia. Cresci."
+                                           Foreground="{DynamicResource SidebarTextBrush}" FontSize="12"
                                            FontWeight="SemiBold"/>
-                                <TextBlock Text="Il tuo spazio per imparare e crescere."
-                                           Foreground="#91A2BB" FontSize="10"
+                                <TextBlock Text="Il tuo percorso, a modo tuo."
+                                           Foreground="{DynamicResource SidebarMutedBrush}" FontSize="10"
                                            TextWrapping="Wrap" Margin="0,4,0,0"/>
                             </StackPanel>
                         </Grid>
@@ -113,40 +137,44 @@
 
                     <Grid Grid.Column="1">
                         <Grid.RowDefinitions>
-                            <RowDefinition Height="76"/>
+                            <RowDefinition Height="86"/>
                             <RowDefinition Height="*"/>
                         </Grid.RowDefinitions>
                         <Border Grid.Row="0" Background="{DynamicResource PanelBrush}"
                                 BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1"
-                                Padding="28,0">
+                                Padding="32,0">
                             <Grid VerticalAlignment="Center">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*"/>
                                     <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
                                 <StackPanel VerticalAlignment="Center">
-                                    <TextBlock Text="UNITO STUDYHUB" FontSize="9"
+                                    <TextBlock Text="UNITO STUDYHUB  /  AREA PERSONALE" FontSize="9"
                                                FontWeight="Bold" Foreground="{DynamicResource MutedBrush}"/>
-                                    <TextBlock Text="Il tuo spazio personale" FontSize="13"
+                                    <TextBlock x:Name="PageHeading" Text="Oggi" FontSize="19"
                                                FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}"
-                                               Margin="0,3,0,0"/>
+                                               Margin="0,2,0,0"/>
+                                    <TextBlock x:Name="PageSubheading" Text="La tua dashboard" FontSize="10"
+                                               Foreground="{DynamicResource MutedBrush}" Margin="0,1,0,0"/>
                                 </StackPanel>
                                 <StackPanel Grid.Column="1" Orientation="Horizontal"
                                             VerticalAlignment="Center">
                                     <Border Background="{DynamicResource SubtleBrush}"
-                                            CornerRadius="7" Padding="10,7"
-                                            VerticalAlignment="Center">
+                                            CornerRadius="9" Padding="12,8"
+                                            VerticalAlignment="Center" MaxWidth="230">
                                         <TextBlock Text="{Binding MoodleStatus}" FontSize="10"
-                                                   Foreground="{DynamicResource MutedBrush}"/>
+                                                   Foreground="{DynamicResource MutedBrush}" TextTrimming="CharacterEllipsis"/>
                                     </Border>
                                     <Button x:Name="ThemeToggleButton"
                                             Content="Modalità scura"
                                             Style="{StaticResource QuietButtonStyle}"
+                                            ToolTip="Cambia tema chiaro o scuro"
                                             Margin="0,0,8,0"
                                             Click="ToggleTheme_Click"/>
                                     <Button Content="Impostazioni"
                                             Style="{StaticResource QuietButtonStyle}"
-                                            Margin="10,0,0,0"
+                                            Margin="6,0,0,0"
+                                            ToolTip="Apri le impostazioni"
                                             Click="NavigateToSettings_Click"/>
                                 </StackPanel>
                             </Grid>
@@ -164,8 +192,8 @@
         <TabItem>
             <TabItem.Header>
                 <StackPanel Orientation="Horizontal">
-                    <Border Width="30" Height="30" CornerRadius="8" Background="#263955">
-                        <TextBlock Text="01" Foreground="#DCE7F7" FontSize="10"
+                    <Border Width="34" Height="34" CornerRadius="10" Background="{DynamicResource SidebarBadgeBrush}">
+                        <TextBlock Text="OG" Foreground="{DynamicResource SidebarMutedBrush}" FontSize="10"
                                    FontWeight="Bold" HorizontalAlignment="Center"
                                    VerticalAlignment="Center"/>
                     </Border>
@@ -178,12 +206,12 @@
 
             <ScrollViewer VerticalScrollBarVisibility="Auto"
                           HorizontalScrollBarVisibility="Disabled">
-                <StackPanel Margin="36,34,36,40">
+                <StackPanel Margin="40,36,40,48">
                     <TextBlock Text="IL TUO WORKSPACE" FontSize="10"
                                FontWeight="Bold" Foreground="{DynamicResource AccentBrush}"/>
-                    <TextBlock Text="Buono studio." Style="{StaticResource PageTitleStyle}"
+                    <TextBlock Text="La tua giornata, in ordine." Style="{StaticResource PageTitleStyle}"
                                Margin="0,7,0,4"/>
-                    <TextBlock Text="La tua carriera e le priorità universitarie, in un unico posto."
+                    <TextBlock Text="Esami, materie e sessioni di studio: tutto quello che conta, in un unico spazio."
                                Style="{StaticResource PageSubtitleStyle}" Margin="0,0,0,22"/>
 
                     <Grid Margin="0,0,0,22">
@@ -198,18 +226,27 @@
                                 <TextBlock Text="IL TUO PROSSIMO PASSO"
                                            Foreground="#AFC5EA" FontSize="10"
                                            FontWeight="Bold"/>
-                                <TextBlock Text="Costruiamo la tua giornata di studio."
+                                <TextBlock Text="Studia con più chiarezza, un passo alla volta."
                                            Foreground="White" FontSize="22"
                                            FontWeight="SemiBold" TextWrapping="Wrap"
                                            Margin="0,9,0,7"/>
-                                <TextBlock Text="Il piano giornaliero e le sessioni di focus arriveranno con Studio Lab. Intanto puoi organizzare le materie e gli esami da preparare."
+                                <TextBlock Text="Rivedi gli esami in programma, aggiorna le materie e avvia una sessione di concentrazione quando sei pronto."
                                            Foreground="#D0DAE9" FontSize="12"
                                            TextWrapping="Wrap" MaxWidth="620"/>
-                                <Button Content="Apri le materie"
-                                        Style="{StaticResource SecondaryButtonStyle}"
-                                        HorizontalAlignment="Left"
-                                        Margin="0,18,0,0"
-                                        Click="NavigateToSubjects_Click"/>
+                                <WrapPanel Margin="0,18,0,0">
+                                    <Button Content="Le mie materie"
+                                            Style="{StaticResource SecondaryButtonStyle}"
+                                            Margin="0,0,8,8"
+                                            Click="NavigateToSubjects_Click"/>
+                                    <Button Content="Calendario"
+                                            Style="{StaticResource SecondaryButtonStyle}"
+                                            Margin="0,0,8,8"
+                                            Click="NavigateToCalendar_Click"/>
+                                    <Button Content="Avvia Studio Lab"
+                                            Style="{StaticResource SecondaryButtonStyle}"
+                                            Margin="0,0,8,8"
+                                            Click="NavigateToStudyLab_Click"/>
+                                </WrapPanel>
                             </StackPanel>
                         </Border>
 
@@ -226,7 +263,7 @@
                                 <Border Background="{DynamicResource WarningSoftBrush}"
                                         CornerRadius="7" Padding="9,7" Margin="0,18,0,0">
                                     <TextBlock Text="Le date pianificate sono indicative, non appelli ufficiali."
-                                               FontSize="10" Foreground="#8A5B1D"
+                                               FontSize="10" Foreground="{DynamicResource WarningBrush}"
                                                TextWrapping="Wrap"/>
                                 </Border>
                             </StackPanel>
@@ -327,8 +364,8 @@
         <TabItem>
             <TabItem.Header>
                 <StackPanel Orientation="Horizontal">
-                    <Border Width="30" Height="30" CornerRadius="8" Background="#263955">
-                        <TextBlock Text="02" Foreground="#DCE7F7" FontSize="10"
+                    <Border Width="34" Height="34" CornerRadius="10" Background="{DynamicResource SidebarBadgeBrush}">
+                        <TextBlock Text="MA" Foreground="{DynamicResource SidebarMutedBrush}" FontSize="10"
                                    FontWeight="Bold" HorizontalAlignment="Center"
                                    VerticalAlignment="Center"/>
                     </Border>
@@ -341,7 +378,7 @@
 
             <ScrollViewer VerticalScrollBarVisibility="Auto"
                           HorizontalScrollBarVisibility="Disabled">
-                <StackPanel Margin="32,30,32,36">
+                <StackPanel Margin="40,36,40,48">
                     <TextBlock Text="CARRIERA UNIVERSITARIA" FontSize="10"
                                FontWeight="Bold" Foreground="{DynamicResource AccentBrush}"/>
                     <TextBlock Text="Le tue materie" Style="{StaticResource PageTitleStyle}"
@@ -481,11 +518,11 @@
                                                    FontSize="11" Foreground="{DynamicResource MutedBrush}"
                                                    Margin="0,7,0,13"/>
                                         <Border x:Name="CourseStatusBorder"
-                                                Background="#EDF1F7" CornerRadius="6"
+                                                Background="{DynamicResource SubtleBrush}" CornerRadius="6"
                                                 Padding="8,5" HorizontalAlignment="Left">
                                             <TextBlock x:Name="CourseStatusText" Text="IN CORSO"
                                                        FontSize="9" FontWeight="Bold"
-                                                       Foreground="#52647D"/>
+                                                       Foreground="{DynamicResource MutedBrush}"/>
                                         </Border>
                                     </StackPanel>
                                 </Border>
@@ -522,8 +559,8 @@
         <TabItem>
             <TabItem.Header>
                 <StackPanel Orientation="Horizontal">
-                    <Border Width="30" Height="30" CornerRadius="8" Background="#263955">
-                        <TextBlock Text="03" Foreground="#DCE7F7" FontSize="10"
+                    <Border Width="34" Height="34" CornerRadius="10" Background="{DynamicResource SidebarBadgeBrush}">
+                        <TextBlock Text="CA" Foreground="{DynamicResource SidebarMutedBrush}" FontSize="10"
                                    FontWeight="Bold" HorizontalAlignment="Center"
                                    VerticalAlignment="Center"/>
                     </Border>
@@ -535,7 +572,7 @@
             </TabItem.Header>
 
             <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-    <StackPanel Margin="32,30,32,36">
+    <StackPanel Margin="40,36,40,48">
         <TextBlock Text="ORGANIZZAZIONE" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource AccentBrush}"/>
         <TextBlock Text="Calendario" Style="{StaticResource PageTitleStyle}" Margin="0,7,0,4"/>
         <TextBlock Text="Lezioni, esami, scadenze e sessioni di studio. Ogni evento conserva la propria provenienza." Style="{StaticResource PageSubtitleStyle}" Margin="0,0,0,22"/>
@@ -657,7 +694,7 @@
                                         <TextBlock Text="{Binding Category}" FontSize="10" Foreground="{DynamicResource MutedBrush}" Margin="0,3,0,0"/>
                                         <WrapPanel Margin="0,7,0,0">
                                             <Border Background="{DynamicResource PanelBrush}" CornerRadius="5" Padding="6,3" Margin="0,0,5,0"><TextBlock Text="{Binding Source}" FontSize="9" Foreground="{DynamicResource MutedBrush}"/></Border>
-                                            <Border Background="{DynamicResource WarningSoftBrush}" CornerRadius="5" Padding="6,3"><TextBlock Text="{Binding Verification}" FontSize="9" Foreground="#8A5B1D"/></Border>
+                                            <Border Background="{DynamicResource WarningSoftBrush}" CornerRadius="5" Padding="6,3"><TextBlock Text="{Binding Verification}" FontSize="9" Foreground="{DynamicResource WarningBrush}"/></Border>
                                         </WrapPanel>
                                     </StackPanel>
                                 </Grid>
@@ -698,8 +735,8 @@
         <TabItem>
             <TabItem.Header>
                 <StackPanel Orientation="Horizontal">
-                    <Border Width="30" Height="30" CornerRadius="8" Background="#263955">
-                        <TextBlock Text="04" Foreground="#DCE7F7" FontSize="10"
+                    <Border Width="34" Height="34" CornerRadius="10" Background="{DynamicResource SidebarBadgeBrush}">
+                        <TextBlock Text="SL" Foreground="{DynamicResource SidebarMutedBrush}" FontSize="10"
                                    FontWeight="Bold" HorizontalAlignment="Center"
                                    VerticalAlignment="Center"/>
                     </Border>
@@ -710,7 +747,7 @@
                 </StackPanel>
             </TabItem.Header>
             <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-    <StackPanel Margin="32,30,32,36">
+    <StackPanel Margin="40,36,40,48">
         <TextBlock Text="STUDIO E MEMORIA" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource AccentBrush}"/>
         <TextBlock Text="Studio Lab" Style="{StaticResource PageTitleStyle}" Margin="0,7,0,4"/>
         <TextBlock Text="Concentrazione, attività, ripasso e diario degli errori. Le azioni vengono salvate nel profilo locale." Style="{StaticResource PageSubtitleStyle}" Margin="0,0,0,22"/>
@@ -857,8 +894,8 @@
         <TabItem>
             <TabItem.Header>
                 <StackPanel Orientation="Horizontal">
-                    <Border Width="30" Height="30" CornerRadius="8" Background="#263955">
-                        <TextBlock Text="05" Foreground="#DCE7F7" FontSize="10"
+                    <Border Width="34" Height="34" CornerRadius="10" Background="{DynamicResource SidebarBadgeBrush}">
+                        <TextBlock Text="AC" Foreground="{DynamicResource SidebarMutedBrush}" FontSize="10"
                                    FontWeight="Bold" HorizontalAlignment="Center"
                                    VerticalAlignment="Center"/>
                     </Border>
@@ -869,7 +906,7 @@
                 </StackPanel>
             </TabItem.Header>
             <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-    <StackPanel Margin="32,30,32,36">
+    <StackPanel Margin="40,36,40,48">
         <TextBlock Text="MATERIALI DIDATTICI" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource AiBrush}"/>
         <TextBlock Text="Accademia" Style="{StaticResource PageTitleStyle}" Margin="0,7,0,4"/>
         <TextBlock Text="Materiali, studio attivo e strumenti di preparazione. Le funzioni AI sono in progresso e arriveranno in una fase successiva." Style="{StaticResource PageSubtitleStyle}" Margin="0,0,0,22"/>
@@ -980,8 +1017,8 @@
         <TabItem>
             <TabItem.Header>
                 <StackPanel Orientation="Horizontal">
-                    <Border Width="30" Height="30" CornerRadius="8" Background="#263955">
-                        <TextBlock Text="06" Foreground="#DCE7F7" FontSize="10"
+                    <Border Width="34" Height="34" CornerRadius="10" Background="{DynamicResource SidebarBadgeBrush}">
+                        <TextBlock Text="PR" Foreground="{DynamicResource SidebarMutedBrush}" FontSize="10"
                                    FontWeight="Bold" HorizontalAlignment="Center"
                                    VerticalAlignment="Center"/>
                     </Border>
@@ -993,7 +1030,7 @@
             </TabItem.Header>
 
             <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-    <StackPanel Margin="32,30,32,36">
+    <StackPanel Margin="40,36,40,48">
         <TextBlock Text="IL TUO ANDAMENTO" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource AccentBrush}"/>
         <TextBlock Text="Progressi" Style="{StaticResource PageTitleStyle}" Margin="0,7,0,4"/>
         <TextBlock Text="{Binding Workspace.ProgressPeriodDisplay, StringFormat='Periodo · {0}'}" Style="{StaticResource PageSubtitleStyle}" Margin="0,0,0,22"/>
@@ -1043,8 +1080,8 @@
         <TabItem>
             <TabItem.Header>
                 <StackPanel Orientation="Horizontal">
-                    <Border Width="30" Height="30" CornerRadius="8" Background="#263955">
-                        <TextBlock Text="07" Foreground="#DCE7F7" FontSize="10"
+                    <Border Width="34" Height="34" CornerRadius="10" Background="{DynamicResource SidebarBadgeBrush}">
+                        <TextBlock Text="IM" Foreground="{DynamicResource SidebarMutedBrush}" FontSize="10"
                                    FontWeight="Bold" HorizontalAlignment="Center"
                                    VerticalAlignment="Center"/>
                     </Border>
@@ -1056,7 +1093,7 @@
             </TabItem.Header>
 
             <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-    <StackPanel Margin="32,30,32,36">
+    <StackPanel Margin="40,36,40,48">
         <TextBlock Text="CONFIGURAZIONE" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource AccentBrush}"/>
         <TextBlock Text="Impostazioni" Style="{StaticResource PageTitleStyle}" Margin="0,7,0,4"/>
         <TextBlock Text="Gestisci integrazioni, dati locali e copie di sicurezza." Style="{StaticResource PageSubtitleStyle}" Margin="0,0,0,22"/>
