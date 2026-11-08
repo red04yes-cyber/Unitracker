@@ -1,0 +1,158 @@
+<UserControl x:Class="UniToStudyHub.Presentation.Views.StudyLabView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="clr-namespace:UniToStudyHub.Presentation.Controls">
+    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+    <StackPanel Margin="40,36,40,48">
+        <TextBlock Text="STUDIO E MEMORIA" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource AccentTextBrush}"/>
+        <TextBlock Text="Studio Lab" Style="{StaticResource PageTitleStyle}" Margin="0,7,0,4"/>
+        <TextBlock Text="Concentrazione, attività, ripasso e diario degli errori. Le azioni vengono salvate nel profilo locale." Style="{StaticResource PageSubtitleStyle}" Margin="0,0,0,22"/>
+        <Grid Margin="0,0,0,16"><Grid.ColumnDefinitions><ColumnDefinition Width="1.2*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+            <Border Grid.Column="0" Background="{DynamicResource NavyBrush}" CornerRadius="14" Padding="24" Margin="0,0,12,0">
+                <StackPanel>
+                    <TextBlock Text="SESSIONE DI FOCUS" FontSize="11" FontWeight="Bold" Foreground="#AFC5EA"/>
+                    <Grid Width="156" Height="156" HorizontalAlignment="Center" Margin="0,14,0,8">
+                        <controls:ProgressRing Style="{StaticResource FocusSessionRingStyle}"
+                                               Value="{Binding State.Workspace.FocusProgressPercent, Mode=OneWay}"
+                                               Maximum="100"/>
+                        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                            <TextBlock Text="{Binding State.Workspace.FocusRemainingDisplay}" FontSize="27"
+                                       FontWeight="SemiBold" Foreground="White"
+                                       HorizontalAlignment="Center"/>
+                            <TextBlock Text="{Binding State.Workspace.FocusStateDisplay}" FontSize="11"
+                                       Foreground="#D0DAE9" HorizontalAlignment="Center"/>
+                        </StackPanel>
+                    </Grid>
+                    <TextBlock Text="{Binding State.Workspace.FocusElapsedDisplay}" FontSize="11"
+                               Foreground="#D0DAE9" HorizontalAlignment="Center"/>
+                    <TextBox Text="{Binding State.Workspace.FocusTopicInput, UpdateSourceTrigger=PropertyChanged}" ToolTip="Argomento" Margin="0,16,0,0"/>
+                    <Grid Margin="0,8,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="90"/></Grid.ColumnDefinitions>
+                        <ComboBox ItemsSource="{Binding State.Workspace.Courses}" DisplayMemberPath="Name" SelectedItem="{Binding State.Workspace.SelectedCourse}" ToolTip="Materia"/>
+                        <TextBox Grid.Column="1" Text="{Binding State.Workspace.FocusMinutesInput, UpdateSourceTrigger=PropertyChanged}" Margin="8,0,0,0" ToolTip="Minuti"/>
+                    </Grid>
+                    <WrapPanel Margin="0,12,0,0">
+                        <Button Content="Avvia" Command="{Binding State.Workspace.StartFocusCommand}" Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,6,6"/>
+                        <Button Content="Pausa" Command="{Binding State.Workspace.PauseFocusCommand}" IsEnabled="{Binding State.Workspace.CanPauseFocus}" Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,6,6"/>
+                        <Button Content="Riprendi" Command="{Binding State.Workspace.ResumeFocusCommand}" IsEnabled="{Binding State.Workspace.CanResumeFocus}" Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,6,6"/>
+                        <Button Content="Termina" Command="{Binding State.Workspace.FinishFocusCommand}" IsEnabled="{Binding State.Workspace.CanFinishFocus}" Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,6,6"/>
+                        <Button Content="Annulla" Command="{Binding State.Workspace.CancelFocusCommand}" IsEnabled="{Binding State.Workspace.CanFinishFocus}" Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,6,6"/>
+                    </WrapPanel>
+                </StackPanel>
+            </Border>
+            <Border Grid.Column="1" Style="{StaticResource CardBorderStyle}">
+                <StackPanel>
+                    <TextBlock Text="Attività aperte" Style="{StaticResource SectionTitleStyle}"/>
+                    <TextBox Text="{Binding State.Workspace.TaskTitleInput, UpdateSourceTrigger=PropertyChanged}" ToolTip="Titolo attività" Margin="0,12,0,0"/>
+                    <Grid Margin="0,8,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="76"/><ColumnDefinition Width="82"/></Grid.ColumnDefinitions>
+                        <ComboBox ItemsSource="{Binding State.Workspace.Courses}" DisplayMemberPath="Name" SelectedItem="{Binding State.Workspace.SelectedCourse}" ToolTip="Materia"/>
+                        <TextBox Grid.Column="1" Text="{Binding State.Workspace.TaskMinutesInput, UpdateSourceTrigger=PropertyChanged}" Margin="7,0,0,0" ToolTip="Minuti stimati"/>
+                        <ComboBox Grid.Column="2" ItemsSource="{Binding State.Workspace.TaskPriorityOptions}" SelectedItem="{Binding State.Workspace.TaskPriorityInput}" Margin="7,0,0,0" ToolTip="Priorità">
+                            <ComboBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding StringFormat='P{0}'}"/></DataTemplate></ComboBox.ItemTemplate>
+                        </ComboBox>
+                    </Grid>
+                    <DatePicker SelectedDate="{Binding State.Workspace.TaskDueDateInput}" ToolTip="Scadenza (facoltativa)" Margin="0,8,0,0"/>
+                    <Button Content="Aggiungi attività" Command="{Binding State.Workspace.AddTaskCommand}" Margin="0,10,0,10"/>
+                    <ListBox ItemsSource="{Binding State.Workspace.ActiveTasks}" SelectedItem="{Binding State.Workspace.SelectedTask}" MinHeight="140" MaxHeight="220">
+                        <ListBox.ItemTemplate><DataTemplate><StackPanel Margin="4"><TextBlock Text="{Binding Title}" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}" TextWrapping="Wrap"/><TextBlock Text="{Binding EstimatedMinutes, StringFormat={}{0} min stimati}" FontSize="11" Foreground="{DynamicResource MutedBrush}"/><TextBlock Text="{Binding DueAt, StringFormat='Scadenza · {0:dd/MM/yyyy}', TargetNullValue='Senza scadenza'}" FontSize="10" Foreground="{DynamicResource MutedBrush}"/><TextBlock Text="{Binding Priority, StringFormat='Priorità {0}/5'}" FontSize="10" Foreground="{DynamicResource MutedBrush}"/></StackPanel></DataTemplate></ListBox.ItemTemplate>
+                    </ListBox>
+                    <TextBlock Text="Nessuna attività aperta. Aggiungi un task per organizzare il prossimo passo." Visibility="{Binding State.Workspace.NoActiveTasks, Converter={StaticResource BooleanToVisibilityConverter}}" FontSize="11" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="2,7,2,0"/>
+                    <WrapPanel Margin="0,8,0,0"><Button Content="Completa" Command="{Binding State.Workspace.CompleteTaskCommand}" Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,8,0"/><Button Content="Rimuovi" Click="RemoveStudyTask_Click" IsEnabled="{Binding State.Workspace.HasSelectedTask}" Style="{StaticResource QuietButtonStyle}"/></WrapPanel>
+                </StackPanel>
+            </Border>
+        </Grid>
+        <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,16">
+            <StackPanel>
+                <TextBlock Text="Planner di studio · anteprima" Style="{StaticResource SectionTitleStyle}"/>
+                <TextBlock Text="Inserisci le tue fasce giornaliere reali nel formato HH:mm-HH:mm; più fasce si separano con ;. Saranno ripetute per i giorni del periodo selezionato." FontSize="11" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,5,0,10"/>
+                <TextBox Text="{Binding State.Workspace.PlannerAvailabilityInput, UpdateSourceTrigger=PropertyChanged}" ToolTip="Per esempio 08:30-12:00;15:00-18:00" Margin="0,0,0,10"/>
+                <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                    <StackPanel><TextBlock Text="Dal" Style="{StaticResource KpiLabelStyle}"/><DatePicker SelectedDate="{Binding State.Workspace.PlannerFromInput}"/></StackPanel>
+                    <StackPanel Grid.Column="1" Margin="10,0,0,0"><TextBlock Text="Al" Style="{StaticResource KpiLabelStyle}"/><DatePicker SelectedDate="{Binding State.Workspace.PlannerToInput}"/></StackPanel>
+                </Grid>
+                <WrapPanel Margin="0,10,0,0">
+                    <Button Content="Genera anteprima" Command="{Binding State.Workspace.PreviewStudyPlanCommand}" Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,8,6"/>
+                    <Button Content="Applica al calendario" Command="{Binding State.Workspace.ApplyStudyPlanCommand}" IsEnabled="{Binding State.Workspace.HasPlanPreview}" Margin="0,0,8,6"/>
+                </WrapPanel>
+                <TextBlock Text="{Binding State.Workspace.PlannerStatus}" FontSize="12" Foreground="{DynamicResource InkBrush}" TextWrapping="Wrap" Margin="0,4,0,0"/>
+                <TextBlock Text="{Binding State.Workspace.PlanPreviewSummary}" FontSize="11" Foreground="{DynamicResource MutedBrush}" Margin="0,7,0,0"/>
+                <TextBlock Text="Blocchi proposti" Style="{StaticResource KpiLabelStyle}" Margin="0,10,0,5"/>
+                <ListBox ItemsSource="{Binding State.Workspace.CurrentPlanPreview.Blocks}" MaxHeight="135">
+                    <ListBox.ItemTemplate><DataTemplate><StackPanel Margin="4"><TextBlock Text="{Binding Title}" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}"/><TextBlock Text="{Binding StartsAt, StringFormat={}{0:ddd dd/MM HH:mm}}" FontSize="10" Foreground="{DynamicResource MutedBrush}"/><TextBlock Text="{Binding EndsAt, StringFormat={}{0:HH:mm}}" FontSize="10" Foreground="{DynamicResource MutedBrush}"/></StackPanel></DataTemplate></ListBox.ItemTemplate>
+                </ListBox>
+                <TextBlock Text="Task non pianificati" Style="{StaticResource KpiLabelStyle}" Margin="0,10,0,5"/>
+                <ItemsControl ItemsSource="{Binding State.Workspace.CurrentPlanPreview.UnscheduledTasks}">
+                    <ItemsControl.ItemTemplate><DataTemplate><StackPanel Margin="3"><TextBlock Text="{Binding Title}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}"/><TextBlock Text="{Binding Reason}" FontSize="10" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap"/></StackPanel></DataTemplate></ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+        </Border>
+        <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+            <Border Grid.Column="0" Style="{StaticResource CardBorderStyle}" Margin="0,0,12,0">
+                <StackPanel>
+                    <TextBlock Text="Ripasso flashcard" Style="{StaticResource SectionTitleStyle}"/>
+                    <ListBox ItemsSource="{Binding State.Workspace.DueFlashcards}" SelectedItem="{Binding State.Workspace.SelectedDueFlashcard}" MaxHeight="110" Margin="0,10,0,0"><ListBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding Front}" FontSize="12" TextWrapping="Wrap" Margin="4"/></DataTemplate></ListBox.ItemTemplate></ListBox>
+                    <TextBlock Text="Nessuna flashcard in scadenza." Visibility="{Binding State.Workspace.NoDueFlashcards, Converter={StaticResource BooleanToVisibilityConverter}}" FontSize="11" Foreground="{DynamicResource MutedBrush}" Margin="2,7,2,0"/>
+                    <Button Content="Mostra / nascondi risposta" Command="{Binding State.Workspace.RevealFlashcardCommand}" Style="{StaticResource QuietButtonStyle}" Margin="0,8,0,0"/>
+                    <TextBlock Text="{Binding State.Workspace.SelectedDueFlashcard.Back}" Visibility="{Binding State.Workspace.FlashcardRevealed, Converter={StaticResource BooleanToVisibilityConverter}}" TextWrapping="Wrap" Foreground="{DynamicResource InkBrush}" Margin="0,8,0,0"/>
+                    <WrapPanel Margin="0,10,0,0"><Button Content="Again" Command="{Binding State.Workspace.ReviewAgainCommand}" Style="{StaticResource QuietButtonStyle}" Margin="0,0,6,6"/><Button Content="Hard" Command="{Binding State.Workspace.ReviewHardCommand}" Style="{StaticResource QuietButtonStyle}" Margin="0,0,6,6"/><Button Content="Good" Command="{Binding State.Workspace.ReviewGoodCommand}" Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,6,6"/><Button Content="Easy" Command="{Binding State.Workspace.ReviewEasyCommand}" Margin="0,0,6,6"/></WrapPanel>
+                    <TextBlock Text="Nuova flashcard" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}" Margin="0,10,0,7"/>
+                    <TextBox Text="{Binding State.Workspace.FlashcardFrontInput, UpdateSourceTrigger=PropertyChanged}" ToolTip="Fronte"/><TextBox Text="{Binding State.Workspace.FlashcardBackInput, UpdateSourceTrigger=PropertyChanged}" ToolTip="Retro" Margin="0,7,0,0"/>
+                    <Button Content="Aggiungi flashcard" Command="{Binding State.Workspace.AddFlashcardCommand}" Margin="0,9,0,0"/>
+                </StackPanel>
+            </Border>
+            <Border Grid.Column="1" Style="{StaticResource CardBorderStyle}">
+                <StackPanel>
+                    <TextBlock Text="Diario degli errori" Style="{StaticResource SectionTitleStyle}"/>
+                    <TextBlock Text="Registra il quesito, la risposta errata e quella corretta per pianificare il ripasso." FontSize="12" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,5,0,12"/>
+                    <TextBox Text="{Binding State.Workspace.ErrorTopicInput, UpdateSourceTrigger=PropertyChanged}" ToolTip="Argomento"/><TextBox Text="{Binding State.Workspace.ErrorQuestionInput, UpdateSourceTrigger=PropertyChanged}" ToolTip="Domanda o esercizio" Margin="0,7,0,0"/><TextBox Text="{Binding State.Workspace.ErrorIncorrectInput, UpdateSourceTrigger=PropertyChanged}" ToolTip="Risposta errata (facoltativa)" Margin="0,7,0,0"/><TextBox Text="{Binding State.Workspace.ErrorCorrectInput, UpdateSourceTrigger=PropertyChanged}" ToolTip="Risposta corretta" Margin="0,7,0,0"/><TextBox Text="{Binding State.Workspace.ErrorCauseInput, UpdateSourceTrigger=PropertyChanged}" ToolTip="Causa (facoltativa)" Margin="0,7,0,0"/>
+                    <Button Content="Registra errore" Command="{Binding State.Workspace.AddErrorEntryCommand}" Margin="0,9,0,12"/>
+                    <ListBox ItemsSource="{Binding State.Workspace.OpenErrorEntries}" SelectedItem="{Binding State.Workspace.SelectedErrorEntry}" MaxHeight="120"><ListBox.ItemTemplate><DataTemplate><StackPanel Margin="4"><TextBlock Text="{Binding Topic}" FontSize="11" Foreground="{DynamicResource AccentTextBrush}"/><TextBlock Text="{Binding Question}" FontSize="12" Foreground="{DynamicResource InkBrush}" TextWrapping="Wrap"/></StackPanel></DataTemplate></ListBox.ItemTemplate></ListBox>
+                    <TextBlock Text="Nessun errore da ripassare." Visibility="{Binding State.Workspace.NoOpenErrorEntries, Converter={StaticResource BooleanToVisibilityConverter}}" FontSize="11" Foreground="{DynamicResource MutedBrush}" Margin="2,7,2,0"/>
+                    <WrapPanel Margin="0,8,0,0"><Button Content="Da ripassare" Command="{Binding State.Workspace.ReviewErrorNeedsWorkCommand}" Style="{StaticResource QuietButtonStyle}" Margin="0,0,6,0"/><Button Content="Ricordato" Command="{Binding State.Workspace.ReviewErrorRememberedCommand}" Style="{StaticResource SecondaryButtonStyle}"/></WrapPanel>
+                </StackPanel>
+            </Border>
+        </Grid>
+        <Grid Margin="0,16,0,0">
+            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+            <Border Grid.Column="0" Style="{StaticResource CardBorderStyle}" Margin="0,0,12,0">
+                <StackPanel>
+                    <TextBlock Text="Check-in energia e focus" Style="{StaticResource SectionTitleStyle}"/>
+                    <TextBlock Text="Registra come ti senti: sono annotazioni personali, non valutazioni automatiche." FontSize="11" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,4,0,10"/>
+                    <TextBlock Text="{Binding State.Workspace.EnergyLevelInput, StringFormat='Energia · {0}/5'}" FontSize="12" Foreground="{DynamicResource InkBrush}"/>
+                    <Slider Minimum="1" Maximum="5" TickFrequency="1" IsSnapToTickEnabled="True" Value="{Binding State.Workspace.EnergyLevelInput}"/>
+                    <TextBlock Text="{Binding State.Workspace.SelfFocusLevelInput, StringFormat='Focus percepito · {0}/5'}" FontSize="12" Foreground="{DynamicResource InkBrush}" Margin="0,8,0,0"/>
+                    <Slider Minimum="1" Maximum="5" TickFrequency="1" IsSnapToTickEnabled="True" Value="{Binding State.Workspace.SelfFocusLevelInput}"/>
+                    <TextBox Text="{Binding State.Workspace.EnergyNoteInput, UpdateSourceTrigger=PropertyChanged}" ToolTip="Nota facoltativa" Margin="0,8,0,0"/>
+                    <Button Content="Salva check-in" Command="{Binding State.Workspace.AddEnergyCheckInCommand}" HorizontalAlignment="Left" Margin="0,9,0,0"/>
+                    <ItemsControl ItemsSource="{Binding State.Workspace.RecentEnergyCheckIns}" Margin="0,12,0,0">
+                        <ItemsControl.ItemTemplate><DataTemplate>
+                            <Grid Margin="0,4,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                <TextBlock Text="{Binding RecordedAt, StringFormat='dd/MM HH:mm'}" FontSize="10" Foreground="{DynamicResource MutedBrush}"/>
+                                <TextBlock Grid.Column="1" Text="{Binding EnergyLevel, StringFormat='Energia {0}/5'}" FontSize="10" Foreground="{DynamicResource InkBrush}"/>
+                            </Grid>
+                        </DataTemplate></ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </Border>
+            <Border Grid.Column="1" Style="{StaticResource CardBorderStyle}">
+                <StackPanel>
+                    <TextBlock Text="Parcheggio distrazioni" Style="{StaticResource SectionTitleStyle}"/>
+                    <TextBlock Text="Annota ciò che ti distrae e torna al compito senza perderlo." FontSize="11" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,4,0,10"/>
+                    <TextBox Text="{Binding State.Workspace.DistractionInput, UpdateSourceTrigger=PropertyChanged}" ToolTip="Annota una distrazione"/>
+                    <Button Content="Aggiungi nota" Command="{Binding State.Workspace.AddDistractionCommand}" HorizontalAlignment="Left" Margin="0,9,0,10"/>
+                    <ListBox ItemsSource="{Binding State.Workspace.OpenDistractions}" SelectedItem="{Binding State.Workspace.SelectedDistraction}" MaxHeight="150">
+                        <ListBox.ItemTemplate><DataTemplate>
+                            <StackPanel Margin="4">
+                                <TextBlock Text="{Binding Text}" FontSize="12" Foreground="{DynamicResource InkBrush}" TextWrapping="Wrap"/>
+                                <TextBlock Text="{Binding CreatedAt, StringFormat='dd/MM HH:mm'}" FontSize="10" Foreground="{DynamicResource MutedBrush}"/>
+                            </StackPanel>
+                        </DataTemplate></ListBox.ItemTemplate>
+                    </ListBox>
+                    <TextBlock Text="Nessuna distrazione annotata." Visibility="{Binding State.Workspace.NoOpenDistractions, Converter={StaticResource BooleanToVisibilityConverter}}" FontSize="11" Foreground="{DynamicResource MutedBrush}" Margin="2,7,2,0"/>
+                    <Button Content="Segna come risolta" Command="{Binding State.Workspace.ResolveDistractionCommand}" Style="{StaticResource SecondaryButtonStyle}" HorizontalAlignment="Left" Margin="0,8,0,0"/>
+                </StackPanel>
+            </Border>
+        </Grid>
+        <TextBlock Text="{Binding State.Workspace.WorkspaceStatus}" FontSize="12" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="2,14,2,0"/>
+    </StackPanel>
+</ScrollViewer>
+</UserControl>
