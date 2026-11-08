@@ -11,7 +11,8 @@ public abstract class PageViewModelBase(
     MainViewModel state,
     INavigationService navigation)
 {
-    public MainViewModel State { get; } = state ?? throw new ArgumentNullException(nameof(state));
+    public MainViewModel State { get; } =
+        state ?? throw new ArgumentNullException(nameof(state));
 
     protected INavigationService Navigation { get; } =
         navigation ?? throw new ArgumentNullException(nameof(navigation));
@@ -20,13 +21,13 @@ public abstract class PageViewModelBase(
 }
 
 public sealed class DashboardViewModel(MainViewModel state, INavigationService navigation)
-    : PageViewModelBase(state, navigation);
+    : PageViewModelBase(state, navigation) { }
 
 public sealed class CoursesViewModel(MainViewModel state, INavigationService navigation)
-    : PageViewModelBase(state, navigation);
+    : PageViewModelBase(state, navigation) { }
 
 public sealed class CalendarViewModel(MainViewModel state, INavigationService navigation)
-    : PageViewModelBase(state, navigation);
+    : PageViewModelBase(state, navigation) { }
 
 public sealed class StudyLabViewModel(MainViewModel state, INavigationService navigation)
     : PageViewModelBase(state, navigation)
@@ -35,10 +36,10 @@ public sealed class StudyLabViewModel(MainViewModel state, INavigationService na
 }
 
 public sealed class AcademyViewModel(MainViewModel state, INavigationService navigation)
-    : PageViewModelBase(state, navigation);
+    : PageViewModelBase(state, navigation) { }
 
 public sealed class ProgressViewModel(MainViewModel state, INavigationService navigation)
-    : PageViewModelBase(state, navigation);
+    : PageViewModelBase(state, navigation) { }
 
 public sealed class SettingsViewModel(MainViewModel state, INavigationService navigation)
-    : PageViewModelBase(state, navigation);
+    : PageViewModelBase(state, navigation) { }
