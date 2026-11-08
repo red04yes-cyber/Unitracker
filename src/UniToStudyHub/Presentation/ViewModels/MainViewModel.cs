@@ -178,6 +178,21 @@ public sealed class MainViewModel : INotifyPropertyChanged
     }
 
     public string AcquiredCreditsValue => GradeCalculator.AcquiredCfu(_data.Grades, _calculator).ToString(CultureInfo.CurrentCulture);
+
+    /// <summary>
+    /// Uses the degree plan's configured CFU target; 180 is the default for a
+    /// three-year degree when the profile has not been configured yet.
+    /// </summary>
+    public int TargetCreditsValue =>
+        int.TryParse(Workspace.DegreeTotalCfuInput, NumberStyles.Integer, CultureInfo.CurrentCulture, out var configured) && configured > 0
+            ? configured
+            : 180;
+
+    public string CreditsProgressLabel => $"{AcquiredCreditsValue} / {TargetCreditsValue} CFU";
+
+    public double CreditsProgressPercent =>
+        Math.Clamp((double)GradeCalculator.AcquiredCfu(_data.Grades, _calculator) / TargetCreditsValue * 100d, 0d, 100d);
+
     public string ActiveCoursesCount => Courses.Count(x => !x.Completed && !x.Archived).ToString(CultureInfo.CurrentCulture);
     public string ArchivedCoursesCount => Courses.Count(x => x.Completed || x.Archived).ToString(CultureInfo.CurrentCulture);
     public string AllCoursesCount => Courses.Count.ToString(CultureInfo.CurrentCulture);
@@ -250,6 +265,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
         _career = career;
         Workspace = workspace;
         Workspace.DataReloaded += OnWorkspaceDataReloaded;
+        Workspace.PropertyChanged += OnWorkspacePropertyChanged;
         AddCourseCommand = new AsyncRelayCommand(AddCourseAsync);
         AddGradeCommand = new AsyncRelayCommand(AddGradeAsync, () => SelectedGradeCourse is not null);
         PlanExamsCommand = new AsyncRelayCommand(PlanExamsAsync);
@@ -1032,8 +1048,20 @@ public sealed class MainViewModel : INotifyPropertyChanged
             : GradeCalculator.Format(officialAverage.Value);
 
         OnPropertyChanged(nameof(AcquiredCreditsValue));
+        OnPropertyChanged(nameof(CreditsProgressPercent));
+        OnPropertyChanged(nameof(CreditsProgressLabel));
         OnPropertyChanged(nameof(ProjectedBaseGradeValue));
         OnPropertyChanged(nameof(LatestGradeDisplay));
+    }
+
+    private void OnWorkspacePropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(StudyWorkspaceViewModel.DegreeTotalCfuInput))
+        {
+            OnPropertyChanged(nameof(TargetCreditsValue));
+            OnPropertyChanged(nameof(CreditsProgressPercent));
+            OnPropertyChanged(nameof(CreditsProgressLabel));
+        }
     }
 
     private void Set<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
