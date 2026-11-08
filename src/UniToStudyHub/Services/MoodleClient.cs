@@ -88,6 +88,50 @@ public sealed class MoodleClient : IDisposable
         return result;
     }
 
+    /// <summary>Extracts all file descriptors embedded in enabled activity API responses.</summary>
+    public static IReadOnlyList<MoodleContentFile> ExtractActivityFiles(
+        IEnumerable<JsonElement> activityResponses)
+    {
+        var files = new Dictionary<string, MoodleContentFile>(StringComparer.OrdinalIgnoreCase);
+        foreach (var response in activityResponses ?? Array.Empty<JsonElement>())
+            CollectActivityFiles(response, files);
+        return files.Values.ToList();
+    }
+
+    private static void CollectActivityFiles(JsonElement element, IDictionary<string, MoodleContentFile> files)
+    {
+        if (element.ValueKind == JsonValueKind.Object)
+        {
+            if (element.TryGetProperty("fileurl", out var url) &&
+                url.ValueKind == JsonValueKind.String &&
+                !string.IsNullOrWhiteSpace(url.GetString()) &&
+                element.TryGetProperty("filename", out var name) &&
+                name.ValueKind == JsonValueKind.String &&
+                !string.IsNullOrWhiteSpace(name.GetString()))
+            {
+                var file = new MoodleContentFile
+                {
+                    type = "file",
+                    fileurl = url.GetString()!,
+                    filename = name.GetString()!,
+                    filepath = element.TryGetProperty("filepath", out var path) ? path.GetString() ?? string.Empty : string.Empty,
+                    mimetype = element.TryGetProperty("mimetype", out var mime) ? mime.GetString() ?? string.Empty : string.Empty,
+                    filesize = element.TryGetProperty("filesize", out var size) && size.TryGetInt64(out var bytes) ? bytes : 0,
+                    timemodified = element.TryGetProperty("timemodified", out var modified) && modified.TryGetInt32(out var timestamp) ? timestamp : 0
+                };
+                files.TryAdd(file.fileurl, file);
+            }
+
+            foreach (var property in element.EnumerateObject())
+                CollectActivityFiles(property.Value, files);
+        }
+        else if (element.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var child in element.EnumerateArray())
+                CollectActivityFiles(child, files);
+        }
+    }
+
     public async Task<IReadOnlyList<MoodleActivityCompletionStatus>> GetActivityCompletionAsync(
         int courseId,
         int userId,
