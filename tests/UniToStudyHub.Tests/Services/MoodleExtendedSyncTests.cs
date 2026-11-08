@@ -46,6 +46,20 @@ public sealed class MoodleExtendedSyncTests
     }
 
     [Fact]
+    public void ActivityApiResponsesExposeNestedFileAttachments()
+    {
+        using var document = JsonDocument.Parse(
+            "{\\"assignments\\":[{\\"introfiles\\":[{\\"filename\\":\\"brief.pdf\\",\\"fileurl\\":\\"https://moodle.example.edu/pluginfile.php/1/brief.pdf\\",\\"filesize\\":1234,\\"mimetype\\":\\"application/pdf\\"}]}]}");
+
+        var files = MoodleClient.ExtractActivityFiles(new[] { document.RootElement });
+
+        var file = Assert.Single(files);
+        Assert.Equal("brief.pdf", file.filename);
+        Assert.Equal(1234, file.filesize);
+        Assert.Equal("file", file.type);
+    }
+
+    [Fact]
     public async Task FileDownloadRejectsOtherOriginsBeforeSendingARequest()
     {
         var requests = 0;
