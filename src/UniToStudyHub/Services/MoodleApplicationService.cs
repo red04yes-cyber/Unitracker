@@ -88,7 +88,8 @@ public sealed class MoodleApplicationService
             .ConfigureAwait(false);
         var completion = await client.GetActivityCompletionAsync(courseId, site.userid, functions, cancellationToken)
             .ConfigureAwait(false);
-        return new MoodleCourseActivitySnapshot(details, completion);
+        var files = MoodleClient.ExtractActivityFiles(details.Values);
+        return new MoodleCourseActivitySnapshot(details, completion, files);
     }
 
     /// <summary>Downloads all safe file resources exposed by a course's modules.</summary>
@@ -96,12 +97,13 @@ public sealed class MoodleApplicationService
         string baseUrl,
         Course course,
         IEnumerable<MoodleCourseSection> sections,
+        IEnumerable<MoodleContentFile>? activityFiles = null,
         CancellationToken cancellationToken = default)
     {
         var token = RequireToken();
         using var client = new MoodleClient(baseUrl, token);
         return await new DocumentSyncService()
-            .DownloadCourseFilesAsync(client, course, sections, cancellationToken)
+            .DownloadCourseFilesAsync(client, course, sections, activityFiles, cancellationToken)
             .ConfigureAwait(false);
     }
 
