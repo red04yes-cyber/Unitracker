@@ -7,9 +7,9 @@ UniToStudyHub supporta due modalità tramite lo stesso adapter OpenAI-compatible
 
 ## Configurazione
 
-La selezione principale si effettua nella scheda **Impostazioni → AI Study Director · Provider**. È possibile scegliere OpenAI o Ollama, impostare il modello e concedere o negare il consenso. Le preferenze non segrete vengono salvate in `ai-provider-preferences.json` nella cartella dati locale; il provider viene inizializzato al successivo avvio.
+La selezione principale si effettua nella scheda **Impostazioni → AI Study Director · Provider**. È possibile scegliere OpenAI, Gemini o Ollama, impostare il modello e concedere o negare il consenso. Le preferenze non segrete vengono salvate in `ai-provider-preferences.json` nella cartella dati locale; il provider viene inizializzato al successivo avvio.
 
-La chiave OpenAI inserita nella schermata viene salvata separatamente tramite DPAPI per l'account Windows corrente. Il campo password viene svuotato dopo il salvataggio e il valore non viene scritto nel file delle preferenze. La revoca del consenso salva lo stato disattivato e chiude l'applicazione per terminare il runtime AI corrente. Senza consenso il provider resta non configurato e nessun contenuto viene inviato.
+Le chiavi OpenAI e Gemini inserite nella schermata viene salvata separatamente tramite DPAPI per l'account Windows corrente. Il campo password viene svuotato dopo il salvataggio e il valore non viene scritto nel file delle preferenze. La revoca del consenso salva lo stato disattivato e chiude l'applicazione per terminare il runtime AI corrente. Senza consenso il provider resta non configurato e nessun contenuto viene inviato.
 
 Le variabili d'ambiente restano disponibili per configurazioni di sviluppo e deployment; le preferenze salvate dall'interfaccia hanno precedenza sulla selezione provider/modello/consenso.
 
@@ -51,3 +51,8 @@ Per Ollama l'app accetta esclusivamente endpoint loopback (localhost/127.0.0.1/:
 ## Limiti della prima integrazione
 
 I piani di studio e le simulazioni orali sono proposte testuali: non vengono applicati automaticamente al calendario né persistiti nella banca domande. La configurazione del provider richiede il riavvio dell'app per applicare le nuove preferenze. Non inserire mai chiavi nei file versionati o nei log.
+
+
+### Google Gemini
+
+Seleziona **Gemini · Google AI**, inserisci una chiave API ottenuta da Google AI Studio e scegli un modello disponibile per il tuo account (ad esempio `gemini-2.5-flash`). La chiave è salvata con DPAPI nel vault locale, con nome distinto da quella OpenAI. Le richieste usano l'endpoint ufficiale Gemini `generateContent` e inviano la chiave nell'header `x-goog-api-key`, mai nella URL. È possibile usare anche la variabile d'ambiente `STUDYHUB_GEMINI_API_KEY`. Il consenso esplicito è richiesto come per gli altri provider.
