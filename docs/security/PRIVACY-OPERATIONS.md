@@ -11,7 +11,7 @@
 
 An optional safety backup is created before any reset. Database changes are committed before credentials or managed files are deleted, avoiding irreversible cleanup when the SQLite write fails.
 
-Complete deletion remains available through `DeleteAllAsync`; it removes local records and, when requested, backups, legacy files, logs, managed Moodle downloads and stored credentials.
+Complete deletion remains available through `DeleteAllAsync`; it removes local records and, when requested, backups, legacy files, logs, managed Moodle downloads and stored credentials. It also revokes the persisted AI consent before deleting credentials, so a restart cannot silently re-enable a provider.
 
 ## Diagnostic bundle
 
