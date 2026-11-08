@@ -70,6 +70,16 @@ public static class StudyHubDatabase
         ArgumentException.ThrowIfNullOrWhiteSpace(databasePath);
         var fullPath = Path.GetFullPath(databasePath);
         EnsureEncryptedDatabase(fullPath);
+        return CreateEncryptedConnectionString(fullPath, mode);
+    }
+
+    /// <summary>Builds a keyed connection string without converting the target file.</summary>
+    public static string CreateEncryptedConnectionString(
+        string databasePath,
+        Microsoft.Data.Sqlite.SqliteOpenMode mode = Microsoft.Data.Sqlite.SqliteOpenMode.ReadWriteCreate)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(databasePath);
+        var fullPath = Path.GetFullPath(databasePath);
         var key = new DatabaseKeyVault(Path.GetDirectoryName(fullPath)!).GetOrCreateKey();
         try
         {
@@ -139,7 +149,7 @@ public static class StudyHubDatabase
 
             Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
             LocalFileSecurity.TryRestrictFile(temporary);
-            File.Replace(temporary, databasePath, databasePath + ".plaintext-migration.bak");
+            File.Replace(temporary, databasePath, destinationBackupFileName: null);
             LocalFileSecurity.TryRestrictFile(databasePath);
         }
         catch
