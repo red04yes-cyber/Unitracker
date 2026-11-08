@@ -10,7 +10,7 @@ namespace UniToStudyHub.Presentation.Views;
 /// Compatibility event host for dialogs and confirmation prompts while the
 /// page commands are being moved into their dedicated view models.
 /// </summary>
-public abstract class LegacyPageControl : UserControl
+public class LegacyPageControl : UserControl
 {
     protected MainViewModel State =>
         (DataContext as PageViewModelBase)?.State
