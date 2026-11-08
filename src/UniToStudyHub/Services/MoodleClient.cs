@@ -54,6 +54,81 @@ public sealed class MoodleClient : IDisposable
         CallAsync<List<MoodleCourseSection>>("core_course_get_contents",
             new Dictionary<string, string> { { "courseid", id.ToString() } }, ct);
 
+    /// <summary>
+    /// Reads metadata for every built-in Moodle activity family whose web
+    /// service is enabled for this token. Unsupported/disabled functions are
+    /// skipped rather than making the entire course sync fail.
+    /// </summary>
+    public async Task<IReadOnlyDictionary<string, JsonElement>> GetCourseActivityDetailsAsync(
+        int courseId,
+        IEnumerable<string> availableFunctions,
+        CancellationToken ct = default)
+    {
+        var available = new HashSet<string>(availableFunctions ?? Array.Empty<string>(), StringComparer.Ordinal);
+        var result = new Dictionary<string, JsonElement>(StringComparer.Ordinal);
+        foreach (var function in CourseActivityFunctions)
+        {
+            ct.ThrowIfCancellationRequested();
+            if (!available.Contains(function)) continue;
+            try
+            {
+                var payload = await CallAsync<JsonElement>(function,
+                    new Dictionary<string, string> { { "courseids[0]", courseId.ToString() } }, ct)
+                    .ConfigureAwait(false);
+                if (payload.ValueKind != JsonValueKind.Null &&
+                    !(payload.ValueKind == JsonValueKind.Array && payload.GetArrayLength() == 0) &&
+                    !(payload.ValueKind == JsonValueKind.Object && !payload.EnumerateObject().Any()))
+                    result[function] = payload;
+            }
+            catch (Exception ex) when (ex is InvalidOperationException or InvalidDataException or HttpRequestException)
+            {
+                AppDiagnostics.Warning("moodle", $"Dettagli attività non disponibili: {function}.", ex);
+            }
+        }
+        return result;
+    }
+
+    public async Task<IReadOnlyList<MoodleActivityCompletionStatus>> GetActivityCompletionAsync(
+        int courseId,
+        int userId,
+        IEnumerable<string> availableFunctions,
+        CancellationToken ct = default)
+    {
+        if (!availableFunctions.Contains("core_completion_get_activities_completion_status", StringComparer.Ordinal))
+            return Array.Empty<MoodleActivityCompletionStatus>();
+        try
+        {
+            var result = await CallAsync<MoodleActivityCompletionResult>(
+                "core_completion_get_activities_completion_status",
+                new Dictionary<string, string>
+                {
+                    { "courseid", courseId.ToString() },
+                    { "userid", userId.ToString() }
+                }, ct).ConfigureAwait(false);
+            return result.statuses ?? new List<MoodleActivityCompletionStatus>();
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or InvalidDataException or HttpRequestException)
+        {
+            AppDiagnostics.Warning("moodle", $"Completamento attività non disponibile per il corso {courseId}.", ex);
+            return Array.Empty<MoodleActivityCompletionStatus>();
+        }
+    }
+
+    private static readonly string[] CourseActivityFunctions =
+    {
+        "mod_assign_get_assignments", "mod_quiz_get_quizzes_by_courses",
+        "mod_choice_get_choices_by_courses", "mod_feedback_get_feedbacks_by_courses",
+        "mod_lesson_get_lessons_by_courses", "mod_workshop_get_workshops_by_courses",
+        "mod_glossary_get_glossaries_by_courses", "mod_data_get_databases_by_courses",
+        "mod_wiki_get_wikis_by_courses", "mod_scorm_get_scorms_by_courses",
+        "mod_h5pactivity_get_h5pactivities_by_courses", "mod_bigbluebuttonbn_get_bigbluebuttonbns_by_courses",
+        "mod_lti_get_ltis_by_courses", "mod_resource_get_resources_by_courses",
+        "mod_page_get_pages_by_courses", "mod_folder_get_folders_by_courses",
+        "mod_url_get_urls_by_courses", "mod_book_get_books_by_courses",
+        "mod_chat_get_chats_by_courses", "mod_survey_get_surveys_by_courses",
+        "mod_imscp_get_imscps_by_courses", "mod_forum_get_forums_by_courses"
+    };
+
     public Task<MoodleCalendarResult> GetCalendarEventsAsync(
         IEnumerable<int> ids,
         DateTime from,
