@@ -37,12 +37,12 @@ public sealed class DocumentSyncService
         ArgumentNullException.ThrowIfNull(course);
         ArgumentNullException.ThrowIfNull(sections);
 
-        var root = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
-            "UniToStudyHub",
-            SafeName(course.Name));
-        LocalFileSecurity.EnsurePrivateDirectory(Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "UniToStudyHub"));
+        var documentsRoot = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "UniToStudyHub");
+        var moodleRoot = Path.Combine(documentsRoot, "Moodle");
+        var root = Path.Combine(moodleRoot, SafeName(course.Name));
+        LocalFileSecurity.EnsurePrivateDirectory(documentsRoot);
+        LocalFileSecurity.EnsurePrivateDirectory(moodleRoot);
         LocalFileSecurity.EnsurePrivateDirectory(root);
 
         var warnings = new List<string>();
