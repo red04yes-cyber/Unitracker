@@ -12,7 +12,7 @@ public partial class MainWindow : Window
     public MainWindow(MainViewModel viewModel)
     {
         InitializeComponent();
-        ThemeToggleButton.Content = ThemeManager.IsDarkMode ? "Modalità chiara" : "Modalità scura";
+        UpdateThemeToggleButtonContent();
         DataContext = viewModel;
         _focusRefreshTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
         _focusRefreshTimer.Tick += (_, _) => viewModel.Workspace.RefreshFocusSnapshot();
@@ -24,9 +24,21 @@ public partial class MainWindow : Window
     private void ToggleTheme_Click(object sender, RoutedEventArgs e)
     {
         ThemeManager.ToggleTheme();
-        ThemeToggleButton.Content = ThemeManager.IsDarkMode
-            ? "Modalità chiara"
-            : "Modalità scura";
+        UpdateThemeToggleButtonContent();
+    }
+
+    private void UpdateThemeToggleButtonContent()
+    {
+        // The button lives inside the TabControl ControlTemplate namescope,
+        // so it must be resolved from the applied template rather than as a
+        // generated MainWindow field.
+        MainTabs.ApplyTemplate();
+        if (MainTabs.Template.FindName("ThemeToggleButton", MainTabs) is Button themeButton)
+        {
+            themeButton.Content = ThemeManager.IsDarkMode
+                ? "Modalità chiara"
+                : "Modalità scura";
+        }
     }
 
     private async void ConnectMoodle_Click(object sender, RoutedEventArgs e)
