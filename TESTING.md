@@ -17,6 +17,19 @@
 - [ ] Verificare che host esterni e redirect non vengano seguiti.
 - [ ] Verificare protezione DPAPI del token.
 
+## Sicurezza e privacy (Windows)
+- [ ] Secret scanning CI verde su PR e push (`.github/workflows/security-scan.yml`).
+- [ ] Connessione Moodle, riavvio dell'app e token ancora valido.
+- [ ] Disconnessione: token rimosso, richieste rifiutate, carriera e voti invariati.
+- [ ] Backup con password: creazione, verifica e ripristino; password errata e file alterato rifiutati; un backup corrotto non sovrascrive il database valido.
+- [ ] Backup DPAPI: ripristino con lo stesso utente Windows; un altro utente non può leggerlo.
+- [ ] Import PDF oltre 25 MB e file con firma non PDF rifiutati; PDF con troppe pagine rifiutato.
+- [ ] Export: note private assenti di default e presenti solo nell'export completo; nessun token o chiave AI.
+- [ ] Log in `%LOCALAPPDATA%\UniToStudyHub\logs` senza token, note o percorsi personali.
+- [ ] Cancellazione dati: corsi, note, token, chiavi AI, backup e log rimossi; riavvio pulito.
+- [ ] AI: senza consenso nessuna chiamata; endpoint `http` o privato rifiutato.
+- [ ] SQLite non è cifrato: verificare che il disco usi BitLocker/EFS e che la documentazione non dichiari il contrario.
+
 ## Formule
 - Media ponderata = somma(voto × CFU) / somma(CFU) degli esami che concorrono alla media.
 - Proiezione indicativa = media ponderata × 110 / 30.

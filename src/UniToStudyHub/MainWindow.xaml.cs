@@ -1,14 +1,40 @@
-using System.Collections.ObjectModel; using System.Windows; using UniToStudyHub.Models; using UniToStudyHub.Services;
+using System.Windows;
+using System.Windows.Controls;
+using UniToStudyHub.Presentation.ViewModels;
+
 namespace UniToStudyHub;
-public partial class MainWindow:Window
+
+public partial class MainWindow : Window
 {
- readonly LocalDataStore store=new(); StudyData data=new();
- public MainWindow(){InitializeComponent();Loaded+=async(_,_)=>{data=await store.LoadAsync();Refresh();};}
- void Refresh(){CoursesGrid.ItemsSource=data.Courses;GradesGrid.ItemsSource=data.Grades;ExamsGrid.ItemsSource=data.Exams;GradeCourseCombo.ItemsSource=data.Courses;AverageText.Text=GradeCalculator.Format(GradeCalculator.WeightedAverage(data.Grades));BaseGradeText.Text="Voto di partenza: "+GradeCalculator.Format(GradeCalculator.ProjectedBase(data.Grades));CreditsText.Text="CFU completati: "+data.Grades.Sum(g=>g.Cfu);}
- async void AddCourse_Click(object sender,RoutedEventArgs e){if(string.IsNullOrWhiteSpace(CourseNameBox.Text)||!int.TryParse(CourseCfuBox.Text,out var cfu)||cfu<=0){MessageBox.Show("Inserisci nome e CFU validi.");return;}data.Courses.Add(new Course{Name=CourseNameBox.Text.Trim(),Cfu=cfu});await Save();Refresh();}
- async void AddGrade_Click(object sender,RoutedEventArgs e){if(GradeCourseCombo.SelectedItem is not Course c||!int.TryParse(GradeValueBox.Text,out var v)||v<18||v>30){MessageBox.Show("Seleziona un corso e inserisci un voto tra 18 e 30.");return;}data.Grades.Add(new Grade{CourseId=c.Id,CourseName=c.Name,Cfu=c.Cfu,Value=v});c.Completed=true;await Save();Refresh();}
- async void PlanExams_Click(object sender,RoutedEventArgs e){ExamPlanner.AssignIndicativeSessions(data.Exams,targetDate:data.GraduationTarget);await Save();Refresh();}
- async void ConnectMoodle_Click(object sender,RoutedEventArgs e){try{using var client=new MoodleClient(MoodleUrlBox.Text,MoodleTokenBox.Password);var info=await client.GetSiteInfoAsync();WindowsTokenVault.Save(MoodleTokenBox.Password);data.MoodleBaseUrl=MoodleUrlBox.Text;await Save();MoodleStatusText.Text=$"Collegato: {info.fullname}";}catch(Exception ex){MoodleStatusText.Text=ex.Message;}}
- async void SyncMoodle_Click(object sender,RoutedEventArgs e){try{var token=WindowsTokenVault.Load();if(string.IsNullOrWhiteSpace(token))throw new InvalidOperationException("Prima verifica e salva il token.");using var client=new MoodleClient(MoodleUrlBox.Text,token);var info=await client.GetSiteInfoAsync();var courses=await client.GetEnrolledCoursesAsync(info.userid);foreach(var mc in courses)if(!data.Courses.Any(c=>c.MoodleCourseId==mc.id))data.Courses.Add(new Course{Name=mc.fullname,Code=mc.shortname,MoodleCourseId=mc.id});await Save();Refresh();MoodleStatusText.Text=$"Sincronizzati {courses.Count} corsi. Materiali e avvisi dipendono dai permessi API."; }catch(Exception ex){MoodleStatusText.Text=ex.Message;}}
- async Task Save(){await store.SaveAsync(data);}
+    public MainWindow(MainViewModel viewModel)
+    {
+        InitializeComponent();
+        DataContext = viewModel;
+    }
+
+    private void MoodleTokenBox_PasswordChanged(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is MainViewModel viewModel && sender is PasswordBox passwordBox)
+            viewModel.MoodleToken = passwordBox.Password;
+    }
+
+    private void CourseFilter_Checked(object sender, RoutedEventArgs e)
+    {
+        if (sender is RadioButton radioButton &&
+            DataContext is MainViewModel viewModel &&
+            radioButton.Tag is string filter)
+        {
+            viewModel.CourseFilter = filter;
+        }
+    }
+
+    private void NavigateToSubjects_Click(object sender, RoutedEventArgs e)
+    {
+        MainTabs.SelectedIndex = 1;
+    }
+
+    private void NavigateToSettings_Click(object sender, RoutedEventArgs e)
+    {
+        MainTabs.SelectedIndex = 6;
+    }
 }

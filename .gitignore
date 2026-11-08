@@ -6,3 +6,12 @@
 *.suo
 *.tmp
 .vscode/
+
+# Local runtime data, credentials and encrypted backups must never be committed.
+unitracker.db
+unitracker.db-wal
+unitracker.db-shm
+token.bin
+*.secret
+*.utbk
+*.utbk.manifest.json

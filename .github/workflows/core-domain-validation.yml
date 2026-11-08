@@ -1,0 +1,59 @@
+name: Core domain Windows validation
+
+on:
+  pull_request:
+    branches: [ feature/core-domain, work/studyhub-uiux ]
+  push:
+    branches:
+      - feature/core-domain
+      - work/core-domain-correction
+      - work/windows-validation-hardening
+      - work/freebuff-studyhub-features
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: core-domain-windows-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validation:
+    name: Restore, test, build, publish and smoke-test on Windows
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restore tests
+        run: dotnet restore tests/UniToStudyHub.Tests/UniToStudyHub.Tests.csproj
+
+      - name: Run tests
+        run: dotnet test tests/UniToStudyHub.Tests/UniToStudyHub.Tests.csproj --configuration Release --no-restore --logger "console;verbosity=minimal"
+
+      - name: Restore WPF app
+        run: dotnet restore src/UniToStudyHub/UniToStudyHub.csproj --runtime win-x64
+
+      - name: Build WPF app
+        run: dotnet build src/UniToStudyHub/UniToStudyHub.csproj --configuration Release --runtime win-x64 --no-restore
+
+      - name: Publish Windows x64
+        run: dotnet publish src/UniToStudyHub/UniToStudyHub.csproj --configuration Release --runtime win-x64 --self-contained true /p:PublishSingleFile=true --no-restore
+
+      - name: WPF startup smoke test
+        shell: pwsh
+        run: ./scripts/windows-startup-smoke.ps1
+
+      - name: Upload Windows artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: UniToStudyHub-win-x64-core-domain
+          path: src/UniToStudyHub/bin/Release/net10.0-windows/win-x64/publish/
+          if-no-files-found: error
