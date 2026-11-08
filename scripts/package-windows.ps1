@@ -48,7 +48,7 @@ $zipPath = Join-Path $outputPath $zipName
 $checksumPath = "$zipPath.sha256"
 
 try {
-    Copy-Item -LiteralPath (Join-Path $publishPath '*') -Destination $staging -Recurse -Force
+    Copy-Item -Path (Join-Path $publishPath '*') -Destination $staging -Recurse -Force
     $readme = @"
 UniToStudyHub $Version — Windows x64 portable
 
