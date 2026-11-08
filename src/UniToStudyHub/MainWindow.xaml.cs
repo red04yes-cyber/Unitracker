@@ -1,27 +1,46 @@
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
+using System.Windows.Data;
 using System.Windows.Threading;
 using Microsoft.Win32;
+using UniToStudyHub.Presentation.Navigation;
 using UniToStudyHub.Presentation.ViewModels;
 
 namespace UniToStudyHub;
 
 public partial class MainWindow : Window
 {
+    private readonly ShellViewModel _shellViewModel;
     private readonly DispatcherTimer _focusRefreshTimer;
-    public MainWindow(MainViewModel viewModel)
+
+    public MainWindow(ShellViewModel shellViewModel)
     {
+        _shellViewModel = shellViewModel ?? throw new ArgumentNullException(nameof(shellViewModel));
+
         InitializeComponent();
-        DataContext = viewModel;
+
+        // The shell owns window-level state; the legacy TabControl temporarily
+        // keeps the original page bindings until each page is extracted.
+        DataContext = _shellViewModel;
+        MainTabs.DataContext = _shellViewModel.LegacyContent;
+        MainTabs.SetBinding(Selector.SelectedIndexProperty, new Binding(nameof(ShellViewModel.SelectedPageIndex))
+        {
+            Source = _shellViewModel,
+            Mode = BindingMode.TwoWay
+        });
+
         MainTabs.SelectionChanged += MainTabs_SelectionChanged;
         UpdateThemeToggleButtonContent();
         UpdatePageHeader();
+
         _focusRefreshTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
-        _focusRefreshTimer.Tick += (_, _) => viewModel.Workspace.RefreshFocusSnapshot();
+        _focusRefreshTimer.Tick += (_, _) => _shellViewModel.LegacyContent.Workspace.RefreshFocusSnapshot();
         _focusRefreshTimer.Start();
         Closed += (_, _) => _focusRefreshTimer.Stop();
     }
 
+    private MainViewModel LegacyViewModel => _shellViewModel.LegacyContent;
 
     private void ToggleTheme_Click(object sender, RoutedEventArgs e)
     {
@@ -69,19 +88,15 @@ public partial class MainWindow : Window
             subheading.Text = labels[1].Text;
     }
 
-    private void NavigateToCalendar_Click(object sender, RoutedEventArgs e)
-    {
-        MainTabs.SelectedIndex = 2;
-    }
+    private void NavigateToCalendar_Click(object sender, RoutedEventArgs e) =>
+        _shellViewModel.NavigateTo(StudyRoute.Calendar);
 
-    private void NavigateToStudyLab_Click(object sender, RoutedEventArgs e)
-    {
-        MainTabs.SelectedIndex = 3;
-    }
+    private void NavigateToStudyLab_Click(object sender, RoutedEventArgs e) =>
+        _shellViewModel.NavigateTo(StudyRoute.StudyLab);
 
     private async void ConnectMoodle_Click(object sender, RoutedEventArgs e)
     {
-        if (DataContext is not MainViewModel viewModel) return;
+        var viewModel = LegacyViewModel;
         await viewModel.ConnectMoodleAsync();
         if (viewModel.IsMoodleConnected)
             MoodleTokenBox.Clear();
@@ -89,18 +104,14 @@ public partial class MainWindow : Window
 
     private void MoodleTokenBox_PasswordChanged(object sender, RoutedEventArgs e)
     {
-        if (DataContext is MainViewModel viewModel && sender is PasswordBox passwordBox)
-            viewModel.MoodleToken = passwordBox.Password;
+        if (sender is PasswordBox passwordBox)
+            LegacyViewModel.MoodleToken = passwordBox.Password;
     }
 
     private void CourseFilter_Checked(object sender, RoutedEventArgs e)
     {
-        if (sender is RadioButton radioButton &&
-            DataContext is MainViewModel viewModel &&
-            radioButton.Tag is string filter)
-        {
-            viewModel.CourseFilter = filter;
-        }
+        if (sender is RadioButton radioButton && radioButton.Tag is string filter)
+            LegacyViewModel.CourseFilter = filter;
     }
 
     private async void ImportPdf_Click(object sender, RoutedEventArgs e)
@@ -113,13 +124,12 @@ public partial class MainWindow : Window
             Multiselect = false
         };
 
-        if (dialog.ShowDialog(this) == true && DataContext is MainViewModel viewModel)
-            await viewModel.Workspace.ImportPdfAsync(dialog.FileName);
+        if (dialog.ShowDialog(this) == true)
+            await LegacyViewModel.Workspace.ImportPdfAsync(dialog.FileName);
     }
 
     private async void ExportProgress_Click(object sender, RoutedEventArgs e)
     {
-        if (DataContext is not MainViewModel viewModel) return;
         var dialog = new SaveFileDialog
         {
             Title = "Esporta report di studio",
@@ -132,7 +142,7 @@ public partial class MainWindow : Window
         if (dialog.ShowDialog(this) != true) return;
         try
         {
-            await viewModel.Workspace.ExportProgressAsync(dialog.FileName);
+            await LegacyViewModel.Workspace.ExportProgressAsync(dialog.FileName);
             MessageBox.Show(this, "Report esportato correttamente.", "Esportazione completata",
                 MessageBoxButton.OK, MessageBoxImage.Information);
         }
@@ -145,9 +155,7 @@ public partial class MainWindow : Window
 
     private void DisconnectMoodle_Click(object sender, RoutedEventArgs e)
     {
-        if (DataContext is not MainViewModel viewModel)
-            return;
-
+        var viewModel = LegacyViewModel;
         var result = MessageBox.Show(
             "Disconnettere Moodle? Il token salvato verrà eliminato e i riferimenti di collegamento rimossi. Corsi, voti, eventi importati e storico locale saranno conservati.",
             "Conferma disconnessione Moodle",
@@ -162,10 +170,10 @@ public partial class MainWindow : Window
 
     private void RestoreBackup_Click(object sender, RoutedEventArgs e)
     {
-        if (DataContext is not MainViewModel viewModel || viewModel.Workspace.SelectedBackup is null)
+        if (LegacyViewModel.Workspace.SelectedBackup is null)
             return;
 
-        var backupName = System.IO.Path.GetFileName(viewModel.Workspace.SelectedBackup.FilePath);
+        var backupName = System.IO.Path.GetFileName(LegacyViewModel.Workspace.SelectedBackup.FilePath);
         var result = MessageBox.Show(
             $"Ripristinare il backup \"{backupName}\"? I dati correnti verranno sostituiti. Prima sarà creata una copia di sicurezza automatica.",
             "Conferma ripristino backup",
@@ -173,15 +181,15 @@ public partial class MainWindow : Window
             MessageBoxImage.Warning,
             MessageBoxResult.No);
         if (result == MessageBoxResult.Yes)
-            viewModel.Workspace.RestoreBackupCommand.Execute(null);
+            LegacyViewModel.Workspace.RestoreBackupCommand.Execute(null);
     }
 
     private void DeleteCalendarEvent_Click(object sender, RoutedEventArgs e)
     {
-        if (DataContext is not MainViewModel viewModel || viewModel.SelectedCalendarEvent is null)
+        if (LegacyViewModel.SelectedCalendarEvent is null)
             return;
 
-        var title = viewModel.SelectedCalendarEvent.Title;
+        var title = LegacyViewModel.SelectedCalendarEvent.Title;
         var result = MessageBox.Show(
             $"Vuoi eliminare l'evento \"{title}\"?",
             "Conferma eliminazione",
@@ -189,15 +197,15 @@ public partial class MainWindow : Window
             MessageBoxImage.Warning,
             MessageBoxResult.No);
         if (result == MessageBoxResult.Yes)
-            viewModel.DeleteCalendarEventCommand.Execute(null);
+            LegacyViewModel.DeleteCalendarEventCommand.Execute(null);
     }
 
     private void RemoveStudyTask_Click(object sender, RoutedEventArgs e)
     {
-        if (DataContext is not MainViewModel viewModel || viewModel.Workspace.SelectedTask is null)
+        if (LegacyViewModel.Workspace.SelectedTask is null)
             return;
 
-        var title = viewModel.Workspace.SelectedTask.Title;
+        var title = LegacyViewModel.Workspace.SelectedTask.Title;
         var result = MessageBox.Show(
             $"Vuoi rimuovere l'attività \"{title}\"?",
             "Conferma rimozione",
@@ -205,16 +213,12 @@ public partial class MainWindow : Window
             MessageBoxImage.Warning,
             MessageBoxResult.No);
         if (result == MessageBoxResult.Yes)
-            viewModel.Workspace.RemoveTaskCommand.Execute(null);
+            LegacyViewModel.Workspace.RemoveTaskCommand.Execute(null);
     }
 
-    private void NavigateToSubjects_Click(object sender, RoutedEventArgs e)
-    {
-        MainTabs.SelectedIndex = 1;
-    }
+    private void NavigateToSubjects_Click(object sender, RoutedEventArgs e) =>
+        _shellViewModel.NavigateTo(StudyRoute.Courses);
 
-    private void NavigateToSettings_Click(object sender, RoutedEventArgs e)
-    {
-        MainTabs.SelectedIndex = 6;
-    }
+    private void NavigateToSettings_Click(object sender, RoutedEventArgs e) =>
+        _shellViewModel.NavigateTo(StudyRoute.Settings);
 }
