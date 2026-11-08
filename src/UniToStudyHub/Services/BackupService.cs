@@ -416,22 +416,35 @@ public sealed class BackupService
                 openedHere = true;
             }
 
-            // The temporary snapshot is plaintext only inside the private,
-            // short-lived staging folder. The .utbk container encrypts the
-            // complete snapshot with AES-256-GCM, making password backups
-            // portable to another Windows account or PC. Restore re-encrypts
-            // the database with the destination account's DPAPI key.
-            await using var destination = new Microsoft.Data.Sqlite.SqliteConnection(
-                new Microsoft.Data.Sqlite.SqliteConnectionStringBuilder
-                {
-                    DataSource = target,
-                    Mode = Microsoft.Data.Sqlite.SqliteOpenMode.ReadWriteCreate,
-                    Pooling = false
-                }.ToString());
-            await destination.OpenAsync(cancellationToken).ConfigureAwait(false);
             if (source is not Microsoft.Data.Sqlite.SqliteConnection sqliteSource)
                 throw new InvalidOperationException("The configured SQLite provider does not support encrypted snapshots.");
-            sqliteSource.BackupDatabase(destination);
+
+            // Export to a short-lived plaintext SQLite file inside the private
+            // staging folder. The enclosing backup is AES-256-GCM authenticated;
+            // restore re-encrypts the database with the destination DPAPI key.
+            await using var attach = sqliteSource.CreateCommand();
+            attach.CommandText = "ATTACH DATABASE $target AS plaintext KEY '';";
+            attach.Parameters.Add(new Microsoft.Data.Sqlite.SqliteParameter("$target", target));
+            await attach.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+            try
+            {
+                await using var export = sqliteSource.CreateCommand();
+                export.CommandText = "SELECT sqlcipher_export('plaintext');";
+                await export.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false);
+
+                await using var check = sqliteSource.CreateCommand();
+                check.CommandText = "PRAGMA plaintext.integrity_check";
+                if (!string.Equals((await check.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false))?.ToString(),
+                        "ok", StringComparison.OrdinalIgnoreCase))
+                    throw new InvalidDataException("Il controllo d'integrità dello snapshot di backup non è riuscito.");
+            }
+            finally
+            {
+                await using var detach = sqliteSource.CreateCommand();
+                detach.CommandText = "DETACH DATABASE plaintext;";
+                await detach.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+            }
+
             LocalFileSecurity.TryRestrictFile(target);
         }
         catch
