@@ -16,6 +16,7 @@ New-Item -ItemType Directory -Path $dataDirectory -Force | Out-Null
 
 $previousDataDirectory = $env:UNITRACKER_DATA_DIR
 $process = $null
+$startedAt = Get-Date
 try {
     $env:UNITRACKER_DATA_DIR = $dataDirectory
     $process = Start-Process -FilePath $exe -WorkingDirectory $publishPath -PassThru
@@ -25,7 +26,26 @@ try {
         Start-Sleep -Milliseconds 500
         $process.Refresh()
         if ($process.HasExited) {
-            throw "WPF app exited before showing its window (exit code $($process.ExitCode))."
+            $exitCode = $process.ExitCode
+            $logPath = Join-Path $dataDirectory 'logs/unitracker.log'
+            if (Test-Path $logPath) {
+                Write-Host "Local startup diagnostics:"
+                Get-Content -LiteralPath $logPath -Tail 100 | ForEach-Object { Write-Host $_ }
+            }
+
+            $events = @(Get-WinEvent -FilterHashtable @{
+                LogName = 'Application'
+                StartTime = $startedAt
+            } -ErrorAction SilentlyContinue |
+                Where-Object { $_.ProviderName -in @('.NET Runtime', 'Application Error', 'Windows Error Reporting') } |
+                Sort-Object TimeCreated -Descending |
+                Select-Object -First 8)
+            foreach ($event in $events) {
+                Write-Host "WINDOWS EVENT [$($event.TimeCreated)] [$($event.ProviderName)] [$($event.Id)]"
+                Write-Host $event.Message
+            }
+
+            throw "WPF app exited before showing its window (exit code $exitCode)."
         }
     } while (($process.MainWindowHandle -eq 0 -or [string]::IsNullOrWhiteSpace($process.MainWindowTitle)) -and (Get-Date) -lt $deadline)
 

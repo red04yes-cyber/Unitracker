@@ -1,4 +1,5 @@
 using System.IO;
+using System.Security;
 
 namespace UniToStudyHub.Security;
 
@@ -80,10 +81,10 @@ public static class AppDiagnostics
                 LocalFileSecurity.TryRestrictFile(path);
             }
         }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException
-                                       or PlatformNotSupportedException or InvalidOperationException)
+        catch (Exception)
         {
-            // Diagnostics must never crash or block the application.
+            // Diagnostics are strictly best-effort. They must never replace the
+            // original application exception with a second failure.
         }
     }
 
@@ -102,7 +103,7 @@ public static class AppDiagnostics
                     if (!File.Exists(file)) deleted++;
                 }
             }
-            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or SecurityException)
             {
                 // Reported as a partial result.
             }

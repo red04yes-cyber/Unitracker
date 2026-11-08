@@ -5,7 +5,6 @@ using System.Runtime.CompilerServices;
 using UniToStudyHub.Domain.Services;
 using UniToStudyHub.Models;
 using UniToStudyHub.Presentation.Commands;
-using UniToStudyHub.Security;
 using UniToStudyHub.Services;
 
 namespace UniToStudyHub.Presentation.ViewModels;
@@ -16,6 +15,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
     private readonly MoodleApplicationService _moodle;
     private readonly CareerCalculatorService _calculator;
     private readonly CalendarEventStore _calendarStore = new();
+    public StudyWorkspaceViewModel Workspace { get; }
     private StudyData _data = new();
     private Course? _selectedGradeCourse;
     private string _courseNameInput = string.Empty;
@@ -24,6 +24,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
     private string _moodleUrlInput = string.Empty;
     private string _moodleToken = string.Empty;
     private string _moodleStatus = "Non collegato";
+    private bool _isMoodlePanelExpanded;
     private string _averageDisplay = "—";
     private string _arithmeticAverageDisplay = "—";
     private string _baseGradeDisplay = "Voto di partenza: —";
@@ -41,7 +42,12 @@ public sealed class MainViewModel : INotifyPropertyChanged
     public ObservableCollection<Course> VisibleCourses { get; } = new();
     public ObservableCollection<CalendarEvent> CalendarEvents => _data.CalendarEvents;
     public ObservableCollection<CalendarEvent> VisibleCalendarEvents { get; } = new();
+    public ObservableCollection<CalendarEvent> SelectedDayEvents { get; } = new();
+    public ObservableCollection<CalendarDayCell> CalendarDayCells { get; } = new();
     private DateTime _calendarDate = DateTime.Today;
+    private DateTime _selectedCalendarDate = DateTime.Today;
+    private string _calendarViewMode = "Month";
+    private CalendarDayCell? _selectedCalendarDay;
     private DateTime? _calendarEventDate = DateTime.Today;
     private string _calendarEventTitle = string.Empty;
     private string _calendarEventCategory = CalendarEventCategory.Personal;
@@ -50,14 +56,80 @@ public sealed class MainViewModel : INotifyPropertyChanged
     private bool _calendarEventAllDay;
     private CalendarEvent? _selectedCalendarEvent;
     public DateTime CalendarDate { get => _calendarDate; set { if (_calendarDate == value) return; Set(ref _calendarDate, value); RefreshCalendar(); } }
+    public DateTime SelectedCalendarDate
+    {
+        get => _selectedCalendarDate;
+        set
+        {
+            if (_selectedCalendarDate == value.Date) return;
+            _selectedCalendarDate = value.Date;
+            OnPropertyChanged();
+            RefreshSelectedDayEvents();
+        }
+    }
+    public string CalendarViewMode
+    {
+        get => _calendarViewMode;
+        set
+        {
+            if (string.Equals(_calendarViewMode, value, StringComparison.Ordinal)) return;
+            _calendarViewMode = value;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(IsMonthCalendar));
+            OnPropertyChanged(nameof(IsWeekCalendar));
+            OnPropertyChanged(nameof(IsDayCalendar));
+            RefreshCalendar();
+        }
+    }
+    public CalendarDayCell? SelectedCalendarDay
+    {
+        get => _selectedCalendarDay;
+        set
+        {
+            if (!SetCalendarDay(value) || value is null) return;
+            var date = value.Date;
+            if (CalendarViewMode == "Month" &&
+                (date.Month != CalendarDate.Month || date.Year != CalendarDate.Year))
+                CalendarDate = date;
+            SelectedCalendarDate = date;
+        }
+    }
+    private bool SetCalendarDay(CalendarDayCell? value)
+    {
+        if (ReferenceEquals(_selectedCalendarDay, value)) return false;
+        _selectedCalendarDay = value;
+        OnPropertyChanged(nameof(SelectedCalendarDay));
+        return true;
+    }
+    public string SelectedDayDisplay => SelectedCalendarDate.ToString("dddd d MMMM yyyy", CultureInfo.GetCultureInfo("it-IT"));
+    public bool NoSelectedDayEvents => SelectedDayEvents.Count == 0;
+    public int CalendarGridColumns => CalendarViewMode == "Day" ? 1 : 7;
+    public bool ShowCalendarWeekHeader => CalendarViewMode == "Month";
+    public string CalendarAgendaTitle => CalendarViewMode == "Week" ? "Agenda settimanale" : "Agenda del giorno";
+    public bool IsMonthCalendar => CalendarViewMode == "Month";
+    public bool IsWeekCalendar => CalendarViewMode == "Week";
+    public bool IsDayCalendar => CalendarViewMode == "Day";
     public DateTime? CalendarEventDate { get => _calendarEventDate; set => Set(ref _calendarEventDate, value); }
     public string CalendarEventTitle { get => _calendarEventTitle; set => Set(ref _calendarEventTitle, value); }
     public string CalendarEventCategoryInput { get => _calendarEventCategory; set => Set(ref _calendarEventCategory, value); }
     public string CalendarEventStartTime { get => _calendarEventStartTime; set => Set(ref _calendarEventStartTime, value); }
     public string CalendarEventEndTime { get => _calendarEventEndTime; set => Set(ref _calendarEventEndTime, value); }
     public bool CalendarEventAllDay { get => _calendarEventAllDay; set => Set(ref _calendarEventAllDay, value); }
-    public CalendarEvent? SelectedCalendarEvent { get => _selectedCalendarEvent; set { Set(ref _selectedCalendarEvent, value); if (value is not null) { CalendarEventTitle = value.Title; CalendarEventDate = value.StartsAt.LocalDateTime.Date; CalendarEventCategoryInput = value.Category; CalendarEventStartTime = value.StartsAt.ToLocalTime().ToString("HH:mm", CultureInfo.InvariantCulture); CalendarEventEndTime = value.EndsAt.ToLocalTime().ToString("HH:mm", CultureInfo.InvariantCulture); CalendarEventAllDay = value.IsAllDay; } DeleteCalendarEventCommand?.NotifyCanExecuteChanged(); } }
-    public string CalendarPeriodDisplay => CalendarDate.ToString("MMMM yyyy", CultureInfo.GetCultureInfo("it-IT"));
+    public CalendarEvent? SelectedCalendarEvent { get => _selectedCalendarEvent; set { if (ReferenceEquals(_selectedCalendarEvent, value)) return; _selectedCalendarEvent = value; OnPropertyChanged(); OnPropertyChanged(nameof(HasSelectedCalendarEvent)); if (value is not null) { CalendarEventTitle = value.Title; CalendarEventDate = value.StartsAt.LocalDateTime.Date; CalendarEventCategoryInput = value.Category; CalendarEventStartTime = value.StartsAt.ToLocalTime().ToString("HH:mm", CultureInfo.InvariantCulture); CalendarEventEndTime = value.EndsAt.ToLocalTime().ToString("HH:mm", CultureInfo.InvariantCulture); CalendarEventAllDay = value.IsAllDay; } DeleteCalendarEventCommand?.NotifyCanExecuteChanged(); } }
+    public bool HasSelectedCalendarEvent => SelectedCalendarEvent is not null;
+    public string CalendarPeriodDisplay
+    {
+        get
+        {
+            var culture = CultureInfo.GetCultureInfo("it-IT");
+            return CalendarViewMode switch
+            {
+                "Day" => CalendarDate.ToString("dddd d MMMM yyyy", culture),
+                "Week" => GetWeekStart(CalendarDate).ToString("d MMM", culture) + " – " + GetWeekStart(CalendarDate).AddDays(6).ToString("d MMM yyyy", culture),
+                _ => CalendarDate.ToString("MMMM yyyy", culture)
+            };
+        }
+    }
 
     public string CourseNameInput { get => _courseNameInput; set => Set(ref _courseNameInput, value); }
     public string CourseCfuInput { get => _courseCfuInput; set => Set(ref _courseCfuInput, value); }
@@ -66,6 +138,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
     public string MoodleUrlInput { get => _moodleUrlInput; set => Set(ref _moodleUrlInput, value); }
     public string MoodleToken { get => _moodleToken; set => Set(ref _moodleToken, value); }
     public string MoodleStatus { get => _moodleStatus; private set => Set(ref _moodleStatus, value); }
+    public bool IsMoodlePanelExpanded { get => _isMoodlePanelExpanded; set => Set(ref _isMoodlePanelExpanded, value); }
     public string AverageDisplay { get => _averageDisplay; private set => Set(ref _averageDisplay, value); }
     public string ArithmeticAverageDisplay { get => _arithmeticAverageDisplay; private set => Set(ref _arithmeticAverageDisplay, value); }
     public string ProjectedBaseGradeValue => GradeCalculator.Format(GradeCalculator.ProjectedBase(_data.Grades, _calculator));
@@ -159,12 +232,14 @@ public sealed class MainViewModel : INotifyPropertyChanged
     public AsyncRelayCommand PreviousCalendarPeriodCommand { get; }
     public AsyncRelayCommand NextCalendarPeriodCommand { get; }
     public AsyncRelayCommand TodayCalendarCommand { get; }
+    public AsyncRelayCommand NewCalendarEventCommand { get; }
 
-    public MainViewModel(IStudyDataStore store, MoodleApplicationService moodle, CareerCalculatorService calculator)
+    public MainViewModel(IStudyDataStore store, MoodleApplicationService moodle, CareerCalculatorService calculator, StudyWorkspaceViewModel workspace)
     {
         _store = store;
         _moodle = moodle;
         _calculator = calculator;
+        Workspace = workspace;
         AddCourseCommand = new AsyncRelayCommand(AddCourseAsync);
         AddGradeCommand = new AsyncRelayCommand(AddGradeAsync, () => SelectedGradeCourse is not null);
         PlanExamsCommand = new AsyncRelayCommand(PlanExamsAsync);
@@ -175,6 +250,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
         PreviousCalendarPeriodCommand = new AsyncRelayCommand(() => ChangeCalendarPeriodAsync(-1));
         NextCalendarPeriodCommand = new AsyncRelayCommand(() => ChangeCalendarPeriodAsync(1));
         TodayCalendarCommand = new AsyncRelayCommand(() => SetCalendarTodayAsync());
+        NewCalendarEventCommand = new AsyncRelayCommand(NewCalendarEventAsync);
     }
 
     public async Task InitializeAsync(CancellationToken cancellationToken = default)
@@ -196,6 +272,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
         RefreshVisibleCourses();
         RefreshCareerSummary();
         RefreshExamSummary();
+        Workspace.Initialize(_data);
         RefreshCalendar();
     }
 
@@ -219,7 +296,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
         catch (Exception ex)
         {
             Courses.Remove(course);
-            StatusMessage = $"Salvataggio non riuscito: {SecurityRedaction.ForUser(ex)}";
+            StatusMessage = $"Salvataggio non riuscito: {ex.Message}";
         }
         RefreshCourseSummary();
         RefreshVisibleCourses();
@@ -255,7 +332,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
         {
             Grades.Remove(item);
             course.Completed = previousCompleted;
-            StatusMessage = $"Salvataggio non riuscito: {SecurityRedaction.ForUser(ex)}";
+            StatusMessage = $"Salvataggio non riuscito: {ex.Message}";
         }
         RefreshCourseSummary();
         RefreshCareerSummary();
@@ -274,7 +351,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
         }
         catch (Exception ex)
         {
-            StatusMessage = $"Pianificazione non riuscita: {SecurityRedaction.ForUser(ex)}";
+            StatusMessage = $"Pianificazione non riuscita: {ex.Message}";
         }
     }
 
@@ -287,12 +364,10 @@ public sealed class MainViewModel : INotifyPropertyChanged
             await SaveAsync();
             MoodleStatus = $"Collegato: {siteName}";
             StatusMessage = "Token verificato e salvato in Windows DPAPI.";
-            // Do not keep the token in the view-model longer than the save.
-            MoodleToken = string.Empty;
         }
         catch (Exception ex)
         {
-            MoodleStatus = SecurityRedaction.ForUser(ex);
+            MoodleStatus = ex.Message;
         }
     }
 
@@ -325,7 +400,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
         }
         catch (Exception ex)
         {
-            MoodleStatus = SecurityRedaction.ForUser(ex);
+            MoodleStatus = ex.Message;
         }
     }
 
@@ -385,9 +460,22 @@ public sealed class MainViewModel : INotifyPropertyChanged
             CalendarEventStartTime = "09:00";
             CalendarEventEndTime = "10:00";
             CalendarDate = day;
+            SelectedCalendarDate = day;
             RefreshCalendar();
         }
-        catch (Exception ex) { StatusMessage = $"Evento non salvato: {SecurityRedaction.ForUser(ex)}"; }
+        catch (Exception ex) { StatusMessage = $"Evento non salvato: {ex.Message}"; }
+    }
+
+    private async Task NewCalendarEventAsync()
+    {
+        SelectedCalendarEvent = null;
+        CalendarEventTitle = string.Empty;
+        CalendarEventDate = SelectedCalendarDate;
+        CalendarEventCategoryInput = CalendarEventCategory.Personal;
+        CalendarEventStartTime = "09:00";
+        CalendarEventEndTime = "10:00";
+        CalendarEventAllDay = false;
+        await Task.CompletedTask;
     }
 
     private async Task DeleteCalendarEventAsync()
@@ -405,13 +493,18 @@ public sealed class MainViewModel : INotifyPropertyChanged
         catch (Exception ex)
         {
             CalendarEvents.Add(item);
-            StatusMessage = $"Eliminazione non riuscita: {SecurityRedaction.ForUser(ex)}";
+            StatusMessage = $"Eliminazione non riuscita: {ex.Message}";
         }
     }
 
-    private async Task ChangeCalendarPeriodAsync(int months)
+    private async Task ChangeCalendarPeriodAsync(int direction)
     {
-        CalendarDate = CalendarDate.AddMonths(months);
+        CalendarDate = CalendarViewMode switch
+        {
+            "Day" => CalendarDate.AddDays(direction),
+            "Week" => CalendarDate.AddDays(direction * 7),
+            _ => CalendarDate.AddMonths(direction)
+        };
         await Task.CompletedTask;
     }
 
@@ -424,13 +517,91 @@ public sealed class MainViewModel : INotifyPropertyChanged
 
     private void RefreshCalendar()
     {
+        CalendarDayCells.Clear();
+        DateTime gridStart;
+        DateTime visibleStart;
+        DateTime visibleEnd;
+        int dayCount;
+
+        if (CalendarViewMode == "Day")
+        {
+            gridStart = CalendarDate.Date;
+            visibleStart = gridStart;
+            visibleEnd = visibleStart.AddDays(1);
+            dayCount = 1;
+        }
+        else if (CalendarViewMode == "Week")
+        {
+            gridStart = GetWeekStart(CalendarDate);
+            visibleStart = gridStart;
+            visibleEnd = visibleStart.AddDays(7);
+            dayCount = 7;
+        }
+        else
+        {
+            var monthStart = new DateTime(CalendarDate.Year, CalendarDate.Month, 1);
+            var mondayOffset = ((int)monthStart.DayOfWeek + 6) % 7;
+            gridStart = monthStart.AddDays(-mondayOffset);
+            visibleStart = monthStart;
+            visibleEnd = monthStart.AddMonths(1);
+            dayCount = 42;
+        }
+
+        for (var index = 0; index < dayCount; index++)
+        {
+            var date = gridStart.AddDays(index);
+            var dayStart = new DateTimeOffset(date, TimeZoneInfo.Local.GetUtcOffset(date));
+            var dayEndDate = date.AddDays(1);
+            var dayEnd = new DateTimeOffset(dayEndDate, TimeZoneInfo.Local.GetUtcOffset(dayEndDate));
+            var dayEvents = CalendarService.GetEventsInRange(CalendarEvents, dayStart, dayEnd)
+                .Where(item => !item.IsCancelled)
+                .OrderBy(item => item.StartsAt)
+                .ToList();
+            CalendarDayCells.Add(new CalendarDayCell(
+                date,
+                CalendarViewMode != "Month" || date.Month == CalendarDate.Month,
+                dayEvents));
+        }
+
+        if (CalendarViewMode == "Month"
+            ? SelectedCalendarDate.Month != CalendarDate.Month || SelectedCalendarDate.Year != CalendarDate.Year
+            : SelectedCalendarDate.Date < gridStart || SelectedCalendarDate.Date >= gridStart.AddDays(dayCount))
+            SelectedCalendarDate = CalendarDate.Date;
+        SetCalendarDay(CalendarDayCells.FirstOrDefault(x => x.Date == SelectedCalendarDate));
+
         VisibleCalendarEvents.Clear();
-        var start = new DateTimeOffset(new DateTime(CalendarDate.Year, CalendarDate.Month, 1), TimeZoneInfo.Local.GetUtcOffset(new DateTime(CalendarDate.Year, CalendarDate.Month, 1)));
-        var end = start.AddMonths(1);
-        foreach (var item in CalendarService.GetEventsInRange(CalendarEvents, start, end))
+        var rangeStart = new DateTimeOffset(visibleStart, TimeZoneInfo.Local.GetUtcOffset(visibleStart));
+        var rangeEnd = new DateTimeOffset(visibleEnd, TimeZoneInfo.Local.GetUtcOffset(visibleEnd));
+        foreach (var item in CalendarService.GetEventsInRange(CalendarEvents, rangeStart, rangeEnd)
+                     .OrderBy(x => x.StartsAt))
             VisibleCalendarEvents.Add(item);
+
+        RefreshSelectedDayEvents();
         OnPropertyChanged(nameof(CalendarPeriodDisplay));
+        OnPropertyChanged(nameof(SelectedDayDisplay));
+        OnPropertyChanged(nameof(CalendarGridColumns));
+        OnPropertyChanged(nameof(ShowCalendarWeekHeader));
+        OnPropertyChanged(nameof(CalendarAgendaTitle));
+        OnPropertyChanged(nameof(IsMonthCalendar));
+        OnPropertyChanged(nameof(IsWeekCalendar));
+        OnPropertyChanged(nameof(IsDayCalendar));
     }
+
+    private void RefreshSelectedDayEvents()
+    {
+        SelectedDayEvents.Clear();
+        var dayStart = SelectedCalendarDate.Date;
+        var nextDay = dayStart.AddDays(1);
+        var start = new DateTimeOffset(dayStart, TimeZoneInfo.Local.GetUtcOffset(dayStart));
+        var end = new DateTimeOffset(nextDay, TimeZoneInfo.Local.GetUtcOffset(nextDay));
+        foreach (var item in CalendarService.GetEventsInRange(CalendarEvents, start, end).OrderBy(x => x.StartsAt))
+            SelectedDayEvents.Add(item);
+        OnPropertyChanged(nameof(SelectedDayDisplay));
+        OnPropertyChanged(nameof(NoSelectedDayEvents));
+    }
+
+    private static DateTime GetWeekStart(DateTime date) =>
+        date.Date.AddDays(-(((int)date.DayOfWeek + 6) % 7));
 
     private Exam? GetNextPlannedExam() =>
         Exams.Where(x => !x.Completed && x.PlannedDate.HasValue && x.PlannedDate.Value.Date >= DateTime.Today)
