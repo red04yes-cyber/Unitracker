@@ -5,9 +5,13 @@ UniToStudyHub supporta due modalità tramite lo stesso adapter OpenAI-compatible
 - **OpenAI cloud**: endpoint predefinito `https://api.openai.com/v1`, modello predefinito `gpt-4.1-mini`. Richiede una chiave API.
 - **Ollama locale**: endpoint predefinito `http://127.0.0.1:11434/v1`. Richiede Ollama avviato e un modello locale già scaricato; non richiede una chiave reale.
 
-## Configurazione attuale
+## Configurazione
 
-La selezione viene letta all'avvio dalle variabili d'ambiente del processo. Il consenso è sempre disattivato per impostazione predefinita: senza `STUDYHUB_AI_CONSENT=true` il provider rimane non configurato e nessun contenuto viene inviato.
+La selezione principale si effettua nella scheda **Impostazioni → AI Study Director · Provider**. È possibile scegliere OpenAI o Ollama, impostare il modello e concedere o negare il consenso. Le preferenze non segrete vengono salvate in `ai-provider-preferences.json` nella cartella dati locale; il provider viene inizializzato al successivo avvio.
+
+La chiave OpenAI inserita nella schermata viene salvata separatamente tramite DPAPI per l'account Windows corrente. Il campo password viene svuotato dopo il salvataggio e il valore non viene scritto nel file delle preferenze. La revoca del consenso salva lo stato disattivato e chiude l'applicazione per terminare il runtime AI corrente. Senza consenso il provider resta non configurato e nessun contenuto viene inviato.
+
+Le variabili d'ambiente restano disponibili per configurazioni di sviluppo e deployment; le preferenze salvate dall'interfaccia hanno precedenza sulla selezione provider/modello/consenso.
 
 | Variabile | Significato |
 |---|---|
@@ -46,4 +50,4 @@ Per Ollama l'app accetta esclusivamente endpoint loopback (localhost/127.0.0.1/:
 
 ## Limiti della prima integrazione
 
-La selezione tramite interfaccia delle impostazioni e la gestione guidata della chiave verranno completate nella UI dedicata. Fino ad allora la configurazione è intenzionalmente esplicita tramite variabili d'ambiente; non inserire chiavi nei file versionati o nei log.
+I piani di studio e le simulazioni orali sono proposte testuali: non vengono applicati automaticamente al calendario né persistiti nella banca domande. La configurazione del provider richiede il riavvio dell'app per applicare le nuove preferenze. Non inserire mai chiavi nei file versionati o nei log.
