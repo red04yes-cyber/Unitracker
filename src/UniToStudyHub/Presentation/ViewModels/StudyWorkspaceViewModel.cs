@@ -40,7 +40,10 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
     private Course? _selectedCourse;
     private Course? _selectedFocusCourse;
     private Course? _selectedTaskCourse;
-    private string _focusPresetInput = "25 min";
+    private string _focusPresetInput = "25/5 · classico";
+    private int _focusBreakMinutes = 5;
+    private DateTimeOffset? _breakEndsAt;
+    private bool _breakCompleted;
     private StudyTaskData? _selectedTask;
     private FlashcardData? _selectedDueFlashcard;
     private ErrorJournalEntryData? _selectedErrorEntry;
@@ -143,15 +146,26 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
     }
     public Course? SelectedFocusCourse { get => _selectedFocusCourse; set => Set(ref _selectedFocusCourse, value); }
     public Course? SelectedTaskCourse { get => _selectedTaskCourse; set => Set(ref _selectedTaskCourse, value); }
-    public IReadOnlyList<string> FocusPresetOptions { get; } = new[] { "25 min", "50 min", "90 min" };
+    public IReadOnlyList<string> FocusPresetOptions { get; } = new[] { "25/5 · classico", "50/10 · lungo", "90/15 · profondo" };
     public string FocusPresetInput
     {
         get => _focusPresetInput;
         set
         {
             Set(ref _focusPresetInput, value);
-            var minutes = value switch { "25 min" => 25, "50 min" => 50, "90 min" => 90, _ => 0 };
-            if (minutes > 0) FocusMinutesInput = minutes.ToString(CultureInfo.InvariantCulture);
+            var preset = value switch
+            {
+                "25/5 · classico" => (Work: 25, Break: 5),
+                "50/10 · lungo" => (Work: 50, Break: 10),
+                "90/15 · profondo" => (Work: 90, Break: 15),
+                _ => (Work: 0, Break: 0)
+            };
+            if (preset.Work > 0)
+            {
+                _focusBreakMinutes = preset.Break;
+                FocusMinutesInput = preset.Work.ToString(CultureInfo.InvariantCulture);
+                RefreshBreakSnapshot();
+            }
         }
     }
     public SyllabusTopicData? SelectedSyllabusTopic
@@ -198,7 +212,26 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
     public bool HasSelectedBackup => SelectedBackup is not null;
 
     public string FocusTopicInput { get => _focusTopicInput; set => Set(ref _focusTopicInput, value); }
-    public string FocusMinutesInput { get => _focusMinutesInput; set => Set(ref _focusMinutesInput, value); }
+    public string FocusMinutesInput
+    {
+        get => _focusMinutesInput;
+        set
+        {
+            Set(ref _focusMinutesInput, value);
+            var matchingPreset = value switch
+            {
+                "25" => "25/5 · classico",
+                "50" => "50/10 · lungo",
+                "90" => "90/15 · profondo",
+                _ => string.Empty
+            };
+            if (_focusPresetInput != matchingPreset)
+                Set(ref _focusPresetInput, matchingPreset, nameof(FocusPresetInput));
+        }
+    }
+    public string FocusBreakRemainingDisplay { get; private set; } = "05:00";
+    public string FocusBreakStateDisplay { get; private set; } = "Pausa prevista dopo la sessione";
+    public int FocusBreakProgressPercent { get; private set; }
     public string FocusRemainingDisplay { get => _focusRemainingDisplay; private set => Set(ref _focusRemainingDisplay, value); }
     public string FocusElapsedDisplay { get => _focusElapsedDisplay; private set => Set(ref _focusElapsedDisplay, value); }
     public string FocusStateDisplay { get => _focusStateDisplay; private set => Set(ref _focusStateDisplay, value); }
@@ -438,7 +471,50 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
             FocusProgressPercent = active.PlannedMinutes <= 0 ? 0 :
                 Math.Clamp((int)Math.Round(snapshot.ElapsedSeconds * 100d / (active.PlannedMinutes * 60d)), 0, 100);
         }
+        RefreshBreakSnapshot();
         NotifyFocusState();
+    }
+
+    private void RefreshBreakSnapshot()
+    {
+        if (_focus.GetActive(_data) is not null)
+        {
+            FocusBreakRemainingDisplay = FormatClock(_focusBreakMinutes * 60);
+            FocusBreakStateDisplay = $"Pausa prevista · {_focusBreakMinutes} min";
+            FocusBreakProgressPercent = 0;
+            OnPropertyChanged(nameof(FocusBreakRemainingDisplay));
+            OnPropertyChanged(nameof(FocusBreakStateDisplay));
+            OnPropertyChanged(nameof(FocusBreakProgressPercent));
+            return;
+        }
+
+        if (_breakEndsAt is DateTimeOffset endsAt)
+        {
+            var totalSeconds = _focusBreakMinutes * 60;
+            var remainingSeconds = Math.Max(0, (int)Math.Ceiling((endsAt - DateTimeOffset.Now).TotalSeconds));
+            if (remainingSeconds == 0)
+            {
+                _breakEndsAt = null;
+                _breakCompleted = true;
+            }
+            else
+            {
+                FocusBreakRemainingDisplay = FormatClock(remainingSeconds);
+                FocusBreakStateDisplay = "Pausa in corso";
+                FocusBreakProgressPercent = Math.Clamp((int)Math.Round((totalSeconds - remainingSeconds) * 100d / totalSeconds), 0, 100);
+                OnPropertyChanged(nameof(FocusBreakRemainingDisplay));
+                OnPropertyChanged(nameof(FocusBreakStateDisplay));
+                OnPropertyChanged(nameof(FocusBreakProgressPercent));
+                return;
+            }
+        }
+
+        FocusBreakRemainingDisplay = _breakCompleted ? "00:00" : FormatClock(_focusBreakMinutes * 60);
+        FocusBreakStateDisplay = _breakCompleted ? "Pausa completata" : "Pausa prevista dopo la sessione";
+        FocusBreakProgressPercent = _breakCompleted ? 100 : 0;
+        OnPropertyChanged(nameof(FocusBreakRemainingDisplay));
+        OnPropertyChanged(nameof(FocusBreakStateDisplay));
+        OnPropertyChanged(nameof(FocusBreakProgressPercent));
     }
 
     public async Task ImportPdfAsync(string path)
@@ -526,6 +602,8 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
         }
         try
         {
+            _breakEndsAt = null;
+            _breakCompleted = false;
             _focus.Start(_data, SelectedFocusCourse?.Id, FocusTopicInput, minutes);
             await SaveAsync();
             FocusTopicInput = string.Empty;
@@ -544,8 +622,16 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
             {
                 case "pause": _focus.Pause(_data, active.Id); break;
                 case "resume": _focus.Resume(_data, active.Id); break;
-                case "finish": _focus.Finish(_data, active.Id); break;
-                case "cancel": _focus.Cancel(_data, active.Id); break;
+                case "finish":
+                    _focus.Finish(_data, active.Id);
+                    _breakEndsAt = DateTimeOffset.Now.AddMinutes(_focusBreakMinutes);
+                    _breakCompleted = false;
+                    break;
+                case "cancel":
+                    _focus.Cancel(_data, active.Id);
+                    _breakEndsAt = null;
+                    _breakCompleted = false;
+                    break;
             }
             await SaveAsync();
             RefreshFocusSnapshot();
