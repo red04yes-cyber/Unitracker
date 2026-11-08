@@ -14,7 +14,7 @@ namespace UniToStudyHub.Tests.Infrastructure;
 public sealed class CompositionRootTests
 {
     [Fact]
-    public async Task CoreServicesAndPresentationShellResolveWithoutWpf()
+    public async Task CoreServicesAndSevenPageViewModelsResolveWithoutWpf()
     {
         var folder = Path.Combine(Path.GetTempPath(), "UnitrackerTests", Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(folder);
@@ -42,7 +42,14 @@ public sealed class CompositionRootTests
             var readiness = provider.GetRequiredService<ExamReadinessService>();
             var timeBudget = provider.GetRequiredService<TimeBudgetService>();
             var backup = provider.GetRequiredService<BackupService>();
-            var viewModel = provider.GetRequiredService<MainViewModel>();
+            var state = provider.GetRequiredService<MainViewModel>();
+            var dashboard = provider.GetRequiredService<DashboardViewModel>();
+            var courses = provider.GetRequiredService<CoursesViewModel>();
+            var calendar = provider.GetRequiredService<CalendarViewModel>();
+            var studyLab = provider.GetRequiredService<StudyLabViewModel>();
+            var academy = provider.GetRequiredService<AcademyViewModel>();
+            var progress = provider.GetRequiredService<ProgressViewModel>();
+            var settings = provider.GetRequiredService<SettingsViewModel>();
             var navigation = provider.GetRequiredService<INavigationService>();
             var shell = provider.GetRequiredService<ShellViewModel>();
 
@@ -57,8 +64,22 @@ public sealed class CompositionRootTests
             Assert.Same(readiness, provider.GetRequiredService<ExamReadinessService>());
             Assert.Same(timeBudget, provider.GetRequiredService<TimeBudgetService>());
             Assert.Same(backup, provider.GetRequiredService<BackupService>());
-            Assert.Same(viewModel, provider.GetRequiredService<MainViewModel>());
-            Assert.Same(viewModel, shell.LegacyContent);
+
+            Assert.Same(state, dashboard.State);
+            Assert.Same(state, courses.State);
+            Assert.Same(state, calendar.State);
+            Assert.Same(state, studyLab.State);
+            Assert.Same(state, academy.State);
+            Assert.Same(state, progress.State);
+            Assert.Same(state, settings.State);
+            Assert.Same(dashboard, shell.Dashboard);
+            Assert.Same(courses, shell.Courses);
+            Assert.Same(calendar, shell.Calendar);
+            Assert.Same(studyLab, shell.StudyLab);
+            Assert.Same(academy, shell.Academy);
+            Assert.Same(progress, shell.Progress);
+            Assert.Same(settings, shell.Settings);
+
             Assert.Equal(StudyRoute.Today, navigation.CurrentRoute);
             Assert.Equal((int)StudyRoute.Today, shell.SelectedPageIndex);
 
@@ -66,18 +87,18 @@ public sealed class CompositionRootTests
             Assert.Equal(StudyRoute.Calendar, navigation.CurrentRoute);
             Assert.Equal((int)StudyRoute.Calendar, shell.SelectedPageIndex);
 
-            Assert.True(shell.NavigateTo(StudyRoute.Settings));
+            Assert.True(settings.NavigateTo(StudyRoute.Settings));
             Assert.Equal(StudyRoute.Settings, shell.CurrentRoute);
             Assert.Equal((int)StudyRoute.Settings, shell.SelectedPageIndex);
 
-            Assert.False(shell.NavigateTo((StudyRoute)999));
+            Assert.False(dashboard.NavigateTo((StudyRoute)999));
             Assert.Equal(StudyRoute.Settings, shell.CurrentRoute);
 
-            await viewModel.InitializeAsync();
-            Assert.Equal("—", viewModel.AverageDisplay);
-            Assert.Equal("CFU completati: 0", viewModel.CreditsDisplay);
-            Assert.Equal("Voto di partenza: —", viewModel.BaseGradeDisplay);
-            Assert.Empty(viewModel.Courses);
+            await state.InitializeAsync();
+            Assert.Equal("—", state.AverageDisplay);
+            Assert.Equal("CFU completati: 0", state.CreditsDisplay);
+            Assert.Equal("Voto di partenza: —", state.BaseGradeDisplay);
+            Assert.Empty(state.Courses);
         }
         finally
         {
