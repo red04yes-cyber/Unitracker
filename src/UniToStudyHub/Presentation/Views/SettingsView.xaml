@@ -1,7 +1,8 @@
-<UserControl x:Class="UniToStudyHub.Presentation.Views.SettingsView"
+<local:LegacyPageControl x:Class="UniToStudyHub.Presentation.Views.SettingsView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:controls="clr-namespace:UniToStudyHub.Presentation.Controls">
+             xmlns:controls="clr-namespace:UniToStudyHub.Presentation.Controls"
+             xmlns:local="clr-namespace:UniToStudyHub.Presentation.Views">
     <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
     <StackPanel Margin="40,36,40,48">
         <TextBlock Text="CONFIGURAZIONE" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource AccentTextBrush}"/>
@@ -95,4 +96,4 @@
         </Border>
     </StackPanel>
 </ScrollViewer>
-</UserControl>
+</local:LegacyPageControl>
