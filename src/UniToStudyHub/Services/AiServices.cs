@@ -117,9 +117,8 @@ public sealed class AiSettingsService
 
 /// <summary>
 /// A provider-agnostic HTTP adapter for an explicitly configured
-/// OpenAI-compatible endpoint. It is not registered by default and it is never
-/// used by tests; the application ships the unavailable provider until a user
-/// grants consent and supplies a key.
+/// OpenAI-compatible endpoint. It is selected only after explicit user consent and valid provider credentials
+/// (OpenAI key or the local Ollama adapter) have been resolved.
 /// </summary>
 public sealed class OpenAiCompatibleProvider : IAiProvider, IDisposable
 {
@@ -295,6 +294,43 @@ public sealed class AiStudyService
     }
 
     public bool IsConfigured => _provider.IsConfigured;
+
+    /// <summary>
+    /// Sends an explicit study-coaching request using only the supplied local
+    /// study context. Context is treated as untrusted data and is never sent
+    /// unless the provider is configured and consent has been granted.
+    /// </summary>
+    public async Task<AiResponse> AskAsync(
+        string objective,
+        string context,
+        int maxTokens = 1600,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(objective))
+            throw new ArgumentException("L'obiettivo della richiesta è obbligatorio.", nameof(objective));
+        if (!_provider.IsConfigured)
+            return await _provider.CompleteAsync(
+                new AiRequest(PromptSafety.SystemPrompt, string.Empty), cancellationToken);
+        if (_settings is not null)
+        {
+            if (!_settings.ConsentGranted)
+                return new AiResponse(AiStatus.Refused, string.Empty, _provider.Name,
+                    "Nessun consenso esplicito all'invio di dati a un servizio AI.");
+            if (!_limiter.TryAcquire(_settings.MaxRequestsPerDay, _clock(), out _))
+                return new AiResponse(AiStatus.Refused, string.Empty, _provider.Name,
+                    $"Limite giornaliero di {_settings.MaxRequestsPerDay} richieste AI raggiunto.");
+        }
+
+        var safeObjective = PromptSafety.Sanitize(objective);
+        var safeContext = PromptSafety.Sanitize(context);
+        var prompt = $"Obiettivo dello studente:\n{safeObjective}\n\n" +
+                     $"[UNTRUSTED_STUDY_CONTEXT]\n{safeContext}\n[/UNTRUSTED_STUDY_CONTEXT]\n\n" +
+                     "Usa solo il contesto fornito. Distingui i dati disponibili dalle ipotesi, " +
+                     "non inventare scadenze, argomenti o risultati e segnala le informazioni mancanti.";
+        return await _provider.CompleteAsync(
+            new AiRequest(PromptSafety.SystemPrompt, prompt, Math.Clamp(maxTokens, 200, 3000)),
+            cancellationToken);
+    }
 
     public async Task<AiResponse> AnswerFromDocumentAsync(
         PdfDocumentData document,
