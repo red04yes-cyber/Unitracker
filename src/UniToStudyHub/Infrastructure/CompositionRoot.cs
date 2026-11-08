@@ -29,6 +29,7 @@ public static class CompositionRoot
         services.AddSingleton(sp => new LegacyJsonMigrator(
             sp.GetRequiredService<IDbContextFactory<StudyHubDbContext>>()));
         services.AddSingleton<IStudyDataStore, SqliteStudyDataStore>();
+        services.AddSingleton<StudyDataSession>();
         services.AddSingleton<IMoodleTokenStore>(_ => new MoodleTokenVault(dataDirectory));
         services.AddSingleton<MoodleApplicationService>();
         services.AddSingleton<AcademicProfileService>();
