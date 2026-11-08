@@ -117,9 +117,8 @@ public sealed class AiSettingsService
 
 /// <summary>
 /// A provider-agnostic HTTP adapter for an explicitly configured
-/// OpenAI-compatible endpoint. It is not registered by default and it is never
-/// used by tests; the application ships the unavailable provider until a user
-/// grants consent and supplies a key.
+/// OpenAI-compatible endpoint. It is selected only after explicit user consent and valid provider credentials
+/// (OpenAI key or the local Ollama adapter) have been resolved.
 /// </summary>
 public sealed class OpenAiCompatibleProvider : IAiProvider, IDisposable
 {
