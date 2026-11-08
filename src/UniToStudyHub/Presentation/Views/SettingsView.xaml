@@ -1,0 +1,98 @@
+<UserControl x:Class="UniToStudyHub.Presentation.Views.SettingsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="clr-namespace:UniToStudyHub.Presentation.Controls">
+    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+    <StackPanel Margin="40,36,40,48">
+        <TextBlock Text="CONFIGURAZIONE" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource AccentTextBrush}"/>
+        <TextBlock Text="Impostazioni" Style="{StaticResource PageTitleStyle}" Margin="0,7,0,4"/>
+        <TextBlock Text="Gestisci integrazioni, dati locali e copie di sicurezza." Style="{StaticResource PageSubtitleStyle}" Margin="0,0,0,22"/>
+        <Border Style="{StaticResource CardBorderStyle}" MaxWidth="860" HorizontalAlignment="Left" Margin="0,0,0,14">
+            <StackPanel>
+                <TextBlock Text="Profilo universitario" Style="{StaticResource SectionTitleStyle}"/>
+                <TextBlock Text="Questi dati sono personali e organizzativi: non vengono presentati come informazioni ufficiali UniTo." FontSize="12" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,6,0,14"/>
+                <TextBlock Text="Corso di laurea" Style="{StaticResource KpiLabelStyle}" Margin="0,0,0,5"/>
+                <TextBox Text="{Binding State.Workspace.DegreeProgramNameInput, UpdateSourceTrigger=PropertyChanged}"/>
+                <Grid Margin="0,10,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                    <StackPanel><TextBlock Text="Codice / classe" Style="{StaticResource KpiLabelStyle}" Margin="0,0,0,5"/><TextBox Text="{Binding State.Workspace.DegreeProgramCodeInput, UpdateSourceTrigger=PropertyChanged}"/></StackPanel>
+                    <StackPanel Grid.Column="1" Margin="10,0,0,0"><TextBlock Text="CFU totali previsti" Style="{StaticResource KpiLabelStyle}" Margin="0,0,0,5"/><TextBox Text="{Binding State.Workspace.DegreeTotalCfuInput, UpdateSourceTrigger=PropertyChanged}" ToolTip="Lascia vuoto se non vuoi configurare il totale"/></StackPanel>
+                </Grid>
+                <Grid Margin="0,10,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                    <StackPanel><TextBlock Text="Anno di iscrizione" Style="{StaticResource KpiLabelStyle}" Margin="0,0,0,5"/><TextBox Text="{Binding State.Workspace.EnrollmentYearInput, UpdateSourceTrigger=PropertyChanged}"/></StackPanel>
+                    <StackPanel Grid.Column="1" Margin="10,0,0,0"><TextBlock Text="Anno accademico corrente" Style="{StaticResource KpiLabelStyle}" Margin="0,0,0,5"/><TextBox Text="{Binding State.Workspace.CurrentAcademicYearInput, UpdateSourceTrigger=PropertyChanged}"/></StackPanel>
+                </Grid>
+                <Grid Margin="0,10,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                    <StackPanel><TextBlock Text="Obiettivo laurea" Style="{StaticResource KpiLabelStyle}" Margin="0,0,0,5"/><DatePicker SelectedDate="{Binding State.Workspace.GraduationTargetInput, UpdateSourceTrigger=PropertyChanged}"/></StackPanel>
+                    <StackPanel Grid.Column="1" Margin="10,0,0,0"><TextBlock Text="Ore di studio a settimana" Style="{StaticResource KpiLabelStyle}" Margin="0,0,0,5"/><TextBox Text="{Binding State.Workspace.WeeklyStudyHoursInput, UpdateSourceTrigger=PropertyChanged}"/></StackPanel>
+                </Grid>
+                <TextBlock Text="Limite giornaliero (minuti)" Style="{StaticResource KpiLabelStyle}" Margin="0,10,0,5"/>
+                <TextBox Text="{Binding State.Workspace.MaxDailyStudyMinutesInput, UpdateSourceTrigger=PropertyChanged}" MaxWidth="220" HorizontalAlignment="Left"/>
+                <TextBlock Text="Preferenze di studio" Style="{StaticResource KpiLabelStyle}" Margin="0,10,0,5"/>
+                <TextBox Text="{Binding State.Workspace.StudyPreferencesInput, UpdateSourceTrigger=PropertyChanged}" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="64"/>
+                <Button Content="Salva profilo" Command="{Binding State.Workspace.SaveAcademicProfileCommand}" HorizontalAlignment="Left" Margin="0,14,0,0"/>
+                <TextBlock Text="{Binding State.Workspace.WorkspaceStatus}" FontSize="11" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,9,0,0"/>
+            </StackPanel>
+        </Border>
+        <Border Style="{StaticResource CardBorderStyle}" MaxWidth="860" HorizontalAlignment="Left" Margin="0,0,0,14">
+            <StackPanel>
+                <ToggleButton Content="Moodle · Integrazione opzionale" IsChecked="{Binding State.IsMoodlePanelExpanded, Mode=TwoWay}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="12" FontWeight="SemiBold" ToolTip="Apri o chiudi la configurazione Moodle"/>
+                <StackPanel Visibility="{Binding State.IsMoodlePanelExpanded, Converter={StaticResource BooleanToVisibilityConverter}}" Margin="12,12,12,6">
+                    <TextBlock Text="Moodle resta facoltativo. Puoi usare tutte le altre funzioni senza collegare l'account universitario." Style="{StaticResource PageSubtitleStyle}" Margin="0,0,0,14"/>
+                    <TextBlock Text="URL della piattaforma" Style="{StaticResource KpiLabelStyle}" Margin="0,0,0,5"/>
+                    <TextBox Text="{Binding State.MoodleUrlInput, UpdateSourceTrigger=PropertyChanged}" MaxWidth="600" HorizontalAlignment="Stretch"/>
+                    <TextBlock Text="Token Web Services" Style="{StaticResource KpiLabelStyle}" Margin="0,14,0,5"/>
+                    <PasswordBox x:Name="MoodleTokenBox" MaxWidth="600" HorizontalAlignment="Stretch" Padding="11,9" PasswordChanged="MoodleTokenBox_PasswordChanged"/>
+                    <WrapPanel Margin="0,16,0,0">
+                        <Button Content="Verifica e salva token" Click="ConnectMoodle_Click" Margin="0,0,8,0"/>
+                        <Button Content="Sincronizza Moodle" Style="{StaticResource SecondaryButtonStyle}" Command="{Binding State.SyncMoodleCommand}" Margin="0,0,8,0"/>
+                        <Button Content="Disconnetti" Style="{StaticResource QuietButtonStyle}" Click="DisconnectMoodle_Click" IsEnabled="{Binding State.IsMoodleConnected}"/>
+                    </WrapPanel>
+                    <Border Background="{DynamicResource SubtleBrush}" CornerRadius="8" Padding="12" Margin="0,16,0,0">
+                        <TextBlock Text="{Binding State.MoodleStatus}" FontSize="12" Foreground="{DynamicResource InkBrush}" TextWrapping="Wrap"/>
+                    </Border>
+                    <TextBlock Text="Materiali e discussioni importati" Style="{StaticResource KpiLabelStyle}" Margin="0,14,0,6"/>
+                    <ItemsControl ItemsSource="{Binding State.Announcements}">
+                        <ItemsControl.ItemTemplate><DataTemplate><Border BorderBrush="{DynamicResource SubtleBrush}" BorderThickness="0,0,0,1" Padding="7"><StackPanel><TextBlock Text="{Binding Title}" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}" TextWrapping="Wrap"/><TextBlock Text="{Binding CourseName}" FontSize="10" Foreground="{DynamicResource AccentTextBrush}"/><TextBlock Text="{Binding Summary}" FontSize="11" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap"/></StackPanel></Border></DataTemplate></ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </StackPanel>
+        </Border>
+        <Border Style="{StaticResource CardBorderStyle}" MaxWidth="860" HorizontalAlignment="Left">
+            <StackPanel>
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <Border Width="38" Height="38" CornerRadius="12"
+                            Background="{DynamicResource AccentSoftBrush}" Margin="0,0,11,0">
+                        <Viewbox Width="23" Height="23" Stretch="Uniform">
+                            <Canvas Width="32" Height="36">
+                                <Path Data="M 16,2 L 29,7 L 27,21 C 26,27 20,32 16,34 C 12,32 6,27 5,21 L 3,7 Z"
+                                      Fill="{DynamicResource AccentCyanBrush}"/>
+                                <Path Data="M 10,17 L 14,21 L 22,12" Stroke="#0D1726"
+                                      StrokeThickness="2.5" StrokeStartLineCap="Round"
+                                      StrokeEndLineCap="Round" Fill="Transparent"/>
+                            </Canvas>
+                        </Viewbox>
+                    </Border>
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock Text="Privacy, sicurezza e backup" Style="{StaticResource SectionTitleStyle}"/>
+                        <TextBlock Text="Protezione locale dei dati e ripristino verificato"
+                                   FontSize="10" Foreground="{DynamicResource MutedBrush}" Margin="0,3,0,0"/>
+                    </StackPanel>
+                </StackPanel>
+                <TextBlock Text="Le copie sono locali e cifrate con AES-256-GCM. Il manifest include versione e checksum; la chiave è protetta con Windows DPAPI." FontSize="12" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,6,0,12"/>
+                <TextBlock Text="{Binding State.Workspace.DatabaseProtectionDisplay}" FontSize="12" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,0,0,12"/>
+                <TextBlock Text="Cartella backup" Style="{StaticResource KpiLabelStyle}"/>
+                <TextBox Text="{Binding State.Workspace.BackupDirectory, Mode=OneWay}" IsReadOnly="True" Margin="0,5,0,10"/>
+                <Button Content="Crea backup e verifica integrità" Command="{Binding State.Workspace.CreateBackupCommand}" HorizontalAlignment="Left"/>
+                <TextBlock Text="Backup disponibili" Style="{StaticResource KpiLabelStyle}" Margin="0,16,0,6"/>
+                <ListBox ItemsSource="{Binding State.Workspace.BackupItems}" SelectedItem="{Binding State.Workspace.SelectedBackup}" MinHeight="90" MaxHeight="220">
+                    <ListBox.ItemTemplate><DataTemplate><StackPanel Margin="5"><TextBlock Text="{Binding FilePath}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}" TextWrapping="Wrap"/><TextBlock Text="{Binding CreatedAt, StringFormat={}{0:dd/MM/yyyy HH:mm}}" FontSize="11" Foreground="{DynamicResource MutedBrush}"/><TextBlock Text="{Binding SizeBytes, StringFormat={}{0:N0} byte}" FontSize="10" Foreground="{DynamicResource MutedBrush}"/><TextBlock Text="{Binding Sha256, StringFormat='SHA-256 · {0}'}" FontSize="9" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap"/><TextBlock Text="{Binding IntegrityVerified, StringFormat=Integrità verificata: {0}}" FontSize="10" Foreground="{DynamicResource MutedBrush}"/></StackPanel></DataTemplate></ListBox.ItemTemplate>
+                </ListBox>
+                <TextBlock Text="Non hai ancora creato backup locali." Visibility="{Binding State.Workspace.NoBackups, Converter={StaticResource BooleanToVisibilityConverter}}" FontSize="11" Foreground="{DynamicResource MutedBrush}" Margin="2,7,2,0"/>
+                <WrapPanel Margin="0,9,0,0"><Button Content="Verifica backup selezionato" Command="{Binding State.Workspace.VerifyBackupCommand}" Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,8,0"/><Button Content="Ripristina backup selezionato" Click="RestoreBackup_Click" IsEnabled="{Binding State.Workspace.HasSelectedBackup}" Style="{StaticResource QuietButtonStyle}" Margin="0,0,8,0" ToolTip="Il backup viene verificato; prima della sostituzione viene creata una copia di sicurezza"/></WrapPanel>
+                <TextBlock Text="{Binding State.Workspace.BackupStatus}" FontSize="12" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,12,0,0"/><TextBlock Text="{Binding State.Workspace.BackupManifestSummary}" FontSize="10" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,7,0,0"/>
+                <TextBlock Text="Prima di ripristinare, chiudi le altre istanze dell'app. Il sistema crea una copia di sicurezza del database corrente, verifica la copia selezionata e poi ricarica i dati." FontSize="11" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,7,0,0"/>
+            </StackPanel>
+        </Border>
+    </StackPanel>
+</ScrollViewer>
+</UserControl>
