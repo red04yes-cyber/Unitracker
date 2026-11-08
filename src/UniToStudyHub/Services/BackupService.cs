@@ -419,31 +419,17 @@ public sealed class BackupService
             if (source is not Microsoft.Data.Sqlite.SqliteConnection sqliteSource)
                 throw new InvalidOperationException("The configured SQLite provider does not support encrypted snapshots.");
 
-            // VACUUM INTO creates a consistent one-file snapshot. Depending on
-            // the codec build it may inherit encryption; if so, rekey it to an
-            // empty passphrase while it is still inside the private staging
-            // folder. The surrounding backup container then encrypts it with
-            // AES-256-GCM, allowing password-protected backups to be portable.
+            // VACUUM INTO creates a consistent one-file snapshot. SQLCipher
+            // may preserve encryption in the snapshot; VerifySqliteFileAsync
+            // validates either the encrypted or plaintext SQLite header. The
+            // outer AES-256-GCM backup container encrypts the complete payload.
             await using var snapshot = sqliteSource.CreateCommand();
             snapshot.CommandText = "VACUUM INTO $target";
             snapshot.Parameters.Add(new Microsoft.Data.Sqlite.SqliteParameter("$target", target));
             await snapshot.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
 
-            if (!IsPlaintextSqliteFile(target))
-            {
-                await using var encrypted = new Microsoft.Data.Sqlite.SqliteConnection(
-                    StudyHubDatabase.CreateEncryptedConnectionString(
-                        target, Microsoft.Data.Sqlite.SqliteOpenMode.ReadWrite));
-                await encrypted.OpenAsync(cancellationToken).ConfigureAwait(false);
-                await using var decrypt = encrypted.CreateCommand();
-                decrypt.CommandText = "PRAGMA rekey = '';";
-                await decrypt.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
-                await encrypted.CloseAsync().ConfigureAwait(false);
-            }
-
-            if (!IsPlaintextSqliteFile(target) ||
-                !await VerifySqliteFileAsync(target, cancellationToken).ConfigureAwait(false))
-                throw new InvalidDataException("Lo snapshot SQLite non è stato esportato correttamente in formato portabile.");
+            if (!await VerifySqliteFileAsync(target, cancellationToken).ConfigureAwait(false))
+                throw new InvalidDataException("Lo snapshot SQLite non ha superato il controllo di integrità.");
 
             LocalFileSecurity.TryRestrictFile(target);
         }
