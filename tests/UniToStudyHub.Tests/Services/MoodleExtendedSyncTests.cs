@@ -32,6 +32,18 @@ public sealed class MoodleExtendedSyncTests
     }
 
     [Fact]
+    public async Task CustomPluginActivityApisAreDiscoveredFromTheTokenFunctionList()
+    {
+        using var client = new MoodleClient("https://moodle.example.edu", Token,
+            new StubHandler(_ => Json("""[{"id":18,"name":"Attività plugin"}]""")));
+
+        var result = await client.GetCourseActivityDetailsAsync(
+            42, new[] { "mod_customactivity_get_activities_by_courses" });
+
+        Assert.Contains("mod_customactivity_get_activities_by_courses", result.Keys);
+    }
+
+    [Fact]
     public async Task ActivityCompletionIsImportedWhenTheFunctionIsGranted()
     {
         using var client = new MoodleClient("https://moodle.example.edu", Token,
