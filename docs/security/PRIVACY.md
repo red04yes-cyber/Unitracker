@@ -71,3 +71,12 @@ background.
   (minimo 12 caratteri); la password non è recuperabile.
 - La cancellazione su SSD/unità con wear leveling è best-effort: il sistema
   operativo può conservare copie residue.
+
+
+## Database encryption and Moodle files
+
+The live SQLite database uses SQLCipher v4 (AES-256-CBC + HMAC-SHA512). A random 256-bit key is stored only as a DPAPI-protected secret for the current Windows account. On first startup, an existing plaintext SQLite database is copied into an encrypted temporary database, checked for integrity, then atomically replaced. The plaintext database is not retained.
+
+Backups are portable AES-256-GCM containers. Their short-lived SQLite snapshot is scrubbed after encryption. Password-protected backups can be restored on another Windows account or PC; the restore process re-encrypts the database with the destination account's DPAPI key. DPAPI-protected backups remain tied to the original account.
+
+Moodle files are downloaded under the user's Documents folder in `UniToStudyHub`, with private folder permissions, path traversal protection, per-file and per-course limits, and executable/macro extension blocking. These files are not encrypted by SQLCipher.
