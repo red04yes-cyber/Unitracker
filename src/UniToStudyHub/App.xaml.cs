@@ -21,6 +21,8 @@ public partial class App : System.Windows.Application
 
         try
         {
+            ThemeManager.ApplySavedTheme();
+
             // Keep every startup operation inside this boundary. In particular,
             // path/ACL setup and DI registration can fail before database startup.
             var dataDirectory = StudyHubDatabase.GetDataDirectory();
