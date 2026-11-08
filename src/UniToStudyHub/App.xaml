@@ -3,32 +3,38 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <Application.Resources>
         <!-- Shared design tokens. ThemeManager replaces these brushes at runtime. -->
-        <SolidColorBrush x:Key="NavyBrush" Color="#17243B"/>
-        <SolidColorBrush x:Key="SidebarBrush" Color="#17243B"/>
-        <SolidColorBrush x:Key="SidebarTextBrush" Color="#F7FAFF"/>
-        <SolidColorBrush x:Key="SidebarMutedBrush" Color="#A7B7CD"/>
-        <SolidColorBrush x:Key="SidebarHoverBrush" Color="#223652"/>
-        <SolidColorBrush x:Key="SidebarActiveBrush" Color="#2B4168"/>
-        <SolidColorBrush x:Key="SidebarBadgeBrush" Color="#263955"/>
-        <SolidColorBrush x:Key="InkBrush" Color="#18243A"/>
-        <SolidColorBrush x:Key="MutedBrush" Color="#65738B"/>
-        <SolidColorBrush x:Key="AccentBrush" Color="#3457D5"/>
-        <SolidColorBrush x:Key="AccentTextBrush" Color="#3457D5"/>
-        <SolidColorBrush x:Key="AccentSoftBrush" Color="#EAF0FF"/>
-        <SolidColorBrush x:Key="PanelBrush" Color="#FFFFFF"/>
-        <SolidColorBrush x:Key="PageBrush" Color="#F4F6FA"/>
-        <SolidColorBrush x:Key="BorderBrush" Color="#E4EAF2"/>
-        <SolidColorBrush x:Key="SubtleBrush" Color="#F0F3F8"/>
-        <SolidColorBrush x:Key="SuccessBrush" Color="#21865D"/>
-        <SolidColorBrush x:Key="SuccessSoftBrush" Color="#E8F5EE"/>
-        <SolidColorBrush x:Key="WarningBrush" Color="#A96716"/>
-        <SolidColorBrush x:Key="WarningSoftBrush" Color="#FFF4E5"/>
-        <SolidColorBrush x:Key="AiBrush" Color="#7654C8"/>
-        <SolidColorBrush x:Key="AiSoftBrush" Color="#F1EDFC"/>
+        <SolidColorBrush x:Key="NavyBrush" Color="#111B2B"/>
+        <SolidColorBrush x:Key="SidebarBrush" Color="#0B1423"/>
+        <SolidColorBrush x:Key="SidebarTextBrush" Color="#F0F5FC"/>
+        <SolidColorBrush x:Key="SidebarMutedBrush" Color="#93A6BF"/>
+        <SolidColorBrush x:Key="SidebarHoverBrush" Color="#1B2C43"/>
+        <SolidColorBrush x:Key="SidebarActiveBrush" Color="#173B55"/>
+        <SolidColorBrush x:Key="SidebarBadgeBrush" Color="#1B2D43"/>
+        <SolidColorBrush x:Key="InkBrush" Color="#EEF4FC"/>
+        <SolidColorBrush x:Key="MutedBrush" Color="#A2B2C8"/>
+        <SolidColorBrush x:Key="AccentBrush" Color="#16BDE5"/>
+        <SolidColorBrush x:Key="AccentTextBrush" Color="#66DDF5"/>
+        <SolidColorBrush x:Key="AccentSoftBrush" Color="#193B52"/>
+        <SolidColorBrush x:Key="PanelBrush" Color="#172538"/>
+        <SolidColorBrush x:Key="PageBrush" Color="#0D1726"/>
+        <SolidColorBrush x:Key="BorderBrush" Color="#2A3D55"/>
+        <SolidColorBrush x:Key="SubtleBrush" Color="#1C2C42"/>
+        <SolidColorBrush x:Key="SuccessBrush" Color="#63D9A4"/>
+        <SolidColorBrush x:Key="SuccessSoftBrush" Color="#173E36"/>
+        <SolidColorBrush x:Key="WarningBrush" Color="#F1BE62"/>
+        <SolidColorBrush x:Key="WarningSoftBrush" Color="#40351F"/>
+        <SolidColorBrush x:Key="AiBrush" Color="#BBA4FF"/>
+        <SolidColorBrush x:Key="AiSoftBrush" Color="#342C50"/>
+        <SolidColorBrush x:Key="AccentCyanBrush" Color="#16BDE5"/>
+        <SolidColorBrush x:Key="ElectricBlueBrush" Color="#3978F6"/>
+        <SolidColorBrush x:Key="BrickAccentBrush" Color="#D36A61"/>
+        <SolidColorBrush x:Key="GoldAccentBrush" Color="#E7B84F"/>
+        <SolidColorBrush x:Key="GlassBrush" Color="#D91A2A40"/>
+        <SolidColorBrush x:Key="GlassBorderBrush" Color="#554D6680"/>
 
         <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
 
-        <Style TargetType="{x:Type Button}">
+        <Style TargetType="{x:Type Button}">\n            <Setter Property="MinWidth" Value="42"/>
             <Setter Property="Padding" Value="16,10"/>
             <Setter Property="Margin" Value="0"/>
             <Setter Property="MinHeight" Value="40"/>
@@ -304,6 +310,16 @@
             <Setter Property="Foreground" Value="{DynamicResource InkBrush}"/>
             <Setter Property="Padding" Value="10,7"/>
             <Setter Property="BorderThickness" Value="0"/>
+        </Style>
+            <Style TargetType="{x:Type ProgressBar}">
+            <Setter Property="Foreground" Value="{DynamicResource AccentCyanBrush}"/>
+            <Setter Property="Background" Value="{DynamicResource SubtleBrush}"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Height" Value="8"/>
+        </Style>
+
+        <Style x:Key="GoldProgressBarStyle" TargetType="{x:Type ProgressBar}" BasedOn="{StaticResource {x:Type ProgressBar}}">
+            <Setter Property="Foreground" Value="{DynamicResource GoldAccentBrush}"/>
         </Style>
     </Application.Resources>
 </Application>
