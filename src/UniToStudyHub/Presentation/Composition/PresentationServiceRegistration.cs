@@ -10,12 +10,20 @@ public static class PresentationServiceRegistration
     {
         services.AddUniToStudyHubViewModels();
         services.AddSingleton<INavigationService, NavigationService>();
+
+        services.AddSingleton<DashboardViewModel>();
+        services.AddSingleton<CoursesViewModel>();
+        services.AddSingleton<CalendarViewModel>();
+        services.AddSingleton<StudyLabViewModel>();
+        services.AddSingleton<AcademyViewModel>();
+        services.AddSingleton<ProgressViewModel>();
+        services.AddSingleton<SettingsViewModel>();
         services.AddSingleton<ShellViewModel>();
         return services;
     }
 
-    // Retained for existing test/bootstrap callers until the composition
-    // migration is complete.
+    // Compatibility composition remains until the page operations move behind
+    // their page-specific application APIs.
     public static IServiceCollection AddUniToStudyHubViewModels(this IServiceCollection services)
     {
         services.AddSingleton<StudyWorkspaceViewModel>();
