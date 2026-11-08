@@ -903,19 +903,15 @@
                 </Border>
                 <Border Style="{StaticResource CardBorderStyle}" Margin="0,12,0,0">
                     <StackPanel>
-                        <Grid>
-                            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                            <TextBlock Text="AI Study Director" Style="{StaticResource SectionTitleStyle}"/>
-                            <Border Grid.Column="1" Background="{DynamicResource AiSoftBrush}" CornerRadius="7" Padding="10,5">
-                                <TextBlock Text="IN PROGRESSO" FontSize="9" FontWeight="Bold" Foreground="{DynamicResource AiBrush}"/>
-                            </Border>
-                        </Grid>
-                        <TextBlock Text="La parte AI verrà aggiunta in una fase successiva. In questa versione non vengono inviate domande a provider esterni e non vengono mostrate risposte generate." FontSize="11" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,7,0,0"/>
-                        <Border Background="{DynamicResource SubtleBrush}" CornerRadius="8" Padding="12" Margin="0,13,0,0">
-                            <StackPanel>
-                                <TextBlock Text="In preparazione" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource AiBrush}"/>
-                                <TextBlock Text="Pianificazione assistita · Tutor Feynman · Analisi degli errori · Generazione di quiz dai materiali" FontSize="11" Foreground="{DynamicResource InkBrush}" TextWrapping="Wrap" Margin="0,5,0,0"/>
-                            </StackPanel>
+                        <TextBlock Text="AI Study Director" Style="{StaticResource SectionTitleStyle}"/>
+                        <TextBlock Text="Genera un piano personalizzato o una simulazione orale usando i dati locali del corso selezionato. Le proposte non modificano il calendario e non sono quesiti ufficiali." FontSize="11" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,7,0,10"/>
+                        <WrapPanel>
+                            <Button Content="Genera piano di studio" Command="{Binding Workspace.GenerateAiPlanCommand}" Margin="0,0,8,8"/>
+                            <Button Content="Simulazione orale" Command="{Binding Workspace.GenerateOralPracticeCommand}" Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,0,8"/>
+                        </WrapPanel>
+                        <TextBlock Text="{Binding Workspace.AiStatusMessage}" FontSize="10" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,3,0,8"/>
+                        <Border Background="{DynamicResource SubtleBrush}" CornerRadius="8" Padding="12">
+                            <TextBlock Text="{Binding Workspace.AiResponseText}" FontSize="11" Foreground="{DynamicResource InkBrush}" TextWrapping="Wrap"/>
                         </Border>
                     </StackPanel>
                 </Border>
