@@ -144,29 +144,41 @@ public static class StudyHubDatabase
             using (var source = new Microsoft.Data.Sqlite.SqliteConnection(sourceBuilder.ToString()))
             {
                 source.Open();
-                using var attach = source.CreateCommand();
-                attach.CommandText = "ATTACH DATABASE $target AS encrypted KEY $password;";
-                attach.Parameters.AddWithValue("$target", new Uri(temporary).AbsoluteUri + "?cipher=sqlcipher&legacy=4");
-                attach.Parameters.AddWithValue("$password", key);
-                attach.ExecuteNonQuery();
+                using var snapshot = source.CreateCommand();
+                snapshot.CommandText = "VACUUM INTO $target";
+                snapshot.Parameters.AddWithValue("$target", temporary);
+                snapshot.ExecuteNonQuery();
+            }
 
-                try
-                {
-                    using var export = source.CreateCommand();
-                    export.CommandText = "SELECT sqlcipher_export('encrypted');";
-                    export.ExecuteScalar();
+            // The Multiple Ciphers build uses the SQLCipher v4 codec selected
+            // in the URI. Rekeying an ordinary SQLite snapshot encrypts it in
+            // place without relying on sqlite3_backup cross-codec support.
+            var encryptionBuilder = new Microsoft.Data.Sqlite.SqliteConnectionStringBuilder
+            {
+                DataSource = new Uri(temporary).AbsoluteUri + "?cipher=sqlcipher&legacy=4",
+                Mode = Microsoft.Data.Sqlite.SqliteOpenMode.ReadWrite,
+                Pooling = false
+            };
+            using (var encrypted = new Microsoft.Data.Sqlite.SqliteConnection(encryptionBuilder.ToString()))
+            {
+                encrypted.Open();
+                using var rekey = encrypted.CreateCommand();
+                rekey.CommandText = $"PRAGMA rekey = '{key}';";
+                rekey.ExecuteNonQuery();
+                using var check = encrypted.CreateCommand();
+                check.CommandText = "PRAGMA integrity_check";
+                if (!string.Equals(check.ExecuteScalar()?.ToString(), "ok", StringComparison.OrdinalIgnoreCase))
+                    throw new InvalidDataException("La conversione cifrata del database non ha superato il controllo di integrità.");
+            }
 
-                    using var check = source.CreateCommand();
-                    check.CommandText = "PRAGMA encrypted.integrity_check";
-                    if (!string.Equals(check.ExecuteScalar()?.ToString(), "ok", StringComparison.OrdinalIgnoreCase))
-                        throw new InvalidDataException("La conversione cifrata del database non ha superato il controllo di integrità.");
-                }
-                finally
-                {
-                    using var detach = source.CreateCommand();
-                    detach.CommandText = "DETACH DATABASE encrypted;";
-                    detach.ExecuteNonQuery();
-                }
+            using (var verify = new Microsoft.Data.Sqlite.SqliteConnection(
+                       CreateEncryptedConnectionString(temporary, Microsoft.Data.Sqlite.SqliteOpenMode.ReadOnly)))
+            {
+                verify.Open();
+                using var check = verify.CreateCommand();
+                check.CommandText = "PRAGMA integrity_check";
+                if (!string.Equals(check.ExecuteScalar()?.ToString(), "ok", StringComparison.OrdinalIgnoreCase))
+                    throw new InvalidDataException("Il database cifrato non è verificabile con la chiave appena creata.");
             }
 
             Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
