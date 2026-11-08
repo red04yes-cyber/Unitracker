@@ -1,0 +1,81 @@
+name: Security scan
+
+# Secret scanning runs on every branch and pull request, including the
+# technical work branches, without write permissions and without persisting the
+# checkout credential. Findings are redacted: the log never prints the secret.
+
+on:
+  push:
+    branches: [ main, develop, 'work/**' ]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: security-scan-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  secret-scan:
+    name: Secret scanning (history + working tree)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout the full history without persisted credentials
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Install gitleaks 8.30.1 with checksum verification
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="8.30.1"
+          archive="gitleaks_${version}_linux_x64.tar.gz"
+          curl --fail --silent --show-error --location --proto '=https' --tlsv1.2 \
+            --output "${archive}" \
+            "https://github.com/gitleaks/gitleaks/releases/download/v${version}/${archive}"
+          echo "551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb  ${archive}" \
+            | sha256sum --check --strict -
+          tar --extract --gzip --file "${archive}" gitleaks
+          ./gitleaks version
+
+      - name: Scan the git history (all refs)
+        shell: bash
+        run: |
+          set -euo pipefail
+          ./gitleaks git --config .gitleaks.toml --redact --no-banner --exit-code 1 --log-opts="--all" .
+
+      - name: Scan the working tree
+        shell: bash
+        run: |
+          set -euo pipefail
+          ./gitleaks dir --config .gitleaks.toml --redact --no-banner --exit-code 1 .
+
+  dependency-audit:
+    name: Vulnerable package audit (blocking)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Install .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restore application and test projects with blocking NuGet audit
+        shell: bash
+        run: |
+          set -euo pipefail
+          dotnet restore src/UniToStudyHub/UniToStudyHub.csproj -p:EnableWindowsTargeting=true -warnaserror:NU1901,NU1902,NU1903,NU1904
+          dotnet restore tests/UniToStudyHub.Tests/UniToStudyHub.Tests.csproj -p:EnableWindowsTargeting=true -warnaserror:NU1901,NU1902,NU1903,NU1904
+          echo "NuGet audit completed with NU1901-NU1904 treated as errors for both dependency graphs."
+

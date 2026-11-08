@@ -1,0 +1,48 @@
+# Secret scanning for UniTracker.
+#
+# The upstream rule set is extended, never replaced: removing default rules
+# would silently weaken the scan. Local rules cover the two credential shapes
+# specific to this application (Moodle web-service tokens and Windows DPAPI
+# blobs). Report values are always redacted by the CI invocation (`--redact`),
+# so a finding never prints the secret itself.
+#
+# Trade-off: test fixtures and documentation examples are allowlisted by path
+# because they contain deliberately non-functional values such as
+# "api_key=segreta" and the constant "correct horse battery staple". A real
+# credential committed under `src/`, `.github/` or the repository root is still
+# reported.
+
+[extend]
+useDefault = true
+
+[[rules]]
+id = "unitracker-moodle-web-service-token"
+description = "Moodle web service token (32 hexadecimal characters) in an assignment"
+regex = '''(?i)(?:wstoken|moodle[_-]?token)\s*[=:]\s*["']?([0-9a-f]{32})\b'''
+secretGroup = 1
+keywords = ["wstoken", "moodle_token", "moodle-token"]
+
+[[rules]]
+id = "unitracker-dpapi-blob"
+description = "Windows DPAPI blob committed to the repository"
+regex = '''(?i)(?:dpapi|cryptprotectdata)[^\n]{0,40}["'][A-Za-z0-9+/]{80,}={0,2}["']'''
+keywords = ["dpapi", "cryptprotectdata"]
+
+[allowlist]
+description = "Documented non-secrets: deterministic test fixtures and documentation examples"
+paths = [
+  '''tests/.*''',
+  '''docs/.*''',
+  '''README\.md''',
+  '''TESTING\.md''',
+  '''AGENTS\.md''',
+  '''GEMINI\.md''',
+  '''\.gitleaks\.toml''',
+  '''\.github/workflows/security-scan\.yml''',
+]
+regexes = [
+  '''api_key=segreta''',
+  '''\[REDACTED\]''',
+  '''(?:not-a-real-key|sk-test|correct horse battery staple)''',
+  '''(?:abcdef0123456789abcdef0123456789|0123456789abcdef0123456789abcdef)''',
+]

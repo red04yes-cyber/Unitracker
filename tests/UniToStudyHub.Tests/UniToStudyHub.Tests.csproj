@@ -1,0 +1,50 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <IsPackable>false</IsPackable>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+  <!--
+    The application project targets net10.0-windows and uses WPF. Its test host
+    needs Microsoft.WindowsDesktop.App, which is not available on Linux CI. The
+    tests compile the same core source files (domain, EF persistence, migration,
+    calculation and view-model code) so they can execute on any OS while the
+    WPF shell remains a Windows-only build target.
+  -->
+  <ItemGroup>
+    <Compile Include="../../src/UniToStudyHub/Domain/**/*.cs" Link="Linked/Domain/%(RecursiveDir)%(Filename)%(Extension)" />
+    <Compile Include="../../src/UniToStudyHub/Infrastructure/Data/Entities/StudyHubEntities.cs" Link="Linked/Infrastructure/Data/Entities/StudyHubEntities.cs" />
+    <Compile Include="../../src/UniToStudyHub/Infrastructure/Data/StudyHubDbContext.cs" Link="Linked/Infrastructure/Data/StudyHubDbContext.cs" />
+    <Compile Include="../../src/UniToStudyHub/Infrastructure/Data/DatabaseKeyVault.cs" Link="Linked/Infrastructure/Data/DatabaseKeyVault.cs" />
+    <Compile Include="../../src/UniToStudyHub/Infrastructure/Data/StudyHubDbContextFactory.cs" Link="Linked/Infrastructure/Data/StudyHubDbContextFactory.cs" />
+    <Compile Include="../../src/UniToStudyHub/Infrastructure/Data/StudyDataEntityMapper.cs" Link="Linked/Infrastructure/Data/StudyDataEntityMapper.cs" />
+    <Compile Include="../../src/UniToStudyHub/Infrastructure/Data/Migrations/*.cs" Link="Linked/Infrastructure/Data/Migrations/%(Filename)%(Extension)" />
+    <Compile Include="../../src/UniToStudyHub/Infrastructure/CompositionRoot.cs" Link="Linked/Infrastructure/CompositionRoot.cs" />
+    <Compile Include="../../src/UniToStudyHub/Models/*.cs" Link="Linked/Models/%(Filename)%(Extension)" />
+    <Compile Include="../../src/UniToStudyHub/Security/*.cs" Link="Linked/Security/%(Filename)%(Extension)" />
+    <Compile Include="../../src/UniToStudyHub/Services/*.cs" Link="Linked/Services/%(Filename)%(Extension)" />
+    <Compile Include="../../src/UniToStudyHub/Presentation/Commands/*.cs" Link="Linked/Presentation/Commands/%(Filename)%(Extension)" />
+    <Compile Include="../../src/UniToStudyHub/Presentation/ViewModels/MainViewModel.cs" Link="Linked/Presentation/ViewModels/MainViewModel.cs" />
+    <Compile Include="../../src/UniToStudyHub/Presentation/ViewModels/StudyWorkspaceViewModel.cs" Link="Linked/Presentation/ViewModels/StudyWorkspaceViewModel.cs" />
+    <Compile Include="../../src/UniToStudyHub/Presentation/ViewModels/CalendarDayCell.cs" Link="Linked/Presentation/ViewModels/CalendarDayCell.cs" />
+    <Compile Include="../../src/UniToStudyHub/Presentation/ViewModels/CourseProgressRow.cs" Link="Linked/Presentation/ViewModels/CourseProgressRow.cs" />
+    <Compile Include="../../src/UniToStudyHub/Presentation/Composition/PresentationServiceRegistration.cs" Link="Linked/Presentation/Composition/PresentationServiceRegistration.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite.Core" Version="10.0.14" />
+    <PackageReference Include="SQLite3MC.PCLRaw.bundle" Version="2.6.1" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.14">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.14" />
+    <PackageReference Include="PdfPig" Version="0.1.16" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.5">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+  </ItemGroup>
+</Project>
