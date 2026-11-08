@@ -17,7 +17,7 @@ La cifratura SQLCipher copre i contenuti del database e i file journal/WAL creat
 ## Migrazione del database esistente
 
 Al primo avvio con questa versione, se viene rilevato il vecchio header SQLite in chiaro:
-1. l'app apre il database precedente in sola lettura;
+1. l'app apre il database precedente e ne crea uno snapshot coerente temporaneo;
 2. copia i dati in un database temporaneo SQLCipher con la nuova chiave;
 3. verifica `PRAGMA integrity_check`;
 4. chiude le connessioni, elimina in modo best-effort gli eventuali sidecar WAL/SHM in chiaro e sostituisce atomicamente il file precedente.
