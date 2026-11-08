@@ -3,6 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:controls="clr-namespace:UniToStudyHub.Presentation.Controls"
         Title="UniTo StudyHub"
+        Icon="{StaticResource UnitrackerAppIcon}"
         Height="920"
         Width="1480"
         MinHeight="740"
