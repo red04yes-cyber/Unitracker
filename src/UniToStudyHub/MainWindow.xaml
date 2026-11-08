@@ -729,6 +729,9 @@
                     <TextBlock Text="{Binding Workspace.FocusStateDisplay}" FontSize="12" Foreground="{DynamicResource SidebarMutedBrush}"/>
                     <ProgressBar Value="{Binding Workspace.FocusProgressPercent, Mode=OneWay}" Maximum="100" Height="5" Margin="0,14,0,0"/>
                     <TextBlock Text="{Binding Workspace.FocusElapsedDisplay}" FontSize="10" Foreground="{DynamicResource SidebarMutedBrush}" Margin="0,6,0,0"/>
+                    <TextBlock Text="{Binding Workspace.FocusBreakStateDisplay}" FontSize="10" Foreground="{DynamicResource SidebarMutedBrush}" Margin="0,12,0,0"/>
+                    <TextBlock Text="{Binding Workspace.FocusBreakRemainingDisplay}" FontSize="23" FontWeight="SemiBold" Foreground="White" Margin="0,3,0,0"/>
+                    <ProgressBar Value="{Binding Workspace.FocusBreakProgressPercent, Mode=OneWay}" Maximum="100" Height="3" Margin="0,6,0,0"/>
                     <TextBox Text="{Binding Workspace.FocusTopicInput, UpdateSourceTrigger=PropertyChanged}" ToolTip="Argomento" Margin="0,16,0,0"/>
                     <Grid Margin="0,8,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="90"/></Grid.ColumnDefinitions>
                         <ComboBox ItemsSource="{Binding Workspace.Courses}" DisplayMemberPath="Name" SelectedItem="{Binding Workspace.SelectedFocusCourse}" ToolTip="Materia"/>
@@ -745,7 +748,7 @@
             </Border>
                 <WrapPanel Margin="0,10,0,0">
                     <TextBlock Text="Preset rapidi:" VerticalAlignment="Center" Foreground="{DynamicResource MutedBrush}" Margin="0,0,10,0"/>
-                    <ComboBox Width="120" ItemsSource="{Binding Workspace.FocusPresetOptions}" SelectedItem="{Binding Workspace.FocusPresetInput}" ToolTip="Durata della sessione"/>
+                    <ComboBox Width="165" ItemsSource="{Binding Workspace.FocusPresetOptions}" SelectedItem="{Binding Workspace.FocusPresetInput}" ToolTip="Durata della sessione"/>
                 </WrapPanel>
             </StackPanel></TabItem>
             <TabItem Header="Attività"><StackPanel>
