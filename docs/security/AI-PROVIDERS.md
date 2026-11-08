@@ -33,7 +33,7 @@ $env:STUDYHUB_AI_CONSENT = "true"
 $env:STUDYHUB_AI_MODEL = "llama3.2"
 ```
 
-Per Ollama l'app accetta HTTP esclusivamente sull'indirizzo loopback predefinito. Un override HTTP verso host esterni o LAN viene rifiutato. Le richieste non seguono redirect.
+Per Ollama l'app accetta esclusivamente endpoint loopback (localhost/127.0.0.1/::1), sia HTTP sia HTTPS; qualunque host remoto o LAN viene rifiutato. Le richieste non seguono redirect.
 
 ## Protezione e privacy
 
