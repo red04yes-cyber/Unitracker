@@ -53,6 +53,49 @@ public sealed class AiProviderFactoryTests
     }
 
     [Fact]
+    public void GeminiProviderLoadsItsDedicatedDpapiKeyAndDefaultEndpoint()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "unitracker-ai-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(root);
+        var preferences = new AiProviderPreferencesStore(root);
+        preferences.Save(new AiProviderPreferences("gemini", "gemini-2.5-flash", true));
+        var credentials = new AiCredentialStore(root, new TestSecretProtector());
+        credentials.SaveKey("gemini", "gemini-test-key");
+        var factory = new AiProviderFactory(new AiSettingsService(), credentials, preferences);
+
+        var runtime = factory.CreateFromEnvironment(_ => null);
+
+        Assert.True(runtime.Provider.IsConfigured);
+        Assert.IsType<GeminiProvider>(runtime.Provider);
+        Assert.Equal("Gemini", runtime.Provider.Name);
+        Assert.Equal("gemini-2.5-flash", runtime.Settings?.Model);
+        Assert.Equal("https://generativelanguage.googleapis.com/v1beta", runtime.Settings?.BaseUrl);
+        var saved = File.ReadAllText(Path.Combine(root, "ai-provider-preferences.json"));
+        Assert.DoesNotContain("gemini-test-key", saved, StringComparison.Ordinal);
+        (runtime.Provider as IDisposable)?.Dispose();
+        Directory.Delete(root, recursive: true);
+    }
+
+    [Fact]
+    public void GeminiRequiresConsentAndItsOwnCredential()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "unitracker-ai-" + Guid.NewGuid().ToString("N"));
+        var credentials = new AiCredentialStore(root, new TestSecretProtector());
+        credentials.SaveKey("openai", "openai-test-key");
+        var values = new Dictionary<string, string?>
+        {
+            [AiProviderFactory.ProviderEnvironmentVariable] = "gemini",
+            [AiProviderFactory.ConsentEnvironmentVariable] = "true",
+            ["STUDYHUB_AI_MODEL"] = "gemini-2.5-flash"
+        };
+        var runtime = new AiProviderFactory(new AiSettingsService(), credentials)
+            .CreateFromEnvironment(name => values.GetValueOrDefault(name));
+        Assert.False(runtime.Provider.IsConfigured);
+        Assert.Null(runtime.Settings);
+        if (Directory.Exists(root)) Directory.Delete(root, recursive: true);
+    }
+
+    [Fact]
     public void MissingConsentKeepsProviderUnavailable()
     {
         var root = Path.Combine(Path.GetTempPath(), "unitracker-ai-" + Guid.NewGuid().ToString("N"));
