@@ -161,7 +161,7 @@ public static class StudyHubDatabase
             }
 
             Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
-            LocalFileSecurity.TryScrubAndDelete(databasePath + "-wal");
+            LocalFileSecurity.ScrubAndDelete(databasePath + "-wal");
             LocalFileSecurity.TryDelete(databasePath + "-shm");
             LocalFileSecurity.TryRestrictFile(temporary);
             File.Replace(temporary, databasePath, destinationBackupFileName: null);
