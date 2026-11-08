@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.IO.Compression;
 using System.Text;
+using UniToStudyHub.Domain.Enums;
 using UniToStudyHub.Models;
 using UniToStudyHub.Security;
 using UniToStudyHub.Services;
