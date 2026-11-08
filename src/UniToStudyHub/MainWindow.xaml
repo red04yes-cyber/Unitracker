@@ -336,10 +336,9 @@
                                     <ColumnDefinition Width="*"/>
                                 </Grid.ColumnDefinitions>
                                 <Grid Width="82" Height="82" VerticalAlignment="Center">
-                                    <controls:ProgressRing Value="{Binding CreditsProgressPercent}"
-                                                           Maximum="100" StrokeThickness="7"
-                                                           TrackBrush="{DynamicResource SubtleBrush}"
-                                                           ProgressBrush="{DynamicResource GoldAccentBrush}"/>
+                                    <controls:ProgressRing Style="{StaticResource DashboardCreditsRingStyle}"
+                                                           Value="{Binding CreditsProgressPercent}"
+                                                           Maximum="100"/>
                                     <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
                                         <TextBlock Text="{Binding AcquiredCreditsValue}" FontSize="18"
                                                    FontWeight="Bold" Foreground="{DynamicResource InkBrush}"
@@ -884,10 +883,9 @@
                 <StackPanel>
                     <TextBlock Text="SESSIONE DI FOCUS" FontSize="11" FontWeight="Bold" Foreground="#AFC5EA"/>
                     <Grid Width="156" Height="156" HorizontalAlignment="Center" Margin="0,14,0,8">
-                        <controls:ProgressRing Value="{Binding Workspace.FocusProgressPercent, Mode=OneWay}"
-                                               Maximum="100" StrokeThickness="9"
-                                               TrackBrush="#354A64"
-                                               ProgressBrush="{DynamicResource AccentCyanBrush}"/>
+                        <controls:ProgressRing Style="{StaticResource FocusSessionRingStyle}"
+                                               Value="{Binding Workspace.FocusProgressPercent, Mode=OneWay}"
+                                               Maximum="100"/>
                         <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
                             <TextBlock Text="{Binding Workspace.FocusRemainingDisplay}" FontSize="27"
                                        FontWeight="SemiBold" Foreground="White"
