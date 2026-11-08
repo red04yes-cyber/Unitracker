@@ -1109,6 +1109,7 @@
             <StackPanel>
                 <TextBlock Text="Dati e backup" Style="{StaticResource SectionTitleStyle}"/>
                 <TextBlock Text="Le copie sono locali e cifrate con AES-256-GCM. Il manifest include versione e checksum; la chiave è protetta con Windows DPAPI." FontSize="11" Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap" Margin="0,6,0,12"/>
+                <TextBlock Text="{Binding Workspace.DatabaseProtectionDisplay}" FontSize="11" Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap" Margin="0,0,0,12"/>
                 <TextBlock Text="Cartella backup" Style="{StaticResource KpiLabelStyle}"/>
                 <TextBox Text="{Binding Workspace.BackupDirectory, Mode=OneWay}" IsReadOnly="True" Margin="0,5,0,10"/>
                 <Button Content="Crea backup e verifica integrità" Command="{Binding Workspace.CreateBackupCommand}" HorizontalAlignment="Left"/>
