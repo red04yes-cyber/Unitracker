@@ -49,7 +49,7 @@ public sealed class MoodleExtendedSyncTests
     public async Task AssignmentSubmissionDetailsAreReadWhenTokenAllowsIt()
     {
         using var client = new MoodleClient("https://moodle.example.edu", Token,
-            new StubHandler(_ => Json("{\\"lastattempt\\":{\\"submission\\":{\\"status\\":\\"submitted\\"}}}")));
+            new StubHandler(_ => Json("""{"lastattempt":{"submission":{"status":"submitted"}}}""")));
         var sections = new[]
         {
             new UniToStudyHub.Models.MoodleCourseSection
@@ -71,7 +71,7 @@ public sealed class MoodleExtendedSyncTests
     public void ActivityApiResponsesExposeNestedFileAttachments()
     {
         using var document = JsonDocument.Parse(
-            "{\\"assignments\\":[{\\"introfiles\\":[{\\"filename\\":\\"brief.pdf\\",\\"fileurl\\":\\"https://moodle.example.edu/pluginfile.php/1/brief.pdf\\",\\"filesize\\":1234,\\"mimetype\\":\\"application/pdf\\"}]}]}");
+            """{"assignments":[{"introfiles":[{"filename":"brief.pdf","fileurl":"https://moodle.example.edu/pluginfile.php/1/brief.pdf","filesize":1234,"mimetype":"application/pdf"}]}]}""");
 
         var files = MoodleClient.ExtractActivityFiles(new[] { document.RootElement });
 
