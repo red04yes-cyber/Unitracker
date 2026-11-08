@@ -13,6 +13,7 @@
         <SolidColorBrush x:Key="InkBrush" Color="#18243A"/>
         <SolidColorBrush x:Key="MutedBrush" Color="#65738B"/>
         <SolidColorBrush x:Key="AccentBrush" Color="#3457D5"/>
+        <SolidColorBrush x:Key="AccentTextBrush" Color="#3457D5"/>
         <SolidColorBrush x:Key="AccentSoftBrush" Color="#EAF0FF"/>
         <SolidColorBrush x:Key="PanelBrush" Color="#FFFFFF"/>
         <SolidColorBrush x:Key="PageBrush" Color="#F4F6FA"/>
@@ -80,7 +81,7 @@
 
         <Style x:Key="QuietButtonStyle" TargetType="{x:Type Button}" BasedOn="{StaticResource {x:Type Button}}">
             <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource AccentTextBrush}"/>
             <Setter Property="BorderBrush" Value="Transparent"/>
             <Setter Property="Padding" Value="12,8"/>
         </Style>
@@ -106,7 +107,7 @@
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsChecked" Value="True">
                                 <Setter TargetName="FilterSurface" Property="Background" Value="{DynamicResource AccentSoftBrush}"/>
-                                <Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
+                                <Setter Property="Foreground" Value="{DynamicResource AccentTextBrush}"/>
                             </Trigger>
                             <Trigger Property="IsMouseOver" Value="True">
                                 <Setter TargetName="FilterSurface" Property="Opacity" Value="0.82"/>
@@ -270,6 +271,23 @@
             <Setter Property="AlternatingRowBackground" Value="{DynamicResource SubtleBrush}"/>
             <Setter Property="HorizontalGridLinesBrush" Value="{DynamicResource BorderBrush}"/>
             <Setter Property="VerticalGridLinesBrush" Value="Transparent"/>
+        </Style>
+
+        <Style TargetType="{x:Type DataGridRow}">
+            <Setter Property="Background" Value="{DynamicResource PanelBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource InkBrush}"/>
+            <Setter Property="MinHeight" Value="40"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
+            <Setter Property="BorderThickness" Value="0,0,0,1"/>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="{DynamicResource SubtleBrush}"/>
+                </Trigger>
+                <Trigger Property="IsSelected" Value="True">
+                    <Setter Property="Background" Value="{DynamicResource AccentSoftBrush}"/>
+                    <Setter Property="Foreground" Value="{DynamicResource InkBrush}"/>
+                </Trigger>
+            </Style.Triggers>
         </Style>
 
         <Style TargetType="{x:Type DataGridColumnHeader}">
