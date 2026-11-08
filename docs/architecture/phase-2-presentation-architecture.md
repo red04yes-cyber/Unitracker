@@ -1,64 +1,62 @@
 # Phase 2 — Presentation architecture and navigation
 
-Status: Phase 2 foundation implemented; page extraction and view-model isolation remain in progress. This document distinguishes the compatibility bridge from the final target architecture.
+Status: shell, typed navigation, seven page views and seven page-specific ViewModel types are implemented. The data/command layer is still in a compatibility migration stage: the page ViewModels currently expose the shared `MainViewModel` through an explicitly named `State` adapter. They no longer share a view or a page-level DataContext, but the old business/presentation monoliths are not yet removed.
 
-## Current baseline
+## Implemented shell
 
-The current WPF startup now creates one `IHost` with `Host.CreateDefaultBuilder` in `App.xaml.cs`. Core services and presentation services are registered into that host; startup migration, legacy JSON migration, diagnostics and shutdown are kept under the host lifetime.
+- WPF startup creates one `IHost` with `Host.CreateDefaultBuilder`; core and presentation services share that provider and host lifetime.
+- Presentation registrations are grouped in `AddUniToStudyHubPresentation`.
+- `INavigationService` / `NavigationService` use the typed `StudyRoute` values and have no WPF Window or control dependency.
+- `ShellViewModel` owns the seven long-lived page ViewModels and keeps sidebar selection synchronized with the route service.
+- `MainWindow` now owns global chrome, route selection, theme toggle and the focus refresh timer only.
 
-The window is bound to `ShellViewModel`. `ShellViewModel` uses `INavigationService` / `NavigationService`, whose typed `StudyRoute` keys do not depend on WPF. The existing tab content is temporarily exposed as `LegacyContent` and remains the data context of the tab control. This is a deliberate migration bridge, not the final page isolation.
+## Extracted page views and ViewModels
 
-The seven navigation sections still live in `MainWindow.xaml`; their bindings still route through `MainViewModel` and `StudyWorkspaceViewModel`. Do not add new page features to either monolith while Phase 2 is underway.
+Each original TabItem body now lives in its own XAML UserControl. The controls receive their own specific singleton ViewModel through the shell binding.
 
-## Target shell
-
-- Keep one `IHost` for the WPF application's lifetime; do not create a second service provider.
-- Register core/domain services once, then register presentation services through `AddUniToStudyHubPresentation`.
-- Keep `MainWindow` bound only to `ShellViewModel`; remove the temporary `LegacyContent` bridge after the page migration.
-- Keep `INavigationService` / `NavigationService` independent from any WPF Window or control.
-- Replace the temporary tab-host with a shell `ContentControl` whose active page view model comes from navigation state.
-- Use application-level DataTemplates to map page view model types to their `UserControl` views. Page views must not reach into `MainWindow.DataContext`.
-
-## Page ownership
-
-Each page gets its own view model and view. Register one view-model instance per page for the lifetime of the single application window, so changing routes does not discard unsaved UI state.
-
-| Route | View / ViewModel | Primary responsibility |
+| Route | View | ViewModel |
 | --- | --- | --- |
-| Today | `DashboardView` / `DashboardViewModel` | Career summary, next planned exam, quick navigation |
-| Courses | `CoursesView` / `CoursesViewModel` | Courses, CFU, exam attempts and recorded grades |
-| Calendar | `CalendarView` / `CalendarViewModel` | Local calendar, planned exams and imported Moodle events |
-| Study Lab | `StudyLabView` / `StudyLabViewModel` | Focus, tasks, flashcards, errors, distractions and energy check-ins |
-| Academy | `AcademyView` / `AcademyViewModel` | Local PDFs, syllabus, question bank and readiness |
-| Progress | `ProgressView` / `ProgressViewModel` | Study metrics, export and career What-If projections |
-| Settings | `SettingsView` / `SettingsViewModel` | Academic profile, Moodle connection/sync and encrypted backups |
+| Today | `Views/DashboardView.xaml` | `DashboardViewModel` |
+| Courses | `Views/CoursesView.xaml` | `CoursesViewModel` |
+| Calendar | `Views/CalendarView.xaml` | `CalendarViewModel` |
+| Study Lab | `Views/StudyLabView.xaml` | `StudyLabViewModel` |
+| Academy | `Views/AcademyView.xaml` | `AcademyViewModel` |
+| Progress | `Views/ProgressView.xaml` | `ProgressViewModel` |
+| Settings | `Views/SettingsView.xaml` | `SettingsViewModel` |
 
-## Dependency injection boundaries
+Dialog and confirmation handlers formerly hosted by `MainWindow.xaml.cs` now live in the shared page-control base, rather than in the global shell window. The XAML markup and bindings were moved intact to preserve the current workflow and appearance.
 
-- Page view models depend on the smallest relevant application/domain services; they do not depend on `MainViewModel`, `StudyWorkspaceViewModel`, `MainWindow`, or another page view model.
-- Keep `CareerCalculatorService` and `CareerApplicationService` in the shared domain composition. The What-If projection UI belongs to the Progress route; calculations remain in the existing career service.
-- Moodle API/token handling stays in the existing Moodle application service. Settings owns connection and sync commands; Courses and Calendar display the resulting persisted records from their own query/session abstractions.
-- Introduce a small shared study-data session/query boundary only if needed to prevent every page from independently loading and overwriting the same aggregate. It must use the existing `IStudyDataStore` as the sole persistence authority.
-- Do not pass mutable application state through navigation parameters. Pass stable identifiers where a route needs a selected course/event; resolve the data through its page service.
-- Keep presentation-only navigation/status state in the shell. Business state remains in domain/application services and the persisted study aggregate.
+## Explicit compatibility boundary
 
-## Migration order
+- `PageViewModelBase.State` still points to the singleton `MainViewModel`. This is an intentional bridge while commands and state are relocated, not the final decoupled architecture.
+- `MainViewModel` and `StudyWorkspaceViewModel` remain the owners for existing operations. They must be decomposed rather than copied into new view models.
+- The shared data snapshot must remain single-owner while the page operations are moved; do not have each page load and replace the full `StudyData` aggregate independently.
+- The window startup path initializes the existing MainViewModel before showing the shell. This bootstrap can move to a shared session/application coordinator after page use cases have been extracted.
 
-1. **Implemented foundation:** introduce HostBuilder-based composition, `ShellViewModel`, typed route keys and `NavigationService`; keep the legacy tab content hosted temporarily so startup and all commands continue working.
-2. Extract the seven existing page regions into separate `UserControl` files without changing their bindings first.
-3. Move each page's bindings and commands into its specific view model, migrating one route at a time. Split the current Study Lab / Academy / Progress / Settings responsibilities out of `StudyWorkspaceViewModel`; do not leave that 1,200-line monolith behind.
-4. Replace the temporary tab host with shell content templates, then remove the legacy view models and old window-level navigation handlers only after every route uses its page-specific view model.
+## Next migration steps
+
+1. Replace the `State` compatibility adapter with page-specific application contracts and focused ViewModels, starting with Dashboard and Courses.
+2. Split calendar commands and projections into Calendar, Study Lab operations into StudyLab, local PDF/syllabus/questions into Academy, progress/What-If into Progress, and profile/Moodle/backup into Settings.
+3. Introduce one shared study-data session/query boundary backed by the existing `IStudyDataStore`; preserve persistence ownership and avoid lost updates.
+4. Replace the legacy TabControl with a shell ContentControl and application DataTemplates after route state has a real page ViewModel per route.
+5. Remove `MainViewModel`, `StudyWorkspaceViewModel`, `PageViewModelBase.State`, and page-control compatibility handlers once their responsibilities have moved to the new APIs.
+
+## Dependency ownership
+
+- `CareerCalculatorService` and `CareerApplicationService` stay in shared domain/application composition. What-If UI belongs to Progress; calculations remain in the career service.
+- Moodle API/token handling stays in `MoodleApplicationService`; Settings owns connection/sync commands. Courses and Calendar consume the persisted records.
+- `IStudyDataStore` remains the persistence authority.
+- No new mutable state is passed through navigation. Stable entity identifiers will be used once page use cases are separated.
 
 ## Acceptance tests
 
-- DI composition test: resolve the shell, navigation service and current compatibility view model without constructing a Window.
-- Navigation test: route changes are typed, invalid routes are rejected, and the selected sidebar index remains synchronized.
-- Final migration tests: every route resolves to the expected page view model, and returning to a route preserves its page state.
-- Binding/command tests per page, including Moodle sync and What-If projections.
-- Persistence regressions for SQLite, calendar events, PDF metadata, focus/task state, profile and backups.
+- DI test resolves all seven page ViewModels, the shell and navigation service without a Window.
+- Composition test confirms every page ViewModel is a singleton and currently shares the same compatibility state instance.
+- Navigation test verifies typed routes, invalid-route rejection and synchronized sidebar selection.
+- Follow-up page tests must verify each page's commands and state without resolving `MainViewModel` or `StudyWorkspaceViewModel`.
 - Windows CI: test suite, Release WPF build, self-contained win-x64 publish and startup smoke test.
 - Security CI: secret scanning and blocking dependency audit.
 
 ## Explicit non-goals
 
-Phase 2 must not redesign the SQLite schema, change SQLCipher/DPAPI/AES backup formats, replace Moodle business logic, or introduce remote AI calls. Preserve the verified Phase 1 visual system through shared application resources and the same design tokens.
+No SQLite schema changes, key/backup format changes, replacement of Moodle business logic, or remote AI calls are part of this presentation migration. Preserve the Phase 1 visual design tokens and shared App resources.
