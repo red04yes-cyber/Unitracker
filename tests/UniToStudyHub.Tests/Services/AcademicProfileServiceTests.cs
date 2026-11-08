@@ -51,21 +51,65 @@ public sealed class AcademicProfileServiceTests
             "Informatica", "", 2024, 2, 10, DateTime.Today, "", 20, 240)));
     }
 
-    [Fact]
-    public void CourseCanBeArchivedAndRestoredWithoutLosingPassedState()
+    [Theory]
+    [InlineData(CourseStatus.NotStarted, false)]
+    [InlineData(CourseStatus.InProgress, false)]
+    [InlineData(CourseStatus.Prepared, false)]
+    [InlineData(CourseStatus.ExamScheduled, false)]
+    [InlineData(CourseStatus.Failed, false)]
+    [InlineData(CourseStatus.Passed, true)]
+    public void ArchiveAndRestorePreserveAcademicStatus(CourseStatus status, bool completed)
     {
         var data = Data();
         var service = new AcademicProfileService();
-        service.SetStatus(data, "course-1", CourseStatus.Passed);
+        service.SetStatus(data, "course-1", status);
 
         service.Archive(data, "course-1");
         Assert.True(data.Courses[0].Archived);
-        Assert.True(data.Courses[0].Completed);
-        Assert.Equal(CourseStatus.Archived, data.Courses[0].Status);
+        Assert.Equal(completed, data.Courses[0].Completed);
+        Assert.Equal(status, data.Courses[0].Status);
 
         service.Restore(data, "course-1");
         Assert.False(data.Courses[0].Archived);
-        Assert.Equal(CourseStatus.Passed, data.Courses[0].Status);
+        Assert.Equal(status, data.Courses[0].Status);
+        Assert.Equal(completed, data.Courses[0].Completed);
+    }
+
+    [Fact]
+    public void RejectedCourseDeletionDoesNotPartiallyRemoveGradesOrExams()
+    {
+        var data = Data();
+        data.Grades.Add(new Grade { Id = "grade-1", CourseId = "course-1", CourseName = "Analisi", Cfu = 6, Value = 27 });
+        data.Exams.Add(new Exam { Id = "exam-1", CourseId = "course-1", CourseName = "Analisi", Name = "Scritto" });
+        data.SyllabusTopics.Add(new SyllabusTopicData { Id = "topic-1", CourseId = "course-1", Title = "Limiti" });
+        var service = new AcademicProfileService();
+
+        Assert.Throws<InvalidOperationException>(() => service.RemoveCourse(data, "course-1"));
+
+        Assert.Contains(data.Courses, x => x.Id == "course-1");
+        Assert.Contains(data.Grades, x => x.Id == "grade-1");
+        Assert.Contains(data.Exams, x => x.Id == "exam-1");
+        Assert.Contains(data.SyllabusTopics, x => x.Id == "topic-1");
+    }
+
+    [Fact]
+    public void CourseWithLegacyGradesOrExamsRequiresExplicitDeletionConfirmation()
+    {
+        var data = Data();
+        data.Grades.Add(new Grade { Id = "legacy-grade", CourseId = "course-1", CourseName = "Analisi", Cfu = 6, Value = 24 });
+        data.Exams.Add(new Exam { Id = "legacy-exam", CourseId = "course-1", CourseName = "Analisi", Name = "Orale" });
+        var service = new AcademicProfileService();
+
+        Assert.Throws<InvalidOperationException>(() => service.RemoveCourse(data, "course-1"));
+
+        Assert.Contains(data.Courses, x => x.Id == "course-1");
+        Assert.Contains(data.Grades, x => x.Id == "legacy-grade");
+        Assert.Contains(data.Exams, x => x.Id == "legacy-exam");
+
+        service.RemoveCourse(data, "course-1", removeCareerHistory: true);
+        Assert.DoesNotContain(data.Courses, x => x.Id == "course-1");
+        Assert.DoesNotContain(data.Grades, x => x.Id == "legacy-grade");
+        Assert.DoesNotContain(data.Exams, x => x.Id == "legacy-exam");
     }
 
     [Fact]

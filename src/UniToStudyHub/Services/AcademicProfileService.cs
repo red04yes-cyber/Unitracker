@@ -108,18 +108,24 @@ public sealed class AcademicProfileService
     {
         ArgumentNullException.ThrowIfNull(data);
         var course = FindCourse(data, courseId);
+        if (status == CourseStatus.Archived)
+        {
+            Archive(data, courseId);
+            return;
+        }
+
         course.Status = status;
-        if (status == CourseStatus.Passed) course.Completed = true;
-        if (status == CourseStatus.Failed) course.Completed = false;
-        if (status == CourseStatus.Archived) course.Archived = true;
+        course.Completed = status == CourseStatus.Passed;
         course.UpdatedAt = DateTime.UtcNow;
     }
 
     public void Archive(StudyData data, string courseId)
     {
         var course = FindCourse(data, courseId);
+        // Keep the academic status intact. Archived is an independent flag, so
+        // restoring a course never has to guess whether it was prepared,
+        // scheduled, failed, passed or still not started.
         course.Archived = true;
-        if (course.Status != CourseStatus.Archived) course.Status = CourseStatus.Archived;
         course.UpdatedAt = DateTime.UtcNow;
     }
 
@@ -127,6 +133,8 @@ public sealed class AcademicProfileService
     {
         var course = FindCourse(data, courseId);
         course.Archived = false;
+        // Compatibility for records archived by older builds, which overwrote
+        // Status with Archived and therefore did not retain the previous value.
         if (course.Status == CourseStatus.Archived)
             course.Status = course.Completed ? CourseStatus.Passed : CourseStatus.InProgress;
         course.UpdatedAt = DateTime.UtcNow;
@@ -141,8 +149,18 @@ public sealed class AcademicProfileService
     {
         ArgumentNullException.ThrowIfNull(data);
         var course = FindCourse(data, courseId);
-        if (!removeCareerHistory && data.CareerExams.Any(x => x.CourseId == courseId))
-            throw new InvalidOperationException("The course has exam history and cannot be deleted without explicit confirmation.");
+        // Validate every deletion constraint before mutating any collection.
+        // Callers may catch this exception and continue editing the same
+        // snapshot; a rejected deletion must never leave grades/exams removed.
+        if (!removeCareerHistory)
+        {
+            if (data.CareerExams.Any(x => x.CourseId == courseId) ||
+                data.Grades.Any(x => x.CourseId == courseId) ||
+                data.Exams.Any(x => x.CourseId == courseId))
+                throw new InvalidOperationException("The course has exam history and cannot be deleted without explicit confirmation.");
+            if (data.SyllabusTopics.Any(x => x.CourseId == courseId))
+                throw new InvalidOperationException("The course has syllabus data and cannot be deleted without explicit confirmation.");
+        }
 
         var gradeIds = data.Grades.Where(x => x.CourseId == courseId).Select(x => x.Id).ToList();
         foreach (var grade in data.Grades.Where(x => gradeIds.Contains(x.Id)).ToList()) data.Grades.Remove(grade);
@@ -153,11 +171,6 @@ public sealed class AcademicProfileService
                 data.CareerExams.Remove(careerExam);
             foreach (var topic in data.SyllabusTopics.Where(x => x.CourseId == courseId).ToList())
                 data.SyllabusTopics.Remove(topic);
-        }
-        else
-        {
-            if (data.SyllabusTopics.Any(x => x.CourseId == courseId))
-                throw new InvalidOperationException("The course has syllabus data and cannot be deleted without explicit confirmation.");
         }
 
         foreach (var prerequisite in data.CoursePrerequisites

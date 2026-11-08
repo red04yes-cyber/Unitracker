@@ -158,7 +158,6 @@ public sealed class PrivacyService
 
         var deletedLegacy = DeleteLegacyFiles();
         var deletedLogs = AppDiagnostics.Clear();
-        AppDiagnostics.Info("privacy", "Richiesta di cancellazione dei dati locali completata.");
         return new PrivacyDeletionResult(records, deletedBackups, credentialsRemoved, deletedLegacy, deletedLogs);
     }
 

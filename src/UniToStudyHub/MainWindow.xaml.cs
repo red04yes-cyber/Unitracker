@@ -19,6 +19,14 @@ public partial class MainWindow : Window
         Closed += (_, _) => _focusRefreshTimer.Stop();
     }
 
+    private async void ConnectMoodle_Click(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is not MainViewModel viewModel) return;
+        await viewModel.ConnectMoodleAsync();
+        if (viewModel.IsMoodleConnected)
+            MoodleTokenBox.Clear();
+    }
+
     private void MoodleTokenBox_PasswordChanged(object sender, RoutedEventArgs e)
     {
         if (DataContext is MainViewModel viewModel && sender is PasswordBox passwordBox)
@@ -47,6 +55,65 @@ public partial class MainWindow : Window
 
         if (dialog.ShowDialog(this) == true && DataContext is MainViewModel viewModel)
             await viewModel.Workspace.ImportPdfAsync(dialog.FileName);
+    }
+
+    private async void ExportProgress_Click(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is not MainViewModel viewModel) return;
+        var dialog = new SaveFileDialog
+        {
+            Title = "Esporta report di studio",
+            Filter = "Cartella di lavoro Excel (*.xlsx)|*.xlsx",
+            DefaultExt = ".xlsx",
+            AddExtension = true,
+            FileName = $"UniToStudyHub-progressi-{DateTime.Today:yyyyMMdd}.xlsx",
+            OverwritePrompt = true
+        };
+        if (dialog.ShowDialog(this) != true) return;
+        try
+        {
+            await viewModel.Workspace.ExportProgressAsync(dialog.FileName);
+            MessageBox.Show(this, "Report esportato correttamente.", "Esportazione completata",
+                MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, $"Esportazione non riuscita: {ex.Message}", "Errore esportazione",
+                MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private void DisconnectMoodle_Click(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is not MainViewModel viewModel)
+            return;
+
+        var result = MessageBox.Show(
+            "Disconnettere Moodle? Il token salvato verrà eliminato e i riferimenti di collegamento rimossi. Corsi, voti, eventi importati e storico locale saranno conservati.",
+            "Conferma disconnessione Moodle",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Warning,
+            MessageBoxResult.No);
+        if (result != MessageBoxResult.Yes) return;
+
+        viewModel.DisconnectMoodleCommand.Execute(null);
+        MoodleTokenBox.Clear();
+    }
+
+    private void RestoreBackup_Click(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is not MainViewModel viewModel || viewModel.Workspace.SelectedBackup is null)
+            return;
+
+        var backupName = System.IO.Path.GetFileName(viewModel.Workspace.SelectedBackup.FilePath);
+        var result = MessageBox.Show(
+            $"Ripristinare il backup \"{backupName}\"? I dati correnti verranno sostituiti. Prima sarà creata una copia di sicurezza automatica.",
+            "Conferma ripristino backup",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Warning,
+            MessageBoxResult.No);
+        if (result == MessageBoxResult.Yes)
+            viewModel.Workspace.RestoreBackupCommand.Execute(null);
     }
 
     private void DeleteCalendarEvent_Click(object sender, RoutedEventArgs e)

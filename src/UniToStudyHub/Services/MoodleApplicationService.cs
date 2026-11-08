@@ -46,6 +46,48 @@ public sealed class MoodleApplicationService
         return await client.GetEnrolledCoursesAsync(site.userid, cancellationToken).ConfigureAwait(false);
     }
 
+    public async Task<MoodleCalendarResult> GetCalendarEventsAsync(
+        string baseUrl,
+        IEnumerable<int> courseIds,
+        DateTime from,
+        DateTime to,
+        CancellationToken cancellationToken = default)
+    {
+        var token = RequireToken();
+        using var client = new MoodleClient(baseUrl, token);
+        return await client.GetCalendarEventsAsync(courseIds, from, to, cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task<IReadOnlyList<MoodleCourseSection>> GetCourseContentsAsync(
+        string baseUrl,
+        int courseId,
+        CancellationToken cancellationToken = default)
+    {
+        var token = RequireToken();
+        using var client = new MoodleClient(baseUrl, token);
+        return await client.GetCourseContentsAsync(courseId, cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task<IReadOnlyList<MoodleForumDiscussion>> GetForumDiscussionsAsync(
+        string baseUrl,
+        int forumId,
+        CancellationToken cancellationToken = default)
+    {
+        var token = RequireToken();
+        using var client = new MoodleClient(baseUrl, token);
+        const int pageSize = 25;
+        const int maximumPages = 20;
+        var discussions = new List<MoodleForumDiscussion>();
+        for (var page = 0; page < maximumPages; page++)
+        {
+            var batch = await client.GetForumDiscussionsPageAsync(forumId, page, pageSize, cancellationToken)
+                .ConfigureAwait(false);
+            discussions.AddRange(batch);
+            if (batch.Count < pageSize) break;
+        }
+        return discussions;
+    }
+
     /// <summary>
     /// Removes the stored token (and its legacy file). The academic data the
     /// user already imported is intentionally preserved: deleting courses and

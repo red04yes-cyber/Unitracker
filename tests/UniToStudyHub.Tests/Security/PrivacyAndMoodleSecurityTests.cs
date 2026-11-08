@@ -100,7 +100,9 @@ public sealed class PrivacyAndMoodleSecurityTests
         await File.WriteAllTextAsync(legacyJson, "{}");
         await File.WriteAllTextAsync(legacyBackup, "{}");
         await File.WriteAllTextAsync(legacyCalendar, "[]");
-        AppDiagnostics.Configure(Path.Combine(dataDirectory, "logs"));
+        AppDiagnostics.IsEnabled = true;
+        var logsDirectory = Path.Combine(dataDirectory, "logs");
+        AppDiagnostics.Configure(logsDirectory);
         AppDiagnostics.Info("privacy", "riga di prova");
 
         var service = new PrivacyService(store, tokens, aiKeys, backups, dataDirectory);
@@ -111,6 +113,7 @@ public sealed class PrivacyAndMoodleSecurityTests
         Assert.Equal(1, result.DeletedBackups);
         Assert.True(result.DeletedLegacyFiles >= 3);
         Assert.True(result.DeletedLogFiles >= 1);
+        Assert.False(Directory.Exists(logsDirectory) && Directory.EnumerateFiles(logsDirectory).Any());
         Assert.Empty((await store.LoadAsync()).Courses);
         Assert.False(tokens.HasToken);
         Assert.Empty(aiKeys.List());
