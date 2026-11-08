@@ -14,9 +14,9 @@ public sealed class MoodleExtendedSyncTests
     public async Task ActivityMetadataUsesOnlyFunctionsGrantedToTheToken()
     {
         var requests = new List<string>();
-        using var client = new MoodleClient("https://moodle.example.edu", Token, new StubHandler(async request =>
+        using var client = new MoodleClient("https://moodle.example.edu", Token, new StubHandler(request =>
         {
-            var body = await request.Content!.ReadAsStringAsync();
+            var body = request.Content!.ReadAsStringAsync().GetAwaiter().GetResult();
             requests.Add(body);
             return Json("[{\"id\":7,\"name\":\"Quiz finale\"}]");
         }));
