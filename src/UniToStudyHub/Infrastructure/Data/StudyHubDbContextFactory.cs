@@ -1,6 +1,7 @@
 using System.Data;
 using System.Data.Common;
 using System.IO;
+using System.Security.Cryptography;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
 using UniToStudyHub.Security;
