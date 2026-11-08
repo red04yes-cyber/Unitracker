@@ -30,6 +30,7 @@ public sealed class DocumentSyncService
         MoodleClient client,
         Course course,
         IEnumerable<MoodleCourseSection> sections,
+        IEnumerable<MoodleContentFile>? additionalFiles = null,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(client);
@@ -54,10 +55,16 @@ public sealed class DocumentSyncService
             .Where(section => section.modules is not null)
             .SelectMany(section => section.modules.SelectMany(module =>
                 (module.contents ?? new List<MoodleContentFile>())
-                .Select(file => new { Section = section, Module = module, File = file })))
+                .Select(file => (Section: section, Module: module, File: file))))
+            .Concat((additionalFiles ?? Array.Empty<MoodleContentFile>()).Select(file =>
+                (Section: new MoodleCourseSection { name = "Attività Moodle" },
+                 Module: new MoodleModule { name = "Allegati attività" },
+                 File: file)))
             .Where(item => item.File.type.Equals("file", StringComparison.OrdinalIgnoreCase) &&
                            !string.IsNullOrWhiteSpace(item.File.fileurl) &&
                            !string.IsNullOrWhiteSpace(item.File.filename))
+            .GroupBy(item => item.File.fileurl, StringComparer.OrdinalIgnoreCase)
+            .Select(group => group.First())
             .Take(maximumFilesPerCourse + 1)
             .ToList();
 
