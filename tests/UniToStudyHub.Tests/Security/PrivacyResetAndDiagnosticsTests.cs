@@ -130,6 +130,33 @@ public sealed class PrivacyResetAndDiagnosticsTests
         }
     }
 
+    [Fact]
+    public async Task CompleteDeletionRevokesPersistedAiConsent()
+    {
+        await using var database = await SqliteTestDatabase.CreateFileAsync();
+        var store = new SqliteStudyDataStore(database.Factory);
+        var preferencesDirectory = Path.Combine(Path.GetTempPath(), "unitracker-ai-prefs-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(preferencesDirectory);
+        try
+        {
+            var preferences = new AiProviderPreferencesStore(preferencesDirectory);
+            preferences.Save(new AiProviderPreferences("gemini", "gemini-2.5-flash", true));
+            var service = new PrivacyService(store, aiPreferences: preferences);
+
+            await service.DeleteAllAsync(includeBackups: false);
+
+            var saved = Assert.IsType<AiProviderPreferences>(preferences.Load());
+            Assert.Equal("gemini", saved.Provider);
+            Assert.Equal("gemini-2.5-flash", saved.Model);
+            Assert.False(saved.ConsentGranted);
+        }
+        finally
+        {
+            if (Directory.Exists(preferencesDirectory))
+                Directory.Delete(preferencesDirectory, recursive: true);
+        }
+    }
+
     private sealed class InMemoryStudyDataStore : IStudyDataStore
     {
         public Task<StudyData> LoadAsync(CancellationToken cancellationToken = default) =>
