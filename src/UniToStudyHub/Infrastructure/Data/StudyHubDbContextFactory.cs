@@ -80,7 +80,7 @@ public static class StudyHubDatabase
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(databasePath);
         var fullPath = Path.GetFullPath(databasePath);
-        var key = new DatabaseKeyVault(Path.GetDirectoryName(fullPath)!).GetOrCreateKey();
+        var key = new DatabaseKeyVault(ResolveKeyDirectory(fullPath)).GetOrCreateKey();
         try
         {
             var builder = new Microsoft.Data.Sqlite.SqliteConnectionStringBuilder
@@ -98,6 +98,19 @@ public static class StudyHubDatabase
             // The key remains in the connection string only as long as required
             // to create a DbContext. It is never logged or persisted in plaintext.
         }
+    }
+
+    private static string ResolveKeyDirectory(string databasePath)
+    {
+        var current = new DirectoryInfo(Path.GetDirectoryName(Path.GetFullPath(databasePath))!);
+        var first = current.FullName;
+        while (current is not null)
+        {
+            var candidate = Path.Combine(current.FullName, "secrets", DatabaseKeyVault.SecretName + ".secret");
+            if (File.Exists(candidate)) return current.FullName;
+            current = current.Parent;
+        }
+        return first;
     }
 
     /// <summary>
