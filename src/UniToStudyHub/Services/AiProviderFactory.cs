@@ -51,11 +51,11 @@ public sealed class AiProviderFactory(
 
         if (string.IsNullOrWhiteSpace(model) ||
             !settingsService.IsReady(settings, GetEnvironment, GetStoredSecret))
-            return (new UnavailableAiProvider(), null);
+            return new AiProviderRuntime(new UnavailableAiProvider(), null);
 
         var key = settingsService.ResolveApiKey(settings, GetEnvironment, GetStoredSecret);
         if (string.IsNullOrWhiteSpace(key))
-            return (new UnavailableAiProvider(), null);
+            return new AiProviderRuntime(new UnavailableAiProvider(), null);
 
         try
         {
@@ -63,7 +63,7 @@ public sealed class AiProviderFactory(
         }
         catch (ArgumentException)
         {
-            return (new UnavailableAiProvider(), null);
+            return new AiProviderRuntime(new UnavailableAiProvider(), null);
         }
     }
 }
