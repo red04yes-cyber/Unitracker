@@ -42,4 +42,19 @@ public sealed class ProgressViewModel(MainViewModel state, INavigationService na
     : PageViewModelBase(state, navigation) { }
 
 public sealed class SettingsViewModel(MainViewModel state, INavigationService navigation)
-    : PageViewModelBase(state, navigation) { }
+    : PageViewModelBase(state, navigation), System.ComponentModel.INotifyPropertyChanged
+{
+    public event System.ComponentModel.PropertyChangedEventHandler? PropertyChanged;
+
+    public bool IsMoodlePanelExpanded
+    {
+        get => State.IsMoodlePanelExpanded;
+        set
+        {
+            if (State.IsMoodlePanelExpanded == value) return;
+            State.IsMoodlePanelExpanded = value;
+            PropertyChanged?.Invoke(this,
+                new System.ComponentModel.PropertyChangedEventArgs(nameof(IsMoodlePanelExpanded)));
+        }
+    }
+}
