@@ -19,6 +19,15 @@ public partial class MainWindow : Window
         Closed += (_, _) => _focusRefreshTimer.Stop();
     }
 
+
+    private void ToggleTheme_Click(object sender, RoutedEventArgs e)
+    {
+        ThemeManager.ToggleTheme();
+        ThemeToggleButton.Content = ThemeManager.IsDarkMode
+            ? "Modalità chiara"
+            : "Modalità scura";
+    }
+
     private async void ConnectMoodle_Click(object sender, RoutedEventArgs e)
     {
         if (DataContext is not MainViewModel viewModel) return;
