@@ -28,7 +28,7 @@ public sealed class AiProviderPreferencesStore
                 if (!File.Exists(_path)) return null;
                 var json = File.ReadAllText(_path);
                 var value = JsonSerializer.Deserialize<AiProviderPreferences>(json);
-                return value is { Provider: "openai" or "ollama" } ? value : null;
+                return value is { Provider: "openai" or "ollama" or "gemini" } ? value : null;
             }
             catch (IOException) { return null; }
             catch (JsonException) { return null; }
@@ -38,7 +38,7 @@ public sealed class AiProviderPreferencesStore
     public void Save(AiProviderPreferences preferences)
     {
         ArgumentNullException.ThrowIfNull(preferences);
-        if (preferences.Provider is not ("openai" or "ollama"))
+        if (preferences.Provider is not ("openai" or "ollama" or "gemini"))
             throw new ArgumentException("Provider AI non valido.", nameof(preferences));
         if (string.IsNullOrWhiteSpace(preferences.Model) || preferences.Model.Length > 120)
             throw new ArgumentException("Il modello AI è obbligatorio e deve essere lungo al massimo 120 caratteri.", nameof(preferences));
