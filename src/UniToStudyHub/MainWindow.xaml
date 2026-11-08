@@ -187,7 +187,7 @@
                                     <Border Background="{DynamicResource SubtleBrush}"
                                             CornerRadius="9" Padding="12,8"
                                             VerticalAlignment="Center" MaxWidth="230">
-                                        <TextBlock Text="{Binding MoodleStatus}" FontSize="11"
+                                        <TextBlock Text="{Binding LegacyContent.MoodleStatus}" FontSize="11"
                                                    Foreground="{DynamicResource MutedBrush}" TextTrimming="CharacterEllipsis"/>
                                     </Border>
                                     <Button x:Name="ThemeToggleButton"
