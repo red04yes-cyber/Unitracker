@@ -429,13 +429,30 @@ public sealed class BackupService
         }
     }
 
+    private static bool IsPlaintextSqliteFile(string path)
+    {
+        if (!File.Exists(path)) return false;
+        Span<byte> header = stackalloc byte[16];
+        using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+        return stream.Read(header) == 16 && header.SequenceEqual("SQLite format 3\\0"u8);
+    }
+
     private static async Task<bool> VerifySqliteFileAsync(string path, CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(path) || !File.Exists(path)) return false;
         try
         {
-            await using var connection = new Microsoft.Data.Sqlite.SqliteConnection(
-                $"Data Source={path};Mode=ReadOnly;Pooling=False");
+            var isPlaintext = IsPlaintextSqliteFile(path);
+            var connectionString = isPlaintext
+                ? new Microsoft.Data.Sqlite.SqliteConnectionStringBuilder
+                {
+                    DataSource = path,
+                    Mode = Microsoft.Data.Sqlite.SqliteOpenMode.ReadOnly,
+                    Pooling = false
+                }.ToString()
+                : StudyHubDatabase.CreateEncryptedConnectionString(
+                    path, Microsoft.Data.Sqlite.SqliteOpenMode.ReadOnly);
+            await using var connection = new Microsoft.Data.Sqlite.SqliteConnection(connectionString);
             await connection.OpenAsync(cancellationToken).ConfigureAwait(false);
             await using var command = connection.CreateCommand();
             command.CommandText = "PRAGMA integrity_check";
