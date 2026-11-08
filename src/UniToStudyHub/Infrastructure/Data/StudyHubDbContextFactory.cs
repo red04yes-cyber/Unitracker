@@ -140,9 +140,6 @@ public static class StudyHubDatabase
                 Mode = Microsoft.Data.Sqlite.SqliteOpenMode.ReadOnly,
                 Pooling = false
             };
-            using var source = new Microsoft.Data.Sqlite.SqliteConnection(sourceBuilder.ToString());
-            source.Open();
-
             var destinationBuilder = new Microsoft.Data.Sqlite.SqliteConnectionStringBuilder
             {
                 DataSource = new Uri(temporary).AbsoluteUri + "?cipher=sqlcipher&legacy=4",
@@ -150,8 +147,10 @@ public static class StudyHubDatabase
                 Password = key,
                 Pooling = false
             };
-            using (var destination = new Microsoft.Data.Sqlite.SqliteConnection(destinationBuilder.ToString()))
+            using (var source = new Microsoft.Data.Sqlite.SqliteConnection(sourceBuilder.ToString()))
             {
+                source.Open();
+                using var destination = new Microsoft.Data.Sqlite.SqliteConnection(destinationBuilder.ToString());
                 destination.Open();
                 source.BackupDatabase(destination);
                 using var check = destination.CreateCommand();
@@ -186,7 +185,8 @@ public static class StudyHubDatabase
     public static DatabaseProtectionStatus DescribeProtection(string? databasePath = null)
     {
         var path = string.IsNullOrWhiteSpace(databasePath) ? GetDatabasePath() : Path.GetFullPath(databasePath);
-        var encrypted = OperatingSystem.IsWindows() && File.Exists(path) && !IsPlaintextSqlite(path);
+        var encrypted = OperatingSystem.IsWindows() && File.Exists(path) &&
+                        !IsPlaintextSqlite(path) && CanOpenEncryptedDatabase(path);
         var acl = encrypted && LocalFileSecurity.TryRestrictFile(path);
         return new DatabaseProtectionStatus(
             EncryptedAtRest: encrypted,
@@ -195,6 +195,24 @@ public static class StudyHubDatabase
             Recommendation: encrypted
                 ? "Database cifrato con chiave casuale protetta da DPAPI per l'account Windows corrente. I backup con password sono portabili; conserva la password."
                 : "Il database non risulta ancora verificato come cifrato. Avvia l'app su Windows per completare la protezione.");
+    }
+
+    private static bool CanOpenEncryptedDatabase(string path)
+    {
+        try
+        {
+            using var connection = new Microsoft.Data.Sqlite.SqliteConnection(
+                CreateEncryptedConnectionString(path, Microsoft.Data.Sqlite.SqliteOpenMode.ReadOnly));
+            connection.Open();
+            using var command = connection.CreateCommand();
+            command.CommandText = "PRAGMA integrity_check";
+            return string.Equals(command.ExecuteScalar()?.ToString(), "ok", StringComparison.OrdinalIgnoreCase);
+        }
+        catch (Exception ex) when (ex is Microsoft.Data.Sqlite.SqliteException or IOException
+                                       or CryptographicException or InvalidOperationException)
+        {
+            return false;
+        }
     }
 
     private static bool IsPlaintextSqlite(string path)
