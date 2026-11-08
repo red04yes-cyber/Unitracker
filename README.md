@@ -3,14 +3,14 @@
 Applicazione desktop Windows per organizzare corsi, materiali Moodle, avvisi, esami e carriera universitaria.
 
 ## Stato
-Starter MVP WPF su .NET 10. Il progetto prevede dashboard, media ponderata, simulazione what-if, pianificazione indicativa delle sessioni, persistenza locale e client Moodle REST.
+Applicazione desktop WPF per Windows su .NET 10. Include dashboard, carriera e tentativi, planner collegato al calendario, Study Lab, Accademia, progressi, backup/ripristino, privacy locale e integrazione Moodle facoltativa. Le funzioni AI sono esplicitamente indicate come IN PROGRESSO e non simulano un assistente funzionante.
 
 ## Funzionalità previste
 - Dashboard con media ponderata, proiezione indicativa del voto di partenza e CFU completati.
 - Anagrafica corsi, registrazione voti e simulazione di voti ipotetici.
 - Pianificazione degli esami nelle sessioni invernale, estiva e autunnale con bilanciamento dei CFU.
 - Client Moodle REST per corsi, contenuti, calendario e forum, nei limiti delle funzioni autorizzate.
-- Download e classificazione dei materiali didattici esposti dall'istanza Moodle.
+- Indicizzazione locale dei metadati di corsi, eventi, materiali e discussioni esposti dalle API Moodle abilitate. Il download automatico di ogni file Moodle e la sincronizzazione di tutte le attività non sono inclusi.
 - Protezione locale del token con Windows DPAPI e backup cifrati AES-256-GCM.
 
 ## Requisiti
@@ -36,11 +36,16 @@ I dati di carriera restano in locale, in una cartella con ACL limitata all'utent
 Ottobre 2027 (configurabile).
 
 ## CI
-Il workflow GitHub Actions in `.github/workflows/build-windows.yml` compila e pubblica l'artefatto Windows x64 a ogni push su `main`.
+Il workflow GitHub Actions in `.github/workflows/build-windows.yml` esegue test, build WPF, publish self-contained Windows x64, smoke test di avvio e caricamento dell'artefatto su push/PR per `main`, `develop` e branch `work/**`.
 
 Il workflow `.github/workflows/core-domain-validation.yml` valida le PR e i push sui branch core domain: esegue tutti i test, compila l'app WPF, pubblica l'eseguibile Windows x64 e verifica l'avvio della finestra con un profilo temporaneo.
 
-Il workflow `.github/workflows/security-scan.yml` esegue il secret scanning con gitleaks (versione pinnata e checksum verificato) sulla cronologia e sul working tree, con permessi di sola lettura e output redatto, e un audit non bloccante dei pacchetti vulnerabili.
+Il workflow `.github/workflows/security-scan.yml` esegue secret scanning con Gitleaks sulla cronologia e sul working tree, con permessi di sola lettura e output redatto, e un audit NuGet bloccante per le dipendenze dell'app e dei test (NU1901–NU1904 trattati come errori).
+
+## Limiti noti
+- L'integrazione Moodle dipende dai servizi REST e dai permessi concessi dall'istanza; non sostituisce Esse3 e non garantisce la disponibilità di ogni endpoint.
+- Il pianificatore propone date indicative e non consulta gli appelli ufficiali.
+- Prima del rilascio su `main`/`develop`, un amministratore del repository deve rendere obbligatori i check CI nelle regole di protezione dei branch.
 
 ## Documentazione
 - Moodle Web Services: https://docs.moodle.org/503/en/Web_services
