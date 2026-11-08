@@ -3,8 +3,6 @@ using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Data;
 using System.Windows.Threading;
-using Microsoft.Win32;
-using UniToStudyHub.Presentation.Navigation;
 using UniToStudyHub.Presentation.ViewModels;
 
 namespace UniToStudyHub;
@@ -19,11 +17,7 @@ public partial class MainWindow : Window
         _shellViewModel = shellViewModel ?? throw new ArgumentNullException(nameof(shellViewModel));
 
         InitializeComponent();
-
-        // The shell owns window-level state; the legacy TabControl temporarily
-        // keeps the original page bindings until each page is extracted.
         DataContext = _shellViewModel;
-        MainTabs.DataContext = _shellViewModel.LegacyContent;
         MainTabs.SetBinding(Selector.SelectedIndexProperty, new Binding(nameof(ShellViewModel.SelectedPageIndex))
         {
             Source = _shellViewModel,
@@ -35,12 +29,10 @@ public partial class MainWindow : Window
         UpdatePageHeader();
 
         _focusRefreshTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
-        _focusRefreshTimer.Tick += (_, _) => _shellViewModel.LegacyContent.Workspace.RefreshFocusSnapshot();
+        _focusRefreshTimer.Tick += (_, _) => _shellViewModel.StudyLab.RefreshFocusSnapshot();
         _focusRefreshTimer.Start();
         Closed += (_, _) => _focusRefreshTimer.Stop();
     }
-
-    private MainViewModel LegacyViewModel => _shellViewModel.LegacyContent;
 
     private void ToggleTheme_Click(object sender, RoutedEventArgs e)
     {
@@ -50,9 +42,6 @@ public partial class MainWindow : Window
 
     private void UpdateThemeToggleButtonContent()
     {
-        // The button lives inside the TabControl ControlTemplate namescope,
-        // so it must be resolved from the applied template rather than as a
-        // generated MainWindow field.
         MainTabs.ApplyTemplate();
         if (MainTabs.Template.FindName("ThemeToggleButton", MainTabs) is Button themeButton)
         {
@@ -88,137 +77,6 @@ public partial class MainWindow : Window
             subheading.Text = labels[1].Text;
     }
 
-    private void NavigateToCalendar_Click(object sender, RoutedEventArgs e) =>
-        _shellViewModel.NavigateTo(StudyRoute.Calendar);
-
-    private void NavigateToStudyLab_Click(object sender, RoutedEventArgs e) =>
-        _shellViewModel.NavigateTo(StudyRoute.StudyLab);
-
-    private async void ConnectMoodle_Click(object sender, RoutedEventArgs e)
-    {
-        var viewModel = LegacyViewModel;
-        await viewModel.ConnectMoodleAsync();
-        if (viewModel.IsMoodleConnected)
-            MoodleTokenBox.Clear();
-    }
-
-    private void MoodleTokenBox_PasswordChanged(object sender, RoutedEventArgs e)
-    {
-        if (sender is PasswordBox passwordBox)
-            LegacyViewModel.MoodleToken = passwordBox.Password;
-    }
-
-    private void CourseFilter_Checked(object sender, RoutedEventArgs e)
-    {
-        if (sender is RadioButton radioButton && radioButton.Tag is string filter)
-            LegacyViewModel.CourseFilter = filter;
-    }
-
-    private async void ImportPdf_Click(object sender, RoutedEventArgs e)
-    {
-        var dialog = new OpenFileDialog
-        {
-            Title = "Importa materiale didattico",
-            Filter = "Documenti PDF (*.pdf)|*.pdf",
-            CheckFileExists = true,
-            Multiselect = false
-        };
-
-        if (dialog.ShowDialog(this) == true)
-            await LegacyViewModel.Workspace.ImportPdfAsync(dialog.FileName);
-    }
-
-    private async void ExportProgress_Click(object sender, RoutedEventArgs e)
-    {
-        var dialog = new SaveFileDialog
-        {
-            Title = "Esporta report di studio",
-            Filter = "Cartella di lavoro Excel (*.xlsx)|*.xlsx",
-            DefaultExt = ".xlsx",
-            AddExtension = true,
-            FileName = $"UniToStudyHub-progressi-{DateTime.Today:yyyyMMdd}.xlsx",
-            OverwritePrompt = true
-        };
-        if (dialog.ShowDialog(this) != true) return;
-        try
-        {
-            await LegacyViewModel.Workspace.ExportProgressAsync(dialog.FileName);
-            MessageBox.Show(this, "Report esportato correttamente.", "Esportazione completata",
-                MessageBoxButton.OK, MessageBoxImage.Information);
-        }
-        catch (Exception ex)
-        {
-            MessageBox.Show(this, $"Esportazione non riuscita: {ex.Message}", "Errore esportazione",
-                MessageBoxButton.OK, MessageBoxImage.Error);
-        }
-    }
-
-    private void DisconnectMoodle_Click(object sender, RoutedEventArgs e)
-    {
-        var viewModel = LegacyViewModel;
-        var result = MessageBox.Show(
-            "Disconnettere Moodle? Il token salvato verrà eliminato e i riferimenti di collegamento rimossi. Corsi, voti, eventi importati e storico locale saranno conservati.",
-            "Conferma disconnessione Moodle",
-            MessageBoxButton.YesNo,
-            MessageBoxImage.Warning,
-            MessageBoxResult.No);
-        if (result != MessageBoxResult.Yes) return;
-
-        viewModel.DisconnectMoodleCommand.Execute(null);
-        MoodleTokenBox.Clear();
-    }
-
-    private void RestoreBackup_Click(object sender, RoutedEventArgs e)
-    {
-        if (LegacyViewModel.Workspace.SelectedBackup is null)
-            return;
-
-        var backupName = System.IO.Path.GetFileName(LegacyViewModel.Workspace.SelectedBackup.FilePath);
-        var result = MessageBox.Show(
-            $"Ripristinare il backup \"{backupName}\"? I dati correnti verranno sostituiti. Prima sarà creata una copia di sicurezza automatica.",
-            "Conferma ripristino backup",
-            MessageBoxButton.YesNo,
-            MessageBoxImage.Warning,
-            MessageBoxResult.No);
-        if (result == MessageBoxResult.Yes)
-            LegacyViewModel.Workspace.RestoreBackupCommand.Execute(null);
-    }
-
-    private void DeleteCalendarEvent_Click(object sender, RoutedEventArgs e)
-    {
-        if (LegacyViewModel.SelectedCalendarEvent is null)
-            return;
-
-        var title = LegacyViewModel.SelectedCalendarEvent.Title;
-        var result = MessageBox.Show(
-            $"Vuoi eliminare l'evento \"{title}\"?",
-            "Conferma eliminazione",
-            MessageBoxButton.YesNo,
-            MessageBoxImage.Warning,
-            MessageBoxResult.No);
-        if (result == MessageBoxResult.Yes)
-            LegacyViewModel.DeleteCalendarEventCommand.Execute(null);
-    }
-
-    private void RemoveStudyTask_Click(object sender, RoutedEventArgs e)
-    {
-        if (LegacyViewModel.Workspace.SelectedTask is null)
-            return;
-
-        var title = LegacyViewModel.Workspace.SelectedTask.Title;
-        var result = MessageBox.Show(
-            $"Vuoi rimuovere l'attività \"{title}\"?",
-            "Conferma rimozione",
-            MessageBoxButton.YesNo,
-            MessageBoxImage.Warning,
-            MessageBoxResult.No);
-        if (result == MessageBoxResult.Yes)
-            LegacyViewModel.Workspace.RemoveTaskCommand.Execute(null);
-    }
-
-    private void NavigateToSubjects_Click(object sender, RoutedEventArgs e) =>
-        _shellViewModel.NavigateTo(StudyRoute.Courses);
-
     private void NavigateToSettings_Click(object sender, RoutedEventArgs e) =>
-        _shellViewModel.NavigateTo(StudyRoute.Settings);
+        _shellViewModel.SelectedPageIndex = (int)Presentation.Navigation.StudyRoute.Settings;
 }
