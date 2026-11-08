@@ -32,6 +32,7 @@
         <SolidColorBrush x:Key="GlassBrush" Color="#D91A2A40"/>
         <SolidColorBrush x:Key="GlassBorderBrush" Color="#554D6680"/>
 
+        <Pen x:Key="UnitrackerIconBorderPen" Brush="#554D6680" Thickness="1"/>
         <Pen x:Key="UnitrackerIconUStroke" Brush="#16BDE5" Thickness="5"
              StartLineCap="Round" EndLineCap="Round" LineJoin="Round"/>
         <Pen x:Key="UnitrackerIconTasselStroke" Brush="#D36A61" Thickness="1.8"
@@ -41,7 +42,7 @@
                 <DrawingGroup>
                     <GeometryDrawing Brush="#0D1726"
                         Geometry="M 14,1 H 50 Q 63,1 63,14 V 50 Q 63,63 50,63 H 14 Q 1,63 1,50 V 14 Q 1,1 14,1 Z"/>
-                    <GeometryDrawing Pen="#554D6680" Geometry="M 14,2 H 50 Q 62,2 62,14 V 50 Q 62,62 50,62 H 14 Q 2,62 2,50 V 14 Q 2,2 14,2 Z"/>
+                    <GeometryDrawing Pen="#554D6680" Geometry="M 14,2 H 50 Q 62,2 62,14 V 50 Q 62,62 50,62 H 14 Q 2,62 2,50 V 14 Q 2,2 14,2 Z"\n                                    Pen="{StaticResource UnitrackerIconBorderPen}"/>
                     <GeometryDrawing Geometry="M 17,17 L 17,36 C 17,47 47,47 47,36 L 47,17"
                                     Pen="{StaticResource UnitrackerIconUStroke}"/>
                     <GeometryDrawing Brush="#3978F6" Geometry="M 26,36 H 29 V 42 H 26 Z"/>
