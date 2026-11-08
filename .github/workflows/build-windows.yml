@@ -27,8 +27,13 @@ jobs:
       - name: Smoke test published WPF application
         shell: pwsh
         run: ./scripts/windows-startup-smoke.ps1
+      - name: Create portable ZIP and SHA-256
+        shell: pwsh
+        run: ./scripts/package-windows.ps1
       - uses: actions/upload-artifact@v4
         with:
-          name: UniToStudyHub-win-x64
-          path: src/UniToStudyHub/bin/Release/net10.0-windows/win-x64/publish/
+          name: UniToStudyHub-win-x64-portable
+          path: |
+            artifacts/UniToStudyHub-*-win-x64-portable.zip
+            artifacts/UniToStudyHub-*-win-x64-portable.zip.sha256
           if-no-files-found: error
