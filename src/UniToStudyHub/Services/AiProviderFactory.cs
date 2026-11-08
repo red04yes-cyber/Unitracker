@@ -7,6 +7,8 @@ namespace UniToStudyHub.Services;
 /// endpoint. Configuration is read at startup; secrets are resolved from DPAPI
 /// or the process environment and never copied into settings.
 /// </summary>
+public sealed record AiProviderRuntime(IAiProvider Provider, AiSettings? Settings);
+
 public sealed class AiProviderFactory(
     AiSettingsService settingsService,
     AiCredentialStore credentials)
@@ -14,14 +16,14 @@ public sealed class AiProviderFactory(
     public const string ProviderEnvironmentVariable = "STUDYHUB_AI_PROVIDER";
     public const string ConsentEnvironmentVariable = "STUDYHUB_AI_CONSENT";
 
-    public (IAiProvider Provider, AiSettings? Settings) CreateFromEnvironment(
+    public AiProviderRuntime CreateFromEnvironment(
         Func<string, string?>? environment = null)
     {
         var get = environment ?? Environment.GetEnvironmentVariable;
         var providerName = get(ProviderEnvironmentVariable)?.Trim().ToLowerInvariant();
         var consent = string.Equals(get(ConsentEnvironmentVariable), "true", StringComparison.OrdinalIgnoreCase);
         if (!consent || providerName is not ("openai" or "ollama"))
-            return (new UnavailableAiProvider(), null);
+            return new AiProviderRuntime(new UnavailableAiProvider(), null);
 
         var isLocal = providerName == "ollama";
         var baseUrl = get("STUDYHUB_AI_BASE_URL") ??
@@ -57,7 +59,7 @@ public sealed class AiProviderFactory(
 
         try
         {
-            return (new OpenAiCompatibleProvider(settings, key), settings);
+            return new AiProviderRuntime(new OpenAiCompatibleProvider(settings, key), settings);
         }
         catch (ArgumentException)
         {
