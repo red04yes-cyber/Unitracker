@@ -34,7 +34,8 @@ public sealed record PrivacyInventory(
     bool MoodleLinked,
     bool AiConfigured,
     bool TelemetryEnabled,
-    string StorageDirectory);
+    string StorageDirectory,
+    DatabaseProtectionStatus DatabaseProtection);
 
 public sealed record PrivacyDeletionResult(
     int DeletedRecords,
@@ -97,7 +98,8 @@ public sealed class PrivacyService
             _tokens?.HasToken == true,
             _aiKeys?.List().Count > 0,
             PrivacyDefaults.TelemetryEnabled,
-            _dataDirectory ?? StudyHubDatabase.GetDataDirectory());
+            _dataDirectory ?? StudyHubDatabase.GetDataDirectory(),
+            StudyHubDatabase.DescribeProtection());
     }
 
     /// <summary>
