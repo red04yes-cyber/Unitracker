@@ -1,6 +1,6 @@
 # Phase 3 — Page application boundaries
 
-Status: migration design and first vertical-slice boundary are defined. This document does not claim that the legacy ViewModels have been removed.
+Status: the shared persistence-session foundation is implemented and registered in core DI, with automated concurrency/failure tests added. Page migrations and legacy ViewModel removal are still pending.
 
 ## Goal
 
@@ -27,7 +27,8 @@ Remove `PageViewModelBase.State` by moving each page's use cases behind focused 
 ### Shared session and consistency
 
 - `IStudyDataStore` remains the only persistence authority.
-- Mutations must be serialized through one application boundary; no page may save an independently loaded stale snapshot over another page's changes.
+- `StudyDataSession` now serializes complete read-modify-write operations, reloads the latest persisted snapshot for each operation, and publishes a revision notification only after a successful save. Its concurrency and failed-mutation behavior have dedicated tests.
+- New page use cases must use this session; legacy `MainViewModel` / `StudyWorkspaceViewModel` still use the store directly until their migrations are complete, so the application is not yet fully protected from legacy write paths.
 - Prefer focused query/command APIs and immutable read models. Introduce a shared session only if a use case truly needs a live aggregate.
 - Navigation carries route/entity identifiers only, never mutable data objects.
 - Keep Moodle credentials, backup cryptography, SQLite schema and file formats unchanged.
