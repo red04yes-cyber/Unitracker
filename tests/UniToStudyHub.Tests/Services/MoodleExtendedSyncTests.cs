@@ -46,6 +46,28 @@ public sealed class MoodleExtendedSyncTests
     }
 
     [Fact]
+    public async Task AssignmentSubmissionDetailsAreReadWhenTokenAllowsIt()
+    {
+        using var client = new MoodleClient("https://moodle.example.edu", Token,
+            new StubHandler(_ => Json("{\\"lastattempt\\":{\\"submission\\":{\\"status\\":\\"submitted\\"}}}")));
+        var sections = new[]
+        {
+            new UniToStudyHub.Models.MoodleCourseSection
+            {
+                modules = new List<UniToStudyHub.Models.MoodleModule>
+                {
+                    new() { id = 11, instance = 22, modname = "assign" }
+                }
+            }
+        };
+
+        var details = await client.GetModuleUserActivityDataAsync(
+            sections, 123, new[] { "mod_assign_get_submission_status" });
+
+        Assert.Contains(details.Keys, key => key.Contains("assign:11", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public void ActivityApiResponsesExposeNestedFileAttachments()
     {
         using var document = JsonDocument.Parse(
