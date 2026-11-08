@@ -104,7 +104,8 @@ public sealed class MoodleClient : IDisposable
         foreach (var module in (sections ?? Array.Empty<MoodleCourseSection>())
                      .Where(section => section.modules is not null)
                      .SelectMany(section => section.modules)
-                     .Where(module => module.instance > 0))
+                     .Where(module => module.instance > 0)
+                     .Take(100))
         {
             ct.ThrowIfCancellationRequested();
             string? function = null;
