@@ -49,7 +49,7 @@ public partial class MainWindow : Window
         var provider = AiProviderBox.SelectedValue as string;
         var model = AiModelBox.Text.Trim();
         var consent = AiConsentBox.IsChecked == true;
-        if (provider is not ("openai" or "ollama"))
+        if (provider is not ("openai" or "ollama" or "gemini"))
         {
             MessageBox.Show(this, "Seleziona un provider valido.", "Configurazione AI",
                 MessageBoxButton.OK, MessageBoxImage.Warning);
@@ -64,13 +64,13 @@ public partial class MainWindow : Window
 
         try
         {
-            if (provider == "openai" && !string.IsNullOrWhiteSpace(AiApiKeyBox.Password))
-                _aiCredentials.SaveKey("openai", AiApiKeyBox.Password);
-            if (provider == "openai" && consent &&
-                string.IsNullOrWhiteSpace(_aiCredentials.LoadKey("openai")) &&
-                string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("STUDYHUB_OPENAI_API_KEY")))
+            if (provider is "openai" or "gemini" && !string.IsNullOrWhiteSpace(AiApiKeyBox.Password))
+                _aiCredentials.SaveKey(provider, AiApiKeyBox.Password);
+            if (provider is "openai" or "gemini" && consent &&
+                string.IsNullOrWhiteSpace(_aiCredentials.LoadKey(provider)) &&
+                string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable(provider == "gemini" ? "STUDYHUB_GEMINI_API_KEY" : "STUDYHUB_OPENAI_API_KEY")))
             {
-                MessageBox.Show(this, "Per usare OpenAI devi inserire una chiave API. La chiave viene salvata in forma protetta da DPAPI.", "Chiave mancante",
+                MessageBox.Show(this, "Per usare il provider selezionato devi inserire una chiave API. La chiave viene salvata in forma protetta da DPAPI.", "Chiave mancante",
                     MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
@@ -91,7 +91,7 @@ public partial class MainWindow : Window
     private void RevokeAiConsent_Click(object sender, RoutedEventArgs e)
     {
         var provider = AiProviderBox.SelectedValue as string;
-        if (provider is not ("openai" or "ollama")) provider = "openai";
+        if (provider is not ("openai" or "ollama" or "gemini")) provider = "openai";
         var model = string.IsNullOrWhiteSpace(AiModelBox.Text) ? "gpt-4.1-mini" : AiModelBox.Text.Trim();
         var confirm = MessageBox.Show(this,
             "Il consenso AI verrà revocato e l'app si chiuderà per interrompere immediatamente la sessione del provider. Le chiavi protette resteranno salvate, ma non verranno usate senza un nuovo consenso.",
