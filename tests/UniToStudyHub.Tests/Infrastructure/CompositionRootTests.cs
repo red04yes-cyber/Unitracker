@@ -4,6 +4,7 @@ using UniToStudyHub.Domain.Services;
 using UniToStudyHub.Infrastructure;
 using UniToStudyHub.Infrastructure.Data;
 using UniToStudyHub.Presentation.Composition;
+using UniToStudyHub.Presentation.Navigation;
 using UniToStudyHub.Presentation.ViewModels;
 using UniToStudyHub.Services;
 using Xunit;
@@ -13,7 +14,7 @@ namespace UniToStudyHub.Tests.Infrastructure;
 public sealed class CompositionRootTests
 {
     [Fact]
-    public async Task CoreServicesAndViewModelResolveWithoutWpf()
+    public async Task CoreServicesAndPresentationShellResolveWithoutWpf()
     {
         var folder = Path.Combine(Path.GetTempPath(), "UnitrackerTests", Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(folder);
@@ -22,7 +23,7 @@ public sealed class CompositionRootTests
         {
             var services = new ServiceCollection();
             services.AddUniToStudyHubCore(databasePath);
-            services.AddUniToStudyHubViewModels();
+            services.AddUniToStudyHubPresentation();
 
             using var provider = services.BuildServiceProvider(validateScopes: true);
 
@@ -42,6 +43,8 @@ public sealed class CompositionRootTests
             var timeBudget = provider.GetRequiredService<TimeBudgetService>();
             var backup = provider.GetRequiredService<BackupService>();
             var viewModel = provider.GetRequiredService<MainViewModel>();
+            var navigation = provider.GetRequiredService<INavigationService>();
+            var shell = provider.GetRequiredService<ShellViewModel>();
 
             Assert.Same(store, provider.GetRequiredService<IStudyDataStore>());
             Assert.Same(calculator, provider.GetRequiredService<CareerCalculatorService>());
@@ -55,6 +58,20 @@ public sealed class CompositionRootTests
             Assert.Same(timeBudget, provider.GetRequiredService<TimeBudgetService>());
             Assert.Same(backup, provider.GetRequiredService<BackupService>());
             Assert.Same(viewModel, provider.GetRequiredService<MainViewModel>());
+            Assert.Same(viewModel, shell.LegacyContent);
+            Assert.Equal(StudyRoute.Today, navigation.CurrentRoute);
+            Assert.Equal((int)StudyRoute.Today, shell.SelectedPageIndex);
+
+            shell.SelectedPageIndex = (int)StudyRoute.Calendar;
+            Assert.Equal(StudyRoute.Calendar, navigation.CurrentRoute);
+            Assert.Equal((int)StudyRoute.Calendar, shell.SelectedPageIndex);
+
+            Assert.True(shell.NavigateTo(StudyRoute.Settings));
+            Assert.Equal(StudyRoute.Settings, shell.CurrentRoute);
+            Assert.Equal((int)StudyRoute.Settings, shell.SelectedPageIndex);
+
+            Assert.False(shell.NavigateTo((StudyRoute)999));
+            Assert.Equal(StudyRoute.Settings, shell.CurrentRoute);
 
             await viewModel.InitializeAsync();
             Assert.Equal("—", viewModel.AverageDisplay);
