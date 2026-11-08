@@ -48,13 +48,15 @@ public sealed class StudyHubDatabaseTests
                 await create.ExecuteNonQueryAsync();
             }
 
-            var options = StudyHubDatabase.CreateOptions(path);
-            await using var encrypted = new Microsoft.Data.Sqlite.SqliteConnection(
-                StudyHubDatabase.CreateEncryptedConnectionString(path, Microsoft.Data.Sqlite.SqliteOpenMode.ReadOnly));
-            await encrypted.OpenAsync();
-            await using var read = encrypted.CreateCommand();
-            read.CommandText = "SELECT Value FROM LegacyProbe";
-            Assert.Equal("keep-me", await read.ExecuteScalarAsync());
+            _ = StudyHubDatabase.CreateOptions(path);
+            await using (var encrypted = new Microsoft.Data.Sqlite.SqliteConnection(
+                             StudyHubDatabase.CreateEncryptedConnectionString(path, Microsoft.Data.Sqlite.SqliteOpenMode.ReadOnly)))
+            {
+                await encrypted.OpenAsync();
+                await using var read = encrypted.CreateCommand();
+                read.CommandText = "SELECT Value FROM LegacyProbe";
+                Assert.Equal("keep-me", await read.ExecuteScalarAsync());
+            }
 
             var header = new byte[16];
             await using var file = File.OpenRead(path);
