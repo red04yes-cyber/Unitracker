@@ -85,9 +85,9 @@ public sealed class MoodleApplicationService
         var functions = site.functions?.Select(x => x.name).Where(x => !string.IsNullOrWhiteSpace(x)).ToArray()
                         ?? Array.Empty<string>();
         var courseSections = await client.GetCourseContentsAsync(courseId, cancellationToken).ConfigureAwait(false);
-        var details = new Dictionary<string, System.Text.Json.JsonElement>(
-            await client.GetCourseActivityDetailsAsync(courseId, functions, cancellationToken).ConfigureAwait(false),
-            StringComparer.Ordinal);
+        var activityDetails = await client.GetCourseActivityDetailsAsync(courseId, functions, cancellationToken)
+            .ConfigureAwait(false);
+        var details = activityDetails.ToDictionary(item => item.Key, item => item.Value, StringComparer.Ordinal);
         var userActivity = await client.GetModuleUserActivityDataAsync(
             courseSections, site.userid, functions, cancellationToken).ConfigureAwait(false);
         foreach (var item in userActivity) details["utente:" + item.Key] = item.Value;
