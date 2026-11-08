@@ -4,6 +4,7 @@ using System.Globalization;
 using System.IO;
 using System.Runtime.CompilerServices;
 using UniToStudyHub.Domain.Enums;
+using UniToStudyHub.Infrastructure.Data;
 using UniToStudyHub.Models;
 using UniToStudyHub.Presentation.Commands;
 using UniToStudyHub.Services;
@@ -226,6 +227,16 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
     public string MaxDailyStudyMinutesInput { get => _maxDailyStudyMinutesInput; set => Set(ref _maxDailyStudyMinutesInput, value); }
     public string WorkspaceStatus { get => _workspaceStatus; private set => Set(ref _workspaceStatus, value); }
     public string BackupDirectory => _backups.BackupDirectory;
+    public string DatabaseProtectionDisplay
+    {
+        get
+        {
+            var status = StudyHubDatabase.DescribeProtection();
+            return status.EncryptedAtRest
+                ? $"Database cifrato · {status.Algorithm}"
+                : status.Recommendation;
+        }
+    }
     public ProgressSnapshot? CurrentProgress => _progressSnapshot;
     public string PlannerAvailabilityInput { get => _plannerAvailabilityInput; set => Set(ref _plannerAvailabilityInput, value); }
     public DateTime PlannerFromInput { get => _plannerFromInput; set => Set(ref _plannerFromInput, value.Date); }
