@@ -12,7 +12,7 @@ Applicazione desktop WPF per Windows su .NET 10. Include dashboard, carriera e t
 - Client Moodle REST per corsi, contenuti, calendario e forum, nei limiti delle funzioni autorizzate.
 - Sincronizzazione di tutti i moduli/attività restituiti dal corso Moodle, metadati specifici delle attività per le funzioni Web Services autorizzate, stato di completamento personale quando disponibile, forum e calendario.
 - Download automatico degli allegati esposti da `core_course_get_contents` e dalle API attività abilitate; i file sono organizzati per corso/sezione e filtrati per sicurezza (limite 250 MB per file, 1 GB per corso, estensioni eseguibili e macro bloccate).
-- Cifratura del database SQLite con SQLCipher v4 (AES-256-CBC + HMAC-SHA512) e chiave casuale protetta da DPAPI; backup AES-256-GCM portabili se protetti da password.
+- Cifratura del database SQLite con SQLCipher v4 (AES-256-CBC + HMAC-SHA512) e chiave casuale protetta da DPAPI; backup AES-256-GCM ulteriormente protetti da password o DPAPI (la chiave SQLCipher resta legata all'account Windows).
 
 ## Requisiti
 - Windows 10/11 x64
