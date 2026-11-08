@@ -92,8 +92,23 @@ public static class SecurityRedaction
     public static string ExceptionForLog(Exception exception)
     {
         ArgumentNullException.ThrowIfNull(exception);
+
+        // Preserve a short, redacted inner-exception chain. Framework wrappers
+        // such as XamlParseException often contain the actionable failure only
+        // in InnerException, while the stack trace and raw paths remain omitted.
         var builder = new StringBuilder();
-        builder.Append(exception.GetType().Name).Append(": ").Append(ForLog(exception.Message, 1000));
+        var current = exception;
+        var depth = 0;
+        while (current is not null && depth < 4)
+        {
+            if (depth > 0) builder.Append(" --> ");
+            builder.Append(current.GetType().Name)
+                .Append(": ")
+                .Append(ForLog(current.Message, 1000));
+            current = current.InnerException;
+            depth++;
+        }
+
         return builder.ToString();
     }
 
