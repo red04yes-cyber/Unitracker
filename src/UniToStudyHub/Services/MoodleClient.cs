@@ -88,6 +88,90 @@ public sealed class MoodleClient : IDisposable
         return result;
     }
 
+    /// <summary>
+    /// Reads user-specific attempts/submissions for common interactive activity
+    /// modules. Each call is guarded by the function list granted to this token;
+    /// the Moodle server remains the authority for access to the user's data.
+    /// </summary>
+    public async Task<IReadOnlyDictionary<string, JsonElement>> GetModuleUserActivityDataAsync(
+        IEnumerable<MoodleCourseSection> sections,
+        int userId,
+        IEnumerable<string> availableFunctions,
+        CancellationToken ct = default)
+    {
+        var available = new HashSet<string>(availableFunctions ?? Array.Empty<string>(), StringComparer.Ordinal);
+        var results = new Dictionary<string, JsonElement>(StringComparer.Ordinal);
+        foreach (var module in (sections ?? Array.Empty<MoodleCourseSection>())
+                     .Where(section => section.modules is not null)
+                     .SelectMany(section => section.modules)
+                     .Where(module => module.instance > 0))
+        {
+            ct.ThrowIfCancellationRequested();
+            string? function = null;
+            var parameters = new Dictionary<string, string>();
+            switch (module.modname.ToLowerInvariant())
+            {
+                case "assign":
+                    function = "mod_assign_get_submission_status";
+                    parameters["assignid"] = module.instance.ToString();
+                    parameters["userid"] = userId.ToString();
+                    break;
+                case "quiz":
+                    function = "mod_quiz_get_user_attempts";
+                    parameters["quizid"] = module.instance.ToString();
+                    parameters["userid"] = userId.ToString();
+                    parameters["status"] = "all";
+                    parameters["includepreviews"] = "0";
+                    break;
+                case "lesson":
+                    function = "mod_lesson_get_user_attempts";
+                    parameters["lessonid"] = module.instance.ToString();
+                    parameters["userid"] = userId.ToString();
+                    break;
+                case "workshop":
+                    function = "mod_workshop_get_user_assessments";
+                    parameters["workshopid"] = module.instance.ToString();
+                    parameters["userid"] = userId.ToString();
+                    break;
+                case "scorm":
+                    function = "mod_scorm_get_scorm_scoes_track";
+                    parameters["scormid"] = module.instance.ToString();
+                    parameters["userid"] = userId.ToString();
+                    parameters["attempt"] = "1";
+                    break;
+                case "wiki":
+                    function = "mod_wiki_get_subwiki_pages";
+                    parameters["wikiid"] = module.instance.ToString();
+                    parameters["groupid"] = "0";
+                    parameters["userid"] = userId.ToString();
+                    break;
+                case "data":
+                    function = "mod_data_get_entries";
+                    parameters["databaseid"] = module.instance.ToString();
+                    parameters["groupid"] = "0";
+                    parameters["returncontents"] = "1";
+                    parameters["page"] = "0";
+                    parameters["perpage"] = "100";
+                    break;
+            }
+
+            if (function is null || !available.Contains(function)) continue;
+            try
+            {
+                var payload = await CallAsync<JsonElement>(function, parameters, ct).ConfigureAwait(false);
+                if (payload.ValueKind != JsonValueKind.Null &&
+                    !(payload.ValueKind == JsonValueKind.Array && payload.GetArrayLength() == 0) &&
+                    !(payload.ValueKind == JsonValueKind.Object && !payload.EnumerateObject().Any()))
+                    results[$"{module.modname}:{module.id}:{function}"] = payload;
+            }
+            catch (Exception ex) when (ex is InvalidOperationException or InvalidDataException or HttpRequestException)
+            {
+                AppDiagnostics.Warning("moodle", $"Dati personali attività non disponibili: {module.modname} #{module.id}.", ex);
+            }
+        }
+        return results;
+    }
+
     /// <summary>Extracts all file descriptors embedded in enabled activity API responses.</summary>
     public static IReadOnlyList<MoodleContentFile> ExtractActivityFiles(
         IEnumerable<JsonElement> activityResponses)
