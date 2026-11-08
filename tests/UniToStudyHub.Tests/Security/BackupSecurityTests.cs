@@ -207,7 +207,7 @@ public sealed class BackupSecurityTests
         try
         {
             var text = Encoding.UTF8.GetString(payload);
-            Assert.Contains(Marker, text, StringComparison.Ordinal);
+            Assert.DoesNotContain(Marker, text, StringComparison.Ordinal);
             Assert.DoesNotContain(token, text, StringComparison.Ordinal);
         }
         finally

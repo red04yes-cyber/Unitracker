@@ -10,8 +10,9 @@ Applicazione desktop WPF per Windows su .NET 10. Include dashboard, carriera e t
 - Anagrafica corsi, registrazione voti e simulazione di voti ipotetici.
 - Pianificazione degli esami nelle sessioni invernale, estiva e autunnale con bilanciamento dei CFU.
 - Client Moodle REST per corsi, contenuti, calendario e forum, nei limiti delle funzioni autorizzate.
-- Indicizzazione locale dei metadati di corsi, eventi, materiali e discussioni esposti dalle API Moodle abilitate. Il download automatico di ogni file Moodle e la sincronizzazione di tutte le attività non sono inclusi.
-- Protezione locale del token con Windows DPAPI e backup cifrati AES-256-GCM.
+- Sincronizzazione di tutti i moduli/attività restituiti dal corso Moodle, metadati specifici delle attività per le funzioni Web Services autorizzate, stato di completamento personale quando disponibile, forum e calendario.
+- Download automatico degli allegati esposti da `core_course_get_contents` e dalle API attività abilitate; i file sono organizzati per corso/sezione e filtrati per sicurezza (limite 250 MB per file, 1 GB per corso, estensioni eseguibili e macro bloccate).
+- Cifratura del database SQLite con SQLCipher v4 (AES-256-CBC + HMAC-SHA512) e chiave casuale protetta da DPAPI; backup AES-256-GCM ulteriormente protetti da password o DPAPI (la chiave SQLCipher resta legata all'account Windows).
 
 ## Requisiti
 - Windows 10/11 x64
@@ -27,10 +28,10 @@ dotnet publish .\src\UniToStudyHub\UniToStudyHub.csproj -c Release -r win-x64 --
 ```
 
 ## Integrazione Moodle
-L'app usa esclusivamente le API Web Services autorizzate. Non aggira SSO, non estrae cookie e non tenta di bypassare controlli di accesso. La disponibilità delle funzioni dipende dalla configurazione dell'istanza e dai permessi del token.
+L'app usa esclusivamente le API Web Services autorizzate. Non aggira SSO, non estrae cookie e non tenta di bypassare controlli di accesso. La disponibilità dei dettagli specifici, dei file e degli stati di completamento dipende dalle funzioni Web Services abilitate per il token. Le attività non esposte dal server vengono comunque indicizzate dai moduli del corso, ma non è possibile sincronizzare tentativi o dati privati che Moodle non rende disponibili a quel token.
 
 ## Privacy e limiti
-I dati di carriera restano in locale, in una cartella con ACL limitata all'utente Windows corrente. Il token Moodle e le chiavi AI sono protetti con DPAPI; i backup sono cifrati con AES-256-GCM e protetti da DPAPI o da una password scelta dall'utente. Non esiste telemetria: nessun dato viene inviato a servizi esterni senza configurazione e consenso espliciti. L'app offre esportazione completa e cancellazione dei dati; le note private restano fuori dagli export di default. Il database SQLite **non** è cifrato: si raccomanda BitLocker o EFS. Il pianificatore produce date indicative, non appelli ufficiali. Non è incluso un connettore Esse3; le date ufficiali vanno verificate sui sistemi UniTo. Dettagli in `docs/security/PRIVACY.md`.
+I dati di carriera restano in locale, in una cartella con ACL limitata all'utente Windows corrente. Il token Moodle e le chiavi AI sono protetti con DPAPI; i backup sono cifrati con AES-256-GCM e protetti da DPAPI o da una password scelta dall'utente. Non esiste telemetria: nessun dato viene inviato a servizi esterni senza configurazione e consenso espliciti. L'app offre esportazione completa e cancellazione dei dati; le note private restano fuori dagli export di default. Il database SQLite è cifrato con SQLCipher v4; la chiave è vincolata all'account Windows tramite DPAPI. I backup sono cifrati due volte (SQLCipher per il database e AES-256-GCM per il contenitore); la chiave SQLCipher è protetta da DPAPI e quindi il ripristino richiede lo stesso account Windows. La password protegge il contenitore, ma non rende la chiave DPAPI trasferibile. Il pianificatore produce date indicative, non appelli ufficiali. Non è incluso un connettore Esse3; le date ufficiali vanno verificate sui sistemi UniTo. Dettagli in `docs/security/PRIVACY.md`.
 
 ## Obiettivo laurea
 Ottobre 2027 (configurabile).

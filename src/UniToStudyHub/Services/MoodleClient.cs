@@ -54,6 +54,215 @@ public sealed class MoodleClient : IDisposable
         CallAsync<List<MoodleCourseSection>>("core_course_get_contents",
             new Dictionary<string, string> { { "courseid", id.ToString() } }, ct);
 
+    /// <summary>
+    /// Reads metadata for every built-in Moodle activity family whose web
+    /// service is enabled for this token. Unsupported/disabled functions are
+    /// skipped rather than making the entire course sync fail.
+    /// </summary>
+    public async Task<IReadOnlyDictionary<string, JsonElement>> GetCourseActivityDetailsAsync(
+        int courseId,
+        IEnumerable<string> availableFunctions,
+        CancellationToken ct = default)
+    {
+        var available = new HashSet<string>(availableFunctions ?? Array.Empty<string>(), StringComparer.Ordinal);
+        var result = new Dictionary<string, JsonElement>(StringComparer.Ordinal);
+        var candidates = CourseActivityFunctions
+            .Concat(available.Where(name => name.StartsWith("mod_", StringComparison.Ordinal) &&
+                                            name.EndsWith("_by_courses", StringComparison.Ordinal)))
+            .Distinct(StringComparer.Ordinal)
+            .Take(100);
+        foreach (var function in candidates)
+        {
+            ct.ThrowIfCancellationRequested();
+            if (!available.Contains(function)) continue;
+            try
+            {
+                var payload = await CallAsync<JsonElement>(function,
+                    new Dictionary<string, string> { { "courseids[0]", courseId.ToString() } }, ct)
+                    .ConfigureAwait(false);
+                if (payload.ValueKind != JsonValueKind.Null &&
+                    !(payload.ValueKind == JsonValueKind.Array && payload.GetArrayLength() == 0) &&
+                    !(payload.ValueKind == JsonValueKind.Object && !payload.EnumerateObject().Any()))
+                    result[function] = payload;
+            }
+            catch (Exception ex) when (ex is InvalidOperationException or InvalidDataException or HttpRequestException)
+            {
+                AppDiagnostics.Warning("moodle", $"Dettagli attività non disponibili: {function}.", ex);
+            }
+        }
+        return result;
+    }
+
+    /// <summary>
+    /// Reads user-specific attempts/submissions for common interactive activity
+    /// modules. Each call is guarded by the function list granted to this token;
+    /// the Moodle server remains the authority for access to the user's data.
+    /// </summary>
+    public async Task<IReadOnlyDictionary<string, JsonElement>> GetModuleUserActivityDataAsync(
+        IEnumerable<MoodleCourseSection> sections,
+        int userId,
+        IEnumerable<string> availableFunctions,
+        CancellationToken ct = default)
+    {
+        var available = new HashSet<string>(availableFunctions ?? Array.Empty<string>(), StringComparer.Ordinal);
+        var results = new Dictionary<string, JsonElement>(StringComparer.Ordinal);
+        foreach (var module in (sections ?? Array.Empty<MoodleCourseSection>())
+                     .Where(section => section.modules is not null)
+                     .SelectMany(section => section.modules)
+                     .Where(module => module.instance > 0)
+                     .Take(100))
+        {
+            ct.ThrowIfCancellationRequested();
+            string? function = null;
+            var parameters = new Dictionary<string, string>();
+            switch (module.modname.ToLowerInvariant())
+            {
+                case "assign":
+                    function = "mod_assign_get_submission_status";
+                    parameters["assignid"] = module.instance.ToString();
+                    parameters["userid"] = userId.ToString();
+                    break;
+                case "quiz":
+                    function = "mod_quiz_get_user_attempts";
+                    parameters["quizid"] = module.instance.ToString();
+                    parameters["userid"] = userId.ToString();
+                    parameters["status"] = "all";
+                    parameters["includepreviews"] = "0";
+                    break;
+                case "lesson":
+                    function = "mod_lesson_get_user_attempts";
+                    parameters["lessonid"] = module.instance.ToString();
+                    parameters["userid"] = userId.ToString();
+                    break;
+                case "workshop":
+                    function = "mod_workshop_get_user_assessments";
+                    parameters["workshopid"] = module.instance.ToString();
+                    parameters["userid"] = userId.ToString();
+                    break;
+                case "scorm":
+                    function = "mod_scorm_get_scorm_scoes_track";
+                    parameters["scormid"] = module.instance.ToString();
+                    parameters["userid"] = userId.ToString();
+                    parameters["attempt"] = "1";
+                    break;
+                case "wiki":
+                    function = "mod_wiki_get_subwiki_pages";
+                    parameters["wikiid"] = module.instance.ToString();
+                    parameters["groupid"] = "0";
+                    parameters["userid"] = userId.ToString();
+                    break;
+                case "data":
+                    function = "mod_data_get_entries";
+                    parameters["databaseid"] = module.instance.ToString();
+                    parameters["groupid"] = "0";
+                    parameters["returncontents"] = "1";
+                    parameters["page"] = "0";
+                    parameters["perpage"] = "100";
+                    break;
+            }
+
+            if (function is null || !available.Contains(function)) continue;
+            try
+            {
+                var payload = await CallAsync<JsonElement>(function, parameters, ct).ConfigureAwait(false);
+                if (payload.ValueKind != JsonValueKind.Null &&
+                    !(payload.ValueKind == JsonValueKind.Array && payload.GetArrayLength() == 0) &&
+                    !(payload.ValueKind == JsonValueKind.Object && !payload.EnumerateObject().Any()))
+                    results[$"{module.modname}:{module.id}:{function}"] = payload;
+            }
+            catch (Exception ex) when (ex is InvalidOperationException or InvalidDataException or HttpRequestException)
+            {
+                AppDiagnostics.Warning("moodle", $"Dati personali attività non disponibili: {module.modname} #{module.id}.", ex);
+            }
+        }
+        return results;
+    }
+
+    /// <summary>Extracts all file descriptors embedded in enabled activity API responses.</summary>
+    public static IReadOnlyList<MoodleContentFile> ExtractActivityFiles(
+        IEnumerable<JsonElement> activityResponses)
+    {
+        var files = new Dictionary<string, MoodleContentFile>(StringComparer.OrdinalIgnoreCase);
+        foreach (var response in activityResponses ?? Array.Empty<JsonElement>())
+            CollectActivityFiles(response, files);
+        return files.Values.ToList();
+    }
+
+    private static void CollectActivityFiles(JsonElement element, IDictionary<string, MoodleContentFile> files)
+    {
+        if (element.ValueKind == JsonValueKind.Object)
+        {
+            if (element.TryGetProperty("fileurl", out var url) &&
+                url.ValueKind == JsonValueKind.String &&
+                !string.IsNullOrWhiteSpace(url.GetString()) &&
+                element.TryGetProperty("filename", out var name) &&
+                name.ValueKind == JsonValueKind.String &&
+                !string.IsNullOrWhiteSpace(name.GetString()))
+            {
+                var file = new MoodleContentFile
+                {
+                    type = "file",
+                    fileurl = url.GetString()!,
+                    filename = name.GetString()!,
+                    filepath = element.TryGetProperty("filepath", out var path) ? path.GetString() ?? string.Empty : string.Empty,
+                    mimetype = element.TryGetProperty("mimetype", out var mime) ? mime.GetString() ?? string.Empty : string.Empty,
+                    filesize = element.TryGetProperty("filesize", out var size) && size.TryGetInt64(out var bytes) ? bytes : 0,
+                    timemodified = element.TryGetProperty("timemodified", out var modified) && modified.TryGetInt32(out var timestamp) ? timestamp : 0
+                };
+                files.TryAdd(file.fileurl, file);
+            }
+
+            foreach (var property in element.EnumerateObject())
+                CollectActivityFiles(property.Value, files);
+        }
+        else if (element.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var child in element.EnumerateArray())
+                CollectActivityFiles(child, files);
+        }
+    }
+
+    public async Task<IReadOnlyList<MoodleActivityCompletionStatus>> GetActivityCompletionAsync(
+        int courseId,
+        int userId,
+        IEnumerable<string> availableFunctions,
+        CancellationToken ct = default)
+    {
+        if (!availableFunctions.Contains("core_completion_get_activities_completion_status", StringComparer.Ordinal))
+            return Array.Empty<MoodleActivityCompletionStatus>();
+        try
+        {
+            var result = await CallAsync<MoodleActivityCompletionResult>(
+                "core_completion_get_activities_completion_status",
+                new Dictionary<string, string>
+                {
+                    { "courseid", courseId.ToString() },
+                    { "userid", userId.ToString() }
+                }, ct).ConfigureAwait(false);
+            return result.statuses ?? new List<MoodleActivityCompletionStatus>();
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or InvalidDataException or HttpRequestException)
+        {
+            AppDiagnostics.Warning("moodle", $"Completamento attività non disponibile per il corso {courseId}.", ex);
+            return Array.Empty<MoodleActivityCompletionStatus>();
+        }
+    }
+
+    private static readonly string[] CourseActivityFunctions =
+    {
+        "mod_assign_get_assignments", "mod_quiz_get_quizzes_by_courses",
+        "mod_choice_get_choices_by_courses", "mod_feedback_get_feedbacks_by_courses",
+        "mod_lesson_get_lessons_by_courses", "mod_workshop_get_workshops_by_courses",
+        "mod_glossary_get_glossaries_by_courses", "mod_data_get_databases_by_courses",
+        "mod_wiki_get_wikis_by_courses", "mod_scorm_get_scorms_by_courses",
+        "mod_h5pactivity_get_h5pactivities_by_courses", "mod_bigbluebuttonbn_get_bigbluebuttonbns_by_courses",
+        "mod_lti_get_ltis_by_courses", "mod_resource_get_resources_by_courses",
+        "mod_page_get_pages_by_courses", "mod_folder_get_folders_by_courses",
+        "mod_url_get_urls_by_courses", "mod_book_get_books_by_courses",
+        "mod_chat_get_chats_by_courses", "mod_survey_get_surveys_by_courses",
+        "mod_imscp_get_imscps_by_courses", "mod_forum_get_forums_by_courses"
+    };
+
     public Task<MoodleCalendarResult> GetCalendarEventsAsync(
         IEnumerable<int> ids,
         DateTime from,

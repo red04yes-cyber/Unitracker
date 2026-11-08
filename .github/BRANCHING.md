@@ -7,7 +7,8 @@ The canonical WPF UI line is the stacked sequence:
 1. `work/chatgpt-study-planner-engine` (PR #42): persisted Planner engine and domain tests.
 2. `work/chatgpt-ui-complete` (PR #43): the current StudyHub workspace UI.
 3. `work/chatgpt-ai-progress-status` (PR #44): Academy naming and the explicit AI in-progress state.
-4. `work/unitracker-p0-p2-hardening`: integration hardening based on the canonical tip.
+4. `work/unitracker-p0-p2-hardening` (PR #45): data-safety, workflow and QA hardening.
+5. `work/unitracker-moodle-db-encryption` (PR #46): Moodle activity/file sync and SQLCipher database encryption.
 
 Keep this sequence intact while integrating. The alternative UI branches `work/chatgpt-uiux-phase2` (PR #38), `work/calendar-functional` (PR #36), and `work/studyhub-uiux` (PR #35) overlap in `MainWindow.xaml`, `MainWindow.xaml.cs`, and/or `MainViewModel.cs`; do not merge them into the canonical line without manually reconciling their changes.
 

@@ -97,6 +97,10 @@ public sealed class PrivacyAndMoodleSecurityTests
         var legacyJson = Path.Combine(dataDirectory, "data.json");
         var legacyBackup = Path.Combine(dataDirectory, "data.pre-sqlite-20260101.json");
         var legacyCalendar = Path.Combine(dataDirectory, "calendar-events.json");
+        var moodleFilesDirectory = Path.Combine(dataDirectory, "Moodle");
+        Directory.CreateDirectory(moodleFilesDirectory);
+        var moodleFile = Path.Combine(moodleFilesDirectory, "dispensa.pdf");
+        await File.WriteAllTextAsync(moodleFile, "contenuto Moodle");
         await File.WriteAllTextAsync(legacyJson, "{}");
         await File.WriteAllTextAsync(legacyBackup, "{}");
         await File.WriteAllTextAsync(legacyCalendar, "[]");
@@ -105,7 +109,7 @@ public sealed class PrivacyAndMoodleSecurityTests
         AppDiagnostics.Configure(logsDirectory);
         AppDiagnostics.Info("privacy", "riga di prova");
 
-        var service = new PrivacyService(store, tokens, aiKeys, backups, dataDirectory);
+        var service = new PrivacyService(store, tokens, aiKeys, backups, dataDirectory, moodleFilesDirectory);
         var result = await service.DeleteAllAsync(includeBackups: true);
 
         Assert.True(result.DeletedRecords > 0);
@@ -113,6 +117,9 @@ public sealed class PrivacyAndMoodleSecurityTests
         Assert.Equal(1, result.DeletedBackups);
         Assert.True(result.DeletedLegacyFiles >= 3);
         Assert.True(result.DeletedLogFiles >= 1);
+        Assert.Equal(1, result.DeletedMoodleFiles);
+        Assert.False(File.Exists(moodleFile));
+        Assert.False(Directory.Exists(moodleFilesDirectory));
         Assert.False(Directory.Exists(logsDirectory) && Directory.EnumerateFiles(logsDirectory).Any());
         Assert.Empty((await store.LoadAsync()).Courses);
         Assert.False(tokens.HasToken);

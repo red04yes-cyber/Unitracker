@@ -1,6 +1,7 @@
 using System.Data;
 using System.Data.Common;
 using System.IO;
+using System.Security.Cryptography;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
 using UniToStudyHub.Security;
@@ -8,10 +9,9 @@ using UniToStudyHub.Security;
 namespace UniToStudyHub.Infrastructure.Data;
 
 /// <summary>
-/// Truthful description of how the database is protected. The application does
-/// not encrypt SQLite: claiming otherwise would be a security lie. Encryption at
-/// rest relies on BitLocker/EFS plus the per-user ACL and DPAPI vault; encrypted
-/// backups are handled separately by <c>BackupService</c>.
+/// The live SQLite database uses SQLCipher-compatible AES-256 encryption. Its
+/// random key is protected with Windows DPAPI for the current user; the database
+/// file and SQLite journal/WAL pages are encrypted at rest.
 /// </summary>
 public sealed record DatabaseProtectionStatus(
     bool EncryptedAtRest,
@@ -61,21 +61,142 @@ public static class StudyHubDatabase
     }
 
     /// <summary>
-    /// Connection string without credentials. SQLite has no password, so nothing
-    /// secret belongs here; foreign keys are enabled explicitly and pooling is
-    /// kept enabled only for the live database file.
+    /// Returns a SQLCipher v4 connection string. The key is random and stored
+    /// only as a DPAPI-protected secret for the current Windows account.
     /// </summary>
-    public static string CreateConnectionString(string databasePath)
+    public static string CreateConnectionString(
+        string databasePath,
+        Microsoft.Data.Sqlite.SqliteOpenMode mode = Microsoft.Data.Sqlite.SqliteOpenMode.ReadWriteCreate)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(databasePath);
-        var builder = new Microsoft.Data.Sqlite.SqliteConnectionStringBuilder
+        var fullPath = Path.GetFullPath(databasePath);
+        EnsureEncryptedDatabase(fullPath);
+        return CreateEncryptedConnectionString(fullPath, mode);
+    }
+
+    /// <summary>Builds a keyed connection string without converting the target file.</summary>
+    public static string CreateEncryptedConnectionString(
+        string databasePath,
+        Microsoft.Data.Sqlite.SqliteOpenMode mode = Microsoft.Data.Sqlite.SqliteOpenMode.ReadWriteCreate)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(databasePath);
+        var fullPath = Path.GetFullPath(databasePath);
+        var key = new DatabaseKeyVault(ResolveKeyDirectory(fullPath)).GetOrCreateKey();
+        try
         {
-            DataSource = Path.GetFullPath(databasePath),
-            Mode = Microsoft.Data.Sqlite.SqliteOpenMode.ReadWriteCreate,
-            ForeignKeys = true,
-            Pooling = true
-        };
-        return builder.ToString();
+            var builder = new Microsoft.Data.Sqlite.SqliteConnectionStringBuilder
+            {
+                DataSource = new Uri(fullPath).AbsoluteUri + "?cipher=sqlcipher&legacy=4",
+                Mode = mode,
+                Password = key,
+                ForeignKeys = true,
+                Pooling = mode != Microsoft.Data.Sqlite.SqliteOpenMode.ReadOnly
+            };
+            return builder.ToString();
+        }
+        finally
+        {
+            // The key remains in the connection string only as long as required
+            // to create a DbContext. It is never logged or persisted in plaintext.
+        }
+    }
+
+    private static string ResolveKeyDirectory(string databasePath)
+    {
+        DirectoryInfo? current = new DirectoryInfo(Path.GetDirectoryName(Path.GetFullPath(databasePath))!);
+        var first = current.FullName;
+        while (current is not null)
+        {
+            var candidate = Path.Combine(current.FullName, "secrets", DatabaseKeyVault.SecretName + ".secret");
+            if (File.Exists(candidate)) return current.FullName;
+            current = current.Parent;
+        }
+        return first;
+    }
+
+    /// <summary>
+    /// One-time, crash-safe conversion of the previous plaintext SQLite file.
+    /// The old file is kept until the encrypted copy passes integrity_check.
+    /// An encrypted or unknown file is never overwritten automatically.
+    /// </summary>
+    public static void EnsureEncryptedDatabase(string databasePath)
+    {
+        if (!File.Exists(databasePath) || new FileInfo(databasePath).Length == 0) return;
+        using (var probe = new FileStream(databasePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+        {
+            Span<byte> header = stackalloc byte[16];
+            var read = probe.Read(header);
+            if (read < 16 || !header.SequenceEqual("SQLite format 3\0"u8)) return;
+        }
+
+        var directory = Path.GetDirectoryName(databasePath)!;
+        var temporary = databasePath + ".encrypt-" + Guid.NewGuid().ToString("N") + ".tmp";
+        LocalFileSecurity.EnsurePrivateDirectory(directory);
+        var key = new DatabaseKeyVault(directory).GetOrCreateKey();
+        try
+        {
+            var sourceBuilder = new Microsoft.Data.Sqlite.SqliteConnectionStringBuilder
+            {
+                DataSource = databasePath,
+                Mode = Microsoft.Data.Sqlite.SqliteOpenMode.ReadWrite,
+                Pooling = false
+            };
+            using (var source = new Microsoft.Data.Sqlite.SqliteConnection(sourceBuilder.ToString()))
+            {
+                source.Open();
+                using var snapshot = source.CreateCommand();
+                snapshot.CommandText = "VACUUM INTO $target";
+                snapshot.Parameters.AddWithValue("$target", temporary);
+                snapshot.ExecuteNonQuery();
+            }
+
+            // The Multiple Ciphers build uses the SQLCipher v4 codec selected
+            // in the URI. Rekeying an ordinary SQLite snapshot encrypts it in
+            // place without relying on sqlite3_backup cross-codec support.
+            var encryptionBuilder = new Microsoft.Data.Sqlite.SqliteConnectionStringBuilder
+            {
+                DataSource = new Uri(temporary).AbsoluteUri + "?cipher=sqlcipher&legacy=4",
+                Mode = Microsoft.Data.Sqlite.SqliteOpenMode.ReadWrite,
+                Pooling = false
+            };
+            using (var encrypted = new Microsoft.Data.Sqlite.SqliteConnection(encryptionBuilder.ToString()))
+            {
+                encrypted.Open();
+                using var rekey = encrypted.CreateCommand();
+                rekey.CommandText = $"PRAGMA rekey = '{key}';";
+                rekey.ExecuteNonQuery();
+                using var check = encrypted.CreateCommand();
+                check.CommandText = "PRAGMA integrity_check";
+                if (!string.Equals(check.ExecuteScalar()?.ToString(), "ok", StringComparison.OrdinalIgnoreCase))
+                    throw new InvalidDataException("La conversione cifrata del database non ha superato il controllo di integrità.");
+            }
+
+            using (var verify = new Microsoft.Data.Sqlite.SqliteConnection(
+                       CreateEncryptedConnectionString(temporary, Microsoft.Data.Sqlite.SqliteOpenMode.ReadOnly)))
+            {
+                verify.Open();
+                using var check = verify.CreateCommand();
+                check.CommandText = "PRAGMA integrity_check";
+                if (!string.Equals(check.ExecuteScalar()?.ToString(), "ok", StringComparison.OrdinalIgnoreCase))
+                    throw new InvalidDataException("Il database cifrato non è verificabile con la chiave appena creata.");
+            }
+
+            Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
+            LocalFileSecurity.ScrubAndDelete(databasePath + "-wal");
+            LocalFileSecurity.TryDelete(databasePath + "-shm");
+            LocalFileSecurity.TryRestrictFile(temporary);
+            File.Replace(temporary, databasePath, destinationBackupFileName: null);
+            LocalFileSecurity.TryRestrictFile(databasePath);
+        }
+        catch
+        {
+            LocalFileSecurity.ScrubAndDelete(temporary);
+            throw;
+        }
+        finally
+        {
+            Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
+        }
     }
 
     public static DbContextOptions<StudyHubDbContext> CreateOptions(string? databasePath = null) =>
@@ -83,14 +204,45 @@ public static class StudyHubDatabase
             .UseSqlite(CreateConnectionString(databasePath ?? GetDatabasePath()))
             .Options;
 
-    public static DatabaseProtectionStatus DescribeProtection() =>
-        new(
-            EncryptedAtRest: false,
-            PerUserAcl: OperatingSystem.IsWindows(),
-            Algorithm: "none",
-            Recommendation:
-            "Il database SQLite non è cifrato dall'applicazione. Abilita BitLocker o EFS per il profilo " +
-            "utente e usa le copie di sicurezza cifrate per l'archivio. Non dichiarare il database cifrato.");
+    public static DatabaseProtectionStatus DescribeProtection(string? databasePath = null)
+    {
+        var path = string.IsNullOrWhiteSpace(databasePath) ? GetDatabasePath() : Path.GetFullPath(databasePath);
+        var encrypted = OperatingSystem.IsWindows() && File.Exists(path) &&
+                        !IsPlaintextSqlite(path) && CanOpenEncryptedDatabase(path);
+        var acl = encrypted && LocalFileSecurity.TryRestrictFile(path);
+        return new DatabaseProtectionStatus(
+            EncryptedAtRest: encrypted,
+            PerUserAcl: acl,
+            Algorithm: encrypted ? "SQLCipher v4 · AES-256-CBC + HMAC-SHA512 · chiave DPAPI" : "non verificato",
+            Recommendation: encrypted
+                ? "Database cifrato con chiave casuale protetta da DPAPI per l'account Windows corrente. I backup con password sono portabili; conserva la password."
+                : "Il database non risulta ancora verificato come cifrato. Avvia l'app su Windows per completare la protezione.");
+    }
+
+    private static bool CanOpenEncryptedDatabase(string path)
+    {
+        try
+        {
+            using var connection = new Microsoft.Data.Sqlite.SqliteConnection(
+                CreateEncryptedConnectionString(path, Microsoft.Data.Sqlite.SqliteOpenMode.ReadOnly));
+            connection.Open();
+            using var command = connection.CreateCommand();
+            command.CommandText = "PRAGMA integrity_check";
+            return string.Equals(command.ExecuteScalar()?.ToString(), "ok", StringComparison.OrdinalIgnoreCase);
+        }
+        catch (Exception ex) when (ex is Microsoft.Data.Sqlite.SqliteException or IOException
+                                       or CryptographicException or InvalidOperationException)
+        {
+            return false;
+        }
+    }
+
+    private static bool IsPlaintextSqlite(string path)
+    {
+        Span<byte> header = stackalloc byte[16];
+        using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+        return stream.Read(header) == 16 && header.SequenceEqual("SQLite format 3\\0"u8);
+    }
 
     /// <summary>
     /// Renames migration-history rows created by the preliminary 12-digit

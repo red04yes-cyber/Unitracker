@@ -68,6 +68,52 @@ public sealed class MoodleApplicationService
         return await client.GetCourseContentsAsync(courseId, cancellationToken).ConfigureAwait(false);
     }
 
+    /// <summary>
+    /// Synchronizes all activity metadata exposed by the instance for this
+    /// token, plus per-user completion status when Moodle grants that function.
+    /// Activity-specific APIs are feature-detected from the token's own
+    /// web-service function list.
+    /// </summary>
+    public async Task<MoodleCourseActivitySnapshot> GetCourseActivitySnapshotAsync(
+        string baseUrl,
+        int courseId,
+        IEnumerable<MoodleCourseSection>? courseSections = null,
+        CancellationToken cancellationToken = default)
+    {
+        var token = RequireToken();
+        using var client = new MoodleClient(baseUrl, token);
+        var site = await client.GetSiteInfoAsync(cancellationToken).ConfigureAwait(false);
+        var functions = site.functions?.Select(x => x.name).Where(x => !string.IsNullOrWhiteSpace(x)).ToArray()
+                        ?? Array.Empty<string>();
+        var sections = courseSections?.ToList() ??
+                       await client.GetCourseContentsAsync(courseId, cancellationToken).ConfigureAwait(false);
+        var activityDetails = await client.GetCourseActivityDetailsAsync(courseId, functions, cancellationToken)
+            .ConfigureAwait(false);
+        var details = activityDetails.ToDictionary(item => item.Key, item => item.Value, StringComparer.Ordinal);
+        var userActivity = await client.GetModuleUserActivityDataAsync(
+            sections, site.userid, functions, cancellationToken).ConfigureAwait(false);
+        foreach (var item in userActivity) details["utente:" + item.Key] = item.Value;
+        var completion = await client.GetActivityCompletionAsync(courseId, site.userid, functions, cancellationToken)
+            .ConfigureAwait(false);
+        var files = MoodleClient.ExtractActivityFiles(details.Values);
+        return new MoodleCourseActivitySnapshot(details, completion, files);
+    }
+
+    /// <summary>Downloads all safe file resources exposed by a course's modules.</summary>
+    public async Task<DocumentSyncResult> DownloadCourseFilesAsync(
+        string baseUrl,
+        Course course,
+        IEnumerable<MoodleCourseSection> sections,
+        IEnumerable<MoodleContentFile>? activityFiles = null,
+        CancellationToken cancellationToken = default)
+    {
+        var token = RequireToken();
+        using var client = new MoodleClient(baseUrl, token);
+        return await new DocumentSyncService()
+            .DownloadCourseFilesAsync(client, course, sections, activityFiles, cancellationToken)
+            .ConfigureAwait(false);
+    }
+
     public async Task<IReadOnlyList<MoodleForumDiscussion>> GetForumDiscussionsAsync(
         string baseUrl,
         int forumId,

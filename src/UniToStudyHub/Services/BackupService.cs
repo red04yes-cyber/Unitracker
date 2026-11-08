@@ -278,6 +278,9 @@ public sealed class BackupService
             {
                 File.Copy(backupPath, temporary, overwrite: true);
             }
+            // Older v1 backups contain a plaintext SQLite file. Convert the
+            // temporary restore candidate before it can replace the live DB.
+            StudyHubDatabase.EnsureEncryptedDatabase(temporary);
             LocalFileSecurity.TryRestrictFile(temporary);
 
             if (!await VerifySqliteFileAsync(temporary, cancellationToken).ConfigureAwait(false))
@@ -286,6 +289,8 @@ public sealed class BackupService
             var safety = await CreateBackupAsync(password, cancellationToken).ConfigureAwait(false);
 
             Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
+            LocalFileSecurity.ScrubAndDelete(_databasePath + "-wal");
+            LocalFileSecurity.TryDelete(_databasePath + "-shm");
             if (File.Exists(_databasePath))
             {
                 try
@@ -401,32 +406,50 @@ public sealed class BackupService
     private async Task SnapshotDatabaseAsync(string target, CancellationToken cancellationToken)
     {
         await using var db = await _factory.CreateDbContextAsync(cancellationToken).ConfigureAwait(false);
-        var connection = db.Database.GetDbConnection();
+        var source = db.Database.GetDbConnection();
         var openedHere = false;
         try
         {
-            if (connection.State != ConnectionState.Open)
+            if (source.State != ConnectionState.Open)
             {
-                await connection.OpenAsync(cancellationToken).ConfigureAwait(false);
+                await source.OpenAsync(cancellationToken).ConfigureAwait(false);
                 openedHere = true;
             }
-            await using var command = connection.CreateCommand();
-            command.CommandText = "VACUUM INTO @path";
-            var parameter = command.CreateParameter();
-            parameter.ParameterName = "@path";
-            parameter.Value = target;
-            command.Parameters.Add(parameter);
-            await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+
+            if (source is not Microsoft.Data.Sqlite.SqliteConnection sqliteSource)
+                throw new InvalidOperationException("The configured SQLite provider does not support encrypted snapshots.");
+
+            // VACUUM INTO creates a consistent one-file snapshot. SQLCipher
+            // may preserve encryption in the snapshot; VerifySqliteFileAsync
+            // validates either the encrypted or plaintext SQLite header. The
+            // outer AES-256-GCM backup container encrypts the complete payload.
+            await using var snapshot = sqliteSource.CreateCommand();
+            snapshot.CommandText = "VACUUM INTO $target";
+            snapshot.Parameters.Add(new Microsoft.Data.Sqlite.SqliteParameter("$target", target));
+            await snapshot.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+
+            if (!await VerifySqliteFileAsync(target, cancellationToken).ConfigureAwait(false))
+                throw new InvalidDataException("Lo snapshot SQLite non ha superato il controllo di integrità.");
+
+            LocalFileSecurity.TryRestrictFile(target);
         }
         catch
         {
-            LocalFileSecurity.TryDelete(target);
+            LocalFileSecurity.ScrubAndDelete(target);
             throw;
         }
         finally
         {
-            if (openedHere) await connection.CloseAsync().ConfigureAwait(false);
+            if (openedHere) await source.CloseAsync().ConfigureAwait(false);
         }
+    }
+
+    private static bool IsPlaintextSqliteFile(string path)
+    {
+        if (!File.Exists(path)) return false;
+        Span<byte> header = stackalloc byte[16];
+        using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+        return stream.Read(header) == 16 && header.SequenceEqual("SQLite format 3\\0"u8);
     }
 
     private static async Task<bool> VerifySqliteFileAsync(string path, CancellationToken cancellationToken)
@@ -434,8 +457,17 @@ public sealed class BackupService
         if (string.IsNullOrWhiteSpace(path) || !File.Exists(path)) return false;
         try
         {
-            await using var connection = new Microsoft.Data.Sqlite.SqliteConnection(
-                $"Data Source={path};Mode=ReadOnly;Pooling=False");
+            var isPlaintext = IsPlaintextSqliteFile(path);
+            var connectionString = isPlaintext
+                ? new Microsoft.Data.Sqlite.SqliteConnectionStringBuilder
+                {
+                    DataSource = path,
+                    Mode = Microsoft.Data.Sqlite.SqliteOpenMode.ReadOnly,
+                    Pooling = false
+                }.ToString()
+                : StudyHubDatabase.CreateEncryptedConnectionString(
+                    path, Microsoft.Data.Sqlite.SqliteOpenMode.ReadOnly);
+            await using var connection = new Microsoft.Data.Sqlite.SqliteConnection(connectionString);
             await connection.OpenAsync(cancellationToken).ConfigureAwait(false);
             await using var command = connection.CreateCommand();
             command.CommandText = "PRAGMA integrity_check";
