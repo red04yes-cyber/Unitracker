@@ -40,6 +40,8 @@ public sealed class DocumentSyncService
             Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
             "UniToStudyHub",
             SafeName(course.Name));
+        LocalFileSecurity.EnsurePrivateDirectory(Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "UniToStudyHub"));
         LocalFileSecurity.EnsurePrivateDirectory(root);
 
         var warnings = new List<string>();
@@ -131,6 +133,13 @@ public sealed class DocumentSyncService
                 await client.DownloadFileAsync(file.fileurl, destination, cancellationToken, root)
                     .ConfigureAwait(false);
                 var info = new FileInfo(destination);
+                if (downloadedBytes + info.Length > maximumCourseBytes)
+                {
+                    LocalFileSecurity.ScrubAndDelete(destination);
+                    warnings.Add("Raggiunto il limite di 1 GB per corso; il file è stato rimosso.");
+                    skipped++;
+                    break;
+                }
                 downloadedBytes += info.Length;
                 if (file.timemodified > 0)
                     File.SetLastWriteTimeUtc(destination, DateTimeOffset.FromUnixTimeSeconds(file.timemodified).UtcDateTime);
