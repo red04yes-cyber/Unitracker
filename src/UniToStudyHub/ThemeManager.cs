@@ -15,22 +15,26 @@ internal static class ThemeManager
         new Dictionary<string, (string Light, string Dark)>
         {
             ["NavyBrush"] = ("#17243B", "#111B2D"),
-            ["SidebarBrush"] = ("#17243B", "#0B1220"),
-            ["SidebarMutedBrush"] = ("#AFC0D8", "#9AAAC2"),
-            ["InkBrush"] = ("#17243B", "#E8EEF8"),
-            ["MutedBrush"] = ("#718096", "#A1AEC2"),
-            ["AccentBrush"] = ("#3157D5", "#91A9FF"),
-            ["AccentSoftBrush"] = ("#EAF0FF", "#24345B"),
+            ["SidebarBrush"] = ("#17243B", "#0C1423"),
+            ["SidebarTextBrush"] = ("#F7FAFF", "#EEF3FC"),
+            ["SidebarMutedBrush"] = ("#A7B7CD", "#91A1B9"),
+            ["SidebarHoverBrush"] = ("#223652", "#1B2A43"),
+            ["SidebarActiveBrush"] = ("#2B4168", "#23365A"),
+            ["SidebarBadgeBrush"] = ("#263955", "#1B2D4D"),
+            ["InkBrush"] = ("#18243A", "#ECF1F9"),
+            ["MutedBrush"] = ("#65738B", "#9AAAC0"),
+            ["AccentBrush"] = ("#3457D5", "#5D7CF6"),
+            ["AccentSoftBrush"] = ("#EAF0FF", "#26375F"),
             ["PanelBrush"] = ("#FFFFFF", "#151F30"),
-            ["PageBrush"] = ("#F3F6FB", "#0D1524"),
-            ["BorderBrush"] = ("#E4EAF2", "#2A374C"),
-            ["SubtleBrush"] = ("#EEF2F8", "#202C40"),
-            ["SuccessBrush"] = ("#21865D", "#5CC99A"),
-            ["SuccessSoftBrush"] = ("#E8F5EE", "#193B34"),
-            ["WarningBrush"] = ("#C98224", "#E8AE58"),
-            ["WarningSoftBrush"] = ("#FFF4E5", "#46351F"),
-            ["AiBrush"] = ("#7654C8", "#B39AF5"),
-            ["AiSoftBrush"] = ("#F1EDFC", "#30264A")
+            ["PageBrush"] = ("#F4F6FA", "#0E1626"),
+            ["BorderBrush"] = ("#E4EAF2", "#2A3850"),
+            ["SubtleBrush"] = ("#F0F3F8", "#1B293D"),
+            ["SuccessBrush"] = ("#21865D", "#67D7A4"),
+            ["SuccessSoftBrush"] = ("#E8F5EE", "#193D34"),
+            ["WarningBrush"] = ("#A96716", "#F3BD63"),
+            ["WarningSoftBrush"] = ("#FFF4E5", "#45351F"),
+            ["AiBrush"] = ("#7654C8", "#BEA7FF"),
+            ["AiSoftBrush"] = ("#F1EDFC", "#342B50")
         };
 
     public static bool IsDarkMode { get; private set; }
