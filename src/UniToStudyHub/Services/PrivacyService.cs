@@ -28,6 +28,7 @@ public sealed record PrivacyInventory(
     int PersonalNotes,
     int PdfDocuments,
     int PdfPages,
+    int MoodleFiles,
     int Flashcards,
     int Questions,
     int ErrorJournalEntries,
@@ -42,7 +43,8 @@ public sealed record PrivacyDeletionResult(
     int DeletedBackups,
     bool CredentialsRemoved,
     int DeletedLegacyFiles,
-    int DeletedLogFiles);
+    int DeletedLogFiles,
+    int DeletedMoodleFiles);
 
 /// <summary>
 /// Local, user-driven privacy operations: inventory, complete export and
@@ -64,19 +66,23 @@ public sealed class PrivacyService
     private readonly AiCredentialStore? _aiKeys;
     private readonly BackupService? _backups;
     private readonly string? _dataDirectory;
+    private readonly string _moodleFilesDirectory;
 
     public PrivacyService(
         IStudyDataStore store,
         IMoodleTokenStore? tokens = null,
         AiCredentialStore? aiKeys = null,
         BackupService? backups = null,
-        string? dataDirectory = null)
+        string? dataDirectory = null,
+        string? moodleFilesDirectory = null)
     {
         _store = store ?? throw new ArgumentNullException(nameof(store));
         _tokens = tokens;
         _aiKeys = aiKeys;
         _backups = backups;
         _dataDirectory = string.IsNullOrWhiteSpace(dataDirectory) ? null : Path.GetFullPath(dataDirectory);
+        _moodleFilesDirectory = Path.GetFullPath(moodleFilesDirectory ??
+            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "UniToStudyHub", "Moodle"));
     }
 
     public async Task<PrivacyInventory> DescribeAsync(CancellationToken cancellationToken = default)
@@ -92,6 +98,7 @@ public sealed class PrivacyService
             CountNotes(data),
             data.PdfDocuments.Count,
             data.PdfDocuments.Sum(document => document.Pages.Count),
+            CountMoodleFiles(),
             data.Flashcards.Count,
             data.Questions.Count,
             data.ErrorJournalEntries.Count,
@@ -159,8 +166,10 @@ public sealed class PrivacyService
         }
 
         var deletedLegacy = DeleteLegacyFiles();
+        var deletedMoodleFiles = DeleteMoodleFiles();
         var deletedLogs = AppDiagnostics.Clear();
-        return new PrivacyDeletionResult(records, deletedBackups, credentialsRemoved, deletedLegacy, deletedLogs);
+        return new PrivacyDeletionResult(records, deletedBackups, credentialsRemoved, deletedLegacy, deletedLogs,
+            deletedMoodleFiles);
     }
 
     /// <summary>Applies the documented retention to encrypted backups.</summary>
@@ -168,6 +177,41 @@ public sealed class PrivacyService
         _backups is null
             ? Task.FromResult(0)
             : _backups.PruneAsync(PrivacyDefaults.MaximumBackups, PrivacyDefaults.BackupRetention, cancellationToken);
+
+    private int CountMoodleFiles()
+    {
+        if (!Directory.Exists(_moodleFilesDirectory)) return 0;
+        try { return Directory.EnumerateFiles(_moodleFilesDirectory, "*", SearchOption.AllDirectories).Count(); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return 0; }
+    }
+
+    private int DeleteMoodleFiles()
+    {
+        if (!Directory.Exists(_moodleFilesDirectory)) return 0;
+        var deleted = 0;
+        try
+        {
+            foreach (var file in Directory.EnumerateFiles(_moodleFilesDirectory, "*", SearchOption.AllDirectories).ToList())
+            {
+                if (!LocalFileSecurity.IsInside(_moodleFilesDirectory, file)) continue;
+                LocalFileSecurity.ScrubAndDelete(file);
+                if (!File.Exists(file)) deleted++;
+            }
+            foreach (var directory in Directory.EnumerateDirectories(_moodleFilesDirectory, "*", SearchOption.AllDirectories)
+                         .OrderByDescending(path => path.Length))
+            {
+                try { if (!Directory.EnumerateFileSystemEntries(directory).Any()) Directory.Delete(directory); }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
+            }
+            if (!Directory.EnumerateFileSystemEntries(_moodleFilesDirectory).Any())
+                Directory.Delete(_moodleFilesDirectory);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            AppDiagnostics.Warning("privacy", "Alcuni file Moodle non sono stati eliminati.");
+        }
+        return deleted;
+    }
 
     private int DeleteLegacyFiles()
     {
