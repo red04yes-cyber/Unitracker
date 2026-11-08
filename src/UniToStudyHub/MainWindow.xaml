@@ -208,7 +208,7 @@
                           HorizontalScrollBarVisibility="Disabled">
                 <StackPanel Margin="40,36,40,48">
                     <TextBlock Text="IL TUO WORKSPACE" FontSize="11"
-                               FontWeight="Bold" Foreground="{DynamicResource AccentBrush}"/>
+                               FontWeight="Bold" Foreground="{DynamicResource AccentTextBrush}"/>
                     <TextBlock Text="La tua giornata, in ordine." Style="{StaticResource PageTitleStyle}"
                                Margin="0,7,0,4"/>
                     <TextBlock Text="Esami, materie e sessioni di studio: tutto quello che conta, in un unico spazio."
@@ -339,7 +339,7 @@
                                     <StackPanel Grid.Column="0">
                                         <TextBlock Text="{Binding ActiveCoursesCount}"
                                                    FontSize="23" FontWeight="SemiBold"
-                                                   Foreground="{DynamicResource AccentBrush}"/>
+                                                   Foreground="{DynamicResource AccentTextBrush}"/>
                                         <TextBlock Text="In corso" FontSize="12"
                                                    Foreground="{DynamicResource MutedBrush}"/>
                                     </StackPanel>
@@ -380,7 +380,7 @@
                           HorizontalScrollBarVisibility="Disabled">
                 <StackPanel Margin="40,36,40,48">
                     <TextBlock Text="CARRIERA UNIVERSITARIA" FontSize="11"
-                               FontWeight="Bold" Foreground="{DynamicResource AccentBrush}"/>
+                               FontWeight="Bold" Foreground="{DynamicResource AccentTextBrush}"/>
                     <TextBlock Text="Le tue materie" Style="{StaticResource PageTitleStyle}"
                                Margin="0,7,0,4"/>
                     <TextBlock Text="Tieni insieme insegnamenti da preparare, esami conclusi e risultati registrati."
@@ -511,7 +511,7 @@
                                                     VerticalAlignment="Top">
                                                 <TextBlock Text="{Binding Cfu, StringFormat={}{0} CFU}"
                                                            FontSize="11" FontWeight="SemiBold"
-                                                           Foreground="{DynamicResource AccentBrush}"/>
+                                                           Foreground="{DynamicResource AccentTextBrush}"/>
                                             </Border>
                                         </Grid>
                                         <TextBlock Text="{Binding Code, TargetNullValue='Codice non indicato'}"
@@ -573,7 +573,7 @@
 
             <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
     <StackPanel Margin="40,36,40,48">
-        <TextBlock Text="ORGANIZZAZIONE" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource AccentBrush}"/>
+        <TextBlock Text="ORGANIZZAZIONE" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource AccentTextBrush}"/>
         <TextBlock Text="Calendario" Style="{StaticResource PageTitleStyle}" Margin="0,7,0,4"/>
         <TextBlock Text="Lezioni, esami, scadenze e sessioni di studio. Ogni evento conserva la propria provenienza." Style="{StaticResource PageSubtitleStyle}" Margin="0,0,0,22"/>
         <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,16">
@@ -627,7 +627,7 @@
                             <StackPanel><Grid>
                                 <TextBlock Text="{Binding DayNumber}" FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}"/>
                                 <TextBlock Text="{Binding DayName}" FontSize="10" Foreground="{DynamicResource MutedBrush}" HorizontalAlignment="Right"/>
-                            </Grid><TextBlock Text="{Binding EventSummary}" FontSize="10" Foreground="{DynamicResource AccentBrush}" Margin="0,9,0,0"/></StackPanel>
+                            </Grid><TextBlock Text="{Binding EventSummary}" FontSize="10" Foreground="{DynamicResource AccentTextBrush}" Margin="0,9,0,0"/></StackPanel>
                             
                         </Border>
                     </DataTemplate></ListBox.ItemTemplate>
@@ -644,7 +644,7 @@
                                 <ItemsControl ItemsSource="{Binding Events}">
                                     <ItemsControl.ItemTemplate><DataTemplate>
                                         <StackPanel Margin="0,0,0,8">
-                                            <TextBlock x:Name="EventTime" Text="{Binding StartsAt, StringFormat='HH:mm'}" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource AccentBrush}"/>
+                                            <TextBlock x:Name="EventTime" Text="{Binding StartsAt, StringFormat='HH:mm'}" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource AccentTextBrush}"/>
                                             <TextBlock Text="{Binding Title}" FontSize="11" Foreground="{DynamicResource InkBrush}" TextWrapping="Wrap"/>
                                         </StackPanel>
                                         <DataTemplate.Triggers><DataTrigger Binding="{Binding IsAllDay}" Value="True"><Setter TargetName="EventTime" Property="Text" Value="Tutto il giorno"/></DataTrigger></DataTemplate.Triggers>
@@ -664,7 +664,7 @@
                                     <ItemsControl.ItemTemplate><DataTemplate>
                                         <Grid Margin="0,0,0,8">
                                             <Grid.ColumnDefinitions><ColumnDefinition Width="90"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-                                            <TextBlock x:Name="EventTime" Text="{Binding StartsAt, StringFormat='HH:mm'}" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource AccentBrush}"/>
+                                            <TextBlock x:Name="EventTime" Text="{Binding StartsAt, StringFormat='HH:mm'}" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource AccentTextBrush}"/>
                                             <TextBlock Grid.Column="1" Text="{Binding Title}" FontSize="12" Foreground="{DynamicResource InkBrush}" TextWrapping="Wrap"/>
                                         </Grid>
                                         <DataTemplate.Triggers><DataTrigger Binding="{Binding IsAllDay}" Value="True"><Setter TargetName="EventTime" Property="Text" Value="Tutto il giorno"/></DataTrigger></DataTemplate.Triggers>
@@ -688,7 +688,7 @@
                         <ListBox.ItemTemplate><DataTemplate>
                             <Border Background="{DynamicResource SubtleBrush}" CornerRadius="8" Padding="12">
                                 <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="58"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-                                    <TextBlock x:Name="EventTime" Text="{Binding StartsAt, StringFormat={}{0:HH:mm}}" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Top"/>
+                                    <TextBlock x:Name="EventTime" Text="{Binding StartsAt, StringFormat={}{0:HH:mm}}" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource AccentTextBrush}" VerticalAlignment="Top"/>
                                     <StackPanel Grid.Column="1">
                                         <TextBlock Text="{Binding Title}" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}" TextWrapping="Wrap"/>
                                         <TextBlock Text="{Binding Category}" FontSize="11" Foreground="{DynamicResource MutedBrush}" Margin="0,3,0,0"/>
@@ -748,7 +748,7 @@
             </TabItem.Header>
             <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
     <StackPanel Margin="40,36,40,48">
-        <TextBlock Text="STUDIO E MEMORIA" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource AccentBrush}"/>
+        <TextBlock Text="STUDIO E MEMORIA" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource AccentTextBrush}"/>
         <TextBlock Text="Studio Lab" Style="{StaticResource PageTitleStyle}" Margin="0,7,0,4"/>
         <TextBlock Text="Concentrazione, attività, ripasso e diario degli errori. Le azioni vengono salvate nel profilo locale." Style="{StaticResource PageSubtitleStyle}" Margin="0,0,0,22"/>
         <Grid Margin="0,0,0,16"><Grid.ColumnDefinitions><ColumnDefinition Width="1.2*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
@@ -839,7 +839,7 @@
                     <TextBlock Text="Registra il quesito, la risposta errata e quella corretta per pianificare il ripasso." FontSize="12" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,5,0,12"/>
                     <TextBox Text="{Binding Workspace.ErrorTopicInput, UpdateSourceTrigger=PropertyChanged}" ToolTip="Argomento"/><TextBox Text="{Binding Workspace.ErrorQuestionInput, UpdateSourceTrigger=PropertyChanged}" ToolTip="Domanda o esercizio" Margin="0,7,0,0"/><TextBox Text="{Binding Workspace.ErrorIncorrectInput, UpdateSourceTrigger=PropertyChanged}" ToolTip="Risposta errata (facoltativa)" Margin="0,7,0,0"/><TextBox Text="{Binding Workspace.ErrorCorrectInput, UpdateSourceTrigger=PropertyChanged}" ToolTip="Risposta corretta" Margin="0,7,0,0"/><TextBox Text="{Binding Workspace.ErrorCauseInput, UpdateSourceTrigger=PropertyChanged}" ToolTip="Causa (facoltativa)" Margin="0,7,0,0"/>
                     <Button Content="Registra errore" Command="{Binding Workspace.AddErrorEntryCommand}" Margin="0,9,0,12"/>
-                    <ListBox ItemsSource="{Binding Workspace.OpenErrorEntries}" SelectedItem="{Binding Workspace.SelectedErrorEntry}" MaxHeight="120"><ListBox.ItemTemplate><DataTemplate><StackPanel Margin="4"><TextBlock Text="{Binding Topic}" FontSize="11" Foreground="{DynamicResource AccentBrush}"/><TextBlock Text="{Binding Question}" FontSize="12" Foreground="{DynamicResource InkBrush}" TextWrapping="Wrap"/></StackPanel></DataTemplate></ListBox.ItemTemplate></ListBox>
+                    <ListBox ItemsSource="{Binding Workspace.OpenErrorEntries}" SelectedItem="{Binding Workspace.SelectedErrorEntry}" MaxHeight="120"><ListBox.ItemTemplate><DataTemplate><StackPanel Margin="4"><TextBlock Text="{Binding Topic}" FontSize="11" Foreground="{DynamicResource AccentTextBrush}"/><TextBlock Text="{Binding Question}" FontSize="12" Foreground="{DynamicResource InkBrush}" TextWrapping="Wrap"/></StackPanel></DataTemplate></ListBox.ItemTemplate></ListBox>
                     <TextBlock Text="Nessun errore da ripassare." Visibility="{Binding Workspace.NoOpenErrorEntries, Converter={StaticResource BooleanToVisibilityConverter}}" FontSize="11" Foreground="{DynamicResource MutedBrush}" Margin="2,7,2,0"/>
                     <WrapPanel Margin="0,8,0,0"><Button Content="Da ripassare" Command="{Binding Workspace.ReviewErrorNeedsWorkCommand}" Style="{StaticResource QuietButtonStyle}" Margin="0,0,6,0"/><Button Content="Ricordato" Command="{Binding Workspace.ReviewErrorRememberedCommand}" Style="{StaticResource SecondaryButtonStyle}"/></WrapPanel>
                 </StackPanel>
@@ -925,7 +925,7 @@
                     <ListBox ItemsSource="{Binding Workspace.SelectedPdf.Pages}" MaxHeight="250">
                         <ListBox.ItemTemplate><DataTemplate>
                             <StackPanel Margin="4">
-                                <TextBlock Text="{Binding PageNumber, StringFormat='Pagina {0}'}" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource AccentBrush}"/>
+                                <TextBlock Text="{Binding PageNumber, StringFormat='Pagina {0}'}" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource AccentTextBrush}"/>
                                 <TextBlock Text="{Binding Text}" FontSize="11" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" MaxHeight="100"/>
                             </StackPanel>
                         </DataTemplate></ListBox.ItemTemplate>
@@ -939,7 +939,7 @@
                         <TextBlock Text="Ricerca nel documento" Style="{StaticResource SectionTitleStyle}"/>
                         <TextBlock Text="Gli estratti provengono dal testo memorizzato pagina per pagina." FontSize="12" Foreground="{DynamicResource MutedBrush}" Margin="0,5,0,12"/>
                         <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBox Text="{Binding Workspace.PdfSearchQuery, UpdateSourceTrigger=PropertyChanged}" ToolTip="Cerca una frase o un concetto"/><Button Grid.Column="1" Content="Cerca" Command="{Binding Workspace.SearchPdfCommand}" Margin="8,0,0,0"/></Grid>
-                        <ListBox ItemsSource="{Binding Workspace.PdfSearchHits}" MaxHeight="230" Margin="0,12,0,0"><ListBox.ItemTemplate><DataTemplate><StackPanel Margin="5"><TextBlock Text="{Binding PageNumber, StringFormat='Pagina {0}'}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource AccentBrush}"/><TextBlock Text="{Binding Snippet}" FontSize="12" Foreground="{DynamicResource InkBrush}" TextWrapping="Wrap"/></StackPanel></DataTemplate></ListBox.ItemTemplate></ListBox>
+                        <ListBox ItemsSource="{Binding Workspace.PdfSearchHits}" MaxHeight="230" Margin="0,12,0,0"><ListBox.ItemTemplate><DataTemplate><StackPanel Margin="5"><TextBlock Text="{Binding PageNumber, StringFormat='Pagina {0}'}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource AccentTextBrush}"/><TextBlock Text="{Binding Snippet}" FontSize="12" Foreground="{DynamicResource InkBrush}" TextWrapping="Wrap"/></StackPanel></DataTemplate></ListBox.ItemTemplate></ListBox>
                         <TextBlock Text="Nessun risultato da mostrare." Visibility="{Binding Workspace.NoPdfSearchHits, Converter={StaticResource BooleanToVisibilityConverter}}" FontSize="11" Foreground="{DynamicResource MutedBrush}" Margin="2,7,2,0"/>
                     </StackPanel>
                 </Border>
@@ -1031,7 +1031,7 @@
 
             <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
     <StackPanel Margin="40,36,40,48">
-        <TextBlock Text="IL TUO ANDAMENTO" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource AccentBrush}"/>
+        <TextBlock Text="IL TUO ANDAMENTO" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource AccentTextBrush}"/>
         <TextBlock Text="Progressi" Style="{StaticResource PageTitleStyle}" Margin="0,7,0,4"/>
         <TextBlock Text="{Binding Workspace.ProgressPeriodDisplay, StringFormat='Periodo · {0}'}" Style="{StaticResource PageSubtitleStyle}" Margin="0,0,0,22"/>
         <UniformGrid Columns="3" Margin="0,0,0,12">
@@ -1094,7 +1094,7 @@
 
             <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
     <StackPanel Margin="40,36,40,48">
-        <TextBlock Text="CONFIGURAZIONE" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource AccentBrush}"/>
+        <TextBlock Text="CONFIGURAZIONE" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource AccentTextBrush}"/>
         <TextBlock Text="Impostazioni" Style="{StaticResource PageTitleStyle}" Margin="0,7,0,4"/>
         <TextBlock Text="Gestisci integrazioni, dati locali e copie di sicurezza." Style="{StaticResource PageSubtitleStyle}" Margin="0,0,0,22"/>
         <Border Style="{StaticResource CardBorderStyle}" MaxWidth="860" HorizontalAlignment="Left" Margin="0,0,0,14">
@@ -1142,7 +1142,7 @@
                     </Border>
                     <TextBlock Text="Materiali e discussioni importati" Style="{StaticResource KpiLabelStyle}" Margin="0,14,0,6"/>
                     <ItemsControl ItemsSource="{Binding Announcements}">
-                        <ItemsControl.ItemTemplate><DataTemplate><Border BorderBrush="{DynamicResource SubtleBrush}" BorderThickness="0,0,0,1" Padding="7"><StackPanel><TextBlock Text="{Binding Title}" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}" TextWrapping="Wrap"/><TextBlock Text="{Binding CourseName}" FontSize="10" Foreground="{DynamicResource AccentBrush}"/><TextBlock Text="{Binding Summary}" FontSize="11" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap"/></StackPanel></Border></DataTemplate></ItemsControl.ItemTemplate>
+                        <ItemsControl.ItemTemplate><DataTemplate><Border BorderBrush="{DynamicResource SubtleBrush}" BorderThickness="0,0,0,1" Padding="7"><StackPanel><TextBlock Text="{Binding Title}" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}" TextWrapping="Wrap"/><TextBlock Text="{Binding CourseName}" FontSize="10" Foreground="{DynamicResource AccentTextBrush}"/><TextBlock Text="{Binding Summary}" FontSize="11" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap"/></StackPanel></Border></DataTemplate></ItemsControl.ItemTemplate>
                     </ItemsControl>
                 </StackPanel>
             </StackPanel>
