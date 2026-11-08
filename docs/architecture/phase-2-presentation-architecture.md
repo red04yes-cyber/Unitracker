@@ -1,6 +1,6 @@
 # Phase 2 — Presentation architecture and navigation
 
-Status: shell, typed navigation, seven page views and seven page-specific ViewModel types are implemented. The data/command layer is still in a compatibility migration stage: the page ViewModels currently expose the shared `MainViewModel` through an explicitly named `State` adapter. They no longer share a view or a page-level DataContext, but the old business/presentation monoliths are not yet removed.
+Status: completed as a presentation extraction milestone. The shell, typed navigation, seven page views and seven page-specific ViewModel types are implemented. The `State` compatibility adapter remains and is the explicit starting point for Phase 3; see [Phase 3 — Page application boundaries](phase-3-application-boundaries.md).
 
 ## Implemented shell
 
