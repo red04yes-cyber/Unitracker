@@ -8,6 +8,8 @@ using UniToStudyHub.Presentation.Composition;
 using UniToStudyHub.Presentation.ViewModels;
 using UniToStudyHub.Security;
 using UniToStudyHub.Services;
+using System.Windows.Media;
+using Wpf.Ui.Appearance;
 
 namespace UniToStudyHub;
 
@@ -21,6 +23,8 @@ public partial class App : System.Windows.Application
 
         try
         {
+            ConfigureThemeSynchronization();
+
             // Keep every startup operation inside this boundary. In particular,
             // path/ACL setup and DI registration can fail before database startup.
             var dataDirectory = StudyHubDatabase.GetDataDirectory();
