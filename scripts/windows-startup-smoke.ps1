@@ -17,6 +17,15 @@ New-Item -ItemType Directory -Path $dataDirectory -Force | Out-Null
 $previousDataDirectory = $env:UNITRACKER_DATA_DIR
 $process = $null
 $startedAt = Get-Date
+
+function Write-StartupDiagnostics {
+    $logPath = Join-Path $dataDirectory 'logs/unitracker.log'
+    if (Test-Path $logPath) {
+        Write-Host "Local startup diagnostics:"
+        Get-Content -LiteralPath $logPath -Tail 100 | ForEach-Object { Write-Host $_ }
+    }
+}
+
 try {
     $env:UNITRACKER_DATA_DIR = $dataDirectory
     $process = Start-Process -FilePath $exe -WorkingDirectory $publishPath -PassThru
@@ -50,9 +59,11 @@ try {
     } while (($process.MainWindowHandle -eq 0 -or [string]::IsNullOrWhiteSpace($process.MainWindowTitle)) -and (Get-Date) -lt $deadline)
 
     if ($process.MainWindowHandle -eq 0) {
+        Write-StartupDiagnostics
         throw "WPF app did not create a main window within 60 seconds."
     }
     if ($process.MainWindowTitle -ne 'UniTo StudyHub') {
+        Write-StartupDiagnostics
         throw "Unexpected WPF main window title: '$($process.MainWindowTitle)'."
     }
 
