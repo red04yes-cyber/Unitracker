@@ -931,19 +931,15 @@
                 </Border>
                 <Border Style="{StaticResource CardBorderStyle}" Margin="0,12,0,0">
                     <StackPanel>
-                        <Grid>
-                            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                            <TextBlock Text="AI Study Director" Style="{StaticResource SectionTitleStyle}"/>
-                            <Border Grid.Column="1" Background="{DynamicResource AiSoftBrush}" CornerRadius="7" Padding="10,5">
-                                <TextBlock Text="IN PROGRESSO" FontSize="9" FontWeight="Bold" Foreground="{DynamicResource AiBrush}"/>
-                            </Border>
-                        </Grid>
-                        <TextBlock Text="La parte AI verrà aggiunta in una fase successiva. In questa versione non vengono inviate domande a provider esterni e non vengono mostrate risposte generate." FontSize="11" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,7,0,0"/>
-                        <Border Background="{DynamicResource SubtleBrush}" CornerRadius="8" Padding="12" Margin="0,13,0,0">
-                            <StackPanel>
-                                <TextBlock Text="In preparazione" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource AiBrush}"/>
-                                <TextBlock Text="Pianificazione assistita · Tutor Feynman · Analisi degli errori · Generazione di quiz dai materiali" FontSize="11" Foreground="{DynamicResource InkBrush}" TextWrapping="Wrap" Margin="0,5,0,0"/>
-                            </StackPanel>
+                        <TextBlock Text="AI Study Director" Style="{StaticResource SectionTitleStyle}"/>
+                        <TextBlock Text="Genera un piano personalizzato o una simulazione orale usando i dati locali del corso selezionato. Le proposte non modificano il calendario e non sono quesiti ufficiali." FontSize="11" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,7,0,10"/>
+                        <WrapPanel>
+                            <Button Content="Genera piano di studio" Command="{Binding Workspace.GenerateAiPlanCommand}" Margin="0,0,8,8"/>
+                            <Button Content="Simulazione orale" Command="{Binding Workspace.GenerateOralPracticeCommand}" Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,0,8"/>
+                        </WrapPanel>
+                        <TextBlock Text="{Binding Workspace.AiStatusMessage}" FontSize="10" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,3,0,8"/>
+                        <Border Background="{DynamicResource SubtleBrush}" CornerRadius="8" Padding="12">
+                            <TextBlock Text="{Binding Workspace.AiResponseText}" FontSize="11" Foreground="{DynamicResource InkBrush}" TextWrapping="Wrap"/>
                         </Border>
                     </StackPanel>
                 </Border>
@@ -1083,6 +1079,28 @@
         <TextBlock Text="CONFIGURAZIONE" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource AccentBrush}"/>
         <TextBlock Text="Impostazioni" Style="{StaticResource PageTitleStyle}" Margin="0,7,0,4"/>
         <TextBlock Text="Gestisci integrazioni, dati locali e copie di sicurezza." Style="{StaticResource PageSubtitleStyle}" Margin="0,0,0,22"/>
+        <Border Style="{StaticResource CardBorderStyle}" MaxWidth="860" HorizontalAlignment="Left" Margin="0,0,0,14">
+            <StackPanel>
+                <TextBlock Text="AI Study Director · Provider" Style="{StaticResource SectionTitleStyle}"/>
+                <TextBlock Text="Scegli OpenAI (cloud) oppure Ollama (locale). La scelta e il consenso vengono salvati sul dispositivo; la chiave OpenAI è protetta con Windows DPAPI. Le modifiche si applicano al prossimo avvio." FontSize="11" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,6,0,12"/>
+                <TextBlock Text="Provider" Style="{StaticResource KpiLabelStyle}" Margin="0,0,0,5"/>
+                <ComboBox x:Name="AiProviderBox" SelectedValuePath="Tag" SelectedValue="openai" MaxWidth="360" HorizontalAlignment="Left">
+                    <ComboBoxItem Content="OpenAI · Cloud" Tag="openai"/>
+                    <ComboBoxItem Content="Ollama · Locale" Tag="ollama"/>
+                </ComboBox>
+                <TextBlock Text="Modello" Style="{StaticResource KpiLabelStyle}" Margin="0,12,0,5"/>
+                <TextBox x:Name="AiModelBox" Text="gpt-4.1-mini" MaxWidth="360" HorizontalAlignment="Left"/>
+                <TextBlock Text="Chiave API OpenAI (lascia vuoto per mantenere quella salvata)" Style="{StaticResource KpiLabelStyle}" Margin="0,12,0,5"/>
+                <PasswordBox x:Name="AiApiKeyBox" MaxWidth="520" HorizontalAlignment="Left" Padding="11,9"/>
+                <CheckBox x:Name="AiConsentBox" Content="Autorizzo esplicitamente l'invio dei dati richiesti alle funzioni AI al provider selezionato" Margin="0,14,0,0" IsChecked="False"/>
+                <WrapPanel Margin="0,14,0,0">
+                    <Button Content="Salva configurazione AI" Click="SaveAiSettings_Click" Margin="0,0,8,0"/>
+                    <Button Content="Revoca consenso AI" Click="RevokeAiConsent_Click" Style="{StaticResource QuietButtonStyle}"/>
+                </WrapPanel>
+                <TextBlock Text="Per Ollama: avvia il servizio locale e scarica il modello scelto (es. ollama pull llama3.2). L'app contatta solo localhost." FontSize="10" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,10,0,0"/>
+                <TextBlock Text="{Binding Workspace.AiStatusMessage}" FontSize="10" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,8,0,0"/>
+            </StackPanel>
+        </Border>
         <Border Style="{StaticResource CardBorderStyle}" MaxWidth="860" HorizontalAlignment="Left" Margin="0,0,0,14">
             <StackPanel>
                 <TextBlock Text="Profilo universitario" Style="{StaticResource SectionTitleStyle}"/>
