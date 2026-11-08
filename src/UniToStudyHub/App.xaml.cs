@@ -17,7 +17,6 @@ public partial class App : System.Windows.Application
 {
     private ServiceProvider? _serviceProvider;
 
-
     private static readonly IReadOnlyDictionary<string, string> LightPalette =
         new Dictionary<string, string>(StringComparer.Ordinal)
         {
@@ -69,7 +68,7 @@ public partial class App : System.Windows.Application
         ApplyCustomThemePalette(ApplicationThemeManager.GetAppTheme());
     }
 
-    private void ApplyCustomThemePalette(Wpf.Ui.Controls.ApplicationTheme theme)
+    private void ApplyCustomThemePalette(ApplicationTheme theme)
     {
         if (theme == Wpf.Ui.Controls.ApplicationTheme.HighContrast)
         {
