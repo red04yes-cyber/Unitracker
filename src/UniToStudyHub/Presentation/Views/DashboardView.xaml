@@ -1,0 +1,221 @@
+<UserControl x:Class="UniToStudyHub.Presentation.Views.DashboardView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="clr-namespace:UniToStudyHub.Presentation.Controls">
+    <ScrollViewer VerticalScrollBarVisibility="Auto"
+                          HorizontalScrollBarVisibility="Disabled">
+                <StackPanel Margin="40,36,40,48">
+                    <TextBlock Text="IL TUO WORKSPACE" FontSize="11"
+                               FontWeight="Bold" Foreground="{DynamicResource AccentTextBrush}"/>
+                    <TextBlock Text="Buono studio." Style="{StaticResource PageTitleStyle}"
+                               Margin="0,7,0,4"/>
+                    <TextBlock Text="La tua carriera e le priorità universitarie, in un unico posto."
+                               Style="{StaticResource PageSubtitleStyle}" Margin="0,0,0,22"/>
+
+                    <Grid Margin="0,0,0,22">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="1.55*"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <Border Grid.Column="0" CornerRadius="20" Padding="26" Margin="0,0,12,0"
+                                BorderBrush="{DynamicResource GlassBorderBrush}" BorderThickness="1">
+                            <Border.Background>
+                                <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                    <GradientStop Color="#172F49" Offset="0"/>
+                                    <GradientStop Color="#102035" Offset="1"/>
+                                </LinearGradientBrush>
+                            </Border.Background>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="1.25*"/>
+                                    <ColumnDefinition Width="0.85*"/>
+                                </Grid.ColumnDefinitions>
+                                <StackPanel VerticalAlignment="Center">
+                                    <TextBlock Text="IL TUO PROSSIMO PASSO"
+                                               Foreground="{DynamicResource AccentCyanBrush}" FontSize="11"
+                                               FontWeight="Bold"/>
+                                    <TextBlock Text="Costruiamo la tua giornata di studio."
+                                               Foreground="White" FontSize="23" FontWeight="SemiBold"
+                                               TextWrapping="Wrap" Margin="0,10,0,8"/>
+                                    <TextBlock Text="Il timer di focus, le attività e la pianificazione ti aspettano nello Studio Lab. Parti aggiungendo o aggiornando le tue materie."
+                                               Foreground="#D0DAE9" FontSize="12"
+                                               TextWrapping="Wrap" MaxWidth="520"/>
+                                    <WrapPanel Margin="0,18,0,0">
+                                        <Button Content="Apri le materie"
+                                                Style="{StaticResource SecondaryButtonStyle}"
+                                                Margin="0,0,8,8"
+                                                Click="NavigateToSubjects_Click"/>
+                                        <Button Content="Apri Studio Lab"
+                                                Style="{StaticResource QuietButtonStyle}"
+                                                Foreground="{DynamicResource AccentCyanBrush}"
+                                                Margin="0,0,8,8"
+                                                Click="NavigateToStudyLab_Click"/>
+                                    </WrapPanel>
+                                </StackPanel>
+                                <Viewbox Grid.Column="1" Width="220" Height="160"
+                                         Stretch="Uniform" HorizontalAlignment="Center"
+                                         VerticalAlignment="Center" Margin="4,0,0,0">
+                                    <Canvas Width="220" Height="160">
+                                        <Ellipse Width="170" Height="24" Canvas.Left="25" Canvas.Top="128"
+                                                 Fill="#2916BDE5"/>
+                                        <Polygon Points="35,80 88,58 116,75 63,97"
+                                                 Fill="#D36A61" Stroke="#F29B8C" StrokeThickness="2"/>
+                                        <Polygon Points="63,97 116,75 116,129 63,151"
+                                                 Fill="#9C4849" Stroke="#D36A61" StrokeThickness="2"/>
+                                        <Polygon Points="35,80 63,97 63,151 35,132"
+                                                 Fill="#C45D59" Stroke="#D36A61" StrokeThickness="2"/>
+                                        <Polygon Points="107,65 154,48 185,65 138,83"
+                                                 Fill="#16BDE5" Stroke="#75E5F8" StrokeThickness="2"/>
+                                        <Polygon Points="138,83 185,65 185,126 138,143"
+                                                 Fill="#2368A9" Stroke="#3978F6" StrokeThickness="2"/>
+                                        <Polygon Points="107,65 138,83 138,143 107,124"
+                                                 Fill="#2C89B9" Stroke="#16BDE5" StrokeThickness="2"/>
+                                        <Path Data="M 46,91 L 46,127 M 54,96 L 54,132 M 118,77 L 118,119 M 128,83 L 128,124"
+                                              Stroke="#F6D7C8" StrokeThickness="2" Opacity="0.85"/>
+                                        <Polygon Points="24,54 72,35 99,51 51,70"
+                                                 Fill="#E7B84F" Stroke="#F3D78D" StrokeThickness="2"/>
+                                        <Polygon Points="51,70 99,51 99,61 51,80"
+                                                 Fill="#B88836"/>
+                                    </Canvas>
+                                </Viewbox>
+                            </Grid>
+                        </Border>
+
+                        <Border Grid.Column="1" Style="{StaticResource CardBorderStyle}" Padding="22">
+                            <StackPanel>
+                                <TextBlock Text="PROSSIMO ESAME" Style="{StaticResource KpiLabelStyle}"/>
+                                <TextBlock Text="{Binding State.NextExamNameDisplay}"
+                                           FontSize="18" FontWeight="SemiBold"
+                                           Foreground="{DynamicResource InkBrush}"
+                                           TextWrapping="Wrap" Margin="0,13,0,5"/>
+                                <TextBlock Text="{Binding State.NextExamDateDisplay}"
+                                           FontSize="12" Foreground="{DynamicResource MutedBrush}"
+                                           TextWrapping="Wrap"/>
+                                <Border Background="{DynamicResource WarningSoftBrush}"
+                                        CornerRadius="9" Padding="10,9" Margin="0,18,0,0">
+                                    <TextBlock Text="Le date pianificate sono indicative, non appelli ufficiali."
+                                               FontSize="11" Foreground="{DynamicResource WarningBrush}"
+                                               TextWrapping="Wrap"/>
+                                </Border>
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+
+                    <UniformGrid Columns="4" Margin="0,0,0,22">
+                        <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,10,0" Padding="17">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <Grid Width="82" Height="82" VerticalAlignment="Center">
+                                    <controls:ProgressRing Style="{StaticResource DashboardCreditsRingStyle}"
+                                                           Value="{Binding State.CreditsProgressPercent}"
+                                                           Maximum="100"/>
+                                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding State.AcquiredCreditsValue}" FontSize="18"
+                                                   FontWeight="Bold" Foreground="{DynamicResource InkBrush}"
+                                                   HorizontalAlignment="Center"/>
+                                        <TextBlock Text="CFU" FontSize="9" FontWeight="Bold"
+                                                   Foreground="{DynamicResource MutedBrush}"
+                                                   HorizontalAlignment="Center"/>
+                                    </StackPanel>
+                                </Grid>
+                                <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="12,0,0,0">
+                                    <TextBlock Text="CFU ACQUISITI" Style="{StaticResource KpiLabelStyle}"/>
+                                    <TextBlock Text="{Binding State.CreditsProgressLabel}" FontSize="14"
+                                               FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}"
+                                               Margin="0,6,0,2"/>
+                                    <TextBlock Text="Avanzamento del percorso" FontSize="10"
+                                               Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap"/>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+                        <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,10,0" Padding="18">
+                            <StackPanel>
+                                <Border Width="34" Height="34" CornerRadius="11"
+                                        Background="{DynamicResource AccentSoftBrush}" HorizontalAlignment="Left">
+                                    <TextBlock Text="◈" FontSize="18" Foreground="{DynamicResource AccentCyanBrush}"
+                                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+                                <TextBlock Text="MEDIA PONDERATA" Style="{StaticResource KpiLabelStyle}" Margin="0,11,0,0"/>
+                                <TextBlock Text="{Binding State.AverageDisplay}" FontSize="27" FontWeight="SemiBold"
+                                           Foreground="{DynamicResource InkBrush}" Margin="0,5,0,0"/>
+                                <TextBlock Text="Pesata sui CFU" FontSize="10" Foreground="{DynamicResource MutedBrush}"/>
+                            </StackPanel>
+                        </Border>
+                        <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,10,0" Padding="18">
+                            <StackPanel>
+                                <Border Width="34" Height="34" CornerRadius="11"
+                                        Background="{DynamicResource AccentSoftBrush}" HorizontalAlignment="Left">
+                                    <TextBlock Text="∑" FontSize="19" Foreground="{DynamicResource ElectricBlueBrush}"
+                                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+                                <TextBlock Text="MEDIA ARITMETICA" Style="{StaticResource KpiLabelStyle}" Margin="0,11,0,0"/>
+                                <TextBlock Text="{Binding State.ArithmeticAverageDisplay}" FontSize="27" FontWeight="SemiBold"
+                                           Foreground="{DynamicResource InkBrush}" Margin="0,5,0,0"/>
+                                <TextBlock Text="Media dei voti verbalizzati" FontSize="10"
+                                           Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap"/>
+                            </StackPanel>
+                        </Border>
+                        <Border Style="{StaticResource CardBorderStyle}" Padding="18">
+                            <StackPanel>
+                                <Border Width="34" Height="34" CornerRadius="11"
+                                        Background="{DynamicResource WarningSoftBrush}" HorizontalAlignment="Left">
+                                    <TextBlock Text="♟" FontSize="18" Foreground="{DynamicResource GoldAccentBrush}"
+                                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+                                <TextBlock Text="VOTO DI PARTENZA" Style="{StaticResource KpiLabelStyle}" Margin="0,11,0,0"/>
+                                <TextBlock Text="{Binding State.ProjectedBaseGradeValue}" FontSize="23" FontWeight="SemiBold"
+                                           Foreground="{DynamicResource InkBrush}" Margin="0,5,0,0"/>
+                                <TextBlock Text="Proiezione su 110" FontSize="10"
+                                           Foreground="{DynamicResource MutedBrush}"/>
+                            </StackPanel>
+                        </Border>
+                    </UniformGrid>
+
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="1.25*"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Border Grid.Column="0" Style="{StaticResource CardBorderStyle}" Margin="0,0,12,0">
+                            <StackPanel>
+                                <TextBlock Text="ULTIMO RISULTATO REGISTRATO" Style="{StaticResource KpiLabelStyle}"/>
+                                <TextBlock Text="{Binding State.LatestGradeDisplay}"
+                                           FontSize="14" FontWeight="Medium"
+                                           Foreground="{DynamicResource InkBrush}"
+                                           TextWrapping="Wrap" Margin="0,12,0,0"/>
+                                <TextBlock Text="Gli esiti accettati contribuiscono ai calcoli della carriera."
+                                           FontSize="10" Foreground="{DynamicResource MutedBrush}"
+                                           TextWrapping="Wrap" Margin="0,7,0,0"/>
+                            </StackPanel>
+                        </Border>
+                        <Border Grid.Column="1" Style="{StaticResource CardBorderStyle}">
+                            <StackPanel>
+                                <TextBlock Text="LE TUE MATERIE" Style="{StaticResource KpiLabelStyle}"/>
+                                <Grid Margin="0,12,0,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Grid.Column="0">
+                                        <TextBlock Text="{Binding State.ActiveCoursesCount}" FontSize="25"
+                                                   FontWeight="SemiBold" Foreground="{DynamicResource AccentCyanBrush}"/>
+                                        <TextBlock Text="In corso" FontSize="11" Foreground="{DynamicResource MutedBrush}"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="1">
+                                        <TextBlock Text="{Binding State.ArchivedCoursesCount}" FontSize="25"
+                                                   FontWeight="SemiBold" Foreground="{DynamicResource SuccessBrush}"/>
+                                        <TextBlock Text="In archivio" FontSize="11" Foreground="{DynamicResource MutedBrush}"/>
+                                    </StackPanel>
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+
+                    <TextBlock Text="{Binding State.StatusMessage}" Foreground="{DynamicResource MutedBrush}"
+                               FontSize="12" TextWrapping="Wrap" Margin="2,16,2,0"/>                </StackPanel>
+            </ScrollViewer>
+</UserControl>
