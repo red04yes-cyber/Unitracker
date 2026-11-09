@@ -325,6 +325,7 @@
                                                Foreground="{DynamicResource AccentBrush}"/>
                                 </Grid>
                                 <ListBox ItemsSource="{Binding DashboardTodayTasks}"
+                                         AutomationProperties.Name="Attività con scadenza oggi o arretrate"
                                          SelectedItem="{Binding Workspace.SelectedTask, Mode=TwoWay}"
                                          MaxHeight="190"
                                          BorderThickness="0"
@@ -369,6 +370,7 @@
                                 </Border>
                                 <WrapPanel Margin="0,9,0,0">
                                     <Button Content="Completa attività"
+                                            AutomationProperties.Name="Completa l'attività selezionata"
                                             Command="{Binding Workspace.CompleteTaskCommand}"
                                             IsEnabled="{Binding Workspace.HasSelectedTask}"
                                             Style="{StaticResource SecondaryButtonStyle}"
@@ -391,7 +393,8 @@
                                                FontSize="10" Foreground="{DynamicResource MutedBrush}"
                                                VerticalAlignment="Center"/>
                                 </Grid>
-                                <ItemsControl ItemsSource="{Binding DashboardUpcomingDeadlines}">
+                                <ItemsControl ItemsSource="{Binding DashboardUpcomingDeadlines}"
+                                               AutomationProperties.Name="Scadenze dei prossimi quattordici giorni">
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate>
                                             <Border BorderBrush="{DynamicResource SubtleBrush}"
@@ -453,6 +456,7 @@
                                            FontSize="12" Foreground="{DynamicResource MutedBrush}"
                                            Margin="0,1,0,0"/>
                                 <ProgressBar Value="{Binding DashboardWeeklyGoalProgressPercent, Mode=OneWay}"
+                                             AutomationProperties.Name="Progresso dell'obiettivo settimanale di studio"
                                              Maximum="100" Height="7" Margin="0,12,0,0"/>
                                 <TextBlock Text="Tempo effettivo delle sessioni Focus registrate; le pause non vengono conteggiate."
                                            FontSize="10" Foreground="{DynamicResource MutedBrush}"
