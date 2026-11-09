@@ -245,6 +245,59 @@ più file (`activities.csv`, `sessions.csv`, `segments.csv`, `summary.csv`, `pom
 con fogli separati; JSON ha schema versionato. Le note private sono escluse per default e il CSV neutralizza le
 formule. La UI deve salvare tutti i file del bundle CSV, non presentarli come un unico file.
 
+## University planner
+
+### Dati e servizi
+
+`StudyData.PlannerSettings`, `StudyData.StudyPlans` e
+`StudyData.PlannerReschedules` sono proprietà additive. `StudyPlanData` espone
+`CourseId`, `ExamId`, `ExamDate`, `RequiredMinutes`, `ReviewReserveMinutes`,
+`ScheduledMinutes`, `Status`, `Explanation` e `Warnings`.
+`PlannerRescheduleData` è lo storico append-only; non eliminarlo per fare un
+revert.
+
+- `UniversityPlannerService.CreatePlan(data, request, now)` restituisce
+  `PlannerResult(Plan, Sessions, DeficitMinutes)`. `IsFeasible` è vero solo per
+  `Active` o `Completed`.
+- `RescheduleMissed(data, now, apply)` restituisce proposte; con `apply: false`
+  non modifica i dati. Il default è `PlannerSettings.AutoRescheduleMissed`.
+- `RevertReschedule(data, rescheduleId, now)` ripristina solo se il nuovo
+  intervallo è invariato e il vecchio slot è libero.
+- `CompletePlannedSession(data, eventId, actualMinutes, now)` registra il tempo
+  effettivo e non crea eventi duplicati.
+- `StartFocus`, `FinishFocus` e `CancelFocus` collegano il timer persistente
+  alla sessione pianificata.
+- `BuildDashboard(data, now)` restituisce eventi di oggi, prossimi eventi,
+  prossime sessioni, prossimo esame, avanzamento per materia, minuti della
+  settimana e warning.
+
+### Timeline
+
+`CalendarTimelineService.BuildDay(data, day, slotMinutes, now, timeZoneId)`
+restituisce `CalendarTimelineDay` con eventi ritagliati sulla giornata,
+`Slots`, `FreeBlocks`, `BusyMinutes`, `FreeMinutes`, `IsCurrent` e flag di
+clipping. Accetta slot da 15, 30 o 60 minuti. Non riempire i blocchi liberi con
+attività inventate.
+
+### Regole UI
+
+- Mostrare la provenienza `Planner` e `Verification.Indicative`: una sessione
+  proposta non è un appello o un impegno ufficiale.
+- Se `StudyPlanStatus.InsufficientTime`, mostrare `Warnings` e
+  `PlannerResult.DeficitMinutes`; non mostrare un piano completato.
+- Se non ci sono disponibilità o argomenti stimati, mostrare lo stato vuoto e
+  il messaggio restituito dal servizio, non un piano fittizio.
+- Le durate e le priorità devono provenire dai campi persistiti; non ripetere
+  formule diverse nella UI.
+- Dopo ogni mutazione chiamare `IStudyDataStore.SaveAsync`; gestire `IsBusy`,
+  cancellazione e feedback di successo/errore.
+- Per le viste giornaliera/settimanale/mensile riusare
+  `CalendarService.GetWeekRange`, `GetMonthRange` e `GetEventsInRange`; per la
+timeline usare il servizio dedicato. Non creare un secondo elenco eventi.
+- Il timer visuale deve interrogare lo stato persistito, non gestire un
+  countdown separato. Dopo un’interruzione non presentare la sessione come
+  completata.
+
 ## Stati e messaggi richiesti
 
 Per ogni comando la UI dovrebbe esporre:
