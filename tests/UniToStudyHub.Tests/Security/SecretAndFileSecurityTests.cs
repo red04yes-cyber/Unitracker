@@ -289,6 +289,57 @@ public sealed class SecretAndFileSecurityTests
     }
 
     [Fact]
+    public void IsInsideAllowsOrdinaryNestedDestinations()
+    {
+        var root = NewDirectory();
+        try
+        {
+            var nested = Path.Combine(root, "course", "module", "PDF", "lecture.pdf");
+            Assert.True(LocalFileSecurity.IsInside(root, nested));
+        }
+        finally { Directory.Delete(root, recursive: true); }
+    }
+
+    [Fact]
+    public void IsInsideRejectsTheBoundaryItself()
+    {
+        var root = NewDirectory();
+        try
+        {
+            Assert.False(LocalFileSecurity.IsInside(root, root));
+        }
+        finally { Directory.Delete(root, recursive: true); }
+    }
+
+    [Fact]
+    public void IsInsideRejectsDanglingFileSymbolicLinks()
+    {
+        var root = NewDirectory();
+        var link = Path.Combine(root, "dangling.txt");
+        var linkCreated = false;
+        try
+        {
+            try
+            {
+                File.CreateSymbolicLink(link, Path.Combine(root, "missing-target.txt"));
+                linkCreated = true;
+            }
+            catch (Exception ex) when (ex is UnauthorizedAccessException or IOException or NotSupportedException)
+            {
+                return;
+            }
+
+            Assert.False(File.Exists(link));
+            Assert.False(LocalFileSecurity.IsInside(root, link));
+        }
+        finally
+        {
+            if (linkCreated) File.Delete(link);
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
     public void DirectoriesAndFilesArePrivateOnUnix()
     {
         if (OperatingSystem.IsWindows()) return;
