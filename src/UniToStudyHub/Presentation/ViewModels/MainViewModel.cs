@@ -26,6 +26,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
     public StudyWorkspaceViewModel Workspace { get; }
     public ObservableCollection<StudyTaskData> DashboardTodayTasks { get; } = new();
     public ObservableCollection<DashboardDeadlineItem> DashboardUpcomingDeadlines { get; } = new();
+    public DashboardOverview DashboardOverview => _dashboardOverview;
     private StudyData _data = new();
     private Course? _selectedGradeCourse;
     private string _courseNameInput = string.Empty;
