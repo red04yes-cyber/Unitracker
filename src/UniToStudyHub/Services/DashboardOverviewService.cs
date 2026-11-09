@@ -54,13 +54,13 @@ public sealed record DashboardOverview(
     int? DaysUntilNextExam,
     IReadOnlyList<StudyTaskData> TodayTasks,
     IReadOnlyList<DashboardDeadlineItem> UpcomingDeadlines,
-    int RecordedStudyMinutes,
+    int FocusStudyMinutes,
     int WeeklyGoalMinutes,
     int WeeklyGoalProgressPercent,
     DashboardStudySuggestion Suggestion)
 {
     public bool HasWeeklyGoal => WeeklyGoalMinutes > 0;
-    public double RecordedStudyHours => RecordedStudyMinutes / 60d;
+    public double FocusStudyHours => FocusStudyMinutes / 60d;
     public double WeeklyGoalHours => WeeklyGoalMinutes / 60d;
 }
 
@@ -155,10 +155,10 @@ public sealed class DashboardOverviewService(ProgressService progress)
 
         var weeklyProgress = progress.Calculate(data, weekStart, today, instant);
         var weeklyGoalMinutes = Math.Max(0, weeklyProgress.WeeklyGoalMinutes);
-        var recordedMinutes = Math.Max(0, weeklyProgress.RecordedMinutes);
+        var focusMinutes = Math.Max(0, weeklyProgress.FocusMinutes);
         var goalPercent = weeklyGoalMinutes == 0
             ? 0
-            : Math.Clamp((int)Math.Round(recordedMinutes * 100d / weeklyGoalMinutes), 0, 100);
+            : Math.Clamp((int)Math.Round(focusMinutes * 100d / weeklyGoalMinutes), 0, 100);
 
         var suggestion = BuildSuggestion(data, activeTasks, nextExam, today, coursesById);
 
@@ -167,7 +167,7 @@ public sealed class DashboardOverviewService(ProgressService progress)
             daysUntilExam,
             todayTasks,
             upcomingDeadlines,
-            recordedMinutes,
+            focusMinutes,
             weeklyGoalMinutes,
             goalPercent,
             suggestion);
