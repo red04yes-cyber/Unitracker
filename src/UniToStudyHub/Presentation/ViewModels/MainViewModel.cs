@@ -199,9 +199,9 @@ public sealed class MainViewModel : INotifyPropertyChanged
         1 => "Manca 1 giorno",
         var days => $"Mancano {days} giorni"
     };
-    public string DashboardWeeklyStudyHoursDisplay => $"{_dashboardOverview.RecordedStudyHours:0.#} h";
+    public string DashboardWeeklyStudyHoursDisplay => $"{_dashboardOverview.FocusStudyHours:0.#} h";
     public string DashboardWeeklyGoalDisplay => _dashboardOverview.HasWeeklyGoal
-        ? $"{_dashboardOverview.RecordedStudyHours:0.#} / {_dashboardOverview.WeeklyGoalHours:0.#} h"
+        ? $"{_dashboardOverview.FocusStudyHours:0.#} / {_dashboardOverview.WeeklyGoalHours:0.#} h"
         : "Obiettivo settimanale non configurato";
     public int DashboardWeeklyGoalProgressPercent => _dashboardOverview.WeeklyGoalProgressPercent;
     public string DashboardSuggestionTitle => _dashboardOverview.Suggestion.Title;
