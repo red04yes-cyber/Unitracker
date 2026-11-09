@@ -124,10 +124,10 @@ internal static class UiDialogService
                 VerticalAlignment = VerticalAlignment.Center
             }
         };
-        var iconForegroundKey = image is MessageBoxImage.Warning or MessageBoxImage.Error or MessageBoxImage.Stop
+        var iconForegroundKey = image is MessageBoxImage.Warning or MessageBoxImage.Error
             ? "WarningBrush"
             : "AccentBrush";
-        var iconBackgroundKey = image is MessageBoxImage.Warning or MessageBoxImage.Error or MessageBoxImage.Stop
+        var iconBackgroundKey = image is MessageBoxImage.Warning or MessageBoxImage.Error
             ? "WarningSoftBrush"
             : "AccentSoftBrush";
         iconTile.SetResourceReference(Border.BackgroundProperty, iconBackgroundKey);
@@ -216,7 +216,7 @@ internal static class UiDialogService
             };
 
             var styleKey = action.IsPrimary &&
-                           (image is MessageBoxImage.Warning or MessageBoxImage.Error or MessageBoxImage.Stop) &&
+                           (image is MessageBoxImage.Warning or MessageBoxImage.Error) &&
                            action.Result == MessageBoxResult.Yes
                 ? "DangerButtonStyle"
                 : action.IsPrimary
@@ -306,8 +306,8 @@ internal static class UiDialogService
     private static string GetIconGlyph(MessageBoxImage image) =>
         image switch
         {
-            MessageBoxImage.Warning or MessageBoxImage.Exclamation => "!",
-            MessageBoxImage.Error or MessageBoxImage.Stop or MessageBoxImage.Hand => "×",
+            MessageBoxImage.Warning => "!",
+            MessageBoxImage.Error => "×",
             MessageBoxImage.Question => "?",
             _ => "i"
         };
@@ -315,8 +315,8 @@ internal static class UiDialogService
     private static string GetImageLabel(MessageBoxImage image) =>
         image switch
         {
-            MessageBoxImage.Warning or MessageBoxImage.Exclamation => "ATTENZIONE",
-            MessageBoxImage.Error or MessageBoxImage.Stop or MessageBoxImage.Hand => "OPERAZIONE NON RIUSCITA",
+            MessageBoxImage.Warning => "ATTENZIONE",
+            MessageBoxImage.Error => "OPERAZIONE NON RIUSCITA",
             MessageBoxImage.Question => "CONFERMA RICHIESTA",
             _ => "INFORMAZIONE"
         };
