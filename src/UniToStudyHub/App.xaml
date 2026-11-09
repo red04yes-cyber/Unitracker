@@ -4,28 +4,30 @@
              xmlns:controls="clr-namespace:UniToStudyHub.Presentation.Controls">
     <Application.Resources>
         <!-- Shared design tokens. ThemeManager replaces these brushes at runtime. -->
-        <SolidColorBrush x:Key="NavyBrush" Color="#111B2B"/>
-        <SolidColorBrush x:Key="SidebarBrush" Color="#0B1423"/>
+        <SolidColorBrush x:Key="NavyBrush" Color="#0D1117"/>
+        <SolidColorBrush x:Key="SidebarBrush" Color="#161B22"/>
+        <SolidColorBrush x:Key="SidebarDividerBrush" Color="#30363D"/>
         <SolidColorBrush x:Key="SidebarTextBrush" Color="#F0F5FC"/>
-        <SolidColorBrush x:Key="SidebarMutedBrush" Color="#93A6BF"/>
+        <SolidColorBrush x:Key="SidebarMutedBrush" Color="#8B949E"/>
         <SolidColorBrush x:Key="SidebarHoverBrush" Color="#1B2C43"/>
         <SolidColorBrush x:Key="SidebarActiveBrush" Color="#173B55"/>
         <SolidColorBrush x:Key="SidebarBadgeBrush" Color="#1B2D43"/>
-        <SolidColorBrush x:Key="InkBrush" Color="#EEF4FC"/>
-        <SolidColorBrush x:Key="MutedBrush" Color="#A2B2C8"/>
-        <SolidColorBrush x:Key="AccentBrush" Color="#16BDE5"/>
+        <SolidColorBrush x:Key="InkBrush" Color="#C9D1D9"/>
+        <SolidColorBrush x:Key="MutedBrush" Color="#8B949E"/>
+        <SolidColorBrush x:Key="AccentBrush" Color="#58A6FF"/>
+        <SolidColorBrush x:Key="AccentFillBrush" Color="#238636"/>
         <SolidColorBrush x:Key="AccentTextBrush" Color="#66DDF5"/>
-        <SolidColorBrush x:Key="AccentSoftBrush" Color="#193B52"/>
-        <SolidColorBrush x:Key="PanelBrush" Color="#172538"/>
-        <SolidColorBrush x:Key="PageBrush" Color="#0D1726"/>
-        <SolidColorBrush x:Key="BorderBrush" Color="#2A3D55"/>
-        <SolidColorBrush x:Key="SubtleBrush" Color="#1C2C42"/>
-        <SolidColorBrush x:Key="SuccessBrush" Color="#63D9A4"/>
-        <SolidColorBrush x:Key="SuccessSoftBrush" Color="#173E36"/>
-        <SolidColorBrush x:Key="WarningBrush" Color="#F1BE62"/>
-        <SolidColorBrush x:Key="WarningSoftBrush" Color="#40351F"/>
-        <SolidColorBrush x:Key="AiBrush" Color="#BBA4FF"/>
-        <SolidColorBrush x:Key="AiSoftBrush" Color="#342C50"/>
+        <SolidColorBrush x:Key="AccentSoftBrush" Color="#1F6FEB"/>
+        <SolidColorBrush x:Key="PanelBrush" Color="#161B22"/>
+        <SolidColorBrush x:Key="PageBrush" Color="#0D1117"/>
+        <SolidColorBrush x:Key="BorderBrush" Color="#30363D"/>
+        <SolidColorBrush x:Key="SubtleBrush" Color="#21262D"/>
+        <SolidColorBrush x:Key="SuccessBrush" Color="#3FB950"/>
+        <SolidColorBrush x:Key="SuccessSoftBrush" Color="#238636"/>
+        <SolidColorBrush x:Key="WarningBrush" Color="#D29922"/>
+        <SolidColorBrush x:Key="WarningSoftBrush" Color="#9E6A03"/>
+        <SolidColorBrush x:Key="AiBrush" Color="#BC8CFF"/>
+        <SolidColorBrush x:Key="AiSoftBrush" Color="#388BFd"/>
         <SolidColorBrush x:Key="AccentCyanBrush" Color="#16BDE5"/>
         <SolidColorBrush x:Key="ElectricBlueBrush" Color="#3978F6"/>
         <SolidColorBrush x:Key="BrickAccentBrush" Color="#D36A61"/>
