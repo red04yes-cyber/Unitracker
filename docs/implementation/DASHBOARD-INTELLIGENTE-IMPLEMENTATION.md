@@ -34,8 +34,8 @@ Nessun calcolo deve scrivere o normalizzare i dati ricevuti.
 
 - **Esame:** prima data pianificata non passata, escludendo gli esami completati. Il conteggio usa giorni di calendario locali; non attribuisce ufficialità alla data.
 - **Task di oggi:** task `Todo` o `InProgress` con scadenza locale non successiva a oggi. Gli arretrati restano visibili.
-- **Ore settimanali:** usare i minuti unici del registro attività (`RecordedMinutes`) nel periodo lunedì–oggi. Non inferire tempo dalle finestre aperte o dai task pianificati.
-- **Obiettivo:** rapporto tra minuti registrati e `WeeklyStudyHours × 60`, limitato visivamente a 100%; i minuti effettivi non vengono troncati.
+- **Ore settimanali:** usare `ProgressSnapshot.FocusMinutes` nel periodo lunedì–oggi. Il valore deriva dai secondi effettivi delle sessioni Focus e non include le pause. Il registro manuale `RecordedMinutes` è una fonte distinta e non viene sommato: nel flusso WPF corrente non è collegato automaticamente alle sessioni Focus, quindi unirli produrrebbe un totale non dimostrabile.
+- **Obiettivo:** rapporto tra minuti Focus e `WeeklyStudyHours × 60`, limitato visivamente a 100%; i minuti effettivi non vengono troncati.
 - **Scadenze:** task non completati e soli eventi calendario `Deadline` non cancellati, da ora ai successivi 14 giorni. Fonte e verifica dell'evento restano esplicite.
 - **Suggerimento:** prima il task già in ritardo/oggi con priorità più alta e scadenza più vicina; poi il task imminente più prioritario; quindi le flashcard dovute; infine un'indicazione sul prossimo esame o un messaggio che invita a configurare i dati mancanti. A parità di condizioni, l'ordinamento è stabile.
 - Ogni suggerimento mostra la regola che lo ha prodotto. Non usa modelli linguistici né invia dati fuori dal dispositivo.
@@ -47,7 +47,8 @@ Iniettare il servizio nel ViewModel della dashboard e ricalcolare il riepilogo d
 - modifica di esami o date;
 - creazione/modifica/eliminazione di eventi;
 - aggiunta/completamento/rimozione di task;
-- registrazione o aggiornamento delle attività di studio.
+- avvio, pausa, ripresa o conclusione delle sessioni Focus;
+- avanzamento del timer, con ricalcolo del riepilogo al cambio di ogni minuto di studio effettivo.
 
 La UI deve mostrare stati vuoti espliciti quando mancano esami, task, attività o un obiettivo configurato.
 
@@ -69,7 +70,7 @@ Aggiungere test deterministici per:
 - task oggi, arretrati, futuri, senza scadenza e completati;
 - scadenze calendario, eventi cancellati e tipi evento non pertinenti;
 - settimana che inizia lunedì e assenza di obiettivo configurato;
-- tempo registrato e deduplicazione sessione/registro;
+- tempo Focus effettivo, pause escluse, aggiornamento delle sessioni in corso e percentuale obiettivo limitata al 100%;
 - priorità del suggerimento, fallback flashcard/esame e dataset vuoto;
 - assenza di mutazioni dello snapshot.
 
@@ -89,6 +90,6 @@ Usare un orologio esplicito nei test, senza rete o account Moodle.
 - Il servizio riepilogo è read-only e usa un istante iniettabile.
 - I task possono essere completati dal flusso esistente senza duplicati.
 - Le date indicative non sono etichettate come appelli ufficiali.
-- Le ore settimanali derivano dal registro delle attività e non da stime.
+- Le ore settimanali derivano dalle sessioni Focus effettive e non da stime; le pause non sono conteggiate.
 - Suggerimento e motivazione sono deterministici e interamente locali.
 - Test e CI non richiedono credenziali o chiamate a servizi esterni.
