@@ -39,6 +39,7 @@ public partial class MainWindow : Window
         }
         SystemThemeWatcher.Watch(this, Wpf.Ui.Controls.WindowBackdropType.Mica);
         DataContext = viewModel;
+        UpdateSectionHeading();
         _focusRefreshTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
         _focusRefreshTimer.Tick += (_, _) => viewModel.Workspace.RefreshFocusSnapshot();
         _focusRefreshTimer.Start();
@@ -482,4 +483,32 @@ public partial class MainWindow : Window
 
         MainTabs.SelectedIndex = index;
     }
+    private void MainTabs_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        // SelectionChanged bubbles from controls inside the selected page too.
+        // Only the navigation TabControl owns the global page heading.
+        if (!ReferenceEquals(e.OriginalSource, MainTabs))
+            return;
+
+        UpdateSectionHeading();
+    }
+
+    private void UpdateSectionHeading()
+    {
+        var heading = MainTabs.SelectedIndex switch
+        {
+            0 => ("La tua giornata", "Priorità e riepilogo"),
+            1 => ("Le tue materie", "Corsi, esami e archivio"),
+            2 => ("Calendario", "Appelli e pianificazione"),
+            3 => ("Studio Lab", "Focus, attività e ripasso"),
+            4 => ("Accademia", "Apprendimento e strumenti AI"),
+            5 => ("Progressi", "Statistiche e andamento"),
+            6 => ("Impostazioni", "Profilo, integrazioni e privacy"),
+            _ => ("UniToStudyHub", "Il tuo spazio universitario")
+        };
+
+        CurrentSectionTitle.Text = heading.Item1;
+        CurrentSectionSubtitle.Text = heading.Item2;
+    }
+
 }
