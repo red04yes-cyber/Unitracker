@@ -107,8 +107,8 @@ public sealed class PdfPigTextExtractor : IPdfTextExtractor
         finally
         {
             CryptographicOperations.ZeroMemory(copyBuffer);
-            if (buffer.TryGetBuffer(out var segment))
-                CryptographicOperations.ZeroMemory(segment.AsSpan(0, checked((int)buffer.Length)));
+            if (buffer.TryGetBuffer(out var segment) && segment.Array is { } storage)
+                CryptographicOperations.ZeroMemory(storage.AsSpan(segment.Offset, checked((int)buffer.Length)));
         }
     }
 
