@@ -1007,13 +1007,26 @@ public sealed class MainViewModel : INotifyPropertyChanged
     {
         _dashboardOverview = _dashboardOverviewService.Calculate(_data, DateTimeOffset.Now);
 
-        DashboardTodayTasks.Clear();
-        foreach (var task in _dashboardOverview.TodayTasks)
-            DashboardTodayTasks.Add(task);
+        var selectedTaskId = Workspace.SelectedTask?.Id;
+        var expectedTaskIds = _dashboardOverview.TodayTasks.Select(task => task.Id).ToArray();
+        if (!DashboardTodayTasks.Select(task => task.Id)
+                .SequenceEqual(expectedTaskIds, StringComparer.Ordinal))
+        {
+            DashboardTodayTasks.Clear();
+            foreach (var task in _dashboardOverview.TodayTasks)
+                DashboardTodayTasks.Add(task);
 
-        DashboardUpcomingDeadlines.Clear();
-        foreach (var item in _dashboardOverview.UpcomingDeadlines)
-            DashboardUpcomingDeadlines.Add(item);
+            if (selectedTaskId is not null &&
+                DashboardTodayTasks.FirstOrDefault(task => task.Id == selectedTaskId) is { } stillSelected)
+                Workspace.SelectedTask = stillSelected;
+        }
+
+        if (!DashboardUpcomingDeadlines.SequenceEqual(_dashboardOverview.UpcomingDeadlines))
+        {
+            DashboardUpcomingDeadlines.Clear();
+            foreach (var item in _dashboardOverview.UpcomingDeadlines)
+                DashboardUpcomingDeadlines.Add(item);
+        }
 
         OnPropertyChanged(nameof(DashboardOverview));
         OnPropertyChanged(nameof(DashboardNextExam));
