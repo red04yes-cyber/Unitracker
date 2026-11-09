@@ -943,6 +943,11 @@ public sealed class MainViewModel : INotifyPropertyChanged
         RefreshDashboard();
     }
 
+    public void RefreshDashboardSnapshot()
+    {
+        RefreshDashboard();
+    }
+
     private void RefreshDashboard()
     {
         Dashboard = _dashboardService.Build(_data);
@@ -981,6 +986,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(NextExamNameDisplay));
         OnPropertyChanged(nameof(NextExamDateDisplay));
         OnPropertyChanged(nameof(NoPlannedExams));
+        RefreshDashboard();
     }
 
     private void RefreshVisibleCourses()

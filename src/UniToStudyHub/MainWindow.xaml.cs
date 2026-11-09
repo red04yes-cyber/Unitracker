@@ -140,8 +140,10 @@ public partial class MainWindow : Window
 
     private void MainTabs_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (ReferenceEquals(e.Source, MainTabs))
-            UpdateSectionHeader();
+        if (!ReferenceEquals(e.Source, MainTabs)) return;
+        UpdateSectionHeader();
+        if (MainTabs.SelectedIndex == 0 && DataContext is MainViewModel viewModel)
+            viewModel.RefreshDashboardSnapshot();
     }
 
     private void UpdateSectionHeader()

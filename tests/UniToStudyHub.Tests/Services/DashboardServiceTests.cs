@@ -212,7 +212,7 @@ public sealed class DashboardServiceTests
             Id = "mission-1",
             Title = "Preparazione Analisi",
             Period = StudyMissionPeriod.Weekly,
-            StartsAt = Now.AddDays(-1),
+            StartsAt = Now,
             DueAt = Now.AddDays(4),
             Status = StudyMissionStatus.InProgress,
             Steps = new ObservableCollection<MissionStepData>

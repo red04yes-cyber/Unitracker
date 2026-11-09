@@ -391,7 +391,7 @@
                                 <DockPanel Margin="0,0,0,13">
                                     <TextBlock Text="Attività da completare oggi"
                                                Style="{StaticResource SectionTitleStyle}"/>
-                                    <Button Content="Apri Studio Lab" Style="{StaticResource SecondaryButtonStyle}"
+                                    <Button DockPanel.Dock="Right" Content="Apri Studio Lab" Style="{StaticResource SecondaryButtonStyle}"
                                             HorizontalAlignment="Right" Click="NavigateToStudyLab_Click"/>
                                 </DockPanel>
                                 <ItemsControl ItemsSource="{Binding Dashboard.Tasks}">
@@ -421,7 +421,7 @@
                                                     <TextBlock Text="{Binding Subtitle}" FontSize="10"
                                                                Foreground="{DynamicResource MutedBrush}"
                                                                TextWrapping="Wrap" Margin="0,2,0,0"/>
-                                                    <TextBlock Text="{Binding TypeLabel, StringFormat={}{0} · }"
+                                                    <TextBlock Text="{Binding TypeLabel}"
                                                                FontSize="10" Foreground="{DynamicResource MutedBrush}"/>
                                                     <TextBlock Text="{Binding DueLabel}" FontSize="10"
                                                                Foreground="{DynamicResource WarningBrush}"/>
