@@ -344,7 +344,7 @@
                                                                    Foreground="{DynamicResource InkBrush}"
                                                                    TextWrapping="Wrap"/>
                                                         <TextBlock Grid.Column="1"
-                                                                   Text="{Binding Priority, StringFormat=Priorità {0}/5}"
+                                                                   Text="{Binding Priority, StringFormat='Priorità {0}/5'}"
                                                                    FontSize="10"
                                                                    Foreground="{DynamicResource MutedBrush}"
                                                                    Margin="8,1,0,0"/>
