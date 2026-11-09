@@ -175,8 +175,7 @@ public sealed class SecretAndFileSecurityTests
                 Directory.CreateSymbolicLink(link, outside);
                 linkCreated = true;
             }
-            catch (Exception ex) when (ex is UnauthorizedAccessException or IOException
-                                           or PlatformNotSupportedException or NotSupportedException)
+            catch (Exception ex) when (ex is UnauthorizedAccessException or IOException or NotSupportedException)
             {
                 return; // The current runner does not permit creating symbolic links.
             }
@@ -207,8 +206,7 @@ public sealed class SecretAndFileSecurityTests
                 File.CreateSymbolicLink(link, target);
                 linkCreated = true;
             }
-            catch (Exception ex) when (ex is UnauthorizedAccessException or IOException
-                                           or PlatformNotSupportedException or NotSupportedException)
+            catch (Exception ex) when (ex is UnauthorizedAccessException or IOException or NotSupportedException)
             {
                 return;
             }
@@ -239,8 +237,7 @@ public sealed class SecretAndFileSecurityTests
                 Directory.CreateSymbolicLink(linkedRoot, realRoot);
                 linkCreated = true;
             }
-            catch (Exception ex) when (ex is UnauthorizedAccessException or IOException
-                                           or PlatformNotSupportedException or NotSupportedException)
+            catch (Exception ex) when (ex is UnauthorizedAccessException or IOException or NotSupportedException)
             {
                 return;
             }
@@ -270,8 +267,7 @@ public sealed class SecretAndFileSecurityTests
                 File.CreateSymbolicLink(link, target);
                 linkCreated = true;
             }
-            catch (Exception ex) when (ex is UnauthorizedAccessException or IOException
-                                           or PlatformNotSupportedException or NotSupportedException)
+            catch (Exception ex) when (ex is UnauthorizedAccessException or IOException or NotSupportedException)
             {
                 return;
             }
