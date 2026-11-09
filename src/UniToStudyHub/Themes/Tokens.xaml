@@ -1,0 +1,37 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <SolidColorBrush x:Key="NavyBrush" Color="#100E18"/>
+    <SolidColorBrush x:Key="SidebarBrush" Color="#100E18"/>
+    <SolidColorBrush x:Key="SidebarMutedBrush" Color="#A7A1B5"/>
+    <SolidColorBrush x:Key="SidebarDividerBrush" Color="#292536"/>
+    <SolidColorBrush x:Key="InkBrush" Color="#F3F0FA"/>
+    <SolidColorBrush x:Key="MutedBrush" Color="#AAA4B8"/>
+    <SolidColorBrush x:Key="AccentBrush" Color="#B79CFF"/>
+    <SolidColorBrush x:Key="AccentFillBrush" Color="#8B5CF6"/>
+    <SolidColorBrush x:Key="AccentSoftBrush" Color="#302442"/>
+    <SolidColorBrush x:Key="PanelBrush" Color="#1B1825"/>
+    <SolidColorBrush x:Key="ElevatedPanelBrush" Color="#211D2D"/>
+    <SolidColorBrush x:Key="InputBrush" Color="#14111D"/>
+    <SolidColorBrush x:Key="PageBrush" Color="#100E17"/>
+    <SolidColorBrush x:Key="BorderBrush" Color="#302B3A"/>
+    <SolidColorBrush x:Key="SubtleBrush" Color="#24202F"/>
+    <SolidColorBrush x:Key="HoverBrush" Color="#2B2439"/>
+    <SolidColorBrush x:Key="GlassBrush" Color="#D91B1724"/>
+    <SolidColorBrush x:Key="SuccessBrush" Color="#66D1A8"/>
+    <SolidColorBrush x:Key="SuccessSoftBrush" Color="#1C382F"/>
+    <SolidColorBrush x:Key="WarningBrush" Color="#E8BA72"/>
+    <SolidColorBrush x:Key="WarningSoftBrush" Color="#3D2E1F"/>
+    <SolidColorBrush x:Key="DangerBrush" Color="#FF858F"/>
+    <SolidColorBrush x:Key="DangerSoftBrush" Color="#43252D"/>
+    <SolidColorBrush x:Key="InfoBrush" Color="#8FC8FF"/>
+    <SolidColorBrush x:Key="InfoSoftBrush" Color="#1D3042"/>
+    <SolidColorBrush x:Key="AiBrush" Color="#C6A8FF"/>
+    <SolidColorBrush x:Key="AiSoftBrush" Color="#302441"/>
+    <SolidColorBrush x:Key="FocusBrush" Color="#B79CFF"/>
+    <CornerRadius x:Key="CornerRadius.Small">8</CornerRadius>
+    <CornerRadius x:Key="CornerRadius.Medium">12</CornerRadius>
+    <CornerRadius x:Key="CornerRadius.Large">16</CornerRadius>
+    <Duration x:Key="Motion.Fast">0:0:0.14</Duration>
+    <Duration x:Key="Motion.Standard">0:0:0.22</Duration>
+    <Duration x:Key="Motion.Slow">0:0:0.38</Duration>
+</ResourceDictionary>

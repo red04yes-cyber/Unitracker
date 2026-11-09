@@ -7,13 +7,15 @@ changing code.
 
 ## Ownership and UI boundary
 
-- ChatGPT owns UI/UX. Do not modify `App.xaml`, `MainWindow.xaml`,
-  `MainWindow.xaml.cs`, themes, styles, assets, layout, navigation or any XAML
+- ChatGPT is the designated UI/UX owner. When the user explicitly authorizes a
+  UI/UX task, ChatGPT may modify `App.xaml`, `MainWindow.xaml`,
+  `MainWindow.xaml.cs`, themes, styles, assets, layout, navigation and XAML
   under `Presentation/Views/**`.
+- Other agents must not modify those UI-owned files unless the user explicitly
+  delegates that work. They may implement services/contracts and document the
+  bindings needed by the UI owner.
 - ViewModels may be changed only to expose state, commands and bindings for real
-  application behavior. Do not make visual or flow decisions there.
-- If a feature needs a visual control, implement the service/contract and
-  document the binding for the UI owner.
+  application behavior. Do not put visual or flow decisions there.
 
 ## Architecture
 
@@ -56,6 +58,6 @@ changing code.
   test; WPF behavior must be verified on Windows and reported honestly if it
   cannot be.
 - Keep changes in small vertical slices. Do not merge pull requests, force-push,
-  rewrite other contributors' branches or modify the UI pull request.
-- Record the implemented behavior, tests actually run, known limitations and the
-  next safe slice in the technical documentation.
+  rewrite other contributors' branches or modify unrelated UI pull requests.
+- Record the implemented behavior, tests actually run, known limitations and
+  the next safe slice in the technical documentation.

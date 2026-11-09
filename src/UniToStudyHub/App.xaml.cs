@@ -20,56 +20,78 @@ public partial class App : System.Windows.Application
     private static readonly IReadOnlyDictionary<string, string> LightPalette =
         new Dictionary<string, string>(StringComparer.Ordinal)
         {
-            ["NavyBrush"] = "#17243B",
-            ["SidebarBrush"] = "#17243B",
-            ["SidebarMutedBrush"] = "#AFC0D8",
-            ["SidebarDividerBrush"] = "#35445B",
-            ["InkBrush"] = "#17243B",
-            ["MutedBrush"] = "#718096",
-            ["AccentBrush"] = "#3157D5",
-            ["AccentFillBrush"] = "#3157D5",
-            ["AccentSoftBrush"] = "#EAF0FF",
+            ["NavyBrush"] = "#F5F2FA",
+            ["SidebarBrush"] = "#F7F5FB",
+            ["SidebarMutedBrush"] = "#6D667A",
+            ["SidebarDividerBrush"] = "#E7E1EF",
+            ["InkBrush"] = "#211A2B",
+            ["MutedBrush"] = "#716A7D",
+            ["AccentBrush"] = "#7047C9",
+            ["AccentFillBrush"] = "#7950D6",
+            ["AccentSoftBrush"] = "#EEE7FA",
             ["PanelBrush"] = "#FFFFFF",
-            ["PageBrush"] = "#F3F6FB",
-            ["BorderBrush"] = "#E4EAF2",
-            ["SubtleBrush"] = "#EEF2F8",
-            ["SuccessBrush"] = "#21865D",
-            ["SuccessSoftBrush"] = "#E8F5EE",
-            ["WarningBrush"] = "#C98224",
-            ["WarningSoftBrush"] = "#FFF4E5",
-            ["AiBrush"] = "#7654C8",
-            ["AiSoftBrush"] = "#F1EDFC"
+            ["ElevatedPanelBrush"] = "#FCFAFF",
+            ["InputBrush"] = "#F4F1F8",
+            ["PageBrush"] = "#F7F5FA",
+            ["BorderBrush"] = "#E8E2EF",
+            ["SubtleBrush"] = "#F0ECF5",
+            ["HoverBrush"] = "#EEE7F8",
+            ["GlassBrush"] = "#E6FFFFFF",
+            ["SuccessBrush"] = "#258A68",
+            ["SuccessSoftBrush"] = "#E7F5EF",
+            ["WarningBrush"] = "#A86B1F",
+            ["WarningSoftBrush"] = "#FBF1E3",
+            ["DangerBrush"] = "#B94357",
+            ["DangerSoftBrush"] = "#F9E9ED",
+            ["InfoBrush"] = "#326C9E",
+            ["InfoSoftBrush"] = "#E8F1F9",
+            ["AiBrush"] = "#7047C9",
+            ["AiSoftBrush"] = "#EEE7FA",
+            ["FocusBrush"] = "#7950D6"
         };
 
     private static readonly IReadOnlyDictionary<string, string> DarkPalette =
         new Dictionary<string, string>(StringComparer.Ordinal)
         {
-            ["NavyBrush"] = "#0B1220",
-            ["SidebarBrush"] = "#0B1220",
-            ["SidebarMutedBrush"] = "#A9B8CC",
-            ["SidebarDividerBrush"] = "#35445B",
-            ["InkBrush"] = "#E8EDF5",
-            ["MutedBrush"] = "#A7B2C2",
-            ["AccentBrush"] = "#91AFFF",
-            ["AccentFillBrush"] = "#3157D5",
-            ["AccentSoftBrush"] = "#263B67",
-            ["PanelBrush"] = "#1A2638",
-            ["PageBrush"] = "#101827",
-            ["BorderBrush"] = "#35445B",
-            ["SubtleBrush"] = "#25344A",
-            ["SuccessBrush"] = "#63C294",
-            ["SuccessSoftBrush"] = "#1E3B32",
-            ["WarningBrush"] = "#EAB56A",
-            ["WarningSoftBrush"] = "#44331D",
-            ["AiBrush"] = "#B7A1FF",
-            ["AiSoftBrush"] = "#342B50"
+            ["NavyBrush"] = "#100E18",
+            ["SidebarBrush"] = "#100E18",
+            ["SidebarMutedBrush"] = "#A7A1B5",
+            ["SidebarDividerBrush"] = "#292536",
+            ["InkBrush"] = "#F3F0FA",
+            ["MutedBrush"] = "#AAA4B8",
+            ["AccentBrush"] = "#B79CFF",
+            ["AccentFillBrush"] = "#8B5CF6",
+            ["AccentSoftBrush"] = "#302442",
+            ["PanelBrush"] = "#1B1825",
+            ["ElevatedPanelBrush"] = "#211D2D",
+            ["InputBrush"] = "#14111D",
+            ["PageBrush"] = "#100E17",
+            ["BorderBrush"] = "#302B3A",
+            ["SubtleBrush"] = "#24202F",
+            ["HoverBrush"] = "#2B2439",
+            ["GlassBrush"] = "#D91B1724",
+            ["SuccessBrush"] = "#66D1A8",
+            ["SuccessSoftBrush"] = "#1C382F",
+            ["WarningBrush"] = "#E8BA72",
+            ["WarningSoftBrush"] = "#3D2E1F",
+            ["DangerBrush"] = "#FF858F",
+            ["DangerSoftBrush"] = "#43252D",
+            ["InfoBrush"] = "#8FC8FF",
+            ["InfoSoftBrush"] = "#1D3042",
+            ["AiBrush"] = "#C6A8FF",
+            ["AiSoftBrush"] = "#302441",
+            ["FocusBrush"] = "#B79CFF"
         };
 
     private void ConfigureThemeSynchronization()
     {
         ApplicationThemeManager.Changed += (theme, _) => ApplyCustomThemePalette(theme);
         ApplicationThemeManager.ApplySystemTheme();
-        ApplyCustomThemePalette(ApplicationThemeManager.GetAppTheme());
+        var initialTheme = SystemParameters.HighContrast
+            ? ApplicationTheme.HighContrast
+            : ApplicationTheme.Dark;
+        ApplicationThemeManager.Apply(initialTheme);
+        ApplyCustomThemePalette(initialTheme);
     }
 
     private void ApplyCustomThemePalette(ApplicationTheme theme)
@@ -105,7 +127,16 @@ public partial class App : System.Windows.Application
             ["WarningBrush"] = SystemColors.HighlightColor.ToString(),
             ["WarningSoftBrush"] = SystemColors.ControlColor.ToString(),
             ["AiBrush"] = SystemColors.HighlightColor.ToString(),
-            ["AiSoftBrush"] = SystemColors.ControlColor.ToString()
+            ["AiSoftBrush"] = SystemColors.ControlColor.ToString(),
+            ["ElevatedPanelBrush"] = SystemColors.WindowColor.ToString(),
+            ["InputBrush"] = SystemColors.WindowColor.ToString(),
+            ["HoverBrush"] = SystemColors.HighlightColor.ToString(),
+            ["GlassBrush"] = SystemColors.WindowColor.ToString(),
+            ["DangerBrush"] = SystemColors.WindowTextColor.ToString(),
+            ["DangerSoftBrush"] = SystemColors.ControlColor.ToString(),
+            ["InfoBrush"] = SystemColors.HighlightColor.ToString(),
+            ["InfoSoftBrush"] = SystemColors.ControlColor.ToString(),
+            ["FocusBrush"] = SystemColors.HighlightColor.ToString()
         };
 
         ApplyPalette(palette);

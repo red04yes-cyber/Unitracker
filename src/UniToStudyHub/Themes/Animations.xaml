@@ -1,0 +1,8 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <!-- Animation timing tokens. Motion behavior is composed through AnimationRx.Wpf.Reactive. -->
+    <Duration x:Key="Entrance.Duration">0:0:0.42</Duration>
+    <Duration x:Key="Hover.Duration">0:0:0.18</Duration>
+    <Duration x:Key="Navigation.Duration">0:0:0.28</Duration>
+    <Duration x:Key="Dialog.Duration">0:0:0.24</Duration>
+</ResourceDictionary>
