@@ -185,6 +185,23 @@ public sealed class PrivacyAndMoodleSecurityTests
     }
 
     [Fact]
+    public void MoodleClientRejectsLoopbackUnlessExplicitlyOptedIn()
+    {
+        Assert.Throws<ArgumentException>(() =>
+            new MoodleClient("http://127.0.0.1:8080", Token));
+        Assert.Throws<ArgumentException>(() =>
+            new MoodleClient("https://127.0.0.1:8443", Token));
+
+        using var localDevelopmentClient = new MoodleClient(
+            "http://127.0.0.1:8080",
+            Token,
+            new HttpClientHandler(),
+            allowLoopbackHttp: true);
+
+        Assert.True(localDevelopmentClient.BaseUri.IsLoopback);
+    }
+
+    [Fact]
     public void InvalidTokensAreRejected()
     {
         Assert.Throws<ArgumentException>(() => MoodleTokenVault.Normalize("short"));
