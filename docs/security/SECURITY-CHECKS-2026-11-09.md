@@ -28,8 +28,9 @@ Revisione mirata del branch `main` del 9 novembre 2026 su vault, endpoint, Moodl
 20. **Contenimento filesystem e reparse point** — CORRETTO IN QUESTO BRANCH. Il controllo precedente era solo lessicale e non rilevava link simbolici/junction. Ora `IsInside` rifiuta reparse point sul confine e nei componenti esistenti; il download viene validato rispetto alla radice Moodle, prima e dopo la creazione delle cartelle.
 21. **Dimensione PDF** — OK. L'importer rifiuta file oltre 25 MB e ricontrolla la dimensione sullo stream aperto.
 22. **Tipo e integrità PDF** — OK. Sono richieste estensione e firma `%PDF-`; hash e parsing derivano dagli stessi byte letti una sola volta.
-23. **Numero pagine PDF** — OK. Il limite di 5.000 pagine è applicato anche dall'importer, non solo dall'estrattore predefinito.
-24. **Testo estratto PDF** — OK. Limiti di 200.000 caratteri per pagina e 4.000.000 complessivi.
+23. **Stream PDF non seekable** — CORRETTO IN QUESTO BRANCH. L'estrattore legge al massimo 25 MB più un byte di rilevamento prima di rifiutare, senza copiare uno stream arbitrariamente grande in memoria.
+24. **Numero pagine PDF** — OK. Il limite di 5.000 pagine è applicato anche dall'importer, non solo dall'estrattore predefinito.
+25. **Testo estratto PDF** — OK. Limiti effettivi di 200.000 caratteri per pagina e 4.000.000 complessivi; l'ultima pagina viene troncata al budget residuo.
 25. **Dimensione import JSON** — OK. L'import completo rifiuta payload vuoti o oltre 64 MB.
 26. **Profondità e schema JSON** — OK. Profondità massima 64 e controllo esplicito di versione, oggetto radice e proprietà `data`.
 27. **Record importati** — OK. Massimo 100.000 record e normalizzazione/validazione prima della scrittura.
@@ -53,6 +54,7 @@ Il problema concreto era un bypass del contenimento dei percorsi tramite filesys
 - `LocalFileSecurity.IsInside` ora controlla il confine e ogni componente esistente, inclusi i link dangling, e fallisce chiuso se non può verificare il percorso.
 - `DocumentSyncService` verifica le cartelle applicative prima di applicare ACL o creare directory, mantiene la radice di sicurezza a livello `Moodle` (non della singola cartella corso) e ripete il controllo prima del download.
 - I test aggiunti coprono link di directory, link di file, radice simbolica e pulizia dei temporanei.
+- L'estrattore PDF limita la lettura anche per stream non seekable e azzera i buffer temporanei; il budget complessivo del testo non può essere superato di una pagina.
 
 ## Rischi residui e limiti
 
