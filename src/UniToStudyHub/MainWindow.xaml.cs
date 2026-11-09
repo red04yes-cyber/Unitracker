@@ -1,6 +1,13 @@
+using System.ComponentModel;
+using System.IO;
+using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Threading;
+using System.Reactive.Disposables;
+using System.Reactive.Linq;
+using CP.AnimationRx.Reactive;
 using Microsoft.Win32;
 using UniToStudyHub.Presentation.ViewModels;
 using UniToStudyHub.Services;
@@ -15,13 +22,44 @@ public partial class MainWindow : Window
     private readonly AiProviderPreferencesStore _aiPreferences;
     private readonly PrivacyService _privacy;
     private readonly StudyDataImportService _dataImport;
+    private readonly UiPreferencesStore _uiPreferencesStore;
+    private readonly UiPreferences _uiPreferences;
+    private readonly SerialDisposable _sidebarWidthAnimation = new();
+    private bool _sidebarPinned;
+    private bool _sidebarExpanded;
+
+    private static readonly (string Title, string Subtitle)[] SectionHeaders =
+    [
+        ("Oggi", "Priorità di oggi e andamento"),
+        ("Materie", "Esami, voti e carriera"),
+        ("Calendario", "Appelli, lezioni e pianificazione"),
+        ("Studio Lab", "Focus, attività, ripasso e benessere"),
+        ("Accademia", "Materiali e apprendimento intelligente"),
+        ("Progressi", "Statistiche e obiettivi"),
+        ("Impostazioni", "Profilo, integrazioni e dati")
+    ];
 
     public MainWindow(MainViewModel viewModel, AiCredentialStore aiCredentials,
         AiProviderPreferencesStore aiPreferences, PrivacyService privacy,
-        StudyDataImportService dataImport)
+        StudyDataImportService dataImport, UiPreferencesStore uiPreferencesStore)
     {
         InitializeComponent();
-        Loaded += (_, _) => UpdateThemeToggle(ApplicationThemeManager.GetAppTheme());
+        _uiPreferencesStore = uiPreferencesStore;
+        _uiPreferences = _uiPreferencesStore.Load();
+        _sidebarPinned = _uiPreferences.SidebarPinned;
+        RestoreWindowBounds();
+        Loaded += (_, _) =>
+        {
+            UpdateThemeToggle(ApplicationThemeManager.GetAppTheme());
+            UpdateSectionHeader();
+            SetSidebarExpanded(_sidebarPinned, animate: false);
+            UpdateSidebarPinButton();
+            WindowBackgroundManager.UpdateBackground(
+                this,
+                ApplicationThemeManager.GetAppTheme(),
+                Wpf.Ui.Controls.WindowBackdropType.Mica);
+        };
+        SystemParameters.StaticPropertyChanged += OnSystemParametersChanged;
         _aiCredentials = aiCredentials;
         _aiPreferences = aiPreferences;
         _privacy = privacy;
@@ -49,6 +87,9 @@ public partial class MainWindow : Window
         Closing += (_, _) =>
         {
             _focusRefreshTimer.Stop();
+            SaveUiPreferences();
+            _sidebarWidthAnimation.Dispose();
+            SystemParameters.StaticPropertyChanged -= OnSystemParametersChanged;
         };
     }
 
@@ -66,13 +107,14 @@ public partial class MainWindow : Window
             : ApplicationTheme.Dark;
 
         ApplicationThemeManager.Apply(next, Wpf.Ui.Controls.WindowBackdropType.Mica);
+        _uiPreferences.Theme = next == ApplicationTheme.Light ? "Light" : "Dark";
         UpdateThemeToggle(next, sender as Button);
+        SaveUiPreferences();
     }
 
     private void UpdateThemeToggle(ApplicationTheme theme, Button? source = null)
     {
-        var button = source ??
-            MainTabs.Template.FindName("ThemeToggleButton", MainTabs) as Button;
+        var button = source ?? FindTemplatePart<Button>("ThemeToggleButton");
         if (button is null)
             return;
 
@@ -87,6 +129,175 @@ public partial class MainWindow : Window
         button.Content = theme == ApplicationTheme.Dark
             ? "Tema chiaro"
             : "Tema scuro";
+    }
+
+    private void OnSystemParametersChanged(object? sender, PropertyChangedEventArgs args)
+    {
+        if (!string.Equals(args.PropertyName, nameof(SystemParameters.HighContrast), StringComparison.Ordinal))
+            return;
+
+        Dispatcher.BeginInvoke(new Action(() =>
+            UpdateThemeToggle(ApplicationThemeManager.GetAppTheme())));
+    }
+
+    private T? FindTemplatePart<T>(string name) where T : class =>
+        MainTabs.Template?.FindName(name, MainTabs) as T;
+
+    private void MainTabs_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (ReferenceEquals(e.Source, MainTabs))
+            UpdateSectionHeader();
+    }
+
+    private void UpdateSectionHeader()
+    {
+        var index = MainTabs.SelectedIndex;
+        if (index < 0 || index >= SectionHeaders.Length)
+            return;
+
+        if (FindTemplatePart<TextBlock>("TopbarTitle") is { } title)
+            title.Text = SectionHeaders[index].Title;
+        if (FindTemplatePart<TextBlock>("TopbarSubtitle") is { } subtitle)
+            subtitle.Text = SectionHeaders[index].Subtitle;
+    }
+
+    private void Sidebar_MouseEnter(object sender, MouseEventArgs e)
+    {
+        if (!_sidebarPinned)
+            SetSidebarExpanded(true, animate: true);
+    }
+
+    private void Sidebar_MouseLeave(object sender, MouseEventArgs e)
+    {
+        if (!_sidebarPinned)
+            SetSidebarExpanded(false, animate: true);
+    }
+
+    private void ToggleSidebarPin_Click(object sender, RoutedEventArgs e)
+    {
+        _sidebarPinned = !_sidebarPinned;
+        _uiPreferences.SidebarPinned = _sidebarPinned;
+        var sidebar = FindTemplatePart<Border>("SidebarSurface");
+        SetSidebarExpanded(_sidebarPinned || sidebar?.IsMouseOver == true, animate: true);
+        UpdateSidebarPinButton();
+        SaveUiPreferences();
+    }
+
+    private void SetSidebarExpanded(bool expanded, bool animate)
+    {
+        var sidebar = FindTemplatePart<Border>("SidebarSurface");
+        if (sidebar is null)
+            return;
+
+        _sidebarExpanded = expanded;
+        var targetWidth = expanded ? 256d : 92d;
+        if (animate)
+        {
+            _sidebarWidthAnimation.Disposable = sidebar
+                .WidthTo(240, targetWidth, Ease.ExpoOut)
+                .Subscribe();
+        }
+        else
+        {
+            sidebar.Width = targetWidth;
+        }
+
+        foreach (var tab in MainTabs.Items.OfType<TabItem>())
+        {
+            tab.Width = expanded ? 232 : 64;
+            if (tab.Header is StackPanel header &&
+                header.Children.Count > 1 &&
+                header.Children[1] is StackPanel labels)
+            {
+                var label = labels.Children.OfType<TextBlock>().FirstOrDefault()?.Text;
+                labels.Visibility = expanded ? Visibility.Visible : Visibility.Collapsed;
+                tab.ToolTip = expanded ? null : label;
+            }
+        }
+
+        if (FindTemplatePart<StackPanel>("SidebarBrandText") is { } brandText)
+            brandText.Visibility = expanded ? Visibility.Visible : Visibility.Collapsed;
+        if (FindTemplatePart<TextBlock>("SidebarSectionLabel") is { } sectionLabel)
+            sectionLabel.Visibility = expanded ? Visibility.Visible : Visibility.Collapsed;
+        if (FindTemplatePart<StackPanel>("SidebarFooter") is { } footer)
+            footer.Visibility = expanded ? Visibility.Visible : Visibility.Collapsed;
+
+        UpdateSidebarPinButton();
+    }
+
+    private void UpdateSidebarPinButton()
+    {
+        if (FindTemplatePart<Button>("SidebarPinButton") is not { } pinButton)
+            return;
+
+        pinButton.Content = _sidebarPinned ? "●" : "⌖";
+        pinButton.ToolTip = _sidebarPinned
+            ? "Sblocca la sidebar"
+            : "Blocca la sidebar aperta";
+        pinButton.Foreground = _sidebarPinned
+            ? (System.Windows.Media.Brush)FindResource("AccentBrush")
+            : (System.Windows.Media.Brush)FindResource("MutedBrush");
+    }
+
+    private void RestoreWindowBounds()
+    {
+        if (_uiPreferences.WindowWidth >= MinWidth && _uiPreferences.WindowHeight >= MinHeight)
+        {
+            Width = Math.Min(_uiPreferences.WindowWidth,
+                Math.Max(MinWidth, SystemParameters.VirtualScreenWidth));
+            Height = Math.Min(_uiPreferences.WindowHeight,
+                Math.Max(MinHeight, SystemParameters.VirtualScreenHeight));
+
+            if (_uiPreferences.WindowLeft.HasValue && _uiPreferences.WindowTop.HasValue)
+            {
+                WindowStartupLocation = WindowStartupLocation.Manual;
+                var minLeft = SystemParameters.VirtualScreenLeft;
+                var minTop = SystemParameters.VirtualScreenTop;
+                var maxLeft = Math.Max(minLeft, minLeft + SystemParameters.VirtualScreenWidth - Width);
+                var maxTop = Math.Max(minTop, minTop + SystemParameters.VirtualScreenHeight - Height);
+                Left = Math.Clamp(_uiPreferences.WindowLeft.Value, minLeft, maxLeft);
+                Top = Math.Clamp(_uiPreferences.WindowTop.Value, minTop, maxTop);
+            }
+        }
+
+        if (_uiPreferences.IsMaximized)
+            WindowState = WindowState.Maximized;
+    }
+
+    private void SaveUiPreferences()
+    {
+        var bounds = WindowState == WindowState.Maximized && !RestoreBounds.IsEmpty
+            ? RestoreBounds
+            : new Rect(Left, Top,
+                ActualWidth > 0 ? ActualWidth : Width,
+                ActualHeight > 0 ? ActualHeight : Height);
+
+        if (bounds.Width > 0 && bounds.Height > 0)
+        {
+            _uiPreferences.WindowWidth = bounds.Width;
+            _uiPreferences.WindowHeight = bounds.Height;
+            _uiPreferences.WindowLeft = bounds.Left;
+            _uiPreferences.WindowTop = bounds.Top;
+        }
+
+        _uiPreferences.IsMaximized = WindowState == WindowState.Maximized;
+        _uiPreferences.SidebarPinned = _sidebarPinned;
+        var currentTheme = ApplicationThemeManager.GetAppTheme();
+        if (currentTheme is ApplicationTheme.Dark or ApplicationTheme.Light)
+            _uiPreferences.Theme = currentTheme == ApplicationTheme.Light ? "Light" : "Dark";
+
+        try
+        {
+            _uiPreferencesStore.Save(_uiPreferences);
+        }
+        catch (IOException)
+        {
+            // UI preferences are non-critical; a failed write must not block app shutdown.
+        }
+        catch (UnauthorizedAccessException)
+        {
+            // UI preferences are non-critical; a failed write must not block app shutdown.
+        }
     }
 
     private void SaveAiSettings_Click(object sender, RoutedEventArgs e)

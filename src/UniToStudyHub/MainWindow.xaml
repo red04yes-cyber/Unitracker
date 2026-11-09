@@ -8,12 +8,13 @@
         MinWidth="1024"
         WindowStartupLocation="CenterScreen"
         Background="{DynamicResource PageBrush}"
+        Foreground="{DynamicResource InkBrush}"
         FontFamily="Segoe UI Variable"
         UseLayoutRounding="True"
         SnapsToDevicePixels="True">
     <Window.Resources>
-        <Style TargetType="{x:Type TabItem}">
-            <Setter Property="Width" Value="220"/>
+        <Style x:Key="SidebarTabItemStyle" TargetType="{x:Type TabItem}">
+            <Setter Property="Width" Value="64"/>
             <Setter Property="Height" Value="52"/>
             <Setter Property="Margin" Value="0,3"/>
             <Setter Property="Padding" Value="0"/>
@@ -25,21 +26,23 @@
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="{x:Type TabItem}">
-                        <Border x:Name="TabSurface"
-                                Background="{TemplateBinding Background}"
-                                CornerRadius="9"
-                                Padding="10,4">
+                        <Border x:Name="TabSurface" Background="{TemplateBinding Background}"
+                                CornerRadius="11" Padding="7,4">
                             <ContentPresenter ContentSource="Header"
                                               HorizontalAlignment="Stretch"
                                               VerticalAlignment="Center"/>
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsSelected" Value="True">
-                                <Setter TargetName="TabSurface" Property="Background" Value="{DynamicResource AccentFillBrush}"/>
-                                <Setter Property="Foreground" Value="White"/>
+                                <Setter TargetName="TabSurface" Property="Background" Value="{DynamicResource AccentSoftBrush}"/>
+                                <Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
                             </Trigger>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="TabSurface" Property="Opacity" Value="0.86"/>
+                                <Setter TargetName="TabSurface" Property="Background" Value="{DynamicResource HoverBrush}"/>
+                            </Trigger>
+                            <Trigger Property="IsKeyboardFocused" Value="True">
+                                <Setter TargetName="TabSurface" Property="BorderBrush" Value="{DynamicResource FocusBrush}"/>
+                                <Setter TargetName="TabSurface" Property="BorderThickness" Value="1"/>
                             </Trigger>
                             <Trigger Property="IsEnabled" Value="False">
                                 <Setter TargetName="TabSurface" Property="Opacity" Value="0.55"/>
@@ -52,6 +55,8 @@
     </Window.Resources>
 
     <TabControl x:Name="MainTabs"
+                ItemContainerStyle="{StaticResource SidebarTabItemStyle}"
+                SelectionChanged="MainTabs_SelectionChanged"
                 TabStripPlacement="Left"
                 SelectedIndex="0"
                 Background="{DynamicResource PageBrush}"
@@ -60,11 +65,12 @@
             <ControlTemplate TargetType="{x:Type TabControl}">
                 <Grid SnapsToDevicePixels="True">
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="244"/>
+                        <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="*"/>
                     </Grid.ColumnDefinitions>
 
-                    <Border Grid.Column="0" Background="{DynamicResource SidebarBrush}">
+                    <Border x:Name="SidebarSurface" Grid.Column="0" Width="92" Background="{DynamicResource SidebarBrush}"
+                            MouseEnter="Sidebar_MouseEnter" MouseLeave="Sidebar_MouseLeave">
                         <Grid>
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto"/>
@@ -72,25 +78,34 @@
                                 <RowDefinition Height="Auto"/>
                             </Grid.RowDefinitions>
 
-                            <StackPanel Grid.Row="0" Margin="22,24,18,16">
-                                <StackPanel Orientation="Horizontal">
-                                    <Border Width="40" Height="40" CornerRadius="11"
+                            <StackPanel Grid.Row="0" Margin="10,20,8,16">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Border Width="34" Height="34" CornerRadius="11"
                                             Background="{DynamicResource AccentFillBrush}" VerticalAlignment="Center">
-                                        <TextBlock Text="S" Foreground="White" FontSize="23"
+                                        <TextBlock Text="S" Foreground="White" FontSize="20"
                                                    FontWeight="Bold" HorizontalAlignment="Center"
                                                    VerticalAlignment="Center"/>
                                     </Border>
-                                    <StackPanel Margin="11,1,0,0" VerticalAlignment="Center">
-                                        <TextBlock Text="StudyHub" Foreground="White"
-                                                   FontSize="18" FontWeight="SemiBold"/>
+                                    <StackPanel x:Name="SidebarBrandText" Grid.Column="1" Margin="9,0,0,0"
+                                                VerticalAlignment="Center">
+                                        <TextBlock Text="StudyHub" Foreground="{DynamicResource InkBrush}"
+                                                   FontSize="17" FontWeight="SemiBold"/>
                                         <TextBlock Text="UNITO WORKSPACE" Foreground="{DynamicResource SidebarMutedBrush}"
-                                                   FontSize="9" FontWeight="SemiBold"
-                                                   Margin="0,2,0,0"/>
+                                                   FontSize="8" FontWeight="SemiBold" Margin="0,2,0,0"/>
                                     </StackPanel>
-                                </StackPanel>
-                                <TextBlock Text="IL TUO PERCORSO UNIVERSITARIO"
-                                           Foreground="{DynamicResource SidebarMutedBrush}" FontSize="9"
-                                           FontWeight="SemiBold" Margin="2,27,0,0"/>
+                                    <Button x:Name="SidebarPinButton" Grid.Column="2" Content="⌖"
+                                            Style="{StaticResource QuietButtonStyle}" Width="28" MinHeight="30"
+                                            Padding="2" FontSize="15" Click="ToggleSidebarPin_Click"
+                                            ToolTip="Blocca la sidebar aperta"/>
+                                </Grid>
+                                <TextBlock x:Name="SidebarSectionLabel" Text="IL TUO PERCORSO UNIVERSITARIO"
+                                           Foreground="{DynamicResource SidebarMutedBrush}" FontSize="8"
+                                           FontWeight="SemiBold" Margin="2,22,0,0"/>
                             </StackPanel>
 
                             <TabPanel x:Name="HeaderPanel"
@@ -99,7 +114,7 @@
                                       KeyboardNavigation.TabIndex="1"
                                       Margin="12,0,12,8"/>
 
-                            <StackPanel Grid.Row="2" Margin="22,12,20,22">
+                            <StackPanel x:Name="SidebarFooter" Grid.Row="2" Margin="14,12,14,18">
                                 <Border Height="1" Background="{DynamicResource SidebarDividerBrush}" Margin="0,0,0,14"/>
                                 <TextBlock Text="Un passo alla volta."
                                            Foreground="{DynamicResource SidebarMutedBrush}" FontSize="12"
@@ -125,11 +140,11 @@
                                     <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
                                 <StackPanel VerticalAlignment="Center">
-                                    <TextBlock Text="UNITO STUDYHUB" FontSize="9"
-                                               FontWeight="Bold" Foreground="{DynamicResource MutedBrush}"/>
-                                    <TextBlock Text="Il tuo spazio personale" FontSize="13"
+                                    <TextBlock x:Name="TopbarSubtitle" Text="Priorità di oggi e andamento"
+                                               FontSize="9" FontWeight="Bold" Foreground="{DynamicResource MutedBrush}"/>
+                                    <TextBlock x:Name="TopbarTitle" Text="Oggi" FontSize="15"
                                                FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}"
-                                               Margin="0,3,0,0"/>
+                                               Margin="0,2,0,0"/>
                                 </StackPanel>
                                 <StackPanel Grid.Column="1" Orientation="Horizontal"
                                             VerticalAlignment="Center">

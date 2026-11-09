@@ -83,15 +83,35 @@ public partial class App : System.Windows.Application
             ["FocusBrush"] = "#B79CFF"
         };
 
-    private void ConfigureThemeSynchronization()
+    private void ConfigureThemeSynchronization(UiPreferencesStore preferencesStore)
     {
         ApplicationThemeManager.Changed += (theme, _) => ApplyCustomThemePalette(theme);
-        ApplicationThemeManager.ApplySystemTheme();
+        var savedPreferences = preferencesStore.Load();
+        var preferredTheme = string.Equals(savedPreferences.Theme, "Light", StringComparison.OrdinalIgnoreCase)
+            ? ApplicationTheme.Light
+            : ApplicationTheme.Dark;
         var initialTheme = SystemParameters.HighContrast
             ? ApplicationTheme.HighContrast
-            : ApplicationTheme.Dark;
+            : preferredTheme;
         ApplicationThemeManager.Apply(initialTheme);
         ApplyCustomThemePalette(initialTheme);
+
+        SystemParameters.StaticPropertyChanged += (_, args) =>
+        {
+            if (!string.Equals(args.PropertyName, nameof(SystemParameters.HighContrast), StringComparison.Ordinal))
+                return;
+
+            Dispatcher.BeginInvoke(new Action(() =>
+            {
+                var currentPreferences = preferencesStore.Load();
+                var selectedTheme = string.Equals(currentPreferences.Theme, "Light", StringComparison.OrdinalIgnoreCase)
+                    ? ApplicationTheme.Light
+                    : ApplicationTheme.Dark;
+                ApplicationThemeManager.Apply(SystemParameters.HighContrast
+                    ? ApplicationTheme.HighContrast
+                    : selectedTheme);
+            }));
+        };
     }
 
     private void ApplyCustomThemePalette(ApplicationTheme theme)
@@ -159,7 +179,8 @@ public partial class App : System.Windows.Application
 
         try
         {
-            ConfigureThemeSynchronization();
+            var uiPreferencesStore = new UiPreferencesStore();
+            ConfigureThemeSynchronization(uiPreferencesStore);
 
             // Keep every startup operation inside this boundary. In particular,
             // path/ACL setup and DI registration can fail before database startup.
@@ -170,6 +191,7 @@ public partial class App : System.Windows.Application
             var services = new ServiceCollection();
             services.AddUniToStudyHubCore();
             services.AddUniToStudyHubViewModels();
+            services.AddSingleton(uiPreferencesStore);
             services.AddSingleton<MainWindow>();
 
             _serviceProvider = services.BuildServiceProvider(validateScopes: true);

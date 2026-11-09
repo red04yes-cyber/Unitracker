@@ -1,27 +1,31 @@
 # Phase 6 — Apple Premium UI foundation
 
-## Scope of this slice
+## Implemented in the foundation slice
 
-- Introduces a shared dark-first palette with coordinated light and high-contrast color mappings.
-- Adds semantic tokens for page, sidebar, panel, elevated panel, inset input, focus, hover, success, warning, danger and information states.
-- Adds reusable WPF control templates for buttons, text/password fields, combo boxes, date picker/calendar, check/radio controls, sliders, progress bars, lists, tables, expanders and tooltips.
-- Adds a small presentation-only motion behavior for cancellable hover/entrance transitions.
-- Makes Dark the startup theme unless Windows High Contrast is active; adds an explicit Dark/Light switch in the shell.
-- Keeps business logic, persistence, services and ViewModels unchanged.
+- Dark-first semantic palette with coordinated Light and Windows High Contrast mappings.
+- Reusable WPF templates for buttons, text/password fields, combo boxes, date picker/calendar, check/radio controls, sliders, progress bars, lists, tables, expanders and tooltips.
+- Dark and Light theme switch; selected theme is stored with non-sensitive UI preferences.
+- Motion behavior for cancellable hover lift and card entrance transitions.
+- Compact/expandable sidebar with hover expansion and optional pinning.
+- Custom line-icon navigation, contextual topbar title/subtitle and persistent window size/position.
+- Business logic, persistence schema, services and ViewModels are not changed.
 
 ## Animation dependency
 
-The chosen dependency is AnimationRx.Wpf.Reactive 3.2.0 (MIT). It exposes the WPF extension API under CP.AnimationRx.Reactive and targets .NET 10 Windows 10.0.19041.0. The app target framework is therefore set to net10.0-windows10.0.19041.0, making Windows 10 build 19041 (May 2020) the declared minimum API baseline. This is above the former generic WPF baseline; verify the supported OS range against the distribution target before release.
-
-The library is used only in the presentation layer. Animation subscriptions are cancelled when an element unloads or a new hover animation replaces the previous one. No Rx types are introduced into ViewModels or domain services.
+AnimationRx.Wpf.Reactive 3.2.0 (MIT) is used only in the presentation layer. Its WPF extension API is exposed under CP.AnimationRx.Reactive and targets .NET 10 Windows 10.0.19041.0. The app target is therefore net10.0-windows10.0.19041.0, declaring Windows 10 build 19041 (May 2020) as the minimum API baseline. The package and framework choice should be retained only if this baseline is acceptable for the distribution target.
 
 ## Verification
 
-- The existing test suite passed: 292/292.
-- The first WPF build exposed an incorrect namespace assumption and an incompatible target-framework fallback; both were corrected. The next build exposed a template namescope issue in the theme toggle, also corrected.
-- Release build passed with 0 warnings and 0 errors, and win-x64 self-contained publish passed. The startup smoke initially failed because its default path still referenced the former target framework; smoke/package scripts and build.ps1 are updated to the new TFM path and must be rerun.
-- No manual visual verification on a physical Windows desktop has been performed.
+- Latest completed Windows workflow: 292/292 tests passed.
+- Release build passed with 0 warnings and 0 errors.
+- win-x64 self-contained publish passed.
+- WPF startup smoke passed; the window was shown and the local database initialized.
+- Portable ZIP and SHA-256 artifact created.
+- Automated smoke is not a substitute for manual visual/interactive verification on a real Windows desktop.
 
-## Next slice
+## Remaining work
 
-Complete the shell redesign: compact/expandable pinned sidebar, adaptive window layout and persistent window bounds. Then refine the dashboard and each of the seven top-level sections without changing their bindings or command flows.
+- Premium custom modal dialogs and contextual toasts.
+- Refine dashboard hierarchy, progress rings/charts, rich table status badges and all seven sections.
+- Responsive breakpoints and keyboard navigation audit.
+- Manual visual and interaction verification on Windows.
