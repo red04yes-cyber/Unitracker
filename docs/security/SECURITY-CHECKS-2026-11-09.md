@@ -52,7 +52,7 @@ Revisione mirata del branch `main` del 9 novembre 2026 su vault, endpoint, Moodl
 Il problema concreto era un bypass del contenimento dei percorsi tramite filesystem link. La verifica precedente confrontava solo stringhe normalizzate: un percorso apparentemente figlio della cartella corso poteva attraversare una junction o un link simbolico verso un'altra directory.
 
 - `LocalFileSecurity.IsInside` ora controlla il confine e ogni componente esistente, inclusi i link dangling, e fallisce chiuso se non può verificare il percorso.
-- `DocumentSyncService` verifica le cartelle applicative prima di applicare ACL o creare directory, mantiene la radice di sicurezza a livello `Moodle` (non della singola cartella corso) e ripete il controllo prima del download.
+- `DocumentSyncService` risolve prima l'eventuale reindirizzamento legittimo della cartella Documenti scelta dall'utente (ad esempio OneDrive), poi verifica le cartelle applicative prima di applicare ACL o creare directory, mantiene la radice di sicurezza a livello `Moodle` (non della singola cartella corso) e ripete il controllo prima del download.
 - I 10 nuovi casi automatici coprono link di directory/file, radice simbolica, link dangling, pulizia dei temporanei, percorso annidato legittimo, rifiuto del confine stesso, stream PDF sovradimensionato, stream vuoto e cancellazione prima della lettura.
 - L'estrattore PDF limita la lettura anche per stream non seekable e azzera i buffer temporanei; il testo estratto non supera il budget complessivo di 4.000.000 di caratteri.
 
