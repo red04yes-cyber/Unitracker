@@ -81,9 +81,7 @@ internal static class UiDialogService
             ShowActivated = true,
             Topmost = false,
             FontFamily = new FontFamily("Segoe UI Variable"),
-            Opacity = 0,
-            RenderTransformOrigin = new Point(0.5, 0.5),
-            RenderTransform = new TranslateTransform(0, 8)
+            Opacity = 0
         };
 
         if (owner is not null && owner.IsLoaded)
@@ -105,10 +103,6 @@ internal static class UiDialogService
             };
             dialog.BeginAnimation(Window.OpacityProperty, fadeOut);
 
-            if (dialog.RenderTransform is TranslateTransform translate)
-                translate.BeginAnimation(
-                    TranslateTransform.YProperty,
-                    new DoubleAnimation(translate.Y, -4, TimeSpan.FromMilliseconds(120)));
         }
 
         var surface = new Border
@@ -289,9 +283,6 @@ internal static class UiDialogService
         {
             dialog.BeginAnimation(Window.OpacityProperty,
                 new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(170)));
-            if (dialog.RenderTransform is TranslateTransform translate)
-                translate.BeginAnimation(TranslateTransform.YProperty,
-                    new DoubleAnimation(8, 0, TimeSpan.FromMilliseconds(190)));
         };
 
         _ = dialog.ShowDialog();
