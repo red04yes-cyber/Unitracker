@@ -121,6 +121,7 @@ public sealed class DashboardOverviewServiceTests
         var today = Today;
         var now = LocalAt(today);
         data.StudyTasks.Add(Task("task-today", "Consegna esercizi", LocalAt(today, 17)));
+        data.StudyTasks.Add(Task("task-soon", "Consegna prossima", LocalAt(today.AddDays(1), 17)));
         data.StudyTasks.Add(Task("task-outside", "Consegna lontana", LocalAt(today.AddDays(15))));
         data.CalendarEvents.Add(new CalendarEvent
         {
@@ -152,7 +153,7 @@ public sealed class DashboardOverviewServiceTests
 
         var result = _service.Calculate(data, now);
 
-        Assert.Equal(new[] { "task-today", "official-deadline" }, result.UpcomingDeadlines.Select(item => item.Id));
+        Assert.Equal(new[] { "task-soon", "official-deadline" }, result.UpcomingDeadlines.Select(item => item.Id));
         var official = Assert.Single(result.UpcomingDeadlines, item => item.Id == "official-deadline");
         Assert.Equal("Moodle", official.SourceDisplay);
         Assert.Equal("Fonte ufficiale", official.VerificationDisplay);
