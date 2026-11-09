@@ -471,4 +471,15 @@ public partial class MainWindow : Window
     {
         MainTabs.SelectedIndex = 6;
     }
+
+
+    private void NavigateToSection_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not FrameworkElement { Tag: string tag } ||
+            !int.TryParse(tag, out var index) ||
+            index < 0 || index >= MainTabs.Items.Count)
+            return;
+
+        MainTabs.SelectedIndex = index;
+    }
 }
