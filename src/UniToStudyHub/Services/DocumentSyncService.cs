@@ -41,6 +41,21 @@ public sealed class DocumentSyncService
         if (string.IsNullOrWhiteSpace(documentsBase))
             throw new InvalidOperationException("La cartella Documenti dell'utente non è disponibile.");
 
+        documentsBase = Path.GetFullPath(documentsBase);
+        var documentsBaseInfo = new DirectoryInfo(documentsBase);
+        if (documentsBaseInfo.LinkTarget is not null ||
+            (Directory.Exists(documentsBase) &&
+             (File.GetAttributes(documentsBase) & FileAttributes.ReparsePoint) != 0))
+        {
+            // The user-selected Documents folder may legitimately be redirected
+            // (for example by OneDrive). Resolve that trusted boundary once,
+            // then reject links created inside the app-owned subtree.
+            var resolvedBase = documentsBaseInfo.ResolveLinkTarget(returnFinalTarget: true)
+                               ?? throw new InvalidDataException(
+                                   "La cartella Documenti reindirizzata non può essere risolta.");
+            documentsBase = Path.GetFullPath(resolvedBase.FullName);
+        }
+
         var documentsRoot = Path.Combine(documentsBase, "UniToStudyHub");
         var moodleRoot = Path.Combine(documentsRoot, "Moodle");
         var root = Path.Combine(moodleRoot, SafeName(course.Name));
