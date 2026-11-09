@@ -1,10 +1,11 @@
 using System.Runtime.CompilerServices;
 using System.Reactive.Disposables;
+using System.Reactive.Linq;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
-using CP.AnimationRx;
+using CP.AnimationRx.Reactive;
 
 namespace UniToStudyHub;
 
@@ -56,7 +57,7 @@ public static class MotionBehavior
         if (target is not FrameworkElement element)
             return;
 
-        var state = States.GetOrCreateValue(element);
+        var state = States.GetValue(element, static _ => new ElementMotionState());
         if ((bool)args.NewValue)
         {
             if (state.HoverHandlersAttached)
@@ -72,7 +73,7 @@ public static class MotionBehavior
             element.MouseEnter -= OnMouseEnter;
             element.MouseLeave -= OnMouseLeave;
             element.Unloaded -= OnUnloaded;
-            state.HoverAnimation.Dispose();
+            state.HoverAnimation.Disposable = Disposable.Empty;
             state.HoverHandlersAttached = false;
         }
     }

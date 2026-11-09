@@ -21,6 +21,7 @@ public partial class MainWindow : Window
         StudyDataImportService dataImport)
     {
         InitializeComponent();
+        UpdateThemeToggle(ApplicationThemeManager.GetAppTheme());
         _aiCredentials = aiCredentials;
         _aiPreferences = aiPreferences;
         _privacy = privacy;
@@ -37,7 +38,10 @@ public partial class MainWindow : Window
             AiProviderBox.SelectedValue = "openai";
             AiModelBox.Text = "gpt-4.1-mini";
         }
-        SystemThemeWatcher.Watch(this, Wpf.Ui.Controls.WindowBackdropType.Mica);
+        WindowBackgroundManager.UpdateBackground(
+            this,
+            ApplicationThemeManager.GetAppTheme(),
+            Wpf.Ui.Controls.WindowBackdropType.Mica);
         DataContext = viewModel;
         _focusRefreshTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
         _focusRefreshTimer.Tick += (_, _) => viewModel.Workspace.RefreshFocusSnapshot();
@@ -45,8 +49,36 @@ public partial class MainWindow : Window
         Closing += (_, _) =>
         {
             _focusRefreshTimer.Stop();
-            SystemThemeWatcher.UnWatch(this);
         };
+    }
+
+    private void ToggleTheme_Click(object sender, RoutedEventArgs e)
+    {
+        var current = ApplicationThemeManager.GetAppTheme();
+        if (current == ApplicationTheme.HighContrast)
+            return;
+
+        var next = current == ApplicationTheme.Dark
+            ? ApplicationTheme.Light
+            : ApplicationTheme.Dark;
+
+        ApplicationThemeManager.Apply(next, Wpf.Ui.Controls.WindowBackdropType.Mica);
+        UpdateThemeToggle(next);
+    }
+
+    private void UpdateThemeToggle(ApplicationTheme theme)
+    {
+        if (theme == ApplicationTheme.HighContrast)
+        {
+            ThemeToggleButton.Content = "Contrasto elevato";
+            ThemeToggleButton.IsEnabled = false;
+            return;
+        }
+
+        ThemeToggleButton.IsEnabled = true;
+        ThemeToggleButton.Content = theme == ApplicationTheme.Dark
+            ? "Tema chiaro"
+            : "Tema scuro";
     }
 
     private void SaveAiSettings_Click(object sender, RoutedEventArgs e)

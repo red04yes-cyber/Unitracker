@@ -215,11 +215,13 @@
         </Setter>
     </Style>
 
-    <Style TargetType="{x:Type DatePickerTextBox}" BasedOn="{StaticResource {x:Type TextBox}}">
+    <Style TargetType="{x:Type DatePickerTextBox}">
         <Setter Property="Background" Value="Transparent"/>
         <Setter Property="BorderThickness" Value="0"/>
         <Setter Property="Padding" Value="2,0"/>
         <Setter Property="MinHeight" Value="0"/>
+        <Setter Property="FontSize" Value="13"/>
+        <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
     </Style>
 
     <Style TargetType="{x:Type CalendarDayButton}">
@@ -418,7 +420,7 @@
         </Setter>
     </Style>
 
-    <Style TargetType="{x:Type ToggleButton}">
+    <Style x:Key="PillToggleStyle" TargetType="{x:Type ToggleButton}">
         <Setter Property="Foreground" Value="{DynamicResource InkBrush}"/>
         <Setter Property="Cursor" Value="Hand"/>
         <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
@@ -445,6 +447,45 @@
                         </Trigger>
                         <Trigger Property="IsEnabled" Value="False">
                             <Setter Property="Opacity" Value="0.45"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="DisclosureToggleStyle" TargetType="{x:Type ToggleButton}">
+        <Setter Property="Foreground" Value="{DynamicResource InkBrush}"/>
+        <Setter Property="Background" Value="{DynamicResource PanelBrush}"/>
+        <Setter Property="Padding" Value="13,10"/>
+        <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+        <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type ToggleButton}">
+                    <Border x:Name="DisclosureSurface" Background="{TemplateBinding Background}"
+                            CornerRadius="10" Padding="{TemplateBinding Padding}">
+                        <Grid>
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                            <ContentPresenter VerticalAlignment="Center"/>
+                            <Path x:Name="DisclosureChevron" Grid.Column="1" Data="M 0 0 L 4 4 L 8 0"
+                                  Stroke="{DynamicResource MutedBrush}" StrokeThickness="1.6"
+                                  StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                                  HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Grid>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="DisclosureSurface" Property="Background" Value="{DynamicResource HoverBrush}"/>
+                        </Trigger>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="DisclosureChevron" Property="RenderTransform">
+                                <Setter.Value><RotateTransform Angle="180" CenterX="4" CenterY="2"/></Setter.Value>
+                            </Setter>
+                        </Trigger>
+                        <Trigger Property="IsKeyboardFocused" Value="True">
+                            <Setter TargetName="DisclosureSurface" Property="BorderBrush" Value="{DynamicResource FocusBrush}"/>
+                            <Setter TargetName="DisclosureSurface" Property="BorderThickness" Value="1"/>
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
@@ -624,7 +665,9 @@
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="Auto"/>
                         </Grid.RowDefinitions>
-                        <ToggleButton x:Name="HeaderSite" Grid.Row="0" IsChecked="{Binding IsExpanded, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}"
+                        <ToggleButton x:Name="HeaderSite" Grid.Row="0" Content="{TemplateBinding Header}"
+                                      ContentTemplate="{TemplateBinding HeaderTemplate}"
+                                      IsChecked="{Binding IsExpanded, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}"
                                       Background="{DynamicResource PanelBrush}" Foreground="{DynamicResource InkBrush}"
                                       Padding="13,10" HorizontalContentAlignment="Left" FontWeight="SemiBold">
                             <ToggleButton.Template>
