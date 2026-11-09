@@ -99,6 +99,7 @@ public static class UiDialogService
             layout.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
             layout.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
             layout.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            layout.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
 
             var header = new Grid();
             header.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
@@ -211,7 +212,7 @@ public static class UiDialogService
                 actionButton.Click += (_, _) => Complete(spec.Result);
                 buttonPanel.Children.Add(actionButton);
             }
-            Grid.SetRow(buttonPanel, 2);
+            Grid.SetRow(buttonPanel, 3);
             layout.Children.Add(buttonPanel);
 
             _surface = new Border

@@ -334,7 +334,7 @@ public partial class MainWindow : Window
         catch (Exception ex)
         {
             UiDialogService.Show(this, $"Impossibile salvare la configurazione AI: {ex.Message}", "Errore",
-                MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBoxButton.OK, MessageBoxImage.Error, details: ex.ToString());
         }
     }
 
@@ -356,7 +356,7 @@ public partial class MainWindow : Window
         catch (Exception ex)
         {
             UiDialogService.Show(this, $"Impossibile revocare il consenso: {ex.Message}", "Errore",
-                MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBoxButton.OK, MessageBoxImage.Error, details: ex.ToString());
         }
     }
 
@@ -383,7 +383,7 @@ public partial class MainWindow : Window
         catch (Exception ex)
         {
             UiDialogService.Show(this, $"Esportazione non riuscita: {ex.Message}", "Errore",
-                MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBoxButton.OK, MessageBoxImage.Error, details: ex.ToString());
         }
     }
 
@@ -442,7 +442,7 @@ public partial class MainWindow : Window
         catch (Exception ex)
         {
             UiDialogService.Show(this, $"Importazione non riuscita. I dati locali non sono stati sostituiti: {ex.Message}",
-                "Errore importazione", MessageBoxButton.OK, MessageBoxImage.Error);
+                "Errore importazione", MessageBoxButton.OK, MessageBoxImage.Error, details: ex.ToString());
         }
     }
 
@@ -483,7 +483,7 @@ public partial class MainWindow : Window
         catch (Exception ex)
         {
             UiDialogService.Show(this, $"Reset non riuscito: {ex.Message}", "Errore privacy",
-                MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBoxButton.OK, MessageBoxImage.Error, details: ex.ToString());
         }
     }
 
@@ -506,7 +506,7 @@ public partial class MainWindow : Window
         catch (Exception ex)
         {
             UiDialogService.Show(this, $"Impossibile leggere l'inventario privacy: {ex.Message}",
-                "Errore privacy", MessageBoxButton.OK, MessageBoxImage.Error);
+                "Errore privacy", MessageBoxButton.OK, MessageBoxImage.Error, details: ex.ToString());
         }
     }
 
@@ -536,7 +536,7 @@ public partial class MainWindow : Window
         catch (Exception ex)
         {
             UiDialogService.Show(this, $"Cancellazione non riuscita: {ex.Message}",
-                "Errore privacy", MessageBoxButton.OK, MessageBoxImage.Error);
+                "Errore privacy", MessageBoxButton.OK, MessageBoxImage.Error, details: ex.ToString());
         }
     }
 
@@ -574,7 +574,7 @@ public partial class MainWindow : Window
         catch (Exception ex)
         {
             UiDialogService.Show(this, $"Creazione pacchetto non riuscita: {ex.Message}", "Errore diagnostica",
-                MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBoxButton.OK, MessageBoxImage.Error, details: ex.ToString());
         }
     }
 
@@ -638,7 +638,7 @@ public partial class MainWindow : Window
         catch (Exception ex)
         {
             UiDialogService.Show(this, $"Esportazione non riuscita: {ex.Message}", "Errore esportazione",
-                MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBoxButton.OK, MessageBoxImage.Error, details: ex.ToString());
         }
     }
 

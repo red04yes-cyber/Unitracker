@@ -226,7 +226,7 @@ public partial class App : System.Windows.Application
                 $"Dettagli diagnostici (se il file è stato creato): {logPath}",
                 "Errore di avvio",
                 MessageBoxButton.OK,
-                MessageBoxImage.Error);
+                MessageBoxImage.Error, details: ex.ToString());
             Shutdown(-1);
         }
     }
