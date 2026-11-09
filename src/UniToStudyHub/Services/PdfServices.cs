@@ -75,18 +75,40 @@ public sealed class PdfPigTextExtractor : IPdfTextExtractor
     {
         ArgumentNullException.ThrowIfNull(content);
         using var buffer = new MemoryStream();
-        await content.CopyToAsync(buffer, 81920, cancellationToken).ConfigureAwait(false);
-        if (buffer.Length == 0) throw new InvalidDataException("Il PDF è vuoto.");
-        if (buffer.Length > PdfImportService.MaximumFileBytes)
-            throw new InvalidDataException("Il PDF supera il limite di 25 MB.");
-        var bytes = buffer.ToArray();
+        var copyBuffer = new byte[81920];
         try
         {
-            return ExtractFromBytes(bytes, cancellationToken);
+            while (true)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                var remaining = PdfImportService.MaximumFileBytes - buffer.Length;
+                // Read at most one byte beyond the limit so a non-seekable or
+                // untrusted stream cannot force an unbounded MemoryStream growth.
+                var readLimit = (int)Math.Min(copyBuffer.Length, remaining + 1);
+                var read = await content.ReadAsync(copyBuffer.AsMemory(0, readLimit), cancellationToken)
+                    .ConfigureAwait(false);
+                if (read == 0) break;
+                if (buffer.Length + read > PdfImportService.MaximumFileBytes)
+                    throw new InvalidDataException("Il PDF supera il limite di 25 MB.");
+                await buffer.WriteAsync(copyBuffer.AsMemory(0, read), cancellationToken).ConfigureAwait(false);
+            }
+
+            if (buffer.Length == 0) throw new InvalidDataException("Il PDF è vuoto.");
+            var bytes = buffer.ToArray();
+            try
+            {
+                return ExtractFromBytes(bytes, cancellationToken);
+            }
+            finally
+            {
+                CryptographicOperations.ZeroMemory(bytes);
+            }
         }
         finally
         {
-            CryptographicOperations.ZeroMemory(bytes);
+            CryptographicOperations.ZeroMemory(copyBuffer);
+            if (buffer.TryGetBuffer(out var segment))
+                CryptographicOperations.ZeroMemory(segment.AsSpan(0, checked((int)buffer.Length)));
         }
     }
 
@@ -108,6 +130,16 @@ public sealed class PdfPigTextExtractor : IPdfTextExtractor
                     text = text[..MaximumPageCharacters];
                     warnings.Add($"Pagina {page.Number} troncata al limite di {MaximumPageCharacters} caratteri.");
                 }
+
+                var remainingCharacters = MaximumTotalCharacters - totalCharacters;
+                if (remainingCharacters <= 0)
+                {
+                    warnings.Add("Estrazione interrotta al limite di testo consentito; usa un intervallo di pagine.");
+                    break;
+                }
+                if (text.Length > remainingCharacters)
+                    text = text[..checked((int)remainingCharacters)];
+
                 totalCharacters += text.Length;
                 pages.Add(new PdfPageData { PageNumber = page.Number, Text = text });
                 if (totalCharacters >= MaximumTotalCharacters)
