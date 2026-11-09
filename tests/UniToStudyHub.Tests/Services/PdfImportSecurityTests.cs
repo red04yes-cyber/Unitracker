@@ -125,6 +125,30 @@ public sealed class PdfImportSecurityTests
     }
 
     [Fact]
+    public async Task PdfExtractorRejectsAnEmptyStreamWithoutParsing()
+    {
+        using var stream = new MemoryStream();
+
+        var error = await Assert.ThrowsAsync<InvalidDataException>(() =>
+            new PdfPigTextExtractor().ExtractAsync(stream));
+
+        Assert.Equal("Il PDF è vuoto.", error.Message);
+    }
+
+    [Fact]
+    public async Task PdfExtractorHonorsCancellationBeforeReadingTheStream()
+    {
+        var stream = new GeneratedOversizedStream(PdfImportService.MaximumFileBytes + 100_000);
+        using var cancellation = new CancellationTokenSource();
+        cancellation.Cancel();
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+            new PdfPigTextExtractor().ExtractAsync(stream, cancellation.Token));
+
+        Assert.Equal(0, stream.BytesRead);
+    }
+
+    [Fact]
     public async Task AbsurdPageCountIsRejectedEvenWithAnotherExtractor()
     {
         var path = await TempFileAsync(".pdf", Encoding.ASCII.GetBytes("%PDF-1.4\nbody"));
