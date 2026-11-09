@@ -30,9 +30,13 @@ public sealed class MoodleClient : IDisposable
     private readonly string _token;
     private readonly JsonSerializerOptions _json = new() { PropertyNameCaseInsensitive = true };
 
-    public MoodleClient(string baseUrl, string token, HttpMessageHandler? handler = null)
+    public MoodleClient(
+        string baseUrl,
+        string token,
+        HttpMessageHandler? handler = null,
+        bool allowLoopbackHttp = false)
     {
-        var endpoint = OutboundEndpointPolicy.ValidateBaseUrl(baseUrl, allowLoopbackHttp: true, nameof(baseUrl));
+        var endpoint = OutboundEndpointPolicy.ValidateBaseUrl(baseUrl, allowLoopbackHttp, nameof(baseUrl));
         _token = MoodleTokenVault.Normalize(token);
         _baseUri = endpoint.BaseUri;
         var effectiveHandler = handler ?? new HttpClientHandler { AllowAutoRedirect = false };
