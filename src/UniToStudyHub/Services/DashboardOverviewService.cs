@@ -71,8 +71,6 @@ public sealed record DashboardOverview(
 /// </summary>
 public sealed class DashboardOverviewService(ProgressService progress)
 {
-    private static readonly CultureInfo ItalianCulture = CultureInfo.GetCultureInfo("it-IT");
-
     public DashboardOverview Calculate(StudyData data, DateTimeOffset? now = null)
     {
         ArgumentNullException.ThrowIfNull(data);
@@ -115,7 +113,7 @@ public sealed class DashboardOverviewService(ProgressService progress)
 
         foreach (var task in activeTasks.Where(task =>
                      task.DueAt is { } dueAt &&
-                     LocalDate(dueAt) >= today &&
+                     LocalDate(dueAt) > today &&
                      LocalDate(dueAt) <= lastDeadlineDay))
         {
             var courseName = coursesById.TryGetValue(task.CourseId, out var course)
@@ -126,7 +124,7 @@ public sealed class DashboardOverviewService(ProgressService progress)
                 task.Title,
                 courseName,
                 task.DueAt!.Value,
-                false,
+                true,
                 true,
                 "Task",
                 "Pending"));
@@ -162,7 +160,7 @@ public sealed class DashboardOverviewService(ProgressService progress)
             ? 0
             : Math.Clamp((int)Math.Round(recordedMinutes * 100d / weeklyGoalMinutes), 0, 100);
 
-        var suggestion = BuildSuggestion(data, activeTasks, nextExam, today, instant, coursesById);
+        var suggestion = BuildSuggestion(data, activeTasks, nextExam, today, coursesById);
 
         return new DashboardOverview(
             nextExam,
@@ -180,7 +178,6 @@ public sealed class DashboardOverviewService(ProgressService progress)
         IReadOnlyCollection<StudyTaskData> activeTasks,
         Exam? nextExam,
         DateOnly today,
-        DateTimeOffset now,
         IReadOnlyDictionary<string, Course> coursesById)
     {
         var nextTask = activeTasks
