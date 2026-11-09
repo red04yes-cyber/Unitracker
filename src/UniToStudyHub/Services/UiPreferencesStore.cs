@@ -33,7 +33,15 @@ public sealed class UiPreferencesStore
                 preferences.Theme = "Dark";
             return preferences;
         }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException)
+        catch (IOException)
+        {
+            return new UiPreferences();
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return new UiPreferences();
+        }
+        catch (JsonException)
         {
             return new UiPreferences();
         }

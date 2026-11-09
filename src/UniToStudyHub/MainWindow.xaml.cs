@@ -26,7 +26,6 @@ public partial class MainWindow : Window
     private readonly UiPreferences _uiPreferences;
     private readonly SerialDisposable _sidebarWidthAnimation = new();
     private bool _sidebarPinned;
-    private bool _sidebarExpanded;
 
     private static readonly (string Title, string Subtitle)[] SectionHeaders =
     [
@@ -76,10 +75,6 @@ public partial class MainWindow : Window
             AiProviderBox.SelectedValue = "openai";
             AiModelBox.Text = "gpt-4.1-mini";
         }
-        Loaded += (_, _) => WindowBackgroundManager.UpdateBackground(
-            this,
-            ApplicationThemeManager.GetAppTheme(),
-            Wpf.Ui.Controls.WindowBackdropType.Mica);
         DataContext = viewModel;
         _focusRefreshTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
         _focusRefreshTimer.Tick += (_, _) => viewModel.Workspace.RefreshFocusSnapshot();
@@ -189,7 +184,6 @@ public partial class MainWindow : Window
         if (sidebar is null)
             return;
 
-        _sidebarExpanded = expanded;
         var targetWidth = expanded ? 256d : 92d;
         if (animate)
         {

@@ -178,10 +178,11 @@
         <TabItem>
             <TabItem.Header>
                 <StackPanel Orientation="Horizontal">
-                    <Border Width="30" Height="30" CornerRadius="8" Background="{DynamicResource NavyBrush}">
-                        <TextBlock Text="01" Foreground="{DynamicResource SidebarMutedBrush}" FontSize="10"
-                                   FontWeight="Bold" HorizontalAlignment="Center"
-                                   VerticalAlignment="Center"/>
+                    <Border Width="30" Height="30" CornerRadius="9" Background="{DynamicResource SubtleBrush}">
+                        <Path Data="M 2,7 L 8,2 L 14,7 M 4,6.5 V 14 H 12 V 6.5 M 6.5,14 V 10 H 9.5 V 14" Width="16" Height="16" Stretch="Uniform"
+                              Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type TabItem}}}"
+                              StrokeThickness="1.35" StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                              StrokeLineJoin="Round" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                     </Border>
                     <StackPanel Margin="11,0,0,0" VerticalAlignment="Center">
                         <TextBlock Text="Oggi" FontSize="13" FontWeight="SemiBold"/>
@@ -341,10 +342,11 @@
         <TabItem>
             <TabItem.Header>
                 <StackPanel Orientation="Horizontal">
-                    <Border Width="30" Height="30" CornerRadius="8" Background="{DynamicResource NavyBrush}">
-                        <TextBlock Text="02" Foreground="{DynamicResource SidebarMutedBrush}" FontSize="10"
-                                   FontWeight="Bold" HorizontalAlignment="Center"
-                                   VerticalAlignment="Center"/>
+                    <Border Width="30" Height="30" CornerRadius="9" Background="{DynamicResource SubtleBrush}">
+                        <Path Data="M 2,3 L 8,5 L 14,3 V 13 L 8,15 L 2,13 Z M 8,5 V 15" Width="16" Height="16" Stretch="Uniform"
+                              Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type TabItem}}}"
+                              StrokeThickness="1.35" StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                              StrokeLineJoin="Round" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                     </Border>
                     <StackPanel Margin="11,0,0,0" VerticalAlignment="Center">
                         <TextBlock Text="Materie" FontSize="13" FontWeight="SemiBold"/>
@@ -536,10 +538,11 @@
         <TabItem>
             <TabItem.Header>
                 <StackPanel Orientation="Horizontal">
-                    <Border Width="30" Height="30" CornerRadius="8" Background="{DynamicResource NavyBrush}">
-                        <TextBlock Text="03" Foreground="{DynamicResource SidebarMutedBrush}" FontSize="10"
-                                   FontWeight="Bold" HorizontalAlignment="Center"
-                                   VerticalAlignment="Center"/>
+                    <Border Width="30" Height="30" CornerRadius="9" Background="{DynamicResource SubtleBrush}">
+                        <Path Data="M 3,2 V 5 M 13,2 V 5 M 2,4 H 14 V 14 H 2 Z M 2,7 H 14" Width="16" Height="16" Stretch="Uniform"
+                              Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type TabItem}}}"
+                              StrokeThickness="1.35" StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                              StrokeLineJoin="Round" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                     </Border>
                     <StackPanel Margin="11,0,0,0" VerticalAlignment="Center">
                         <TextBlock Text="Calendario" FontSize="13" FontWeight="SemiBold"/>
@@ -712,10 +715,11 @@
         <TabItem>
             <TabItem.Header>
                 <StackPanel Orientation="Horizontal">
-                    <Border Width="30" Height="30" CornerRadius="8" Background="{DynamicResource NavyBrush}">
-                        <TextBlock Text="04" Foreground="{DynamicResource SidebarMutedBrush}" FontSize="10"
-                                   FontWeight="Bold" HorizontalAlignment="Center"
-                                   VerticalAlignment="Center"/>
+                    <Border Width="30" Height="30" CornerRadius="9" Background="{DynamicResource SubtleBrush}">
+                        <Path Data="M 6,2 H 10 M 8,5 V 9 L 11,11 M 8,5 A 6,6 0 1 0 8,17 A 6,6 0 1 0 8,5" Width="16" Height="16" Stretch="Uniform"
+                              Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type TabItem}}}"
+                              StrokeThickness="1.35" StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                              StrokeLineJoin="Round" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                     </Border>
                     <StackPanel Margin="11,0,0,0" VerticalAlignment="Center">
                         <TextBlock Text="Studio Lab" FontSize="13" FontWeight="SemiBold"/>
@@ -899,10 +903,11 @@
         <TabItem>
             <TabItem.Header>
                 <StackPanel Orientation="Horizontal">
-                    <Border Width="30" Height="30" CornerRadius="8" Background="{DynamicResource NavyBrush}">
-                        <TextBlock Text="05" Foreground="{DynamicResource SidebarMutedBrush}" FontSize="10"
-                                   FontWeight="Bold" HorizontalAlignment="Center"
-                                   VerticalAlignment="Center"/>
+                    <Border Width="30" Height="30" CornerRadius="9" Background="{DynamicResource SubtleBrush}">
+                        <Path Data="M 1,6 L 8,2 L 15,6 L 8,10 Z M 4,8 V 12 Q 8,15 12,12 V 8 M 14,7 V 12" Width="16" Height="16" Stretch="Uniform"
+                              Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type TabItem}}}"
+                              StrokeThickness="1.35" StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                              StrokeLineJoin="Round" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                     </Border>
                     <StackPanel Margin="11,0,0,0" VerticalAlignment="Center">
                         <TextBlock Text="Accademia" FontSize="13" FontWeight="SemiBold"/>
@@ -1018,10 +1023,11 @@
         <TabItem>
             <TabItem.Header>
                 <StackPanel Orientation="Horizontal">
-                    <Border Width="30" Height="30" CornerRadius="8" Background="{DynamicResource NavyBrush}">
-                        <TextBlock Text="06" Foreground="{DynamicResource SidebarMutedBrush}" FontSize="10"
-                                   FontWeight="Bold" HorizontalAlignment="Center"
-                                   VerticalAlignment="Center"/>
+                    <Border Width="30" Height="30" CornerRadius="9" Background="{DynamicResource SubtleBrush}">
+                        <Path Data="M 2,14 V 9 H 5 V 14 M 7,14 V 5 H 10 V 14 M 12,14 V 2 H 15 V 14" Width="16" Height="16" Stretch="Uniform"
+                              Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type TabItem}}}"
+                              StrokeThickness="1.35" StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                              StrokeLineJoin="Round" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                     </Border>
                     <StackPanel Margin="11,0,0,0" VerticalAlignment="Center">
                         <TextBlock Text="Progressi" FontSize="13" FontWeight="SemiBold"/>
@@ -1081,10 +1087,11 @@
         <TabItem>
             <TabItem.Header>
                 <StackPanel Orientation="Horizontal">
-                    <Border Width="30" Height="30" CornerRadius="8" Background="{DynamicResource NavyBrush}">
-                        <TextBlock Text="07" Foreground="{DynamicResource SidebarMutedBrush}" FontSize="10"
-                                   FontWeight="Bold" HorizontalAlignment="Center"
-                                   VerticalAlignment="Center"/>
+                    <Border Width="30" Height="30" CornerRadius="9" Background="{DynamicResource SubtleBrush}">
+                        <Path Data="M 8,1.5 L 9.5,3 L 12,2.5 L 13,5 L 15,6 L 14,8 L 15,10 L 13,11 L 12,13.5 L 9.5,13 L 8,14.5 L 6.5,13 L 4,13.5 L 3,11 L 1,10 L 2,8 L 1,6 L 3,5 L 4,2.5 L 6.5,3 Z M 8,5.5 A 2.5,2.5 0 1 0 8,10.5 A 2.5,2.5 0 1 0 8,5.5" Width="16" Height="16" Stretch="Uniform"
+                              Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type TabItem}}}"
+                              StrokeThickness="1.35" StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                              StrokeLineJoin="Round" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                     </Border>
                     <StackPanel Margin="11,0,0,0" VerticalAlignment="Center">
                         <TextBlock Text="Impostazioni" FontSize="13" FontWeight="SemiBold"/>
