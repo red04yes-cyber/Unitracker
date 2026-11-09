@@ -185,7 +185,15 @@ internal static class UiDialogService
             MaxWidth = 430
         };
         body.SetResourceReference(TextBlock.ForegroundProperty, "MutedBrush");
-        heading.Children.Add(body);
+        var bodyScroller = new ScrollViewer
+        {
+            Content = body,
+            MaxHeight = 360,
+            Margin = new Thickness(0, 0, 4, 0),
+            VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+            HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled
+        };
+        heading.Children.Add(bodyScroller);
         Grid.SetColumn(heading, 1);
         header.Children.Add(heading);
 
