@@ -265,6 +265,11 @@ internal static class UiDialogService
             CloseWithResult(GetEscapeResult(actions, fallback));
             args.Handled = true;
         };
+        dialog.Closing += (_, _) =>
+        {
+            if (!isClosing)
+                result = GetEscapeResult(actions, fallback);
+        };
         dialog.Loaded += (_, _) =>
         {
             dialog.BeginAnimation(Window.OpacityProperty,
