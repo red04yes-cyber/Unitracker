@@ -42,6 +42,14 @@ internal static class UiDialogService
         MessageBoxImage image) =>
         ShowCore(Application.Current?.MainWindow, message, caption, buttons, image, MessageBoxResult.None);
 
+    public static MessageBoxResult Show(
+        string message,
+        string caption,
+        MessageBoxButton buttons,
+        MessageBoxImage image,
+        MessageBoxResult defaultResult) =>
+        ShowCore(Application.Current?.MainWindow, message, caption, buttons, image, defaultResult);
+
     private static MessageBoxResult ShowCore(
         Window? owner,
         string message,
