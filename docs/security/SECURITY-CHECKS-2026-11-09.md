@@ -31,21 +31,21 @@ Revisione mirata del branch `main` del 9 novembre 2026 su vault, endpoint, Moodl
 23. **Stream PDF non seekable** — CORRETTO IN QUESTO BRANCH. L'estrattore legge al massimo 25 MB più un byte di rilevamento prima di rifiutare, senza copiare uno stream arbitrariamente grande in memoria.
 24. **Numero pagine PDF** — OK. Il limite di 5.000 pagine è applicato anche dall'importer, non solo dall'estrattore predefinito.
 25. **Testo estratto PDF** — OK. Limiti effettivi di 200.000 caratteri per pagina e 4.000.000 complessivi; l'ultima pagina viene troncata al budget residuo.
-25. **Dimensione import JSON** — OK. L'import completo rifiuta payload vuoti o oltre 64 MB.
-26. **Profondità e schema JSON** — OK. Profondità massima 64 e controllo esplicito di versione, oggetto radice e proprietà `data`.
-27. **Record importati** — OK. Massimo 100.000 record e normalizzazione/validazione prima della scrittura.
-28. **Strategie import** — OK. Merge conserva i record locali in conflitto; Replace richiede un servizio backup configurato e crea un backup di sicurezza.
-29. **CSV formula injection** — OK. I campi testuali che iniziano con `=`, `+`, `-` o `@` dopo spazi/controlli vengono neutralizzati.
-30. **XLSX e XML** — OK. I valori testuali sono inline string, non formule; il contenuto è escapato XML.
-31. **Note private negli export** — OK. Sono escluse per default e incluse solo con opzione esplicita.
-32. **Cifratura backup** — OK. Il formato corrente usa AES-256-GCM con chiave casuale per backup.
-33. **Derivazione password backup** — OK. PBKDF2-HMAC-SHA256 usa 600.000 iterazioni di default, con minimo e massimo convalidati in lettura.
-34. **Limiti e verifica backup** — OK. Payload limitato, manifest/hash controllati e database verificato con `PRAGMA integrity_check`.
-35. **Ripristino** — OK. Il backup viene autenticato e verificato su file temporaneo e viene creato un safety backup prima della sostituzione del database.
-36. **ACL e scritture atomiche** — OK come hardening best-effort: DACL per l'utente su Windows, modalità 0700/0600 su Unix, file temporanei e rename atomico.
-37. **Redazione log** — OK. Redazione di token/password/Bearer/chiavi/percorsi, timeout delle regex e rimozione dei caratteri di controllo.
-38. **Rotazione log** — OK. I log locali sono limitati a 512 KB per file con due rotazioni conservate.
-39. **Workflow e permessi CI** — OK per il workflow security: permessi `contents: read`, checkout senza credenziali persistite, Gitleaks con output redatto e audit NuGet bloccante. L'allowlist Gitleaks ampia su `main` è oggetto della PR #61 e non è duplicata qui.
+26. **Dimensione import JSON** — OK. L'import completo rifiuta payload vuoti o oltre 64 MB.
+27. **Profondità e schema JSON** — OK. Profondità massima 64 e controllo esplicito di versione, oggetto radice e proprietà `data`.
+28. **Record importati** — OK. Massimo 100.000 record e normalizzazione/validazione prima della scrittura.
+29. **Strategie import** — OK. Merge conserva i record locali in conflitto; Replace richiede un servizio backup configurato e crea un backup di sicurezza.
+30. **CSV formula injection** — OK. I campi testuali che iniziano con `=`, `+`, `-` o `@` dopo spazi/controlli vengono neutralizzati.
+31. **XLSX e XML** — OK. I valori testuali sono inline string, non formule; il contenuto è escapato XML.
+32. **Note private negli export** — OK. Sono escluse per default e incluse solo con opzione esplicita.
+33. **Cifratura backup** — OK. Il formato corrente usa AES-256-GCM con chiave casuale per backup.
+34. **Derivazione password backup** — OK. PBKDF2-HMAC-SHA256 usa 600.000 iterazioni di default, con minimo e massimo convalidati in lettura.
+35. **Limiti e verifica backup** — OK. Payload limitato, manifest/hash controllati e database verificato con `PRAGMA integrity_check`.
+36. **Ripristino** — OK. Il backup viene autenticato e verificato su file temporaneo e viene creato un safety backup prima della sostituzione del database.
+37. **ACL e scritture atomiche** — OK come hardening best-effort: DACL per l'utente su Windows, modalità 0700/0600 su Unix, file temporanei e rename atomico.
+38. **Redazione log** — OK. Redazione di token/password/Bearer/chiavi/percorsi, timeout delle regex e rimozione dei caratteri di controllo.
+39. **Rotazione log** — OK. I log locali sono limitati a 512 KB per file con due rotazioni conservate.
+40. **Workflow e permessi CI** — OK per il workflow security: permessi `contents: read`, checkout senza credenziali persistite, Gitleaks con output redatto e audit NuGet bloccante. L'allowlist Gitleaks ampia su `main` è oggetto della PR #61 e non è duplicata qui.
 
 ## Correzione applicata
 
