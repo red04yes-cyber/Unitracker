@@ -191,8 +191,6 @@
                                    HorizontalAlignment="Right" Margin="14,0,0,0">
                             <Button Content="Calendario" Style="{StaticResource QuietButtonStyle}"
                                     Tag="2" Click="NavigateToSection_Click" Margin="0,0,6,0"/>
-                            <Button Content="Apri Studio Lab" Tag="3"
-                                    Click="NavigateToSection_Click"/>
                         </WrapPanel>
                     </Grid>
 
