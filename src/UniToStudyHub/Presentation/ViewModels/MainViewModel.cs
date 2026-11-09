@@ -17,6 +17,8 @@ public sealed class MainViewModel : INotifyPropertyChanged
     private readonly MoodleApplicationService _moodle;
     private readonly CareerCalculatorService _calculator;
     private readonly CareerApplicationService _career;
+    private readonly DashboardService _dashboardService = new();
+    private DashboardSnapshot _dashboard = DashboardSnapshot.Empty;
     private readonly CalendarEventStore _calendarStore = new();
     public StudyWorkspaceViewModel Workspace { get; }
     private StudyData _data = new();
@@ -38,6 +40,16 @@ public sealed class MainViewModel : INotifyPropertyChanged
     private string _courseFilter = "active";
 
     public event PropertyChangedEventHandler? PropertyChanged;
+
+    public DashboardSnapshot Dashboard
+    {
+        get => _dashboard;
+        private set
+        {
+            _dashboard = value;
+            OnPropertyChanged();
+        }
+    }
 
     public ObservableCollection<Course> Courses => _data.Courses;
     public ObservableCollection<Grade> Grades => _data.Grades;
@@ -250,6 +262,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
         _career = career;
         Workspace = workspace;
         Workspace.DataReloaded += OnWorkspaceDataReloaded;
+        Workspace.DataChanged += OnWorkspaceDataChanged;
         AddCourseCommand = new AsyncRelayCommand(AddCourseAsync);
         AddGradeCommand = new AsyncRelayCommand(AddGradeAsync, () => SelectedGradeCourse is not null);
         PlanExamsCommand = new AsyncRelayCommand(PlanExamsAsync);
@@ -927,6 +940,12 @@ public sealed class MainViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(IsMonthCalendar));
         OnPropertyChanged(nameof(IsWeekCalendar));
         OnPropertyChanged(nameof(IsDayCalendar));
+        RefreshDashboard();
+    }
+
+    private void RefreshDashboard()
+    {
+        Dashboard = _dashboardService.Build(_data);
     }
 
     private void RefreshSelectedDayEvents()
@@ -988,6 +1007,12 @@ public sealed class MainViewModel : INotifyPropertyChanged
 
         OnPropertyChanged(nameof(NoVisibleCourses));
         OnPropertyChanged(nameof(CourseEmptyMessage));
+    }
+
+    private void OnWorkspaceDataChanged(StudyData data)
+    {
+        _data = data;
+        RefreshDashboard();
     }
 
     private void OnWorkspaceDataReloaded(StudyData data)

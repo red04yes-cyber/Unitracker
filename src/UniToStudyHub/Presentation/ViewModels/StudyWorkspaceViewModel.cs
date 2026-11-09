@@ -116,6 +116,7 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
 
     public event PropertyChangedEventHandler? PropertyChanged;
     public event Action<StudyData>? DataReloaded;
+    public event Action<StudyData>? DataChanged;
 
     public ObservableCollection<StudyTaskData> ActiveTasks { get; } = new();
     public ObservableCollection<FlashcardData> DueFlashcards { get; } = new();
@@ -675,11 +676,28 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
         catch (Exception ex) { WorkspaceStatus = $"Task non salvato: {ex.Message}"; }
     }
 
+    public async Task CompleteTaskByIdAsync(string taskId)
+    {
+        if (string.IsNullOrWhiteSpace(taskId)) return;
+        var task = _data.StudyTasks.FirstOrDefault(x => string.Equals(x.Id, taskId, StringComparison.Ordinal));
+        if (task is null || task.Status is StudyTaskStatus.Completed or StudyTaskStatus.Cancelled) return;
+        try
+        {
+            _tasks.Complete(_data, taskId);
+            await SaveAsync();
+            if (SelectedTask?.Id == taskId) SelectedTask = null;
+            RefreshCollections();
+        }
+        catch (Exception ex)
+        {
+            WorkspaceStatus = $"Task non completato: {ex.Message}";
+        }
+    }
+
     private async Task CompleteTaskAsync()
     {
         if (SelectedTask is null) return;
-        try { _tasks.Complete(_data, SelectedTask.Id); await SaveAsync(); SelectedTask = null; RefreshCollections(); RefreshProgress(); }
-        catch (Exception ex) { WorkspaceStatus = $"Task non completato: {ex.Message}"; }
+        await CompleteTaskByIdAsync(SelectedTask.Id);
     }
 
     private async Task RemoveTaskAsync()
@@ -1239,6 +1257,7 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
     {
         await _store.SaveAsync(_data);
         RefreshProgress();
+        DataChanged?.Invoke(_data);
     }
 
     private void RefreshCollections()

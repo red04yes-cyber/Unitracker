@@ -707,6 +707,29 @@ public partial class MainWindow : Window
             viewModel.Workspace.RemoveTaskCommand.Execute(null);
     }
 
+    private async void CompleteDashboardTask_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { Tag: string taskId }) return;
+        if (DataContext is MainViewModel viewModel)
+            await viewModel.Workspace.CompleteTaskByIdAsync(taskId);
+    }
+
+    private void PrepareDashboardRecommendation_Click(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is not MainViewModel viewModel) return;
+        var recommendation = viewModel.Dashboard.Recommendation;
+        if (!string.IsNullOrWhiteSpace(recommendation.CourseId))
+            viewModel.Workspace.SelectedFocusCourse = viewModel.Courses.FirstOrDefault(x => x.Id == recommendation.CourseId);
+        viewModel.Workspace.FocusTopicInput = recommendation.Title;
+        viewModel.Workspace.FocusMinutesInput = recommendation.DurationMinutes.ToString();
+        MainTabs.SelectedIndex = 3;
+    }
+
+    private void NavigateToStudyLab_Click(object sender, RoutedEventArgs e)
+    {
+        MainTabs.SelectedIndex = 3;
+    }
+
     private void NavigateToSubjects_Click(object sender, RoutedEventArgs e)
     {
         MainTabs.SelectedIndex = 1;

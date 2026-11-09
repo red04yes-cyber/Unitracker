@@ -220,7 +220,6 @@
                     </StackPanel>
                 </StackPanel>
             </TabItem.Header>
-
             <ScrollViewer VerticalScrollBarVisibility="Auto"
                           HorizontalScrollBarVisibility="Disabled">
                 <StackPanel Margin="32,30,32,36">
@@ -228,137 +227,273 @@
                                FontWeight="Bold" Foreground="{DynamicResource AccentBrush}"/>
                     <TextBlock Text="Buono studio." Style="{StaticResource PageTitleStyle}"
                                Margin="0,7,0,4"/>
-                    <TextBlock Text="La tua carriera e le priorità universitarie, in un unico posto."
+                    <TextBlock Text="{Binding Dashboard.TodayDateDisplay}"
                                Style="{StaticResource PageSubtitleStyle}" Margin="0,0,0,22"/>
 
-                    <Grid Margin="0,0,0,22">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="1.55*"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-
-                        <Border Grid.Column="0" Background="{DynamicResource NavyBrush}"
-                                CornerRadius="14" Padding="24" Margin="0,0,12,0">
-                            <StackPanel>
-                                <TextBlock Text="IL TUO PROSSIMO PASSO"
-                                           Foreground="{DynamicResource SidebarMutedBrush}" FontSize="10"
-                                           FontWeight="Bold"/>
-                                <TextBlock Text="Costruiamo la tua giornata di studio."
-                                           Foreground="White" FontSize="22"
-                                           FontWeight="SemiBold" TextWrapping="Wrap"
-                                           Margin="0,9,0,7"/>
-                                <TextBlock Text="Il piano giornaliero e le sessioni di focus arriveranno con Studio Lab. Intanto puoi organizzare le materie e gli esami da preparare."
-                                           Foreground="{DynamicResource SidebarMutedBrush}" FontSize="12"
-                                           TextWrapping="Wrap" MaxWidth="620"/>
-                                <Button Content="Apri le materie"
-                                        Style="{StaticResource SecondaryButtonStyle}"
-                                        HorizontalAlignment="Left"
-                                        Margin="0,18,0,0"
-                                        Click="NavigateToSubjects_Click"/>
-                            </StackPanel>
-                        </Border>
-
-                        <Border Grid.Column="1" Style="{StaticResource CardBorderStyle}">
+                    <UniformGrid Columns="4" Margin="0,0,0,22">
+                        <Border Style="{StaticResource CardBorderStyle}" Padding="18" Margin="0,0,10,0">
                             <StackPanel>
                                 <TextBlock Text="PROSSIMO ESAME" Style="{StaticResource KpiLabelStyle}"/>
-                                <TextBlock Text="{Binding NextExamNameDisplay}"
-                                           FontSize="18" FontWeight="SemiBold"
-                                           Foreground="{DynamicResource InkBrush}"
-                                           TextWrapping="Wrap" Margin="0,12,0,5"/>
-                                <TextBlock Text="{Binding NextExamDateDisplay}"
-                                           FontSize="12" Foreground="{DynamicResource MutedBrush}"
-                                           TextWrapping="Wrap"/>
-                                <Border Background="{DynamicResource WarningSoftBrush}"
-                                        CornerRadius="7" Padding="9,7" Margin="0,18,0,0">
-                                    <TextBlock Text="Le date pianificate sono indicative, non appelli ufficiali."
-                                               FontSize="10" Foreground="{DynamicResource WarningBrush}"
-                                               TextWrapping="Wrap"/>
-                                </Border>
+                                <TextBlock Text="{Binding Dashboard.NextExamTitle}" FontSize="17"
+                                           FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}"
+                                           TextWrapping="Wrap" Margin="0,10,0,4"/>
+                                <TextBlock Text="{Binding Dashboard.NextExamCountdown}" FontSize="13"
+                                           FontWeight="SemiBold" Foreground="{DynamicResource AccentBrush}"/>
+                                <TextBlock Text="{Binding Dashboard.NextExamSubtitle}" FontSize="10"
+                                           Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap"
+                                           Margin="0,5,0,0"/>
                             </StackPanel>
                         </Border>
-                    </Grid>
-
-                    <UniformGrid Columns="4" Margin="0,0,0,22">
-                        <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,10,0">
+                        <Border Style="{StaticResource CardBorderStyle}" Padding="18" Margin="0,0,10,0">
                             <StackPanel>
-                                <TextBlock Text="CFU ACQUISITI" Style="{StaticResource KpiLabelStyle}"/>
-                                <TextBlock Text="{Binding AcquiredCreditsValue}"
-                                           FontSize="27" FontWeight="SemiBold"
-                                           Foreground="{DynamicResource InkBrush}" Margin="0,8,0,2"/>
-                                <TextBlock Text="Dagli esami registrati"
-                                           FontSize="10" Foreground="{DynamicResource MutedBrush}"/>
+                                <TextBlock Text="STUDIO QUESTA SETTIMANA" Style="{StaticResource KpiLabelStyle}"/>
+                                <TextBlock Text="{Binding Dashboard.WeeklyStudyDisplay}" FontSize="25"
+                                           FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}"
+                                           Margin="0,10,0,4"/>
+                                <TextBlock Text="{Binding Dashboard.WeeklyGoalDisplay}" FontSize="11"
+                                           Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap"/>
                             </StackPanel>
                         </Border>
-                        <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,10,0">
+                        <Border Style="{StaticResource CardBorderStyle}" Padding="18" Margin="0,0,10,0">
                             <StackPanel>
-                                <TextBlock Text="MEDIA PONDERATA" Style="{StaticResource KpiLabelStyle}"/>
-                                <TextBlock Text="{Binding AverageDisplay}"
-                                           FontSize="27" FontWeight="SemiBold"
-                                           Foreground="{DynamicResource InkBrush}" Margin="0,8,0,2"/>
-                                <TextBlock Text="In base ai CFU"
-                                           FontSize="10" Foreground="{DynamicResource MutedBrush}"/>
+                                <DockPanel LastChildFill="True">
+                                    <TextBlock Text="{Binding Dashboard.WeeklyStudyProgressPercent, StringFormat={}{0}%}"
+                                               FontSize="25" FontWeight="SemiBold"
+                                               Foreground="{DynamicResource AccentBrush}"/>
+                                    <TextBlock Text="OBIETTIVO" Style="{StaticResource KpiLabelStyle}"
+                                               HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                                </DockPanel>
+                                <ProgressBar Value="{Binding Dashboard.WeeklyStudyProgressPercent}"
+                                             Maximum="100" Height="7" Margin="0,12,0,9"/>
+                                <TextBlock Text="{Binding Dashboard.WeeklyMissionDisplay}" FontSize="10"
+                                           Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap"/>
                             </StackPanel>
                         </Border>
-                        <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,10,0">
+                        <Border Style="{StaticResource CardBorderStyle}" Padding="18">
                             <StackPanel>
-                                <TextBlock Text="MEDIA ARITMETICA" Style="{StaticResource KpiLabelStyle}"/>
-                                <TextBlock Text="{Binding ArithmeticAverageDisplay}"
-                                           FontSize="27" FontWeight="SemiBold"
-                                           Foreground="{DynamicResource InkBrush}" Margin="0,8,0,2"/>
-                                <TextBlock Text="Ultimo voto per materia"
-                                           FontSize="10" Foreground="{DynamicResource MutedBrush}"/>
-                            </StackPanel>
-                        </Border>
-                        <Border Style="{StaticResource CardBorderStyle}">
-                            <StackPanel>
-                                <TextBlock Text="VOTO DI PARTENZA" Style="{StaticResource KpiLabelStyle}"/>
-                                <TextBlock Text="{Binding ProjectedBaseGradeValue}"
-                                           FontSize="19" FontWeight="SemiBold"
-                                           Foreground="{DynamicResource InkBrush}"
-                                           TextWrapping="Wrap" Margin="0,11,0,3"/>
-                                <TextBlock Text="Proiezione basata sulla carriera"
-                                           FontSize="10" Foreground="{DynamicResource MutedBrush}"/>
+                                <TextBlock Text="ATTIVITÀ DI OGGI" Style="{StaticResource KpiLabelStyle}"/>
+                                <TextBlock Text="{Binding Dashboard.Tasks.Count}" FontSize="25"
+                                           FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}"
+                                           Margin="0,10,0,4"/>
+                                <TextBlock Text="{Binding Dashboard.TodayTaskSummary}" FontSize="11"
+                                           Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap"/>
                             </StackPanel>
                         </Border>
                     </UniformGrid>
 
-                    <Grid>
+                    <Grid Margin="0,0,0,18">
                         <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="1.25*"/>
-                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="1.15*"/>
+                            <ColumnDefinition Width="0.85*"/>
                         </Grid.ColumnDefinitions>
-                        <Border Grid.Column="0" Style="{StaticResource CardBorderStyle}" Margin="0,0,12,0">
+
+                        <Border Grid.Column="0" Style="{StaticResource CardBorderStyle}" Padding="20"
+                                Margin="0,0,12,0">
                             <StackPanel>
-                                <TextBlock Text="Ultimo risultato registrato"
-                                           Style="{StaticResource SectionTitleStyle}"/>
-                                <TextBlock Text="{Binding LatestGradeDisplay}"
-                                           FontSize="13" Foreground="{DynamicResource InkBrush}"
-                                           TextWrapping="Wrap" Margin="0,11,0,0"/>
+                                <TextBlock Text="Prossimi esami" Style="{StaticResource SectionTitleStyle}"/>
+                                <TextBlock Text="Appelli e date pianificate, con provenienza esplicita."
+                                           FontSize="11" Foreground="{DynamicResource MutedBrush}"
+                                           Margin="0,4,0,15"/>
+                                <ItemsControl ItemsSource="{Binding Dashboard.Exams}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Grid Margin="0,0,0,13">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
+                                                <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                                                    <TextBlock Text="{Binding Title}" FontSize="13"
+                                                               FontWeight="SemiBold"
+                                                               Foreground="{DynamicResource InkBrush}"
+                                                               TextWrapping="Wrap"/>
+                                                    <TextBlock Text="{Binding Subtitle}" FontSize="10"
+                                                               Foreground="{DynamicResource MutedBrush}"
+                                                               TextWrapping="Wrap" Margin="0,3,0,2"/>
+                                                    <TextBlock Text="{Binding VerificationLabel}" FontSize="10"
+                                                               Foreground="{DynamicResource WarningBrush}"/>
+                                                </StackPanel>
+                                                <Border Grid.Column="1" Background="{DynamicResource SubtleBrush}"
+                                                        CornerRadius="9" Padding="10,7"
+                                                        VerticalAlignment="Center" Margin="10,0,0,0">
+                                                    <TextBlock Text="{Binding CountdownText}" FontSize="11"
+                                                               FontWeight="SemiBold"
+                                                               Foreground="{DynamicResource AccentBrush}"/>
+                                                </Border>
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                                <TextBlock Text="Non risultano esami futuri. Aggiungi una data o sincronizza il calendario."
+                                           FontSize="11" Foreground="{DynamicResource MutedBrush}"
+                                           TextWrapping="Wrap">
+                                    <TextBlock.Style>
+                                        <Style TargetType="{x:Type TextBlock}">
+                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding Dashboard.Exams.Count}" Value="0">
+                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
                             </StackPanel>
                         </Border>
-                        <Border Grid.Column="1" Style="{StaticResource CardBorderStyle}">
+
+                        <Border Grid.Column="1" Background="{DynamicResource NavyBrush}"
+                                CornerRadius="14" Padding="20">
                             <StackPanel>
-                                <TextBlock Text="Le tue materie" Style="{StaticResource SectionTitleStyle}"/>
-                                <Grid Margin="0,12,0,0">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*"/>
-                                        <ColumnDefinition Width="*"/>
-                                    </Grid.ColumnDefinitions>
-                                    <StackPanel Grid.Column="0">
-                                        <TextBlock Text="{Binding ActiveCoursesCount}"
-                                                   FontSize="23" FontWeight="SemiBold"
-                                                   Foreground="{DynamicResource AccentBrush}"/>
-                                        <TextBlock Text="In corso" FontSize="11"
-                                                   Foreground="{DynamicResource MutedBrush}"/>
+                                <TextBlock Text="IL CONSIGLIO DI OGGI" FontSize="10"
+                                           FontWeight="Bold" Foreground="{DynamicResource SidebarMutedBrush}"/>
+                                <TextBlock Text="{Binding Dashboard.Recommendation.Title}" FontSize="19"
+                                           FontWeight="SemiBold" Foreground="White"
+                                           TextWrapping="Wrap" Margin="0,11,0,8"/>
+                                <TextBlock Text="{Binding Dashboard.Recommendation.CourseName}" FontSize="11"
+                                           FontWeight="SemiBold" Foreground="{DynamicResource AccentBrush}"
+                                           Margin="0,0,0,8"/>
+                                <TextBlock Text="{Binding Dashboard.Recommendation.Reason}" FontSize="12"
+                                           Foreground="{DynamicResource SidebarMutedBrush}"
+                                           TextWrapping="Wrap"/>
+                                <UniformGrid Columns="2" Margin="0,18,0,0">
+                                    <StackPanel>
+                                        <TextBlock Text="DURATA SUGGERITA" FontSize="9" FontWeight="Bold"
+                                                   Foreground="{DynamicResource SidebarMutedBrush}"/>
+                                        <TextBlock Text="{Binding Dashboard.Recommendation.DurationText}"
+                                                   FontSize="13" FontWeight="SemiBold" Foreground="White"
+                                                   Margin="0,4,0,0"/>
                                     </StackPanel>
-                                    <StackPanel Grid.Column="1">
-                                        <TextBlock Text="{Binding ArchivedCoursesCount}"
-                                                   FontSize="23" FontWeight="SemiBold"
-                                                   Foreground="{DynamicResource SuccessBrush}"/>
-                                        <TextBlock Text="In archivio" FontSize="11"
-                                                   Foreground="{DynamicResource MutedBrush}"/>
+                                    <StackPanel>
+                                        <TextBlock Text="PRIORITÀ" FontSize="9" FontWeight="Bold"
+                                                   Foreground="{DynamicResource SidebarMutedBrush}"/>
+                                        <TextBlock Text="{Binding Dashboard.Recommendation.PriorityLabel}"
+                                                   FontSize="13" FontWeight="SemiBold" Foreground="White"
+                                                   Margin="0,4,0,0"/>
                                     </StackPanel>
-                                </Grid>
+                                </UniformGrid>
+                                <Button Content="Prepara sessione Focus"
+                                        Style="{StaticResource SecondaryButtonStyle}"
+                                        HorizontalAlignment="Left" Margin="0,18,0,0"
+                                        Click="PrepareDashboardRecommendation_Click"/>
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="1.15*"/>
+                            <ColumnDefinition Width="0.85*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <Border Grid.Column="0" Style="{StaticResource CardBorderStyle}" Padding="20"
+                                Margin="0,0,12,0">
+                            <StackPanel>
+                                <DockPanel Margin="0,0,0,13">
+                                    <TextBlock Text="Attività da completare oggi"
+                                               Style="{StaticResource SectionTitleStyle}"/>
+                                    <Button Content="Apri Studio Lab" Style="{StaticResource SecondaryButtonStyle}"
+                                            HorizontalAlignment="Right" Click="NavigateToStudyLab_Click"/>
+                                </DockPanel>
+                                <ItemsControl ItemsSource="{Binding Dashboard.Tasks}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <DockPanel Margin="0,0,0,12" LastChildFill="True">
+                                                <Button DockPanel.Dock="Right" Content="Completa"
+                                                        Tag="{Binding Id}" Click="CompleteDashboardTask_Click"
+                                                        VerticalAlignment="Center">
+                                                    <Button.Style>
+                                                        <Style TargetType="{x:Type Button}"
+                                                               BasedOn="{StaticResource SecondaryButtonStyle}">
+                                                            <Setter Property="Visibility" Value="Visible"/>
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding CanComplete}" Value="False">
+                                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </Button.Style>
+                                                </Button>
+                                                <StackPanel VerticalAlignment="Center">
+                                                    <TextBlock Text="{Binding Title}" FontSize="12"
+                                                               FontWeight="SemiBold"
+                                                               Foreground="{DynamicResource InkBrush}"
+                                                               TextWrapping="Wrap"/>
+                                                    <TextBlock Text="{Binding Subtitle}" FontSize="10"
+                                                               Foreground="{DynamicResource MutedBrush}"
+                                                               TextWrapping="Wrap" Margin="0,2,0,0"/>
+                                                    <TextBlock Text="{Binding TypeLabel, StringFormat={}{0} · }"
+                                                               FontSize="10" Foreground="{DynamicResource MutedBrush}"/>
+                                                    <TextBlock Text="{Binding DueLabel}" FontSize="10"
+                                                               Foreground="{DynamicResource WarningBrush}"/>
+                                                </StackPanel>
+                                            </DockPanel>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                                <TextBlock Text="Nessuna attività in scadenza per oggi. Puoi aggiungere un task nello Studio Lab."
+                                           FontSize="11" Foreground="{DynamicResource MutedBrush}"
+                                           TextWrapping="Wrap">
+                                    <TextBlock.Style>
+                                        <Style TargetType="{x:Type TextBlock}">
+                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding Dashboard.Tasks.Count}" Value="0">
+                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                            </StackPanel>
+                        </Border>
+
+                        <Border Grid.Column="1" Style="{StaticResource CardBorderStyle}" Padding="20">
+                            <StackPanel>
+                                <TextBlock Text="Scadenze imminenti" Style="{StaticResource SectionTitleStyle}"/>
+                                <TextBlock Text="Attività, missioni e consegne nei prossimi 14 giorni."
+                                           FontSize="11" Foreground="{DynamicResource MutedBrush}"
+                                           Margin="0,4,0,15"/>
+                                <ItemsControl ItemsSource="{Binding Dashboard.Deadlines}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Grid Margin="0,0,0,13">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
+                                                <StackPanel Grid.Column="0">
+                                                    <TextBlock Text="{Binding Title}" FontSize="12"
+                                                               FontWeight="SemiBold"
+                                                               Foreground="{DynamicResource InkBrush}"
+                                                               TextWrapping="Wrap"/>
+                                                    <TextBlock Text="{Binding Context}" FontSize="10"
+                                                               Foreground="{DynamicResource MutedBrush}"
+                                                               TextWrapping="Wrap" Margin="0,2,0,0"/>
+                                                    <TextBlock Text="{Binding TypeLabel}" FontSize="10"
+                                                               Foreground="{DynamicResource MutedBrush}" Margin="0,2,0,0"/>
+                                                </StackPanel>
+                                                <TextBlock Grid.Column="1" Text="{Binding DueLabel}"
+                                                           FontSize="10" FontWeight="SemiBold"
+                                                           Foreground="{DynamicResource WarningBrush}"
+                                                           VerticalAlignment="Center" Margin="8,0,0,0"/>
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                                <TextBlock Text="Nessuna scadenza registrata nei prossimi 14 giorni."
+                                           FontSize="11" Foreground="{DynamicResource MutedBrush}"
+                                           TextWrapping="Wrap">
+                                    <TextBlock.Style>
+                                        <Style TargetType="{x:Type TextBlock}">
+                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding Dashboard.Deadlines.Count}" Value="0">
+                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
                             </StackPanel>
                         </Border>
                     </Grid>
