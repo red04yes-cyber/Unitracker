@@ -265,7 +265,7 @@
                                                    FontWeight="SemiBold"/>
                                     </Border>
                                 </Grid>
-                                <ProgressBar Value="{Binding Workspace.FocusProgressPercent}"
+                                <ProgressBar Value="{Binding Workspace.FocusProgressPercent, Mode=OneWay}"
                                              Maximum="100" Height="6" Margin="0,14,0,0"
                                              Background="#354A64" Foreground="#65D9EF"
                                              Visibility="{Binding Workspace.HasActiveFocusSession, Converter={StaticResource BooleanToVisibilityConverter}}"/>
