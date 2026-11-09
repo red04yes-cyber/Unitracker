@@ -167,7 +167,7 @@ public partial class App : System.Windows.Application
             AppDiagnostics.Error("startup", "Application startup failed.", ex);
             var logPath = AppDiagnostics.CurrentLogPath ??
                           Path.Combine(AppDiagnostics.Directory, "unitracker.log");
-            MessageBox.Show(
+            UiDialogService.Show(
                 "UniTo StudyHub non è riuscito ad avviarsi. I dati originali non sono stati eliminati.\n\n" +
                 $"Errore: {ex.GetType().Name}: {ex.Message}\n\n" +
                 $"Dettagli diagnostici (se il file è stato creato): {logPath}",
