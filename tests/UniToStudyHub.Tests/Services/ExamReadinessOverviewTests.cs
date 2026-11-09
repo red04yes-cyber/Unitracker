@@ -27,7 +27,8 @@ public sealed class ExamReadinessOverviewTests
                 new() { Id = "fisica", Name = "Fisica", Cfu = 9 },
                 new() { Id = "programmazione", Name = "Programmazione", Cfu = 12 },
                 new() { Id = "storia", Name = "Storia", Cfu = 6 },
-                new() { Id = "archiviata", Name = "Materia archiviata", Cfu = 6, Archived = true }
+                new() { Id = "archiviata", Name = "Materia archiviata", Cfu = 6, Archived = true },
+                new() { Id = "stato-archiviato", Name = "Materia con stato archiviato", Cfu = 6, Status = CourseStatus.Archived }
             }
         };
         var syllabus = new SyllabusTrackerService();
@@ -38,9 +39,11 @@ public sealed class ExamReadinessOverviewTests
 
         var career = new CareerApplicationService(new CareerCalculatorService());
         career.RecordResult(data, "fisica", ExamOutcome.Passed, GradeDecision.Accepted,
-            numericGrade: 18, honors: false, isPassFail: false, AttemptedAt, RecordedAt);
+            numericGrade: 18, honors: false, isPassFail: false,
+            attemptedAt: AttemptedAt, recordedAt: RecordedAt);
         career.RecordResult(data, "programmazione", ExamOutcome.Passed, GradeDecision.Accepted,
-            numericGrade: 24, honors: false, isPassFail: false, AttemptedAt, RecordedAt);
+            numericGrade: 24, honors: false, isPassFail: false,
+            attemptedAt: AttemptedAt, recordedAt: RecordedAt);
 
         var beforeCourseCount = data.Courses.Count;
         var beforeTopicCount = data.SyllabusTopics.Count;
@@ -73,6 +76,7 @@ public sealed class ExamReadinessOverviewTests
         Assert.Equal(beforeTopicCount, data.SyllabusTopics.Count);
         Assert.Equal(beforeAttemptCount, data.CareerExams.Sum(x => x.Attempts.Count));
         Assert.DoesNotContain(overview.Courses, x => x.CourseId == "archiviata");
+        Assert.DoesNotContain(overview.Courses, x => x.CourseId == "stato-archiviato");
     }
 
     [Fact]
