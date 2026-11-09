@@ -39,7 +39,7 @@ public partial class MainWindow : Window
         }
         SystemThemeWatcher.Watch(this, Wpf.Ui.Controls.WindowBackdropType.Mica);
         DataContext = viewModel;
-        UpdateSectionHeading();
+        Loaded += (_, _) => UpdateSectionHeading();
         _focusRefreshTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
         _focusRefreshTimer.Tick += (_, _) => viewModel.Workspace.RefreshFocusSnapshot();
         _focusRefreshTimer.Start();
@@ -507,8 +507,12 @@ public partial class MainWindow : Window
             _ => ("UniToStudyHub", "Il tuo spazio universitario")
         };
 
-        CurrentSectionTitle.Text = heading.Item1;
-        CurrentSectionSubtitle.Text = heading.Item2;
+        if (MainTabs.Template?.FindName("CurrentSectionTitle", MainTabs) is not TextBlock title ||
+            MainTabs.Template.FindName("CurrentSectionSubtitle", MainTabs) is not TextBlock subtitle)
+            return;
+
+        title.Text = heading.Item1;
+        subtitle.Text = heading.Item2;
     }
 
 }
