@@ -288,7 +288,7 @@ public static class UiDialogService
         private void CloseWithResult()
         {
             if (IsVisible)
-                DialogResult = Result;
+                DialogResult = Result is MessageBoxResult.OK or MessageBoxResult.Yes;
         }
 
         private Brush BrushResource(string key) => (Brush)FindResource(key);
