@@ -113,6 +113,8 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
     private string _weeklyStudyHoursInput = "20";
     private string _maxDailyStudyMinutesInput = "240";
     private ProgressSnapshot? _progressSnapshot;
+    private string? _progressRefreshSessionId;
+    private int _lastProgressRefreshMinute = -1;
 
     public event PropertyChangedEventHandler? PropertyChanged;
     public event Action<StudyData>? DataReloaded;
@@ -463,6 +465,8 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
         var active = _focus.GetActive(_data);
         if (active is null)
         {
+            _progressRefreshSessionId = null;
+            _lastProgressRefreshMinute = -1;
             FocusStateDisplay = "Pronto";
             FocusRemainingDisplay = "—";
             FocusElapsedDisplay = "00:00";
@@ -471,6 +475,22 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
         else
         {
             var snapshot = _focus.Snapshot(_data, active.Id);
+            if (!string.Equals(_progressRefreshSessionId, active.Id, StringComparison.Ordinal))
+            {
+                _progressRefreshSessionId = active.Id;
+                _lastProgressRefreshMinute = -1;
+            }
+
+            // The main dashboard shares the same weekly Focus metric as Study Lab.
+            // Refresh it only when a whole active minute has elapsed, not on every
+            // one-second countdown tick.
+            var elapsedMinute = snapshot.ElapsedSeconds / 60;
+            if (elapsedMinute != _lastProgressRefreshMinute)
+            {
+                _lastProgressRefreshMinute = elapsedMinute;
+                RefreshProgress();
+            }
+
             FocusStateDisplay = snapshot.IsExpired ? "Tempo previsto raggiunto" : snapshot.State == StudySessionState.Running ? "In corso" : "In pausa";
             FocusRemainingDisplay = FormatClock(snapshot.RemainingSeconds);
             FocusElapsedDisplay = FormatClock(snapshot.ElapsedSeconds);
