@@ -454,6 +454,37 @@
             </Style.Triggers>
         </Style>
 
+        <Style TargetType="{x:Type Slider}">
+            <Setter Property="MinHeight" Value="28"/>
+            <Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
+            <Setter Property="Background" Value="{DynamicResource SubtleBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+            <Style.Triggers>
+                <Trigger Property="IsEnabled" Value="False">
+                    <Setter Property="Opacity" Value="0.55"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style TargetType="{x:Type Expander}">
+            <Setter Property="Foreground" Value="{DynamicResource InkBrush}"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Margin" Value="0,2"/>
+            <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+        </Style>
+
+        <Style TargetType="{x:Type ToolTip}">
+            <Setter Property="Background" Value="{DynamicResource PanelBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource InkBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="10,7"/>
+            <Setter Property="FontSize" Value="11"/>
+        </Style>
+
         <Style TargetType="{x:Type ProgressBar}">
             <Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
             <Setter Property="Background" Value="{DynamicResource SubtleBrush}"/>
@@ -485,37 +516,6 @@
             <Setter Property="Foreground" Value="{DynamicResource MutedBrush}"/>
         </Style>
 
-        <Style TargetType="{x:Type TextBox}">
-            <Setter Property="Padding" Value="11,9"/>
-            <Setter Property="Margin" Value="0"/>
-            <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
-            <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="Background" Value="{DynamicResource PanelBrush}"/>
-            <Setter Property="Foreground" Value="{DynamicResource InkBrush}"/>
-            <Setter Property="FontSize" Value="13"/>
-            <Setter Property="VerticalContentAlignment" Value="Center"/>
-        </Style>
-
-        <Style TargetType="{x:Type ComboBox}">
-            <Setter Property="Padding" Value="8,7"/>
-            <Setter Property="Margin" Value="0"/>
-            <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
-            <Setter Property="Background" Value="{DynamicResource PanelBrush}"/>
-            <Setter Property="Foreground" Value="{DynamicResource InkBrush}"/>
-            <Setter Property="FontSize" Value="13"/>
-            <Setter Property="MinHeight" Value="38"/>
-        </Style>
-
-        <Style TargetType="{x:Type DataGrid}">
-            <Setter Property="Margin" Value="0"/>
-            <Setter Property="CanUserAddRows" Value="False"/>
-            <Setter Property="AutoGenerateColumns" Value="False"/>
-            <Setter Property="HeadersVisibility" Value="Column"/>
-            <Setter Property="GridLinesVisibility" Value="Horizontal"/>
-            <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
-            <Setter Property="RowBackground" Value="{DynamicResource PanelBrush}"/>
-            <Setter Property="AlternatingRowBackground" Value="{DynamicResource SubtleBrush}"/>
-        </Style>
         </ResourceDictionary>
     </Application.Resources>
 </Application>
