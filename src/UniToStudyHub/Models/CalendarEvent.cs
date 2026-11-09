@@ -25,6 +25,17 @@ public sealed class CalendarEvent
     public long ExternalSequence { get; set; }
     public bool IsCancelled { get; set; }
     public string RecurrenceRule { get; set; } = string.Empty;
+
+    // Planner metadata is empty for ordinary calendar events. Planner sessions
+    // keep their plan/topic link so status and history are never inferred from
+    // the event title or a parallel store.
+    public string PlanId { get; set; } = string.Empty;
+    public string SyllabusTopicId { get; set; } = string.Empty;
+    public PlannedSessionStatus PlannerStatus { get; set; }
+    public int PriorityScore { get; set; }
+    public int ActualMinutes { get; set; }
+    public int RescheduleCount { get; set; }
+    public DateTimeOffset? CompletedAt { get; set; }
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.Now;
     public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.Now;
 }

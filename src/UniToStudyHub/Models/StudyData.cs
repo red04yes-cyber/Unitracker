@@ -32,6 +32,9 @@ public sealed class StudyData
     public DateTime GraduationTarget { get; set; } = new(2027, 10, 1);
     public string MoodleBaseUrl { get; set; } = string.Empty;
     public ObservableCollection<CalendarEvent> CalendarEvents { get; set; } = new();
+    public ObservableCollection<StudyPlanData> StudyPlans { get; set; } = new();
+    public ObservableCollection<PlannerRescheduleData> PlannerReschedules { get; set; } = new();
+    public PlannerSettingsData PlannerSettings { get; set; } = new();
 
     // University profile. Empty values mean "not configured" and must not be
     // rendered as if they were official university data.
@@ -141,10 +144,16 @@ public sealed class SyllabusTopicData
 {
     public string Id { get; set; } = Guid.NewGuid().ToString("N");
     public string CourseId { get; set; } = string.Empty;
+    public string ParentTopicId { get; set; } = string.Empty;
     public string Title { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
     public SyllabusTopicStatus Status { get; set; }
     public int EstimatedMinutes { get; set; }
+    public int Priority { get; set; } = 3;
+    public int Difficulty { get; set; } = 3;
+    public int? PreparationLevel { get; set; }
+    public int Position { get; set; }
+    public bool IsArchived { get; set; }
     public string SourceUrl { get; set; } = string.Empty;
     public DateTime? LastStudiedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }

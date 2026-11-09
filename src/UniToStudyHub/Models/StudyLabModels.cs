@@ -61,6 +61,8 @@ public sealed class StudySessionData
     public string Id { get; set; } = Guid.NewGuid().ToString("N");
     public string CourseId { get; set; } = string.Empty;
     public string Topic { get; set; } = string.Empty;
+    public string SyllabusTopicId { get; set; } = string.Empty;
+    public string CalendarEventId { get; set; } = string.Empty;
     public int PlannedMinutes { get; set; } = 25;
     public DateTimeOffset StartedAt { get; set; } = DateTimeOffset.Now;
     public DateTimeOffset? LastResumedAt { get; set; } = DateTimeOffset.Now;

@@ -20,7 +20,10 @@ public enum SyllabusTopicStatus
 {
     NotStarted = 0,
     InProgress = 1,
-    Completed = 2
+    Completed = 2,
+
+    /// <summary>Studied before but explicitly needing another review.</summary>
+    NeedsReview = 3
 }
 
 public enum QuestionType

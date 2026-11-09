@@ -16,6 +16,9 @@ public sealed class StudyHubDbContext(DbContextOptions<StudyHubDbContext> option
     public DbSet<SyllabusTopicEntity> SyllabusTopics => Set<SyllabusTopicEntity>();
     public DbSet<QuestionBankItemEntity> QuestionBankItems => Set<QuestionBankItemEntity>();
     public DbSet<CalendarEventEntity> CalendarEvents => Set<CalendarEventEntity>();
+    public DbSet<PlannerSettingsEntity> PlannerSettings => Set<PlannerSettingsEntity>();
+    public DbSet<StudyPlanEntity> StudyPlans => Set<StudyPlanEntity>();
+    public DbSet<PlannerRescheduleEntity> PlannerReschedules => Set<PlannerRescheduleEntity>();
     public DbSet<StudySessionEntity> StudySessions => Set<StudySessionEntity>();
     public DbSet<StudySessionSegmentEntity> StudySessionSegments => Set<StudySessionSegmentEntity>();
     public DbSet<StudyTaskEntity> StudyTasks => Set<StudyTaskEntity>();
@@ -137,10 +140,16 @@ public sealed class StudyHubDbContext(DbContextOptions<StudyHubDbContext> option
             b.ToTable("SyllabusTopics");
             b.HasKey(x => x.Id);
             b.HasIndex(x => new { x.CourseId, x.Status });
+            b.Property(x => x.ParentTopicId).HasMaxLength(64).IsRequired();
             b.Property(x => x.Title).HasMaxLength(400).IsRequired();
             b.Property(x => x.Description).HasMaxLength(12000).IsRequired();
             b.Property(x => x.SourceUrl).HasMaxLength(2048).IsRequired();
             b.Property(x => x.Status).HasDefaultValue(0);
+            b.Property(x => x.Priority).HasDefaultValue(3);
+            b.Property(x => x.Difficulty).HasDefaultValue(3);
+            b.Property(x => x.Position).HasDefaultValue(0);
+            b.Property(x => x.IsArchived).HasDefaultValue(false);
+            b.HasIndex(x => new { x.CourseId, x.ParentTopicId, x.Position });
             b.HasOne<CourseEntity>().WithMany()
                 .HasForeignKey(x => x.CourseId)
                 .OnDelete(DeleteBehavior.Cascade);
@@ -176,8 +185,12 @@ public sealed class StudyHubDbContext(DbContextOptions<StudyHubDbContext> option
             b.Property(x => x.TimeZoneId).HasMaxLength(100).IsRequired();
             b.Property(x => x.ExternalId).HasMaxLength(400);
             b.Property(x => x.RecurrenceRule).HasMaxLength(2000).IsRequired();
+            b.Property(x => x.PlanId).HasMaxLength(64).IsRequired();
+            b.Property(x => x.SyllabusTopicId).HasMaxLength(64).IsRequired();
+            b.Property(x => x.PlannerStatus).HasDefaultValue(0);
             b.HasIndex(x => x.StartsAt);
             b.HasIndex(x => new { x.Source, x.ExternalId });
+            b.HasIndex(x => new { x.PlanId, x.StartsAt });
         });
 
         modelBuilder.Entity<StudySessionEntity>(b =>
@@ -188,7 +201,10 @@ public sealed class StudyHubDbContext(DbContextOptions<StudyHubDbContext> option
             b.Property(x => x.Outcome).HasMaxLength(2000).IsRequired();
             b.Property(x => x.Notes).HasMaxLength(12000).IsRequired();
             b.Property(x => x.NotesArePrivate).HasDefaultValue(true);
+            b.Property(x => x.SyllabusTopicId).HasMaxLength(64).IsRequired();
+            b.Property(x => x.CalendarEventId).HasMaxLength(64).IsRequired();
             b.HasIndex(x => x.StartedAt);
+            b.HasIndex(x => x.CalendarEventId);
             b.HasIndex(x => new { x.State, x.StartedAt });
             b.HasMany(x => x.Segments)
                 .WithOne()
@@ -360,6 +376,49 @@ public sealed class StudyHubDbContext(DbContextOptions<StudyHubDbContext> option
             b.ToTable("LegacyImports");
             b.HasKey(x => x.Key);
             b.Property(x => x.SourceHash).IsRequired();
+        });
+
+        modelBuilder.Entity<PlannerSettingsEntity>(b =>
+        {
+            b.ToTable("PlannerSettings");
+            b.HasKey(x => x.Id);
+            b.Property(x => x.Id).ValueGeneratedNever();
+            b.Property(x => x.PreferredSessionMinutes).HasDefaultValue(50);
+            b.Property(x => x.MinimumSessionMinutes).HasDefaultValue(25);
+            b.Property(x => x.BreakBetweenSessionsMinutes).HasDefaultValue(10);
+            b.Property(x => x.MaxSessionsPerDay).HasDefaultValue(3);
+            b.Property(x => x.ReviewReservePercent).HasDefaultValue(15);
+            b.Property(x => x.ReviewReserveDays).HasDefaultValue(2);
+            b.Property(x => x.IncludeWeekends).HasDefaultValue(true);
+            b.Property(x => x.AutoRescheduleMissed).HasDefaultValue(true);
+            b.Property(x => x.AvailabilityJson).IsRequired();
+        });
+
+        modelBuilder.Entity<StudyPlanEntity>(b =>
+        {
+            b.ToTable("StudyPlans");
+            b.HasKey(x => x.Id);
+            b.Property(x => x.CourseId).HasMaxLength(64).IsRequired();
+            b.Property(x => x.CourseName).HasMaxLength(300).IsRequired();
+            b.Property(x => x.ExamId).HasMaxLength(64).IsRequired();
+            b.Property(x => x.ExamTitle).HasMaxLength(400).IsRequired();
+            b.Property(x => x.Explanation).HasMaxLength(4000).IsRequired();
+            b.Property(x => x.WarningsJson).IsRequired();
+            b.HasIndex(x => new { x.Status, x.ExamDate });
+            b.HasIndex(x => x.CourseId);
+            b.HasOne<CourseEntity>().WithMany().HasForeignKey(x => x.CourseId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<PlannerRescheduleEntity>(b =>
+        {
+            b.ToTable("PlannerReschedules");
+            b.HasKey(x => x.Id);
+            b.Property(x => x.PlanId).HasMaxLength(64).IsRequired();
+            b.Property(x => x.CalendarEventId).HasMaxLength(80).IsRequired();
+            b.Property(x => x.Reason).HasMaxLength(400).IsRequired();
+            b.HasIndex(x => new { x.CalendarEventId, x.MovedAt });
+            b.HasIndex(x => x.PlanId);
         });
     }
 }

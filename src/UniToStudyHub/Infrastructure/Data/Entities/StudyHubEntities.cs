@@ -109,10 +109,16 @@ public sealed class SyllabusTopicEntity
 {
     public string Id { get; set; } = string.Empty;
     public string CourseId { get; set; } = string.Empty;
+    public string ParentTopicId { get; set; } = string.Empty;
     public string Title { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
     public int Status { get; set; }
     public int EstimatedMinutes { get; set; }
+    public int Priority { get; set; } = 3;
+    public int Difficulty { get; set; } = 3;
+    public int? PreparationLevel { get; set; }
+    public int Position { get; set; }
+    public bool IsArchived { get; set; }
     public string SourceUrl { get; set; } = string.Empty;
     public DateTime? LastStudiedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }
@@ -154,6 +160,13 @@ public sealed class CalendarEventEntity
     public long ExternalSequence { get; set; }
     public bool IsCancelled { get; set; }
     public string RecurrenceRule { get; set; } = string.Empty;
+    public string PlanId { get; set; } = string.Empty;
+    public string SyllabusTopicId { get; set; } = string.Empty;
+    public int PlannerStatus { get; set; }
+    public int PriorityScore { get; set; }
+    public int ActualMinutes { get; set; }
+    public int RescheduleCount { get; set; }
+    public DateTimeOffset? CompletedAt { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset UpdatedAt { get; set; }
 }
@@ -163,6 +176,8 @@ public sealed class StudySessionEntity
     public string Id { get; set; } = string.Empty;
     public string CourseId { get; set; } = string.Empty;
     public string Topic { get; set; } = string.Empty;
+    public string SyllabusTopicId { get; set; } = string.Empty;
+    public string CalendarEventId { get; set; } = string.Empty;
     public int PlannedMinutes { get; set; }
     public DateTimeOffset StartedAt { get; set; }
     public DateTimeOffset? LastResumedAt { get; set; }
@@ -403,4 +418,51 @@ public sealed class LegacyImportEntity
     public string Key { get; set; } = string.Empty;
     public string SourceHash { get; set; } = string.Empty;
     public DateTimeOffset ImportedAt { get; set; }
+}
+
+public sealed class PlannerSettingsEntity
+{
+    public int Id { get; set; } = 1;
+    public int PreferredSessionMinutes { get; set; } = 50;
+    public int MinimumSessionMinutes { get; set; } = 25;
+    public int BreakBetweenSessionsMinutes { get; set; } = 10;
+    public int MaxSessionsPerDay { get; set; } = 3;
+    public int ReviewReservePercent { get; set; } = 15;
+    public int ReviewReserveDays { get; set; } = 2;
+    public bool IncludeWeekends { get; set; } = true;
+    public bool AutoRescheduleMissed { get; set; } = true;
+    public string AvailabilityJson { get; set; } = "[]";
+}
+
+public sealed class StudyPlanEntity
+{
+    public string Id { get; set; } = string.Empty;
+    public string CourseId { get; set; } = string.Empty;
+    public string CourseName { get; set; } = string.Empty;
+    public string ExamId { get; set; } = string.Empty;
+    public string ExamTitle { get; set; } = string.Empty;
+    public DateTime ExamDate { get; set; }
+    public int RequiredMinutes { get; set; }
+    public int ReviewReserveMinutes { get; set; }
+    public int ScheduledMinutes { get; set; }
+    public int Status { get; set; }
+    public string Explanation { get; set; } = string.Empty;
+    public string WarningsJson { get; set; } = "[]";
+    public DateTimeOffset CreatedAt { get; set; }
+    public DateTimeOffset UpdatedAt { get; set; }
+}
+
+public sealed class PlannerRescheduleEntity
+{
+    public string Id { get; set; } = string.Empty;
+    public string PlanId { get; set; } = string.Empty;
+    public string CalendarEventId { get; set; } = string.Empty;
+    public DateTimeOffset PreviousStartsAt { get; set; }
+    public DateTimeOffset PreviousEndsAt { get; set; }
+    public DateTimeOffset NewStartsAt { get; set; }
+    public DateTimeOffset NewEndsAt { get; set; }
+    public string Reason { get; set; } = string.Empty;
+    public DateTimeOffset MovedAt { get; set; }
+    public bool IsReversed { get; set; }
+    public DateTimeOffset? ReversedAt { get; set; }
 }

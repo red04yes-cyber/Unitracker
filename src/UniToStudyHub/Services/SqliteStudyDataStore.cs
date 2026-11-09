@@ -52,6 +52,9 @@ public sealed class SqliteStudyDataStore(IDbContextFactory<StudyHubDbContext> co
                 await db.PomodoroCycles.ExecuteDeleteAsync(cancellationToken);
                 await db.PomodoroTimers.ExecuteDeleteAsync(cancellationToken);
                 await db.PomodoroSettings.ExecuteDeleteAsync(cancellationToken);
+                await db.PlannerReschedules.ExecuteDeleteAsync(cancellationToken);
+                await db.StudyPlans.ExecuteDeleteAsync(cancellationToken);
+                await db.PlannerSettings.ExecuteDeleteAsync(cancellationToken);
                 await db.CalendarEvents.ExecuteDeleteAsync(cancellationToken);
                 await db.FlashcardReviews.ExecuteDeleteAsync(cancellationToken);
                 await db.Flashcards.ExecuteDeleteAsync(cancellationToken);

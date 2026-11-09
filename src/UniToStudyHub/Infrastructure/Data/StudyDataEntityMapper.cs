@@ -33,6 +33,9 @@ public static class StudyDataEntityMapper
         data.SyllabusTopics ??= new ObservableCollection<SyllabusTopicData>();
         data.Questions ??= new ObservableCollection<QuestionBankItemData>();
         data.CalendarEvents ??= new ObservableCollection<CalendarEvent>();
+        data.StudyPlans ??= new ObservableCollection<StudyPlanData>();
+        data.PlannerReschedules ??= new ObservableCollection<PlannerRescheduleData>();
+        data.PlannerSettings ??= new PlannerSettingsData();
         data.StudySessions ??= new ObservableCollection<StudySessionData>();
         data.StudyTasks ??= new ObservableCollection<StudyTaskData>();
         data.StudyActivities ??= new ObservableCollection<StudyActivityData>();
@@ -56,6 +59,8 @@ public static class StudyDataEntityMapper
         EnsureNoNullItems(data.SyllabusTopics, "syllabus topic");
         EnsureNoNullItems(data.Questions, "question");
         EnsureNoNullItems(data.CalendarEvents, "calendar event");
+        EnsureNoNullItems(data.StudyPlans, "study plan");
+        EnsureNoNullItems(data.PlannerReschedules, "planner reschedule");
         EnsureNoNullItems(data.StudySessions, "study session");
         EnsureNoNullItems(data.StudyTasks, "study task");
         EnsureNoNullItems(data.StudyActivities, "study activity");
@@ -77,6 +82,8 @@ public static class StudyDataEntityMapper
         EnsureUniqueIds(data.SyllabusTopics, x => x.Id, "syllabus topic");
         EnsureUniqueIds(data.Questions, x => x.Id, "question");
         EnsureUniqueIds(data.CalendarEvents, x => x.Id, "calendar event");
+        EnsureUniqueIds(data.StudyPlans, x => x.Id, "study plan");
+        EnsureUniqueIds(data.PlannerReschedules, x => x.Id, "planner reschedule");
         EnsureUniqueIds(data.StudySessions, x => x.Id, "study session");
         EnsureUniqueIds(data.StudyTasks, x => x.Id, "study task");
         EnsureUniqueIds(data.StudyActivities, x => x.Id, "study activity");
@@ -296,8 +303,17 @@ public static class StudyDataEntityMapper
                 throw new InvalidDataException($"Syllabus topic '{topic.Id}' refers to a course that does not exist.");
             if (!Enum.IsDefined(topic.Status))
                 throw new InvalidDataException($"Syllabus topic '{topic.Id}' has an unknown status.");
-            if (topic.EstimatedMinutes < 0)
-                throw new InvalidDataException($"Syllabus topic '{topic.Id}' has negative estimated minutes.");
+            if (topic.EstimatedMinutes < 0 || topic.Priority is < 1 or > 5 || topic.Difficulty is < 1 or > 5 ||
+                topic.PreparationLevel is < 1 or > 5 || topic.Position < 0)
+                throw new InvalidDataException($"Syllabus topic '{topic.Id}' has invalid planning fields.");
+            if (!string.IsNullOrWhiteSpace(topic.ParentTopicId))
+            {
+                if (string.Equals(topic.ParentTopicId, topic.Id, StringComparison.Ordinal) ||
+                    !data.SyllabusTopics.Any(x => string.Equals(x.Id, topic.ParentTopicId, StringComparison.Ordinal) &&
+                                                  string.Equals(x.CourseId, topic.CourseId, StringComparison.Ordinal)))
+                    throw new InvalidDataException($"Syllabus topic '{topic.Id}' has an invalid parent topic.");
+            }
+            topic.ParentTopicId ??= string.Empty;
             topic.Description ??= string.Empty;
             topic.SourceUrl ??= string.Empty;
         }
@@ -336,6 +352,7 @@ public static class StudyDataEntityMapper
     private static void ValidateCalendarAndStudyLab(StudyData data)
     {
         var courseIds = new HashSet<string>(data.Courses.Select(x => x.Id), StringComparer.Ordinal);
+        ValidatePlanner(data, courseIds);
         foreach (var item in data.CalendarEvents)
         {
             if (string.IsNullOrWhiteSpace(item.Id) || string.IsNullOrWhiteSpace(item.Title))
@@ -351,6 +368,18 @@ public static class StudyDataEntityMapper
             if (string.IsNullOrWhiteSpace(item.Category) || string.IsNullOrWhiteSpace(item.Source) ||
                 string.IsNullOrWhiteSpace(item.Verification))
                 throw new InvalidDataException($"Calendar event '{item.Id}' has no category, source or verification state.");
+            if (!Enum.IsDefined(item.PlannerStatus))
+                throw new InvalidDataException($"Calendar event '{item.Id}' has an unknown planner status.");
+            if (!string.IsNullOrWhiteSpace(item.PlanId) &&
+                !data.StudyPlans.Any(x => string.Equals(x.Id, item.PlanId, StringComparison.Ordinal)))
+                throw new InvalidDataException($"Calendar event '{item.Id}' refers to a missing study plan.");
+            if (!string.IsNullOrWhiteSpace(item.SyllabusTopicId) &&
+                !data.SyllabusTopics.Any(x => string.Equals(x.Id, item.SyllabusTopicId, StringComparison.Ordinal)))
+                throw new InvalidDataException($"Calendar event '{item.Id}' refers to a missing syllabus topic.");
+            if (item.ActualMinutes is < 0 or > 1440)
+                throw new InvalidDataException($"Calendar event '{item.Id}' has invalid actual minutes.");
+            if (item.PlannerStatus == PlannedSessionStatus.Completed && item.CompletedAt is null)
+                throw new InvalidDataException($"Completed planner event '{item.Id}' has no completion timestamp.");
             item.CourseName ??= string.Empty;
             item.Location ??= string.Empty;
             item.Notes ??= string.Empty;
@@ -373,6 +402,12 @@ public static class StudyDataEntityMapper
                 throw new InvalidDataException($"Study session '{session.Id}' has negative accumulated time.");
             if (!string.IsNullOrWhiteSpace(session.CourseId) && !courseIds.Contains(session.CourseId))
                 throw new InvalidDataException($"Study session '{session.Id}' refers to a course that does not exist.");
+            if (!string.IsNullOrWhiteSpace(session.SyllabusTopicId) &&
+                !data.SyllabusTopics.Any(x => string.Equals(x.Id, session.SyllabusTopicId, StringComparison.Ordinal)))
+                throw new InvalidDataException($"Study session '{session.Id}' refers to a missing syllabus topic.");
+            if (!string.IsNullOrWhiteSpace(session.CalendarEventId) &&
+                !data.CalendarEvents.Any(x => string.Equals(x.Id, session.CalendarEventId, StringComparison.Ordinal)))
+                throw new InvalidDataException($"Study session '{session.Id}' refers to a missing calendar event.");
             if (!Enum.IsDefined(session.State))
                 throw new InvalidDataException($"Study session '{session.Id}' has an unknown state.");
             if (session.State == StudySessionState.Running && session.PausedAt is not null)
@@ -587,6 +622,68 @@ public static class StudyDataEntityMapper
         }
     }
 
+    private static void ValidatePlanner(StudyData data, HashSet<string> courseIds)
+    {
+        var settings = data.PlannerSettings;
+        if (settings.PreferredSessionMinutes is < 15 or > 240 ||
+            settings.MinimumSessionMinutes is < 10 or > 240 ||
+            settings.MinimumSessionMinutes > settings.PreferredSessionMinutes ||
+            settings.BreakBetweenSessionsMinutes is < 0 or > 60 ||
+            settings.MaxSessionsPerDay is < 1 or > 12 ||
+            settings.ReviewReservePercent is < 0 or > 100 ||
+            settings.ReviewReserveDays is < 0 or > 30)
+            throw new InvalidDataException("Planner settings are outside the supported range.");
+        settings.Availability ??= new ObservableCollection<PlannerAvailabilityWindowData>();
+        if (settings.Availability.Count > 28)
+            throw new InvalidDataException("Too many planner availability windows.");
+        foreach (var window in settings.Availability)
+        {
+            if (window is null || !Enum.IsDefined(window.DayOfWeek) || window.EndsAt <= window.StartsAt)
+                throw new InvalidDataException("A planner availability window is invalid.");
+        }
+
+        var examIds = new HashSet<string>(data.Exams.Select(x => x.Id), StringComparer.Ordinal);
+        foreach (var plan in data.StudyPlans)
+        {
+            if (string.IsNullOrWhiteSpace(plan.Id) || !courseIds.Contains(plan.CourseId))
+                throw new InvalidDataException($"Study plan '{plan.Id}' refers to a missing course.");
+            if (!Enum.IsDefined(plan.Status))
+                throw new InvalidDataException($"Study plan '{plan.Id}' has an unknown status.");
+            if (plan.ExamDate == default || plan.RequiredMinutes < 0 || plan.ReviewReserveMinutes < 0 ||
+                plan.ScheduledMinutes < 0)
+                throw new InvalidDataException($"Study plan '{plan.Id}' has invalid dates or minutes.");
+            if (!string.IsNullOrWhiteSpace(plan.ExamId) && !examIds.Contains(plan.ExamId))
+                throw new InvalidDataException($"Study plan '{plan.Id}' refers to a missing exam.");
+            plan.CourseName ??= string.Empty;
+            plan.ExamTitle ??= string.Empty;
+            plan.Explanation ??= string.Empty;
+            plan.Warnings ??= new ObservableCollection<string>();
+            if (plan.Explanation.Length > 4000 || plan.Warnings.Count > 50 ||
+                plan.Warnings.Any(x => x is null || x.Length > 2000))
+                throw new InvalidDataException($"Study plan '{plan.Id}' has invalid explanatory text.");
+            var expected = plan.RequiredMinutes + plan.ReviewReserveMinutes;
+            if (plan.Status is StudyPlanStatus.Active or StudyPlanStatus.Completed && plan.ScheduledMinutes != expected)
+                throw new InvalidDataException($"Study plan '{plan.Id}' has inconsistent scheduled minutes.");
+            if (plan.Status is StudyPlanStatus.InsufficientTime or StudyPlanStatus.Draft && plan.ScheduledMinutes != 0)
+                throw new InvalidDataException($"Study plan '{plan.Id}' has sessions while not active.");
+            if (plan.CreatedAt == default || plan.UpdatedAt == default)
+                throw new InvalidDataException($"Study plan '{plan.Id}' has no timestamps.");
+        }
+
+        var planIds = new HashSet<string>(data.StudyPlans.Select(x => x.Id), StringComparer.Ordinal);
+        foreach (var item in data.PlannerReschedules)
+        {
+            if (string.IsNullOrWhiteSpace(item.Id) || !planIds.Contains(item.PlanId) ||
+                string.IsNullOrWhiteSpace(item.CalendarEventId))
+                throw new InvalidDataException($"Planner reschedule '{item.Id}' refers to missing data.");
+            if (item.PreviousEndsAt <= item.PreviousStartsAt || item.NewEndsAt <= item.NewStartsAt ||
+                item.MovedAt == default || string.IsNullOrWhiteSpace(item.Reason) || item.Reason.Length > 400)
+                throw new InvalidDataException($"Planner reschedule '{item.Id}' is invalid.");
+            if (item.IsReversed && item.ReversedAt is null)
+                throw new InvalidDataException($"Planner reschedule '{item.Id}' was reversed without a timestamp.");
+        }
+    }
+
     private static void ValidatePomodoro(StudyData data)
     {
         var settings = data.PomodoroSettings;
@@ -745,6 +842,19 @@ public static class StudyDataEntityMapper
             WeeklyStudyHours = data.WeeklyStudyHours,
             MaxDailyStudyMinutes = data.MaxDailyStudyMinutes
         });
+        db.PlannerSettings.Add(new PlannerSettingsEntity
+        {
+            Id = 1,
+            PreferredSessionMinutes = data.PlannerSettings.PreferredSessionMinutes,
+            MinimumSessionMinutes = data.PlannerSettings.MinimumSessionMinutes,
+            BreakBetweenSessionsMinutes = data.PlannerSettings.BreakBetweenSessionsMinutes,
+            MaxSessionsPerDay = data.PlannerSettings.MaxSessionsPerDay,
+            ReviewReservePercent = data.PlannerSettings.ReviewReservePercent,
+            ReviewReserveDays = data.PlannerSettings.ReviewReserveDays,
+            IncludeWeekends = data.PlannerSettings.IncludeWeekends,
+            AutoRescheduleMissed = data.PlannerSettings.AutoRescheduleMissed,
+            AvailabilityJson = JsonSerializer.Serialize(data.PlannerSettings.Availability)
+        });
         db.Courses.AddRange(data.Courses.Select(x => new CourseEntity
         {
             Id = x.Id,
@@ -831,10 +941,16 @@ public static class StudyDataEntityMapper
         {
             Id = x.Id,
             CourseId = x.CourseId,
+            ParentTopicId = x.ParentTopicId,
             Title = x.Title,
             Description = x.Description,
             Status = (int)x.Status,
             EstimatedMinutes = x.EstimatedMinutes,
+            Priority = x.Priority,
+            Difficulty = x.Difficulty,
+            PreparationLevel = x.PreparationLevel,
+            Position = x.Position,
+            IsArchived = x.IsArchived,
             SourceUrl = x.SourceUrl,
             LastStudiedAt = x.LastStudiedAt,
             UpdatedAt = x.UpdatedAt
@@ -855,6 +971,37 @@ public static class StudyDataEntityMapper
             CreatedAt = x.CreatedAt,
             UpdatedAt = x.UpdatedAt
         }));
+        db.StudyPlans.AddRange(data.StudyPlans.Select(x => new StudyPlanEntity
+        {
+            Id = x.Id,
+            CourseId = x.CourseId,
+            CourseName = x.CourseName,
+            ExamId = x.ExamId,
+            ExamTitle = x.ExamTitle,
+            ExamDate = x.ExamDate,
+            RequiredMinutes = x.RequiredMinutes,
+            ReviewReserveMinutes = x.ReviewReserveMinutes,
+            ScheduledMinutes = x.ScheduledMinutes,
+            Status = (int)x.Status,
+            Explanation = x.Explanation,
+            WarningsJson = JsonSerializer.Serialize(x.Warnings),
+            CreatedAt = x.CreatedAt,
+            UpdatedAt = x.UpdatedAt
+        }));
+        db.PlannerReschedules.AddRange(data.PlannerReschedules.Select(x => new PlannerRescheduleEntity
+        {
+            Id = x.Id,
+            PlanId = x.PlanId,
+            CalendarEventId = x.CalendarEventId,
+            PreviousStartsAt = x.PreviousStartsAt,
+            PreviousEndsAt = x.PreviousEndsAt,
+            NewStartsAt = x.NewStartsAt,
+            NewEndsAt = x.NewEndsAt,
+            Reason = x.Reason,
+            MovedAt = x.MovedAt,
+            IsReversed = x.IsReversed,
+            ReversedAt = x.ReversedAt
+        }));
         db.CalendarEvents.AddRange(data.CalendarEvents.Select(x => new CalendarEventEntity
         {
             Id = x.Id,
@@ -874,6 +1021,13 @@ public static class StudyDataEntityMapper
             ExternalSequence = x.ExternalSequence,
             IsCancelled = x.IsCancelled,
             RecurrenceRule = x.RecurrenceRule,
+            PlanId = x.PlanId,
+            SyllabusTopicId = x.SyllabusTopicId,
+            PlannerStatus = (int)x.PlannerStatus,
+            PriorityScore = x.PriorityScore,
+            ActualMinutes = x.ActualMinutes,
+            RescheduleCount = x.RescheduleCount,
+            CompletedAt = x.CompletedAt,
             CreatedAt = x.CreatedAt,
             UpdatedAt = x.UpdatedAt
         }));
@@ -890,6 +1044,8 @@ public static class StudyDataEntityMapper
             Id = x.Id,
             CourseId = x.CourseId,
             Topic = x.Topic,
+            SyllabusTopicId = x.SyllabusTopicId,
+            CalendarEventId = x.CalendarEventId,
             PlannedMinutes = x.PlannedMinutes,
             StartedAt = x.StartedAt,
             LastResumedAt = x.LastResumedAt,
@@ -1118,6 +1274,77 @@ public static class StudyDataEntityMapper
             WeeklyStudyHours = settings?.WeeklyStudyHours ?? 20,
             MaxDailyStudyMinutes = settings?.MaxDailyStudyMinutes ?? 240
         };
+        var plannerSettings = await db.PlannerSettings.AsNoTracking().FirstOrDefaultAsync(x => x.Id == 1, cancellationToken);
+        if (plannerSettings is not null)
+        {
+            ObservableCollection<PlannerAvailabilityWindowData> availability;
+            try
+            {
+                availability = JsonSerializer.Deserialize<ObservableCollection<PlannerAvailabilityWindowData>>(
+                    plannerSettings.AvailabilityJson, JsonOptions) ?? new ObservableCollection<PlannerAvailabilityWindowData>();
+            }
+            catch (JsonException ex)
+            {
+                throw new InvalidDataException("Planner availability data is invalid.", ex);
+            }
+            result.PlannerSettings = new PlannerSettingsData
+            {
+                PreferredSessionMinutes = plannerSettings.PreferredSessionMinutes,
+                MinimumSessionMinutes = plannerSettings.MinimumSessionMinutes,
+                BreakBetweenSessionsMinutes = plannerSettings.BreakBetweenSessionsMinutes,
+                MaxSessionsPerDay = plannerSettings.MaxSessionsPerDay,
+                ReviewReservePercent = plannerSettings.ReviewReservePercent,
+                ReviewReserveDays = plannerSettings.ReviewReserveDays,
+                IncludeWeekends = plannerSettings.IncludeWeekends,
+                AutoRescheduleMissed = plannerSettings.AutoRescheduleMissed,
+                Availability = availability
+            };
+        }
+        foreach (var x in await db.StudyPlans.AsNoTracking().ToListAsync(cancellationToken))
+        {
+            ObservableCollection<string> warnings;
+            try
+            {
+                warnings = JsonSerializer.Deserialize<ObservableCollection<string>>(x.WarningsJson, JsonOptions)
+                    ?? new ObservableCollection<string>();
+            }
+            catch (JsonException ex)
+            {
+                throw new InvalidDataException($"Study plan '{x.Id}' has invalid warnings.", ex);
+            }
+            result.StudyPlans.Add(new StudyPlanData
+            {
+                Id = x.Id,
+                CourseId = x.CourseId,
+                CourseName = x.CourseName,
+                ExamId = x.ExamId,
+                ExamTitle = x.ExamTitle,
+                ExamDate = x.ExamDate,
+                RequiredMinutes = x.RequiredMinutes,
+                ReviewReserveMinutes = x.ReviewReserveMinutes,
+                ScheduledMinutes = x.ScheduledMinutes,
+                Status = (StudyPlanStatus)x.Status,
+                Explanation = x.Explanation,
+                Warnings = warnings,
+                CreatedAt = x.CreatedAt,
+                UpdatedAt = x.UpdatedAt
+            });
+        }
+        foreach (var x in await db.PlannerReschedules.AsNoTracking().ToListAsync(cancellationToken))
+            result.PlannerReschedules.Add(new PlannerRescheduleData
+            {
+                Id = x.Id,
+                PlanId = x.PlanId,
+                CalendarEventId = x.CalendarEventId,
+                PreviousStartsAt = x.PreviousStartsAt,
+                PreviousEndsAt = x.PreviousEndsAt,
+                NewStartsAt = x.NewStartsAt,
+                NewEndsAt = x.NewEndsAt,
+                Reason = x.Reason,
+                MovedAt = x.MovedAt,
+                IsReversed = x.IsReversed,
+                ReversedAt = x.ReversedAt
+            });
         foreach (var x in await db.Courses.AsNoTracking().ToListAsync(cancellationToken))
             result.Courses.Add(new Course
             {
@@ -1180,10 +1407,16 @@ public static class StudyDataEntityMapper
             {
                 Id = x.Id,
                 CourseId = x.CourseId,
+                ParentTopicId = x.ParentTopicId,
                 Title = x.Title,
                 Description = x.Description,
                 Status = (SyllabusTopicStatus)x.Status,
                 EstimatedMinutes = x.EstimatedMinutes,
+                Priority = x.Priority,
+                Difficulty = x.Difficulty,
+                PreparationLevel = x.PreparationLevel,
+                Position = x.Position,
+                IsArchived = x.IsArchived,
                 SourceUrl = x.SourceUrl,
                 LastStudiedAt = x.LastStudiedAt,
                 UpdatedAt = x.UpdatedAt
@@ -1237,6 +1470,13 @@ public static class StudyDataEntityMapper
                 ExternalSequence = x.ExternalSequence,
                 IsCancelled = x.IsCancelled,
                 RecurrenceRule = x.RecurrenceRule,
+                PlanId = x.PlanId,
+                SyllabusTopicId = x.SyllabusTopicId,
+                PlannerStatus = (PlannedSessionStatus)x.PlannerStatus,
+                PriorityScore = x.PriorityScore,
+                ActualMinutes = x.ActualMinutes,
+                RescheduleCount = x.RescheduleCount,
+                CompletedAt = x.CompletedAt,
                 CreatedAt = x.CreatedAt,
                 UpdatedAt = x.UpdatedAt
             });
@@ -1291,6 +1531,8 @@ public static class StudyDataEntityMapper
                 Id = x.Id,
                 CourseId = x.CourseId,
                 Topic = x.Topic,
+                SyllabusTopicId = x.SyllabusTopicId,
+                CalendarEventId = x.CalendarEventId,
                 PlannedMinutes = x.PlannedMinutes,
                 StartedAt = x.StartedAt,
                 LastResumedAt = x.LastResumedAt,
