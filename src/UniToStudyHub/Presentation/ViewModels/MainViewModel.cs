@@ -17,8 +17,15 @@ public sealed class MainViewModel : INotifyPropertyChanged
     private readonly MoodleApplicationService _moodle;
     private readonly CareerCalculatorService _calculator;
     private readonly CareerApplicationService _career;
+    private readonly DashboardOverviewService _dashboardOverviewService;
     private readonly CalendarEventStore _calendarStore = new();
+    private DashboardOverview _dashboardOverview = new(
+        null, null, Array.Empty<StudyTaskData>(), Array.Empty<DashboardDeadlineItem>(),
+        0, 0, 0,
+        new DashboardStudySuggestion("setup", "Organizza il prossimo passo", "Caricamento del riepilogo locale."));
     public StudyWorkspaceViewModel Workspace { get; }
+    public ObservableCollection<StudyTaskData> DashboardTodayTasks { get; } = new();
+    public ObservableCollection<DashboardDeadlineItem> DashboardUpcomingDeadlines { get; } = new();
     private StudyData _data = new();
     private Course? _selectedGradeCourse;
     private string _courseNameInput = string.Empty;
@@ -183,6 +190,25 @@ public sealed class MainViewModel : INotifyPropertyChanged
     public string AllCoursesCount => Courses.Count.ToString(CultureInfo.CurrentCulture);
     public bool NoVisibleCourses => VisibleCourses.Count == 0;
     public bool NoPlannedExams => Exams.Count == 0;
+    public Exam? DashboardNextExam => _dashboardOverview.NextExam;
+    public string DashboardExamCountdownDisplay => _dashboardOverview.DaysUntilNextExam switch
+    {
+        null => "Nessun esame futuro pianificato",
+        0 => "È oggi",
+        1 => "Manca 1 giorno",
+        var days => $"Mancano {days} giorni"
+    };
+    public string DashboardWeeklyStudyHoursDisplay => $"{_dashboardOverview.RecordedStudyHours:0.#} h";
+    public string DashboardWeeklyGoalDisplay => _dashboardOverview.HasWeeklyGoal
+        ? $"{_dashboardOverview.RecordedStudyHours:0.#} / {_dashboardOverview.WeeklyGoalHours:0.#} h"
+        : "Obiettivo settimanale non configurato";
+    public int DashboardWeeklyGoalProgressPercent => _dashboardOverview.WeeklyGoalProgressPercent;
+    public string DashboardSuggestionTitle => _dashboardOverview.Suggestion.Title;
+    public string DashboardSuggestionReason => _dashboardOverview.Suggestion.Reason;
+    public bool HasDashboardTodayTasks => DashboardTodayTasks.Count > 0;
+    public bool NoDashboardTodayTasks => DashboardTodayTasks.Count == 0;
+    public bool HasDashboardUpcomingDeadlines => DashboardUpcomingDeadlines.Count > 0;
+    public bool NoDashboardUpcomingDeadlines => DashboardUpcomingDeadlines.Count == 0;
 
     public string CourseEmptyMessage
     {
@@ -242,14 +268,16 @@ public sealed class MainViewModel : INotifyPropertyChanged
     public AsyncRelayCommand TodayCalendarCommand { get; }
     public AsyncRelayCommand NewCalendarEventCommand { get; }
 
-    public MainViewModel(IStudyDataStore store, MoodleApplicationService moodle, CareerCalculatorService calculator, CareerApplicationService career, StudyWorkspaceViewModel workspace)
+    public MainViewModel(IStudyDataStore store, MoodleApplicationService moodle, CareerCalculatorService calculator, CareerApplicationService career, StudyWorkspaceViewModel workspace, DashboardOverviewService dashboardOverviewService)
     {
         _store = store;
         _moodle = moodle;
         _calculator = calculator;
         _career = career;
+        _dashboardOverviewService = dashboardOverviewService ?? throw new ArgumentNullException(nameof(dashboardOverviewService));
         Workspace = workspace;
         Workspace.DataReloaded += OnWorkspaceDataReloaded;
+        Workspace.PropertyChanged += WorkspaceOnPropertyChanged;
         AddCourseCommand = new AsyncRelayCommand(AddCourseAsync);
         AddGradeCommand = new AsyncRelayCommand(AddGradeAsync, () => SelectedGradeCourse is not null);
         PlanExamsCommand = new AsyncRelayCommand(PlanExamsAsync);
@@ -709,6 +737,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
             RefreshVisibleCourses();
             RefreshCourseSummary();
             RefreshCalendar();
+            RefreshDashboardSummary();
         }
         catch (Exception ex)
         {
@@ -804,6 +833,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
             CalendarDate = day;
             SelectedCalendarDate = day;
             RefreshCalendar();
+            RefreshDashboardSummary();
         }
         catch (Exception ex) { StatusMessage = $"Evento non salvato: {ex.Message}"; }
     }
@@ -830,6 +860,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
             await SaveAsync();
             SelectedCalendarEvent = null;
             RefreshCalendar();
+            RefreshDashboardSummary();
             StatusMessage = "Evento eliminato.";
         }
         catch (Exception ex)
@@ -962,6 +993,39 @@ public sealed class MainViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(NextExamNameDisplay));
         OnPropertyChanged(nameof(NextExamDateDisplay));
         OnPropertyChanged(nameof(NoPlannedExams));
+        RefreshDashboardSummary();
+    }
+
+    private void WorkspaceOnPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(StudyWorkspaceViewModel.CurrentProgress))
+            RefreshDashboardSummary();
+    }
+
+    private void RefreshDashboardSummary()
+    {
+        _dashboardOverview = _dashboardOverviewService.Calculate(_data, DateTimeOffset.Now);
+
+        DashboardTodayTasks.Clear();
+        foreach (var task in _dashboardOverview.TodayTasks)
+            DashboardTodayTasks.Add(task);
+
+        DashboardUpcomingDeadlines.Clear();
+        foreach (var item in _dashboardOverview.UpcomingDeadlines)
+            DashboardUpcomingDeadlines.Add(item);
+
+        OnPropertyChanged(nameof(DashboardOverview));
+        OnPropertyChanged(nameof(DashboardNextExam));
+        OnPropertyChanged(nameof(DashboardExamCountdownDisplay));
+        OnPropertyChanged(nameof(DashboardWeeklyStudyHoursDisplay));
+        OnPropertyChanged(nameof(DashboardWeeklyGoalDisplay));
+        OnPropertyChanged(nameof(DashboardWeeklyGoalProgressPercent));
+        OnPropertyChanged(nameof(DashboardSuggestionTitle));
+        OnPropertyChanged(nameof(DashboardSuggestionReason));
+        OnPropertyChanged(nameof(HasDashboardTodayTasks));
+        OnPropertyChanged(nameof(NoDashboardTodayTasks));
+        OnPropertyChanged(nameof(HasDashboardUpcomingDeadlines));
+        OnPropertyChanged(nameof(NoDashboardUpcomingDeadlines));
     }
 
     private void RefreshVisibleCourses()
