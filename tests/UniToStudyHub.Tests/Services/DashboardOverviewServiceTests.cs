@@ -61,6 +61,24 @@ public sealed class DashboardOverviewServiceTests
     }
 
     [Fact]
+    public void ExamScheduledForTodayHasZeroDayCountdown()
+    {
+        var data = Data();
+        var today = Today;
+        data.Exams.Add(new Exam
+        {
+            Id = "today-exam",
+            Name = "Esame oggi",
+            PlannedDate = today.ToDateTime(TimeOnly.MinValue)
+        });
+
+        var result = _service.Calculate(data, LocalAt(today));
+
+        Assert.Equal("today-exam", result.NextExam?.Id);
+        Assert.Equal(0, result.DaysUntilNextExam);
+    }
+
+    [Fact]
     public void TodayTasksIncludeOverdueAndDueTodayButExcludeFutureUndatedAndClosedTasks()
     {
         var data = Data();
@@ -78,7 +96,7 @@ public sealed class DashboardOverviewServiceTests
     }
 
     [Fact]
-    public void WeeklyStudyTimeUsesUniqueActivityLedgerMinutesAndClampsGoalProgress()
+    public void WeeklyStudyTimeUsesUniqueActivityLedgerMinutes()
     {
         var data = Data();
         var today = Today;
@@ -112,6 +130,34 @@ public sealed class DashboardOverviewServiceTests
         Assert.Equal(60, result.RecordedStudyMinutes);
         Assert.Equal(120, result.WeeklyGoalMinutes);
         Assert.Equal(50, result.WeeklyGoalProgressPercent);
+    }
+
+    [Fact]
+    public void WeeklyGoalProgressIsClampedAtOneHundredPercent()
+    {
+        var data = Data();
+        data.WeeklyStudyHours = 1;
+        var today = Today;
+        var now = LocalAt(today, 12);
+        var start = LocalAt(today, 9);
+        var end = start.AddHours(2);
+
+        data.StudyActivities.Add(new StudyActivityData
+        {
+            Id = "long-study",
+            CourseId = "analisi",
+            Title = "Blocco di studio",
+            StartedAt = start,
+            EndedAt = end,
+            EffectiveSeconds = 7200,
+            Status = StudyActivityStatus.Completed
+        });
+
+        var result = _service.Calculate(data, now);
+
+        Assert.Equal(120, result.RecordedStudyMinutes);
+        Assert.Equal(60, result.WeeklyGoalMinutes);
+        Assert.Equal(100, result.WeeklyGoalProgressPercent);
     }
 
     [Fact]
@@ -252,8 +298,8 @@ public sealed class DashboardOverviewServiceTests
 
         _service.Calculate(data, LocalAt(Today));
 
-        Assert.Equal(tasksBefore, data.StudyTasks);
-        Assert.Equal(eventsBefore, data.CalendarEvents);
-        Assert.Equal(activitiesBefore, data.StudyActivities);
+        Assert.Equal(tasksBefore, data.StudyTasks.ToArray());
+        Assert.Equal(eventsBefore, data.CalendarEvents.ToArray());
+        Assert.Equal(activitiesBefore, data.StudyActivities.ToArray());
     }
 }
