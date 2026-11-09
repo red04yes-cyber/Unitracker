@@ -57,6 +57,7 @@
         <Setter Property="MinHeight" Value="38"/>
         <Setter Property="VerticalContentAlignment" Value="Center"/>
         <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+        <Setter Property="local:MotionBehavior.HoverLiftEnabled" Value="True"/>
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="{x:Type TextBox}">
@@ -455,6 +456,7 @@
     </Style>
 
     <Style x:Key="DisclosureToggleStyle" TargetType="{x:Type ToggleButton}">
+        <Setter Property="local:MotionBehavior.HoverLiftEnabled" Value="True"/>
         <Setter Property="Foreground" Value="{DynamicResource InkBrush}"/>
         <Setter Property="Background" Value="{DynamicResource PanelBrush}"/>
         <Setter Property="Padding" Value="13,10"/>
@@ -502,7 +504,7 @@
                     <Grid VerticalAlignment="Center">
                         <Track x:Name="PART_Track" IsDirectionReversed="{TemplateBinding IsDirectionReversed}">
                             <Track.DecreaseRepeatButton>
-                                <RepeatButton Command="Slider.DecreaseLarge" Focusable="False" IsTabStop="False"
+                                <RepeatButton Command="{x:Static Slider.DecreaseLarge}" Focusable="False" IsTabStop="False"
                                               Background="{DynamicResource AccentFillBrush}" Height="4"/>
                             </Track.DecreaseRepeatButton>
                             <Track.Thumb>
@@ -516,7 +518,7 @@
                                 </Thumb>
                             </Track.Thumb>
                             <Track.IncreaseRepeatButton>
-                                <RepeatButton Command="Slider.IncreaseLarge" Focusable="False" IsTabStop="False"
+                                <RepeatButton Command="{x:Static Slider.IncreaseLarge}" Focusable="False" IsTabStop="False"
                                               Background="{DynamicResource SubtleBrush}" Height="4"/>
                             </Track.IncreaseRepeatButton>
                         </Track>

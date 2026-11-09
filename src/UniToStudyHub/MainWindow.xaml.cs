@@ -21,7 +21,7 @@ public partial class MainWindow : Window
         StudyDataImportService dataImport)
     {
         InitializeComponent();
-        UpdateThemeToggle(ApplicationThemeManager.GetAppTheme());
+        Loaded += (_, _) => UpdateThemeToggle(ApplicationThemeManager.GetAppTheme());
         _aiCredentials = aiCredentials;
         _aiPreferences = aiPreferences;
         _privacy = privacy;
@@ -38,7 +38,7 @@ public partial class MainWindow : Window
             AiProviderBox.SelectedValue = "openai";
             AiModelBox.Text = "gpt-4.1-mini";
         }
-        WindowBackgroundManager.UpdateBackground(
+        Loaded += (_, _) => WindowBackgroundManager.UpdateBackground(
             this,
             ApplicationThemeManager.GetAppTheme(),
             Wpf.Ui.Controls.WindowBackdropType.Mica);
@@ -56,27 +56,35 @@ public partial class MainWindow : Window
     {
         var current = ApplicationThemeManager.GetAppTheme();
         if (current == ApplicationTheme.HighContrast)
+        {
+            UpdateThemeToggle(current, sender as Button);
             return;
+        }
 
         var next = current == ApplicationTheme.Dark
             ? ApplicationTheme.Light
             : ApplicationTheme.Dark;
 
         ApplicationThemeManager.Apply(next, Wpf.Ui.Controls.WindowBackdropType.Mica);
-        UpdateThemeToggle(next);
+        UpdateThemeToggle(next, sender as Button);
     }
 
-    private void UpdateThemeToggle(ApplicationTheme theme)
+    private void UpdateThemeToggle(ApplicationTheme theme, Button? source = null)
     {
+        var button = source ??
+            MainTabs.Template.FindName("ThemeToggleButton", MainTabs) as Button;
+        if (button is null)
+            return;
+
         if (theme == ApplicationTheme.HighContrast)
         {
-            ThemeToggleButton.Content = "Contrasto elevato";
-            ThemeToggleButton.IsEnabled = false;
+            button.Content = "Contrasto elevato";
+            button.IsEnabled = false;
             return;
         }
 
-        ThemeToggleButton.IsEnabled = true;
-        ThemeToggleButton.Content = theme == ApplicationTheme.Dark
+        button.IsEnabled = true;
+        button.Content = theme == ApplicationTheme.Dark
             ? "Tema chiaro"
             : "Tema scuro";
     }

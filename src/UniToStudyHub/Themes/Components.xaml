@@ -56,6 +56,7 @@
         <Setter Property="CornerRadius" Value="16"/>
         <Setter Property="Padding" Value="20"/>
         <Setter Property="local:MotionBehavior.HoverLiftEnabled" Value="True"/>
+        <Setter Property="local:MotionBehavior.EntranceEnabled" Value="True"/>
     </Style>
     <Style x:Key="ElevatedCardBorderStyle" TargetType="{x:Type Border}" BasedOn="{StaticResource CardBorderStyle}">
         <Setter Property="Background" Value="{DynamicResource ElevatedPanelBrush}"/>

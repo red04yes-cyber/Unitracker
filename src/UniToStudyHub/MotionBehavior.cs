@@ -83,7 +83,7 @@ public static class MotionBehavior
         if (target is not FrameworkElement element)
             return;
 
-        var state = States.GetOrCreateValue(element);
+        var state = States.GetValue(element, static _ => new ElementMotionState());
         if ((bool)args.NewValue)
         {
             if (state.EntranceHandlersAttached)
@@ -97,7 +97,7 @@ public static class MotionBehavior
         {
             element.Loaded -= OnLoaded;
             element.Unloaded -= OnUnloaded;
-            state.EntranceAnimation.Dispose();
+            state.EntranceAnimation.Disposable = Disposable.Empty;
             state.EntranceHandlersAttached = false;
             state.EntranceStarted = false;
         }
@@ -108,7 +108,7 @@ public static class MotionBehavior
         if (sender is not FrameworkElement element)
             return;
 
-        var state = States.GetOrCreateValue(element);
+        var state = States.GetValue(element, static _ => new ElementMotionState());
         state.HoverAnimation.Disposable = element
             .ScaleTo(180, 1.025, 1.025, Ease.SineOut, Ease.SineOut)
             .Subscribe();
@@ -119,7 +119,7 @@ public static class MotionBehavior
         if (sender is not FrameworkElement element)
             return;
 
-        var state = States.GetOrCreateValue(element);
+        var state = States.GetValue(element, static _ => new ElementMotionState());
         state.HoverAnimation.Disposable = element
             .ScaleTo(220, 1.0, 1.0, Ease.SineInOut, Ease.SineInOut)
             .Subscribe();
@@ -130,7 +130,7 @@ public static class MotionBehavior
         if (sender is not FrameworkElement element)
             return;
 
-        var state = States.GetOrCreateValue(element);
+        var state = States.GetValue(element, static _ => new ElementMotionState());
         if (state.EntranceStarted)
             return;
 
