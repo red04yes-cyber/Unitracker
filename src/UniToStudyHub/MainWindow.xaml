@@ -52,6 +52,36 @@
                 </Setter.Value>
             </Setter>
         </Style>
+        <Style x:Key="SectionTabItemStyle" TargetType="{x:Type TabItem}">
+            <Setter Property="Width" Value="Auto"/>
+            <Setter Property="Height" Value="38"/>
+            <Setter Property="Padding" Value="15,8"/>
+            <Setter Property="Margin" Value="0,0,8,12"/>
+            <Setter Property="Foreground" Value="{DynamicResource MutedBrush}"/>
+            <Setter Property="Background" Value="{DynamicResource SubtleBrush}"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type TabItem}">
+                        <Border x:Name="SectionTabSurface" Background="{TemplateBinding Background}"
+                                CornerRadius="10" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter ContentSource="Header" HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="SectionTabSurface" Property="Background" Value="{DynamicResource AccentSoftBrush}"/>
+                                <Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="SectionTabSurface" Property="Background" Value="{DynamicResource HoverBrush}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </Window.Resources>
 
     <TabControl x:Name="MainTabs"
@@ -733,16 +763,9 @@
         <TextBlock Text="Studio Lab" Style="{StaticResource PageTitleStyle}" Margin="0,7,0,4"/>
         <TextBlock Text="Concentrazione, attività, ripasso e diario degli errori. Le azioni vengono salvate nel profilo locale." Style="{StaticResource PageSubtitleStyle}" Margin="0,0,0,22"/>
         
-        <TabControl Margin="0,0,0,8" SelectedIndex="0">
-            <TabControl.Resources>
-                <Style TargetType="{x:Type TabItem}">
-                    <Setter Property="Width" Value="Auto"/>
-                    <Setter Property="Height" Value="Auto"/>
-                    <Setter Property="Padding" Value="18,10"/>
-                    <Setter Property="Margin" Value="0,0,8,12"/>
-                    <Setter Property="Foreground" Value="{DynamicResource InkBrush}"/>
-                </Style>
-            </TabControl.Resources>
+        <TabControl Margin="0,0,0,8" SelectedIndex="0"
+                    ItemContainerStyle="{StaticResource SectionTabItemStyle}"
+                    Background="Transparent" BorderThickness="0">
             <TabItem Header="Focus"><StackPanel>
                 <TextBlock Text="Una sessione alla volta: scegli la materia, imposta la durata e concentrati." Style="{StaticResource PageSubtitleStyle}" Margin="0,0,0,12"/>
                 <Border Background="{DynamicResource NavyBrush}" CornerRadius="14" Padding="24" Margin="0,0,12,0">

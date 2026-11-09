@@ -25,7 +25,7 @@ AnimationRx.Wpf.Reactive 3.2.0 (MIT) is used only in the presentation layer. Its
 
 ## Remaining work
 
-- Premium custom modal dialogs and contextual toasts.
+- Premium custom modal dialogs with keyboard/default/cancel semantics, animated entrance/exit and expandable technical details.
 - Refine dashboard hierarchy, progress rings/charts, rich table status badges and all seven sections.
 - Responsive breakpoints and keyboard navigation audit.
 - Manual visual and interaction verification on Windows.

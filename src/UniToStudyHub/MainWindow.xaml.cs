@@ -301,13 +301,13 @@ public partial class MainWindow : Window
         var consent = AiConsentBox.IsChecked == true;
         if (provider is not ("openai" or "ollama" or "gemini"))
         {
-            MessageBox.Show(this, "Seleziona un provider valido.", "Configurazione AI",
+            UiDialogService.Show(this, "Seleziona un provider valido.", "Configurazione AI",
                 MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
         if (string.IsNullOrWhiteSpace(model) || model.Length > 120)
         {
-            MessageBox.Show(this, "Inserisci un nome modello valido (massimo 120 caratteri).", "Configurazione AI",
+            UiDialogService.Show(this, "Inserisci un nome modello valido (massimo 120 caratteri).", "Configurazione AI",
                 MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
@@ -320,20 +320,20 @@ public partial class MainWindow : Window
                 string.IsNullOrWhiteSpace(_aiCredentials.LoadKey(provider)) &&
                 string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable(provider == "gemini" ? "STUDYHUB_GEMINI_API_KEY" : "STUDYHUB_OPENAI_API_KEY")))
             {
-                MessageBox.Show(this, "Per usare il provider selezionato devi inserire una chiave API. La chiave viene salvata in forma protetta da DPAPI.", "Chiave mancante",
+                UiDialogService.Show(this, "Per usare il provider selezionato devi inserire una chiave API. La chiave viene salvata in forma protetta da DPAPI.", "Chiave mancante",
                     MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
 
             _aiPreferences.Save(new AiProviderPreferences(provider, model, consent));
             AiApiKeyBox.Clear();
-            MessageBox.Show(this,
+            UiDialogService.Show(this,
                 "Configurazione salvata sul dispositivo. Chiudi e riapri UniToStudyHub per applicare la selezione del provider. Nessuna chiave è stata salvata nei file di configurazione.",
                 "Configurazione AI salvata", MessageBoxButton.OK, MessageBoxImage.Information);
         }
         catch (Exception ex)
         {
-            MessageBox.Show(this, $"Impossibile salvare la configurazione AI: {ex.Message}", "Errore",
+            UiDialogService.Show(this, $"Impossibile salvare la configurazione AI: {ex.Message}", "Errore",
                 MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
@@ -343,7 +343,7 @@ public partial class MainWindow : Window
         var provider = AiProviderBox.SelectedValue as string;
         if (provider is not ("openai" or "ollama" or "gemini")) provider = "openai";
         var model = string.IsNullOrWhiteSpace(AiModelBox.Text) ? "gpt-4.1-mini" : AiModelBox.Text.Trim();
-        var confirm = MessageBox.Show(this,
+        var confirm = UiDialogService.Show(this,
             "Il consenso AI verrà revocato e l'app si chiuderà per interrompere immediatamente la sessione del provider. Le chiavi protette resteranno salvate, ma non verranno usate senza un nuovo consenso.",
             "Revoca consenso AI", MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No);
         if (confirm != MessageBoxResult.Yes) return;
@@ -355,7 +355,7 @@ public partial class MainWindow : Window
         }
         catch (Exception ex)
         {
-            MessageBox.Show(this, $"Impossibile revocare il consenso: {ex.Message}", "Errore",
+            UiDialogService.Show(this, $"Impossibile revocare il consenso: {ex.Message}", "Errore",
                 MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
@@ -376,13 +376,13 @@ public partial class MainWindow : Window
         {
             var bytes = await _privacy.ExportEverythingAsync();
             await System.IO.File.WriteAllBytesAsync(dialog.FileName, bytes);
-            MessageBox.Show(this,
+            UiDialogService.Show(this,
                 "Esportazione completata. Il file contiene dati personali e note private, ma non token Moodle né chiavi AI: conservalo in un luogo sicuro.",
                 "Esportazione completata", MessageBoxButton.OK, MessageBoxImage.Information);
         }
         catch (Exception ex)
         {
-            MessageBox.Show(this, $"Esportazione non riuscita: {ex.Message}", "Errore",
+            UiDialogService.Show(this, $"Esportazione non riuscita: {ex.Message}", "Errore",
                 MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
@@ -413,7 +413,7 @@ public partial class MainWindow : Window
             if (!string.IsNullOrWhiteSpace(warnings))
                 summary += $"\n\nAvvisi:\n{warnings}";
 
-            var choice = MessageBox.Show(this,
+            var choice = UiDialogService.Show(this,
                 summary + "\n\nSÌ = Merge (aggiungi solo record nuovi)\nNO = Replace (sostituisci tutti i dati dopo backup cifrato)\nANNULLA = non modificare nulla.",
                 "Anteprima importazione · nessuna modifica ancora effettuata",
                 MessageBoxButton.YesNoCancel, MessageBoxImage.Information, MessageBoxResult.Cancel);
@@ -424,7 +424,7 @@ public partial class MainWindow : Window
                 : StudyDataImportStrategy.Replace;
             if (strategy == StudyDataImportStrategy.Replace)
             {
-                var confirm = MessageBox.Show(this,
+                var confirm = UiDialogService.Show(this,
                     "ATTENZIONE: Replace sostituirà i dati locali con quelli del file. Prima verrà creato un backup cifrato. Vuoi continuare?",
                     "Conferma sostituzione completa", MessageBoxButton.YesNo,
                     MessageBoxImage.Warning, MessageBoxResult.No);
@@ -432,7 +432,7 @@ public partial class MainWindow : Window
             }
 
             var result = await _dataImport.ApplyAsync(preview, strategy);
-            MessageBox.Show(this,
+            UiDialogService.Show(this,
                 $"Importazione completata. Record aggiunti: {result.AddedRecords}. " +
                 (result.SafetyBackupPath is null ? string.Empty : $"Backup di sicurezza: {System.IO.Path.GetFileName(result.SafetyBackupPath)}. ") +
                 "L'app verrà riavviata per ricaricare i dati.",
@@ -441,7 +441,7 @@ public partial class MainWindow : Window
         }
         catch (Exception ex)
         {
-            MessageBox.Show(this, $"Importazione non riuscita. I dati locali non sono stati sostituiti: {ex.Message}",
+            UiDialogService.Show(this, $"Importazione non riuscita. I dati locali non sono stati sostituiti: {ex.Message}",
                 "Errore importazione", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
@@ -463,7 +463,7 @@ public partial class MainWindow : Window
             PrivacyResetScope.Documents => "metadati PDF e file nella cartella Moodle gestita.",
             _ => "token Moodle, URL e riferimenti di collegamento. Corsi e voti resteranno."
         };
-        var confirm = MessageBox.Show(this,
+        var confirm = UiDialogService.Show(this,
             $"Verranno eliminati {description}\n\nOperazione non annullabile. Continuare?",
             "Conferma reset privacy", MessageBoxButton.YesNo,
             MessageBoxImage.Warning, MessageBoxResult.No);
@@ -473,7 +473,7 @@ public partial class MainWindow : Window
         {
             var result = await _privacy.ResetAsync(scope, confirmed: true,
                 createSafetyBackup: PrivacySafetyBackupBox.IsChecked == true);
-            MessageBox.Show(this,
+            UiDialogService.Show(this,
                 $"Reset completato. Record rimossi: {result.DeletedRecords}. File rimossi: {result.DeletedFiles}. " +
                 (result.CredentialsRemoved ? "Credenziali Moodle rimosse. " : string.Empty) +
                 "L'app verrà chiusa per ricaricare i dati.",
@@ -482,7 +482,7 @@ public partial class MainWindow : Window
         }
         catch (Exception ex)
         {
-            MessageBox.Show(this, $"Reset non riuscito: {ex.Message}", "Errore privacy",
+            UiDialogService.Show(this, $"Reset non riuscito: {ex.Message}", "Errore privacy",
                 MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
@@ -500,12 +500,12 @@ public partial class MainWindow : Window
                 $"Flashcard: {inventory.Flashcards}\nDomande: {inventory.Questions}\nErrori registrati: {inventory.ErrorJournalEntries}\n\n" +
                 $"Moodle collegato: {(inventory.MoodleLinked ? "sì" : "no")}\nCredenziali AI presenti: {(inventory.AiConfigured ? "sì" : "no")}\n" +
                 $"Telemetria: {(inventory.TelemetryEnabled ? "attiva" : "disattivata")}\nProtezione database: {inventory.DatabaseProtection}";
-            MessageBox.Show(this, message, "Inventario dei dati locali",
+            UiDialogService.Show(this, message, "Inventario dei dati locali",
                 MessageBoxButton.OK, MessageBoxImage.Information);
         }
         catch (Exception ex)
         {
-            MessageBox.Show(this, $"Impossibile leggere l'inventario privacy: {ex.Message}",
+            UiDialogService.Show(this, $"Impossibile leggere l'inventario privacy: {ex.Message}",
                 "Errore privacy", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
@@ -516,7 +516,7 @@ public partial class MainWindow : Window
         var backupText = includeBackups
             ? "Anche tutti i backup cifrati verranno eliminati."
             : "I backup cifrati esistenti resteranno sul dispositivo.";
-        var confirm = MessageBox.Show(this,
+        var confirm = UiDialogService.Show(this,
             "ATTENZIONE: verranno eliminati tutti i corsi, voti, eventi, note, materiali e dati di studio. Saranno rimossi token Moodle e chiavi AI e revocato il consenso AI. " +
             backupText + "\n\nQuesta operazione non è annullabile. Hai già esportato i dati che vuoi conservare?",
             "Cancellazione completa dei dati", MessageBoxButton.YesNo,
@@ -526,7 +526,7 @@ public partial class MainWindow : Window
         try
         {
             var result = await _privacy.DeleteAllAsync(includeBackups);
-            MessageBox.Show(this,
+            UiDialogService.Show(this,
                 $"Cancellazione completata. Record: {result.DeletedRecords}; backup: {result.DeletedBackups}; " +
                 $"file Moodle: {result.DeletedMoodleFiles}; log: {result.DeletedLogFiles}. " +
                 "L'app verrà chiusa.",
@@ -535,7 +535,7 @@ public partial class MainWindow : Window
         }
         catch (Exception ex)
         {
-            MessageBox.Show(this, $"Cancellazione non riuscita: {ex.Message}",
+            UiDialogService.Show(this, $"Cancellazione non riuscita: {ex.Message}",
                 "Errore privacy", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
@@ -545,13 +545,13 @@ public partial class MainWindow : Window
         try
         {
             var preview = _privacy.PreviewDiagnosticBundle();
-            var consent = MessageBox.Show(this,
+            var consent = UiDialogService.Show(this,
                 $"Anteprima pacchetto diagnostico\n\nVersione: {preview.ApplicationVersion}\nSistema: {preview.OperatingSystem}\nRuntime: {preview.Runtime}\nLog disponibili: {preview.AvailableLogFiles}\nDimensione log: {preview.AvailableLogBytes:N0} byte\n\nNon saranno inclusi database personali, PDF, token o chiavi API. Nessun dato verrà inviato automaticamente. Vuoi creare il pacchetto?",
                 "Consenso diagnostica", MessageBoxButton.YesNo,
                 MessageBoxImage.Information, MessageBoxResult.No);
             if (consent != MessageBoxResult.Yes) return;
 
-            var includeLogs = MessageBox.Show(this,
+            var includeLogs = UiDialogService.Show(this,
                 "Vuoi includere anche i log applicativi redatti? Puoi scegliere No per esportare solo i metadati tecnici.",
                 "Includere i log?", MessageBoxButton.YesNo,
                 MessageBoxImage.Question, MessageBoxResult.No) == MessageBoxResult.Yes;
@@ -568,12 +568,12 @@ public partial class MainWindow : Window
 
             var bytes = await _privacy.CreateDiagnosticBundleAsync(userConsent: true, includeLogs);
             await System.IO.File.WriteAllBytesAsync(dialog.FileName, bytes);
-            MessageBox.Show(this, "Pacchetto diagnostico creato localmente. Nessun upload è stato effettuato.",
+            UiDialogService.Show(this, "Pacchetto diagnostico creato localmente. Nessun upload è stato effettuato.",
                 "Diagnostica esportata", MessageBoxButton.OK, MessageBoxImage.Information);
         }
         catch (Exception ex)
         {
-            MessageBox.Show(this, $"Creazione pacchetto non riuscita: {ex.Message}", "Errore diagnostica",
+            UiDialogService.Show(this, $"Creazione pacchetto non riuscita: {ex.Message}", "Errore diagnostica",
                 MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
@@ -632,12 +632,12 @@ public partial class MainWindow : Window
         try
         {
             await viewModel.Workspace.ExportProgressAsync(dialog.FileName);
-            MessageBox.Show(this, "Report esportato correttamente.", "Esportazione completata",
+            UiDialogService.Show(this, "Report esportato correttamente.", "Esportazione completata",
                 MessageBoxButton.OK, MessageBoxImage.Information);
         }
         catch (Exception ex)
         {
-            MessageBox.Show(this, $"Esportazione non riuscita: {ex.Message}", "Errore esportazione",
+            UiDialogService.Show(this, $"Esportazione non riuscita: {ex.Message}", "Errore esportazione",
                 MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
@@ -647,7 +647,7 @@ public partial class MainWindow : Window
         if (DataContext is not MainViewModel viewModel)
             return;
 
-        var result = MessageBox.Show(
+        var result = UiDialogService.Show(
             "Disconnettere Moodle? Il token salvato verrà eliminato e i riferimenti di collegamento rimossi. Corsi, voti, eventi importati e storico locale saranno conservati.",
             "Conferma disconnessione Moodle",
             MessageBoxButton.YesNo,
@@ -665,7 +665,7 @@ public partial class MainWindow : Window
             return;
 
         var backupName = System.IO.Path.GetFileName(viewModel.Workspace.SelectedBackup.FilePath);
-        var result = MessageBox.Show(
+        var result = UiDialogService.Show(
             $"Ripristinare il backup \"{backupName}\"? I dati correnti verranno sostituiti. Prima sarà creata una copia di sicurezza automatica.",
             "Conferma ripristino backup",
             MessageBoxButton.YesNo,
@@ -681,7 +681,7 @@ public partial class MainWindow : Window
             return;
 
         var title = viewModel.SelectedCalendarEvent.Title;
-        var result = MessageBox.Show(
+        var result = UiDialogService.Show(
             $"Vuoi eliminare l'evento \"{title}\"?",
             "Conferma eliminazione",
             MessageBoxButton.YesNo,
@@ -697,7 +697,7 @@ public partial class MainWindow : Window
             return;
 
         var title = viewModel.Workspace.SelectedTask.Title;
-        var result = MessageBox.Show(
+        var result = UiDialogService.Show(
             $"Vuoi rimuovere l'attività \"{title}\"?",
             "Conferma rimozione",
             MessageBoxButton.YesNo,
