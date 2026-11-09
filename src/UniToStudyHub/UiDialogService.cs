@@ -81,6 +81,28 @@ internal static class UiDialogService
         if (owner is not null && owner.IsLoaded)
             dialog.Owner = owner;
 
+        var isClosing = false;
+        void CloseWithResult(MessageBoxResult selected)
+        {
+            if (isClosing) return;
+            isClosing = true;
+            result = selected;
+
+            var fadeOut = new DoubleAnimation(
+                dialog.Opacity, 0, TimeSpan.FromMilliseconds(120));
+            fadeOut.Completed += (_, _) =>
+            {
+                if (dialog.IsVisible)
+                    dialog.DialogResult = true;
+            };
+            dialog.BeginAnimation(Window.OpacityProperty, fadeOut);
+
+            if (dialog.RenderTransform is TranslateTransform translate)
+                translate.BeginAnimation(
+                    TranslateTransform.YProperty,
+                    new DoubleAnimation(translate.Y, -4, TimeSpan.FromMilliseconds(120)));
+        }
+
         var surface = new Border
         {
             CornerRadius = new CornerRadius(16),
@@ -182,8 +204,7 @@ internal static class UiDialogService
         closeButton.SetResourceReference(FrameworkElement.StyleProperty, "QuietButtonStyle");
         closeButton.Click += (_, _) =>
         {
-            result = GetEscapeResult(actions, fallback);
-            dialog.DialogResult = true;
+            CloseWithResult(GetEscapeResult(actions, fallback));
         };
         Grid.SetColumn(closeButton, 2);
         header.Children.Add(closeButton);
@@ -228,8 +249,7 @@ internal static class UiDialogService
 
             button.Click += (_, _) =>
             {
-                result = action.Result;
-                dialog.DialogResult = true;
+                CloseWithResult(action.Result);
             };
             actionPanel.Children.Add(button);
         }
@@ -242,8 +262,7 @@ internal static class UiDialogService
         dialog.PreviewKeyDown += (_, args) =>
         {
             if (args.Key != Key.Escape) return;
-            result = GetEscapeResult(actions, fallback);
-            dialog.DialogResult = true;
+            CloseWithResult(GetEscapeResult(actions, fallback));
             args.Handled = true;
         };
         dialog.Loaded += (_, _) =>
