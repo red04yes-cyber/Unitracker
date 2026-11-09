@@ -18,8 +18,8 @@ The library is used only in the presentation layer. Animation subscriptions are 
 ## Verification
 
 - The existing test suite passed: 292/292.
-- The first WPF build exposed an incorrect namespace assumption and an incompatible target-framework fallback. Those findings are being corrected in this slice; do not treat the first build as successful.
-- A clean Windows Release build, publish, smoke test and package audit are still required after the correction.
+- The first WPF build exposed an incorrect namespace assumption and an incompatible target-framework fallback; both were corrected. The next build exposed a template namescope issue in the theme toggle, also corrected.
+- Release build passed with 0 warnings and 0 errors, and win-x64 self-contained publish passed. The startup smoke initially failed because its default path still referenced the former target framework; smoke/package scripts and build.ps1 are updated to the new TFM path and must be rerun.
 - No manual visual verification on a physical Windows desktop has been performed.
 
 ## Next slice

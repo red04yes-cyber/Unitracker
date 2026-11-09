@@ -4,9 +4,9 @@
     <Style TargetType="{x:Type Button}">
         <Setter Property="Padding" Value="15,9"/>
         <Setter Property="Margin" Value="0"/>
-        <Setter Property="Background" Value="{DynamicResource AccentFillBrush}"/>
-        <Setter Property="Foreground" Value="#FFFFFF"/>
-        <Setter Property="BorderBrush" Value="{DynamicResource AccentFillBrush}"/>
+        <Setter Property="Background" Value="{DynamicResource SubtleBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource InkBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
         <Setter Property="BorderThickness" Value="1"/>
         <Setter Property="Cursor" Value="Hand"/>
         <Setter Property="FontSize" Value="13"/>
@@ -19,16 +19,12 @@
                 <ControlTemplate TargetType="{x:Type Button}">
                     <Border x:Name="ButtonSurface" Background="{TemplateBinding Background}"
                             BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}"
-                            CornerRadius="11" Padding="{TemplateBinding Padding}">
+                            CornerRadius="19" Padding="{TemplateBinding Padding}">
                         <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
                                           VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
                                           RecognizesAccessKey="True"/>
                     </Border>
                     <ControlTemplate.Triggers>
-                        <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="ButtonSurface" Property="Background" Value="{DynamicResource AccentBrush}"/>
-                            <Setter TargetName="ButtonSurface" Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
-                        </Trigger>
                         <Trigger Property="IsPressed" Value="True">
                             <Setter TargetName="ButtonSurface" Property="Opacity" Value="0.82"/>
                         </Trigger>
@@ -42,6 +38,12 @@
                 </ControlTemplate>
             </Setter.Value>
         </Setter>
+        <Style.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+                <Setter Property="Background" Value="{DynamicResource HoverBrush}"/>
+                <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+            </Trigger>
+        </Style.Triggers>
     </Style>
 
     <Style TargetType="{x:Type TextBox}">
@@ -57,7 +59,6 @@
         <Setter Property="MinHeight" Value="38"/>
         <Setter Property="VerticalContentAlignment" Value="Center"/>
         <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
-        <Setter Property="local:MotionBehavior.HoverLiftEnabled" Value="True"/>
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="{x:Type TextBox}">
@@ -422,6 +423,7 @@
     </Style>
 
     <Style x:Key="PillToggleStyle" TargetType="{x:Type ToggleButton}">
+        <Setter Property="local:MotionBehavior.HoverLiftEnabled" Value="True"/>
         <Setter Property="Foreground" Value="{DynamicResource InkBrush}"/>
         <Setter Property="Cursor" Value="Hand"/>
         <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
