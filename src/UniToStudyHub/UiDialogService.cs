@@ -232,8 +232,7 @@ internal static class UiDialogService
                 MinWidth = action.Label.Length > 10 ? 112 : 88,
                 Height = 40,
                 Margin = new Thickness(8, 0, 0, 0),
-                IsDefault = action.Result == fallback,
-                IsCancel = action.IsCancel
+                IsDefault = action.Result == fallback
             };
 
             var styleKey = action.IsPrimary &&
