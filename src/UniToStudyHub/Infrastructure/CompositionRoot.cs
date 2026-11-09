@@ -52,6 +52,7 @@ public static class CompositionRoot
         services.AddSingleton<DistractionService>();
         services.AddSingleton<EnergyService>();
         services.AddSingleton<ProgressService>();
+        services.AddSingleton<DashboardOverviewService>();
         services.AddSingleton<ErrorPatternService>();
         services.AddSingleton<WeeklyReviewService>();
         services.AddSingleton<IPdfTextExtractor, PdfPigTextExtractor>();
