@@ -454,7 +454,7 @@
                                            Margin="0,1,0,0"/>
                                 <ProgressBar Value="{Binding DashboardWeeklyGoalProgressPercent, Mode=OneWay}"
                                              Maximum="100" Height="7" Margin="0,12,0,0"/>
-                                <TextBlock Text="Tempo effettivamente registrato nel diario attività; gli intervalli sovrapposti vengono conteggiati una sola volta."
+                                <TextBlock Text="Tempo effettivo delle sessioni Focus registrate; le pause non vengono conteggiate."
                                            FontSize="10" Foreground="{DynamicResource MutedBrush}"
                                            TextWrapping="Wrap" Margin="0,9,0,0"/>
                             </StackPanel>
