@@ -162,6 +162,137 @@ public sealed class SecretAndFileSecurityTests
     }
 
     [Fact]
+    public void IsInsideRejectsDirectorySymbolicLinksThatEscapeTheBoundary()
+    {
+        var root = NewDirectory();
+        var outside = NewDirectory();
+        var link = Path.Combine(root, "linked");
+        var linkCreated = false;
+        try
+        {
+            try
+            {
+                Directory.CreateSymbolicLink(link, outside);
+                linkCreated = true;
+            }
+            catch (Exception ex) when (ex is UnauthorizedAccessException or IOException
+                                           or PlatformNotSupportedException or NotSupportedException)
+            {
+                return; // The current runner does not permit creating symbolic links.
+            }
+
+            Assert.False(LocalFileSecurity.IsInside(root, Path.Combine(link, "secret.pdf")));
+        }
+        finally
+        {
+            if (linkCreated) Directory.Delete(link);
+            Directory.Delete(root, recursive: true);
+            Directory.Delete(outside, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void IsInsideRejectsFileSymbolicLinksEvenWhenTheTargetExists()
+    {
+        var root = NewDirectory();
+        var outside = NewDirectory();
+        var target = Path.Combine(outside, "private.txt");
+        var link = Path.Combine(root, "linked.txt");
+        var linkCreated = false;
+        try
+        {
+            File.WriteAllText(target, "outside data");
+            try
+            {
+                File.CreateSymbolicLink(link, target);
+                linkCreated = true;
+            }
+            catch (Exception ex) when (ex is UnauthorizedAccessException or IOException
+                                           or PlatformNotSupportedException or NotSupportedException)
+            {
+                return;
+            }
+
+            Assert.False(LocalFileSecurity.IsInside(root, link));
+            Assert.Equal("outside data", File.ReadAllText(target));
+        }
+        finally
+        {
+            if (linkCreated) File.Delete(link);
+            Directory.Delete(root, recursive: true);
+            Directory.Delete(outside, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void IsInsideRejectsASymbolicLinkUsedAsTheBoundary()
+    {
+        var parent = NewDirectory();
+        var realRoot = Path.Combine(parent, "real");
+        var linkedRoot = Path.Combine(parent, "linked-root");
+        Directory.CreateDirectory(realRoot);
+        var linkCreated = false;
+        try
+        {
+            try
+            {
+                Directory.CreateSymbolicLink(linkedRoot, realRoot);
+                linkCreated = true;
+            }
+            catch (Exception ex) when (ex is UnauthorizedAccessException or IOException
+                                           or PlatformNotSupportedException or NotSupportedException)
+            {
+                return;
+            }
+
+            Assert.False(LocalFileSecurity.IsInside(linkedRoot, Path.Combine(linkedRoot, "file.pdf")));
+        }
+        finally
+        {
+            if (linkCreated) Directory.Delete(linkedRoot);
+            Directory.Delete(parent, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void StaleTemporaryCleanupNeverDeletesThroughAFileSymbolicLink()
+    {
+        var root = NewDirectory();
+        var outside = NewDirectory();
+        var target = Path.Combine(outside, "private.tmp");
+        var link = Path.Combine(root, "linked.tmp");
+        var linkCreated = false;
+        try
+        {
+            File.WriteAllText(target, "keep this file");
+            try
+            {
+                File.CreateSymbolicLink(link, target);
+                linkCreated = true;
+            }
+            catch (Exception ex) when (ex is UnauthorizedAccessException or IOException
+                                           or PlatformNotSupportedException or NotSupportedException)
+            {
+                return;
+            }
+
+            File.SetLastWriteTimeUtc(link, DateTime.UtcNow.AddHours(-2));
+            var deleted = LocalFileSecurity.CleanupStaleTemporaryFiles(
+                root, TimeSpan.FromHours(1), "*.tmp");
+
+            Assert.Equal(0, deleted);
+            Assert.True(File.Exists(link));
+            Assert.Equal("keep this file", File.ReadAllText(target));
+        }
+        finally
+        {
+            if (linkCreated) File.Delete(link);
+            Directory.Delete(root, recursive: true);
+            Directory.Delete(outside, recursive: true);
+        }
+    }
+
+    [Fact]
     public void DirectoriesAndFilesArePrivateOnUnix()
     {
         if (OperatingSystem.IsWindows()) return;
