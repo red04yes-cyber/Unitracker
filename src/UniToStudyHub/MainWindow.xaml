@@ -159,8 +159,8 @@
         <TabItem>
             <TabItem.Header>
                 <StackPanel Orientation="Horizontal">
-                    <Border Width="30" Height="30" CornerRadius="8" Background="{DynamicResource NavyBrush}">
-                        <TextBlock Text="01" Foreground="{DynamicResource SidebarMutedBrush}" FontSize="10"
+                    <Border Width="30" Height="30" CornerRadius="9" Background="{DynamicResource AccentFillBrush}">
+                        <TextBlock Text="01" Foreground="White" FontSize="10"
                                    FontWeight="Bold" HorizontalAlignment="Center"
                                    VerticalAlignment="Center"/>
                     </Border>
@@ -173,148 +173,301 @@
 
             <ScrollViewer VerticalScrollBarVisibility="Auto"
                           HorizontalScrollBarVisibility="Disabled">
-                <StackPanel Margin="32,30,32,36">
-                    <TextBlock Text="IL TUO WORKSPACE" FontSize="10"
-                               FontWeight="Bold" Foreground="{DynamicResource AccentBrush}"/>
-                    <TextBlock Text="Buono studio." Style="{StaticResource PageTitleStyle}"
-                               Margin="0,7,0,4"/>
-                    <TextBlock Text="La tua carriera e le priorità universitarie, in un unico posto."
-                               Style="{StaticResource PageSubtitleStyle}" Margin="0,0,0,22"/>
-
+                <StackPanel Margin="36,32,36,40">
                     <Grid Margin="0,0,0,22">
                         <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="1.55*"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel VerticalAlignment="Center">
+                            <TextBlock Text="IL TUO WORKSPACE" FontSize="10"
+                                       FontWeight="Bold" Foreground="{DynamicResource AccentBrush}"/>
+                            <TextBlock Text="La giornata, sotto controllo."
+                                       Style="{StaticResource PageTitleStyle}" Margin="0,7,0,4"/>
+                            <TextBlock Text="Priorità, carriera e studio: tutto quello che ti serve per orientarti."
+                                       Style="{StaticResource PageSubtitleStyle}"/>
+                        </StackPanel>
+                        <WrapPanel Grid.Column="1" VerticalAlignment="Center"
+                                   HorizontalAlignment="Right" Margin="14,0,0,0">
+                            <Button Content="Calendario" Style="{StaticResource QuietButtonStyle}"
+                                    Tag="2" Click="NavigateToSection_Click" Margin="0,0,6,0"/>
+                            <Button Content="Apri Studio Lab" Tag="3"
+                                    Click="NavigateToSection_Click"/>
+                        </WrapPanel>
+                    </Grid>
+
+                    <Grid Margin="0,0,0,20">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="1.25*"/>
                             <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
 
                         <Border Grid.Column="0" Background="{DynamicResource NavyBrush}"
-                                CornerRadius="14" Padding="24" Margin="0,0,12,0">
+                                CornerRadius="16" Padding="24" Margin="0,0,12,0">
                             <StackPanel>
-                                <TextBlock Text="IL TUO PROSSIMO PASSO"
-                                           Foreground="{DynamicResource SidebarMutedBrush}" FontSize="10"
-                                           FontWeight="Bold"/>
-                                <TextBlock Text="Costruiamo la tua giornata di studio."
-                                           Foreground="White" FontSize="22"
+                                <Border Background="#26FFFFFF" CornerRadius="7"
+                                        Padding="9,5" HorizontalAlignment="Left">
+                                    <TextBlock Text="FOCUS · STUDIO LAB" FontSize="10"
+                                               FontWeight="Bold" Foreground="{DynamicResource SidebarMutedBrush}"/>
+                                </Border>
+                                <TextBlock Text="Ritrova il tuo ritmo."
+                                           Foreground="White" FontSize="23"
                                            FontWeight="SemiBold" TextWrapping="Wrap"
-                                           Margin="0,9,0,7"/>
-                                <TextBlock Text="Il piano giornaliero e le sessioni di focus arriveranno con Studio Lab. Intanto puoi organizzare le materie e gli esami da preparare."
-                                           Foreground="{DynamicResource SidebarMutedBrush}" FontSize="12"
-                                           TextWrapping="Wrap" MaxWidth="620"/>
-                                <Button Content="Apri le materie"
-                                        Style="{StaticResource SecondaryButtonStyle}"
-                                        HorizontalAlignment="Left"
-                                        Margin="0,18,0,0"
-                                        Click="NavigateToSubjects_Click"/>
+                                           Margin="0,14,0,7"/>
+                                <TextBlock Text="Riprendi una sessione già avviata oppure apri Studio Lab per scegliere materia e durata. Le attività e i ripassi restano collegati ai tuoi dati."
+                                           Foreground="{DynamicResource SidebarMutedBrush}"
+                                           FontSize="12" TextWrapping="Wrap" MaxWidth="560"/>
+                                <Grid Margin="0,18,0,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel>
+                                        <TextBlock Text="STATO DEL FOCUS" FontSize="9"
+                                                   FontWeight="Bold" Foreground="{DynamicResource SidebarMutedBrush}"/>
+                                        <TextBlock Text="{Binding Workspace.FocusStateDisplay}"
+                                                   Foreground="White" FontSize="14"
+                                                   FontWeight="SemiBold" Margin="0,4,0,0"/>
+                                    </StackPanel>
+                                    <Border Grid.Column="1" Background="#22FFFFFF"
+                                            CornerRadius="9" Padding="12,7"
+                                            VerticalAlignment="Center"
+                                            Visibility="{Binding Workspace.HasActiveFocusSession, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                        <TextBlock Text="{Binding Workspace.FocusRemainingDisplay}"
+                                                   Foreground="White" FontSize="19"
+                                                   FontWeight="SemiBold"/>
+                                    </Border>
+                                </Grid>
+                                <ProgressBar Value="{Binding Workspace.FocusProgressPercent}"
+                                             Maximum="100" Height="6" Margin="0,14,0,0"
+                                             Background="#354A64" Foreground="#65D9EF"
+                                             Visibility="{Binding Workspace.HasActiveFocusSession, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                                <Button Content="Apri Studio Lab"
+                                        Style="{StaticResource QuietButtonStyle}"
+                                        Background="#20FFFFFF" Foreground="White"
+                                        BorderBrush="#55FFFFFF" BorderThickness="1"
+                                        Padding="15,9" HorizontalAlignment="Left"
+                                        Margin="0,18,0,0" Tag="3"
+                                        Click="NavigateToSection_Click"/>
                             </StackPanel>
                         </Border>
 
-                        <Border Grid.Column="1" Style="{StaticResource CardBorderStyle}">
+                        <Border Grid.Column="1" Style="{StaticResource CardBorderStyle}" Padding="22">
                             <StackPanel>
                                 <TextBlock Text="PROSSIMO ESAME" Style="{StaticResource KpiLabelStyle}"/>
                                 <TextBlock Text="{Binding NextExamNameDisplay}"
                                            FontSize="18" FontWeight="SemiBold"
                                            Foreground="{DynamicResource InkBrush}"
-                                           TextWrapping="Wrap" Margin="0,12,0,5"/>
+                                           TextWrapping="Wrap" Margin="0,13,0,5"/>
                                 <TextBlock Text="{Binding NextExamDateDisplay}"
                                            FontSize="12" Foreground="{DynamicResource MutedBrush}"
                                            TextWrapping="Wrap"/>
                                 <Border Background="{DynamicResource WarningSoftBrush}"
-                                        CornerRadius="7" Padding="9,7" Margin="0,18,0,0">
+                                        CornerRadius="8" Padding="10,8" Margin="0,15,0,0">
                                     <TextBlock Text="Le date pianificate sono indicative, non appelli ufficiali."
                                                FontSize="10" Foreground="{DynamicResource WarningBrush}"
                                                TextWrapping="Wrap"/>
                                 </Border>
+                                <Button Content="Apri calendario"
+                                        Style="{StaticResource QuietButtonStyle}"
+                                        HorizontalAlignment="Left" Margin="0,10,0,0"
+                                        Tag="2" Click="NavigateToSection_Click"/>
                             </StackPanel>
                         </Border>
                     </Grid>
 
+                    <TextBlock Text="PANORAMICA CARRIERA" FontSize="10"
+                               FontWeight="Bold" Foreground="{DynamicResource AccentBrush}"
+                               Margin="0,0,0,10"/>
                     <UniformGrid Columns="4" Margin="0,0,0,22">
                         <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,10,0">
                             <StackPanel>
-                                <TextBlock Text="CFU ACQUISITI" Style="{StaticResource KpiLabelStyle}"/>
-                                <TextBlock Text="{Binding AcquiredCreditsValue}"
-                                           FontSize="27" FontWeight="SemiBold"
-                                           Foreground="{DynamicResource InkBrush}" Margin="0,8,0,2"/>
-                                <TextBlock Text="Dagli esami registrati"
-                                           FontSize="10" Foreground="{DynamicResource MutedBrush}"/>
+                                <Border Width="32" Height="32" CornerRadius="9"
+                                        Background="{DynamicResource AccentSoftBrush}"
+                                        HorizontalAlignment="Left">
+                                    <TextBlock Text="CFU" FontSize="9" FontWeight="Bold"
+                                               Foreground="{DynamicResource AccentBrush}"
+                                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+                                <TextBlock Text="CFU ACQUISITI" Style="{StaticResource KpiLabelStyle}" Margin="0,12,0,0"/>
+                                <TextBlock Text="{Binding AcquiredCreditsValue}" FontSize="26"
+                                           FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}"
+                                           Margin="0,4,0,1"/>
+                                <TextBlock Text="Dagli esami registrati" FontSize="10"
+                                           Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap"/>
                             </StackPanel>
                         </Border>
                         <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,10,0">
                             <StackPanel>
-                                <TextBlock Text="MEDIA PONDERATA" Style="{StaticResource KpiLabelStyle}"/>
-                                <TextBlock Text="{Binding AverageDisplay}"
-                                           FontSize="27" FontWeight="SemiBold"
-                                           Foreground="{DynamicResource InkBrush}" Margin="0,8,0,2"/>
-                                <TextBlock Text="In base ai CFU"
-                                           FontSize="10" Foreground="{DynamicResource MutedBrush}"/>
+                                <Border Width="32" Height="32" CornerRadius="9"
+                                        Background="{DynamicResource AccentSoftBrush}"
+                                        HorizontalAlignment="Left">
+                                    <TextBlock Text="Σ" FontSize="17"
+                                               Foreground="{DynamicResource AccentBrush}"
+                                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+                                <TextBlock Text="MEDIA PONDERATA" Style="{StaticResource KpiLabelStyle}" Margin="0,12,0,0"/>
+                                <TextBlock Text="{Binding AverageDisplay}" FontSize="26"
+                                           FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}"
+                                           Margin="0,4,0,1"/>
+                                <TextBlock Text="Pesata sui CFU" FontSize="10"
+                                           Foreground="{DynamicResource MutedBrush}"/>
                             </StackPanel>
                         </Border>
                         <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,10,0">
                             <StackPanel>
-                                <TextBlock Text="MEDIA ARITMETICA" Style="{StaticResource KpiLabelStyle}"/>
-                                <TextBlock Text="{Binding ArithmeticAverageDisplay}"
-                                           FontSize="27" FontWeight="SemiBold"
-                                           Foreground="{DynamicResource InkBrush}" Margin="0,8,0,2"/>
-                                <TextBlock Text="Ultimo voto per materia"
-                                           FontSize="10" Foreground="{DynamicResource MutedBrush}"/>
+                                <Border Width="32" Height="32" CornerRadius="9"
+                                        Background="{DynamicResource SubtleBrush}"
+                                        HorizontalAlignment="Left">
+                                    <TextBlock Text="AVG" FontSize="9" FontWeight="Bold"
+                                               Foreground="{DynamicResource InkBrush}"
+                                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+                                <TextBlock Text="MEDIA ARITMETICA" Style="{StaticResource KpiLabelStyle}" Margin="0,12,0,0"/>
+                                <TextBlock Text="{Binding ArithmeticAverageDisplay}" FontSize="26"
+                                           FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}"
+                                           Margin="0,4,0,1"/>
+                                <TextBlock Text="Ultimo voto per materia" FontSize="10"
+                                           Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap"/>
                             </StackPanel>
                         </Border>
                         <Border Style="{StaticResource CardBorderStyle}">
                             <StackPanel>
-                                <TextBlock Text="VOTO DI PARTENZA" Style="{StaticResource KpiLabelStyle}"/>
-                                <TextBlock Text="{Binding ProjectedBaseGradeValue}"
-                                           FontSize="19" FontWeight="SemiBold"
-                                           Foreground="{DynamicResource InkBrush}"
-                                           TextWrapping="Wrap" Margin="0,11,0,3"/>
-                                <TextBlock Text="Proiezione basata sulla carriera"
-                                           FontSize="10" Foreground="{DynamicResource MutedBrush}"/>
+                                <Border Width="32" Height="32" CornerRadius="9"
+                                        Background="{DynamicResource WarningSoftBrush}"
+                                        HorizontalAlignment="Left">
+                                    <TextBlock Text="110" FontSize="9" FontWeight="Bold"
+                                               Foreground="{DynamicResource WarningBrush}"
+                                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+                                <TextBlock Text="VOTO DI PARTENZA" Style="{StaticResource KpiLabelStyle}" Margin="0,12,0,0"/>
+                                <TextBlock Text="{Binding ProjectedBaseGradeValue}" FontSize="22"
+                                           FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}"
+                                           Margin="0,6,0,1" TextWrapping="Wrap"/>
+                                <TextBlock Text="Proiezione sulla carriera" FontSize="10"
+                                           Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap"/>
                             </StackPanel>
                         </Border>
                     </UniformGrid>
 
-                    <Grid>
+                    <Grid Margin="0,0,0,14">
                         <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="1.25*"/>
+                            <ColumnDefinition Width="1.2*"/>
                             <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
-                        <Border Grid.Column="0" Style="{StaticResource CardBorderStyle}" Margin="0,0,12,0">
+
+                        <Border Grid.Column="0" Style="{StaticResource CardBorderStyle}"
+                                Margin="0,0,12,0">
                             <StackPanel>
-                                <TextBlock Text="Ultimo risultato registrato"
-                                           Style="{StaticResource SectionTitleStyle}"/>
-                                <TextBlock Text="{Binding LatestGradeDisplay}"
-                                           FontSize="13" Foreground="{DynamicResource InkBrush}"
-                                           TextWrapping="Wrap" Margin="0,11,0,0"/>
+                                <Grid Margin="0,0,0,10">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="Attività aperte" Style="{StaticResource SectionTitleStyle}"/>
+                                    <StackPanel Grid.Column="1" Orientation="Horizontal"
+                                                VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding Workspace.ActiveTasks.Count}"
+                                                   FontSize="18" FontWeight="SemiBold"
+                                                   Foreground="{DynamicResource AccentBrush}"/>
+                                        <TextBlock Text="in elenco" FontSize="10"
+                                                   Foreground="{DynamicResource MutedBrush}"
+                                                   Margin="5,5,0,0"/>
+                                    </StackPanel>
+                                </Grid>
+                                <ItemsControl ItemsSource="{Binding Workspace.ActiveTasks}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border BorderBrush="{DynamicResource SubtleBrush}"
+                                                    BorderThickness="0,0,0,1" Padding="8,10">
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="10"/>
+                                                        <ColumnDefinition Width="*"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <Ellipse Width="7" Height="7"
+                                                             Fill="{DynamicResource AccentFillBrush}"
+                                                             VerticalAlignment="Center"/>
+                                                    <TextBlock Grid.Column="1" Text="{Binding Title}"
+                                                               FontSize="12" FontWeight="Medium"
+                                                               Foreground="{DynamicResource InkBrush}"
+                                                               TextWrapping="Wrap"/>
+                                                </Grid>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                                <Border Background="{DynamicResource SubtleBrush}"
+                                        CornerRadius="9" Padding="13,11" Margin="0,2,0,0"
+                                        Visibility="{Binding Workspace.NoActiveTasks, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                    <TextBlock Text="Non hai attività aperte. Quando aggiungi un'attività in Studio Lab, la ritrovi qui."
+                                               FontSize="11" Foreground="{DynamicResource MutedBrush}"
+                                               TextWrapping="Wrap"/>
+                                </Border>
+                                <Border BorderBrush="{DynamicResource BorderBrush}"
+                                        BorderThickness="0,1,0,0" Margin="0,14,0,0" Padding="0,13,0,0">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel>
+                                            <TextBlock Text="{Binding Workspace.DueFlashcards.Count}"
+                                                       FontSize="23" FontWeight="SemiBold"
+                                                       Foreground="{DynamicResource AccentBrush}"/>
+                                            <TextBlock Text="Flashcard da ripassare"
+                                                       FontSize="11" Foreground="{DynamicResource MutedBrush}"/>
+                                        </StackPanel>
+                                        <Button Grid.Column="1" Content="Apri ripasso"
+                                                Style="{StaticResource SecondaryButtonStyle}"
+                                                VerticalAlignment="Center" Tag="3"
+                                                Click="NavigateToSection_Click"/>
+                                    </Grid>
+                                </Border>
                             </StackPanel>
                         </Border>
+
                         <Border Grid.Column="1" Style="{StaticResource CardBorderStyle}">
                             <StackPanel>
-                                <TextBlock Text="Le tue materie" Style="{StaticResource SectionTitleStyle}"/>
-                                <Grid Margin="0,12,0,0">
+                                <TextBlock Text="La tua carriera" Style="{StaticResource SectionTitleStyle}"/>
+                                <TextBlock Text="ULTIMO RISULTATO REGISTRATO"
+                                           Style="{StaticResource KpiLabelStyle}" Margin="0,16,0,0"/>
+                                <TextBlock Text="{Binding LatestGradeDisplay}"
+                                           FontSize="13" Foreground="{DynamicResource InkBrush}"
+                                           TextWrapping="Wrap" Margin="0,7,0,0"/>
+                                <Border Height="1" Background="{DynamicResource BorderBrush}"
+                                        Margin="0,16,0,14"/>
+                                <Grid>
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="*"/>
                                     </Grid.ColumnDefinitions>
-                                    <StackPanel Grid.Column="0">
-                                        <TextBlock Text="{Binding ActiveCoursesCount}"
-                                                   FontSize="23" FontWeight="SemiBold"
+                                    <StackPanel>
+                                        <TextBlock Text="{Binding ActiveCoursesCount}" FontSize="25"
+                                                   FontWeight="SemiBold"
                                                    Foreground="{DynamicResource AccentBrush}"/>
-                                        <TextBlock Text="In corso" FontSize="11"
+                                        <TextBlock Text="Materie in corso" FontSize="10"
                                                    Foreground="{DynamicResource MutedBrush}"/>
                                     </StackPanel>
                                     <StackPanel Grid.Column="1">
-                                        <TextBlock Text="{Binding ArchivedCoursesCount}"
-                                                   FontSize="23" FontWeight="SemiBold"
+                                        <TextBlock Text="{Binding ArchivedCoursesCount}" FontSize="25"
+                                                   FontWeight="SemiBold"
                                                    Foreground="{DynamicResource SuccessBrush}"/>
-                                        <TextBlock Text="In archivio" FontSize="11"
+                                        <TextBlock Text="In archivio" FontSize="10"
                                                    Foreground="{DynamicResource MutedBrush}"/>
                                     </StackPanel>
                                 </Grid>
+                                <Button Content="Apri materie" Style="{StaticResource QuietButtonStyle}"
+                                        HorizontalAlignment="Left" Margin="0,16,0,0"
+                                        Click="NavigateToSubjects_Click"/>
                             </StackPanel>
                         </Border>
                     </Grid>
 
-                    <TextBlock Text="{Binding StatusMessage}" Foreground="{DynamicResource MutedBrush}"
-                               FontSize="11" TextWrapping="Wrap" Margin="2,16,2,0"/>
+                    <TextBlock Text="{Binding StatusMessage}"
+                               Foreground="{DynamicResource MutedBrush}"
+                               FontSize="11" TextWrapping="Wrap"
+                               Margin="2,8,2,0"/>
                 </StackPanel>
             </ScrollViewer>
         </TabItem>
