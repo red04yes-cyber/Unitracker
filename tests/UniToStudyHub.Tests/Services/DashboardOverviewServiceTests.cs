@@ -96,40 +96,48 @@ public sealed class DashboardOverviewServiceTests
     }
 
     [Fact]
-    public void WeeklyStudyTimeUsesUniqueActivityLedgerMinutes()
+    public void WeeklyStudyTimeUsesRecordedFocusSessionMinutes()
     {
         var data = Data();
         var today = Today;
         var now = LocalAt(today, 11);
-        var start = LocalAt(today, 9);
-        var end = start.AddHours(1);
-
-        data.StudyActivities.Add(new StudyActivityData
+        data.StudySessions.Add(new StudySessionData
         {
-            Id = "manual-a",
-            CourseId = "analisi",
-            Title = "Studio capitolo 1",
-            StartedAt = start,
-            EndedAt = end,
-            EffectiveSeconds = 3600,
-            Status = StudyActivityStatus.Completed
-        });
-        data.StudyActivities.Add(new StudyActivityData
-        {
-            Id = "manual-b",
-            CourseId = "fisica",
-            Title = "Intervallo sovrapposto",
-            StartedAt = start,
-            EndedAt = end,
-            EffectiveSeconds = 3600,
-            Status = StudyActivityStatus.Completed
+            Id = "focus-session",
+            StartedAt = LocalAt(today, 9),
+            EndedAt = LocalAt(today, 10),
+            State = StudySessionState.Completed,
+            AccumulatedFocusSeconds = 3600,
+            AccumulatedPauseSeconds = 900
         });
 
         var result = _service.Calculate(data, now);
 
-        Assert.Equal(60, result.RecordedStudyMinutes);
+        Assert.Equal(60, result.FocusStudyMinutes);
         Assert.Equal(120, result.WeeklyGoalMinutes);
         Assert.Equal(50, result.WeeklyGoalProgressPercent);
+    }
+
+    [Fact]
+    public void WeeklyStudyTimeExcludesPausedMinutes()
+    {
+        var data = Data();
+        data.WeeklyStudyHours = 1;
+        var today = Today;
+        data.StudySessions.Add(new StudySessionData
+        {
+            Id = "focus-with-pause",
+            StartedAt = LocalAt(today, 9),
+            EndedAt = LocalAt(today, 10),
+            State = StudySessionState.Completed,
+            AccumulatedFocusSeconds = 2400,
+            AccumulatedPauseSeconds = 1200
+        });
+
+        var result = _service.Calculate(data, LocalAt(today, 11));
+
+        Assert.Equal(40, result.FocusStudyMinutes);
+        Assert.Equal(67, result.WeeklyGoalProgressPercent);
     }
 
     [Fact]
@@ -138,24 +146,18 @@ public sealed class DashboardOverviewServiceTests
         var data = Data();
         data.WeeklyStudyHours = 1;
         var today = Today;
-        var now = LocalAt(today, 12);
-        var start = LocalAt(today, 9);
-        var end = start.AddHours(2);
-
-        data.StudyActivities.Add(new StudyActivityData
+        data.StudySessions.Add(new StudySessionData
         {
-            Id = "long-study",
-            CourseId = "analisi",
-            Title = "Blocco di studio",
-            StartedAt = start,
-            EndedAt = end,
-            EffectiveSeconds = 7200,
-            Status = StudyActivityStatus.Completed
+            Id = "long-focus",
+            StartedAt = LocalAt(today, 9),
+            EndedAt = LocalAt(today, 11),
+            State = StudySessionState.Completed,
+            AccumulatedFocusSeconds = 7200
         });
 
-        var result = _service.Calculate(data, now);
+        var result = _service.Calculate(data, LocalAt(today, 12));
 
-        Assert.Equal(120, result.RecordedStudyMinutes);
+        Assert.Equal(120, result.FocusStudyMinutes);
         Assert.Equal(60, result.WeeklyGoalMinutes);
         Assert.Equal(100, result.WeeklyGoalProgressPercent);
     }
@@ -272,7 +274,7 @@ public sealed class DashboardOverviewServiceTests
         Assert.Null(result.DaysUntilNextExam);
         Assert.Empty(result.TodayTasks);
         Assert.Empty(result.UpcomingDeadlines);
-        Assert.Equal(0, result.RecordedStudyMinutes);
+        Assert.Equal(0, result.FocusStudyMinutes);
         Assert.Equal(0, result.WeeklyGoalMinutes);
         Assert.Equal(0, result.WeeklyGoalProgressPercent);
         Assert.False(result.HasWeeklyGoal);
