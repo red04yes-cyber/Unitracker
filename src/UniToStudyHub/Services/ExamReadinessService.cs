@@ -1,3 +1,4 @@
+using UniToStudyHub.Domain.Enums;
 using UniToStudyHub.Domain.Services;
 using UniToStudyHub.Models;
 
@@ -20,6 +21,20 @@ public sealed record ExamReadinessResult(
     IReadOnlyList<string> MissingData,
     string Formula,
     SyllabusCoverage Coverage);
+
+/// <summary>
+/// Aggregate view of exam preparation across active courses. Aggregate scores
+/// use only available course scores and remain indicative, never official grades.
+/// </summary>
+public sealed record ExamReadinessOverview(
+    int TotalCourses,
+    int CoursesWithScore,
+    int CoursesWithoutScore,
+    int FullyAssessedCourses,
+    int EstimatedRemainingSyllabusMinutes,
+    decimal? AverageAvailableScore,
+    decimal? CfuWeightedAvailableScore,
+    IReadOnlyList<ExamReadinessResult> Courses);
 
 /// <summary>
 /// Transparent readiness estimate. It only uses data actually stored in the
@@ -119,5 +134,49 @@ public sealed class ExamReadinessService(CareerApplicationService career)
             missing,
             "Somma pesata dei componenti disponibili: syllabus 60%, ultimo esito ufficiale 40%. I componenti mancanti sono esclusi e segnalati.",
             coverage);
+    }
+
+    /// <summary>
+    /// Calculates a read-only overview for every non-archived course. Available
+    /// scores (including partial scores) are averaged separately from the
+    /// complete-assessment count; courses with no evidence remain unscored.
+    /// </summary>
+    public ExamReadinessOverview CalculateOverview(StudyData data, DateTime? today = null)
+    {
+        ArgumentNullException.ThrowIfNull(data);
+
+        var calculated = data.Courses
+            .Where(course => !course.Archived && course.Status != CourseStatus.Archived)
+            .Select(course => (Course: course, Result: Calculate(data, course.Id, today)))
+            .OrderBy(item => item.Result.Score.HasValue ? 0 : 1)
+            .ThenBy(item => item.Result.Score ?? decimal.MaxValue)
+            .ThenBy(item => item.Course.Name, StringComparer.CurrentCultureIgnoreCase)
+            .ThenBy(item => item.Course.Id, StringComparer.Ordinal)
+            .ToList();
+
+        var scored = calculated.Where(item => item.Result.Score.HasValue).ToList();
+        decimal? average = scored.Count == 0
+            ? null
+            : Math.Round(scored.Sum(item => item.Result.Score!.Value) / scored.Count,
+                2, MidpointRounding.AwayFromZero);
+
+        var weighted = scored.Where(item => item.Course.Cfu > 0).ToList();
+        var totalWeightedCfu = weighted.Sum(item => item.Course.Cfu);
+        decimal? cfuWeightedAverage = totalWeightedCfu == 0
+            ? null
+            : Math.Round(
+                weighted.Sum(item => item.Result.Score!.Value * item.Course.Cfu) / totalWeightedCfu,
+                2,
+                MidpointRounding.AwayFromZero);
+
+        return new ExamReadinessOverview(
+            calculated.Count,
+            scored.Count,
+            calculated.Count - scored.Count,
+            calculated.Count(item => item.Result.IsComplete),
+            calculated.Sum(item => Math.Max(0, item.Result.Coverage.EstimatedRemainingMinutes)),
+            average,
+            cfuWeightedAverage,
+            calculated.Select(item => item.Result).ToList());
     }
 }
