@@ -72,6 +72,7 @@
         </Style>
     </Window.Resources>
 
+    <Grid x:Name="ShellRoot" Background="{DynamicResource PageBrush}">
     <TabControl x:Name="MainTabs"
                 TabStripPlacement="Left"
                 SelectedIndex="0"
@@ -1401,4 +1402,60 @@
 </ScrollViewer>
         </TabItem>
     </TabControl>
+
+        <!-- Non-modal feedback: short-lived, theme-aware and accessible status surface. -->
+        <Border x:Name="ToastHost"
+                HorizontalAlignment="Right"
+                VerticalAlignment="Top"
+                Width="380"
+                MaxWidth="380"
+                Margin="0,82,28,0"
+                Padding="15"
+                Background="{DynamicResource PanelBrush}"
+                BorderBrush="{DynamicResource BorderBrush}"
+                BorderThickness="1"
+                CornerRadius="14"
+                Visibility="Collapsed"
+                Opacity="0"
+                IsHitTestVisible="False"
+                Panel.ZIndex="20">
+            <Border.Effect>
+                <DropShadowEffect BlurRadius="22" ShadowDepth="4" Opacity="0.16"/>
+            </Border.Effect>
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="42"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <Border x:Name="ToastIconTile"
+                        Width="36"
+                        Height="36"
+                        CornerRadius="11"
+                        VerticalAlignment="Top"
+                        Background="{DynamicResource SuccessSoftBrush}">
+                    <TextBlock x:Name="ToastIcon"
+                               Text="✓"
+                               FontSize="17"
+                               FontWeight="SemiBold"
+                               Foreground="{DynamicResource SuccessBrush}"
+                               HorizontalAlignment="Center"
+                               VerticalAlignment="Center"/>
+                </Border>
+                <StackPanel Grid.Column="1" Margin="10,0,0,0">
+                    <TextBlock x:Name="ToastTitle"
+                               Text="Operazione completata"
+                               FontSize="13"
+                               FontWeight="SemiBold"
+                               Foreground="{DynamicResource InkBrush}"
+                               TextWrapping="Wrap"/>
+                    <TextBlock x:Name="ToastMessage"
+                               Text="L'operazione è stata completata."
+                               FontSize="11"
+                               Foreground="{DynamicResource MutedBrush}"
+                               TextWrapping="Wrap"
+                               Margin="0,4,0,0"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+    </Grid>
 </Window>
