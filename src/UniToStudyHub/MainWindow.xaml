@@ -742,7 +742,7 @@
                         <TextBox Grid.Column="1" Text="{Binding Workspace.FocusMinutesInput, UpdateSourceTrigger=PropertyChanged}" Margin="8,0,0,0" ToolTip="Minuti"/>
                     </Grid>
                     <WrapPanel Margin="0,12,0,0">
-                        <Button Style="{StaticResource PrimaryButtonStyle}" Content="Avvia" Command="{Binding Workspace.StartFocusCommand}" Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,6,6"/>
+                        <Button Style="{StaticResource PrimaryButtonStyle}" Content="Avvia" Command="{Binding Workspace.StartFocusCommand}" Margin="0,0,6,6"/>
                         <Button Content="Pausa" Command="{Binding Workspace.PauseFocusCommand}" IsEnabled="{Binding Workspace.CanPauseFocus}" Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,6,6"/>
                         <Button Content="Riprendi" Command="{Binding Workspace.ResumeFocusCommand}" IsEnabled="{Binding Workspace.CanResumeFocus}" Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,6,6"/>
                         <Button Content="Termina" Command="{Binding Workspace.FinishFocusCommand}" IsEnabled="{Binding Workspace.CanFinishFocus}" Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,6,6"/>
@@ -986,7 +986,7 @@
                                     <TextBlock Text="Simulazione rapida" Style="{StaticResource SectionTitleStyle}"/>
                                     <Button Style="{StaticResource PrimaryButtonStyle}" Content="Avvia simulazione (max 10 quesiti)" Command="{Binding Workspace.StartSimulationCommand}" Margin="0,8,0,0"/>
                                     <TextBlock Text="{Binding Workspace.SimulationQuestionDisplay}" FontSize="11" Foreground="{DynamicResource InkBrush}" TextWrapping="Wrap" Margin="0,8,0,0"/>
-                                    <Button Style="{StaticResource PrimaryButtonStyle}" Content="Invia risposta e continua" Command="{Binding Workspace.SubmitSimulationAnswerCommand}" IsEnabled="{Binding Workspace.IsSimulationActive}" Style="{StaticResource SecondaryButtonStyle}" Margin="0,8,0,0"/>
+                                    <Button Style="{StaticResource PrimaryButtonStyle}" Content="Invia risposta e continua" Command="{Binding Workspace.SubmitSimulationAnswerCommand}" IsEnabled="{Binding Workspace.IsSimulationActive}" Margin="0,8,0,0"/>
                                     <TextBlock Text="{Binding Workspace.SimulationStatus}" FontSize="10" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,8,0,0"/>
                                 </StackPanel>
                             </Border>

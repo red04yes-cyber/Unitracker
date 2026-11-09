@@ -16,7 +16,7 @@
         <Setter Property="Background" Value="{DynamicResource SubtleBrush}"/>
         <Setter Property="Foreground" Value="{DynamicResource InkBrush}"/>
         <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
-        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="BorderThickness" Value="1"/>
     </Style>
     <Style x:Key="QuietButtonStyle" TargetType="{x:Type Button}" BasedOn="{StaticResource {x:Type Button}}">
         <Setter Property="Background" Value="Transparent"/>
@@ -63,7 +63,7 @@
     <Style x:Key="CardBorderStyle" TargetType="{x:Type Border}">
         <Setter Property="Background" Value="{DynamicResource PanelBrush}"/>
         <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
-        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="BorderThickness" Value="0"/>
         <Setter Property="CornerRadius" Value="16"/>
         <Setter Property="Padding" Value="20"/>
         <Setter Property="local:MotionBehavior.HoverLiftEnabled" Value="True"/>
