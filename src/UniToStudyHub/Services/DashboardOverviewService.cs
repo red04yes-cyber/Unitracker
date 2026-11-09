@@ -90,7 +90,7 @@ public sealed class DashboardOverviewService(ProgressService progress)
             .ThenBy(exam => exam.Id, StringComparer.Ordinal)
             .FirstOrDefault();
 
-        var daysUntilExam = nextExam?.PlannedDate is { } examDate
+        int? daysUntilExam = nextExam?.PlannedDate is { } examDate
             ? DateOnly.FromDateTime(examDate.Date).DayNumber - today.DayNumber
             : null;
 
