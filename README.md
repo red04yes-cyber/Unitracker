@@ -41,5 +41,6 @@ Il workflow GitHub Actions in `.github/workflows/build-windows.yml` compila e pu
 Il workflow `.github/workflows/core-domain-validation.yml` valida le PR e i push sui branch core domain: esegue tutti i test, compila l'app WPF, pubblica l'eseguibile Windows x64 e verifica l'avvio della finestra con un profilo temporaneo.
 
 ## Documentazione
+- Funzionalità di produttività: `docs/PRODUCTIVITY-FEATURES.md`
 - Moodle Web Services: https://docs.moodle.org/503/en/Web_services
 - .NET 10: https://dotnet.microsoft.com/download/dotnet/10.0
