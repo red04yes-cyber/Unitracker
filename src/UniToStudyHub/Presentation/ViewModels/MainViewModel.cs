@@ -397,6 +397,17 @@ public sealed class MainViewModel : INotifyPropertyChanged
         _productivity.StopExamMode(_data); await SaveAsync(); RefreshExamModeDisplay(); ProductivitySummary = "Modalità esame disattivata.";
     }
 
+    public async Task<IReadOnlyList<StudyReminderData>> CollectDueReminderNotificationsAsync()
+    {
+        var now = DateTimeOffset.Now;
+        var due = _productivity.GetDueReminders(_data, now, TimeSpan.FromMinutes(1));
+        if (due.Count == 0) return due;
+        foreach (var reminder in due)
+            _productivity.MarkReminderNotified(_data, reminder.Id, now);
+        await SaveAsync();
+        return due;
+    }
+
     public string ExportAttendanceCsv() => _productivity.ExportAttendanceCsv(_data);
 
     public void RefreshExamModeDisplay()
