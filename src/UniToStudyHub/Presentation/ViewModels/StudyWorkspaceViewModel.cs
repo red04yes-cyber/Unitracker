@@ -82,6 +82,7 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
     private int _simulationManualCorrect;
     private int _simulationManualIncorrect;
     private string _simulationCountdownDisplay = "Nessun limite";
+    private string _manualCorrectAnswerInput = string.Empty;
     private readonly ActivityLedgerService _activityLedger = new();
     private readonly TimedSimulationService _simulationTimer = new();
     private string _focusTopicInput = string.Empty;
@@ -260,6 +261,7 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
     public IReadOnlyList<int> SimulationTimeLimitOptions { get; } = new[] { 0, 10, 15, 20, 30, 45, 60, 90 };
     public int SimulationTimeLimitMinutesInput { get => _simulationTimeLimitMinutesInput; set => Set(ref _simulationTimeLimitMinutesInput, Math.Clamp(value, 0, 90)); }
     public string SimulationCountdownDisplay { get => _simulationCountdownDisplay; private set => Set(ref _simulationCountdownDisplay, value); }
+    public string ManualCorrectAnswerInput { get => _manualCorrectAnswerInput; set => Set(ref _manualCorrectAnswerInput, value); }
     public bool CanManuallyGradeCurrentAnswer => IsSimulationActive && _simulationAnswerPendingManualReview;
     public ObservableCollection<StudyActivityData> SimulationHistory { get; } = new();
     public ObservableCollection<ErrorPattern> WeakTopicPatterns { get; } = new();
@@ -1324,6 +1326,7 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
             SubmitSimulationAnswerCommand.NotifyCanExecuteChanged();
             GradeSimulationAnswerCorrectCommand.NotifyCanExecuteChanged();
             GradeSimulationAnswerIncorrectCommand.NotifyCanExecuteChanged();
+            ManualCorrectAnswerInput = question.CorrectAnswer;
             SimulationStatus = "Risposta aperta acquisita. Valutala manualmente prima di passare al quesito successivo.";
             return;
         }
@@ -1343,6 +1346,15 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
         }
 
         var question = _simulationQuestions[_simulationIndex];
+        var correctedAnswer = string.IsNullOrWhiteSpace(ManualCorrectAnswerInput)
+            ? question.CorrectAnswer.Trim()
+            : ManualCorrectAnswerInput.Trim();
+        if (!correct && string.IsNullOrWhiteSpace(correctedAnswer))
+        {
+            SimulationStatus = "Inserisci la risposta corretta o una breve correzione prima di registrare l’errore.";
+            return;
+        }
+
         _simulationManualReview++;
         if (correct)
         {
@@ -1360,7 +1372,7 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
                 Topic = topic,
                 Question = question.Text,
                 IncorrectAnswer = QuestionAnswerInput,
-                CorrectAnswer = question.CorrectAnswer,
+                CorrectAnswer = correctedAnswer,
                 ErrorType = "Risposta aperta valutata manualmente",
                 RootCause = "Da approfondire dopo la simulazione",
                 Source = "Exam simulator"
@@ -1388,6 +1400,7 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
         GradeSimulationAnswerIncorrectCommand.NotifyCanExecuteChanged();
         _simulationIndex++;
         QuestionAnswerInput = string.Empty;
+        ManualCorrectAnswerInput = string.Empty;
         if (_simulationIndex >= _simulationQuestions.Count)
             await EndSimulationAsync(expired: false);
         else
