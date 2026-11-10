@@ -615,36 +615,143 @@
                     </StackPanel>
                 </StackPanel>
             </TabItem.Header>
-            <Grid Margin="32">
-                <Border Style="{StaticResource CardBorderStyle}" Padding="34"
-                        VerticalAlignment="Center" MaxWidth="640"
-                        HorizontalAlignment="Center">
-                    <StackPanel HorizontalAlignment="Center">
-                        <Border Width="54" Height="54" CornerRadius="16"
-                                Background="{StaticResource AccentSoftBrush}">
-                            <TextBlock Text="04" Foreground="{StaticResource AccentBrush}"
-                                       FontSize="18" FontWeight="Bold"
-                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                <StackPanel Margin="32,28,32,36">
+                    <TextBlock Text="STUDIO E COSTANZA" FontSize="10" FontWeight="Bold"
+                               Foreground="{StaticResource AccentBrush}"/>
+                    <TextBlock Text="Studio Lab" Style="{StaticResource PageTitleStyle}" Margin="0,7,0,4"/>
+                    <TextBlock Text="Registra il tempo dedicato allo studio, conserva note per materia e tieni traccia delle lezioni frequentate."
+                               Style="{StaticResource PageSubtitleStyle}" Margin="0,0,0,20"/>
+
+                    <Grid Margin="0,0,0,14">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="1.15*"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Border Grid.Column="0" Style="{StaticResource CardBorderStyle}" Margin="0,0,10,0">
+                            <StackPanel>
+                                <TextBlock Text="OBIETTIVI DI STUDIO" Style="{StaticResource KpiLabelStyle}"/>
+                                <TextBlock Text="Obiettivo giornaliero (minuti)" Margin="0,12,0,5"
+                                           Foreground="{StaticResource MutedBrush}" FontSize="11"/>
+                                <TextBox Text="{Binding DailyGoalInput, UpdateSourceTrigger=PropertyChanged}"/>
+                                <TextBlock Text="Obiettivo settimanale (minuti)" Margin="0,10,0,5"
+                                           Foreground="{StaticResource MutedBrush}" FontSize="11"/>
+                                <TextBox Text="{Binding WeeklyGoalInput, UpdateSourceTrigger=PropertyChanged}"/>
+                                <Button Content="Salva obiettivi" Command="{Binding SaveStudyGoalsCommand}"
+                                        HorizontalAlignment="Left" Margin="0,12,0,0"/>
+                            </StackPanel>
                         </Border>
-                        <TextBlock Text="Studio Lab" FontSize="22" FontWeight="SemiBold"
-                                   Foreground="{StaticResource InkBrush}"
-                                   HorizontalAlignment="Center" Margin="0,17,0,6"/>
-                        <TextBlock Text="Questa sezione è in progettazione."
-                                   FontSize="13" Foreground="{StaticResource MutedBrush}"
-                                   HorizontalAlignment="Center"/>
-                        <TextBlock Text="Qui troverai timer Pomodoro, missioni, registro focus, Active Recall, schede personali e diario degli errori. Le funzioni saranno attivate solo quando avranno dati e salvataggi reali."
-                                   FontSize="12" Foreground="{StaticResource MutedBrush}"
-                                   TextWrapping="Wrap" TextAlignment="Center"
-                                   MaxWidth="500" Margin="0,12,0,0"/>
-                        <Border Background="{StaticResource SubtleBrush}" CornerRadius="7"
-                                Padding="10,6" Margin="0,18,0,0">
-                            <TextBlock Text="FASE 3 · NON ANCORA DISPONIBILE"
-                                       FontSize="10" FontWeight="Bold"
-                                       Foreground="{StaticResource MutedBrush}"/>
+                        <Border Grid.Column="1" Style="{StaticResource CardBorderStyle}" Margin="0,0,10,0">
+                            <StackPanel>
+                                <TextBlock Text="FOCUS DI OGGI" Style="{StaticResource KpiLabelStyle}"/>
+                                <TextBlock Text="{Binding CurrentStreakDisplay}" FontSize="34"
+                                           FontWeight="SemiBold" Foreground="{StaticResource AccentBrush}" Margin="0,12,0,0"/>
+                                <TextBlock Text="giorni di streak" FontSize="11"
+                                           Foreground="{StaticResource MutedBrush}"/>
+                                <TextBlock Text="{Binding WeeklyFocusDisplay}" FontSize="14"
+                                           FontWeight="SemiBold" Foreground="{StaticResource InkBrush}" Margin="0,15,0,0"/>
+                                <TextBlock Text="minuti questa settimana" FontSize="10"
+                                           Foreground="{StaticResource MutedBrush}"/>
+                            </StackPanel>
                         </Border>
-                    </StackPanel>
-                </Border>
-            </Grid>
+                        <Border Grid.Column="2" Style="{StaticResource CardBorderStyle}">
+                            <StackPanel>
+                                <TextBlock Text="REGISTRA SESSIONE" Style="{StaticResource KpiLabelStyle}"/>
+                                <TextBlock Text="Minuti di studio" Margin="0,12,0,5"
+                                           Foreground="{StaticResource MutedBrush}" FontSize="11"/>
+                                <TextBox Text="{Binding FocusMinutesInput, UpdateSourceTrigger=PropertyChanged}"/>
+                                <Button Content="Registra focus" Command="{Binding RecordFocusCommand}"
+                                        HorizontalAlignment="Left" Margin="0,12,0,0"/>
+                                <TextBlock Text="Ogni sessione viene sommata al totale della giornata."
+                                           FontSize="10" Foreground="{StaticResource MutedBrush}"
+                                           TextWrapping="Wrap" Margin="0,10,0,0"/>
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+
+                    <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,14">
+                        <StackPanel>
+                            <TextBlock Text="MATERIA SELEZIONATA" Style="{StaticResource KpiLabelStyle}"/>
+                            <ComboBox ItemsSource="{Binding Courses}" SelectedItem="{Binding SelectedProductivityCourse}"
+                                      DisplayMemberPath="Name" Margin="0,8,0,0" MaxWidth="440"
+                                      HorizontalAlignment="Left"/>
+                        </StackPanel>
+                    </Border>
+
+                    <Grid Margin="0,0,0,14">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Border Grid.Column="0" Style="{StaticResource CardBorderStyle}" Margin="0,0,10,0">
+                            <StackPanel>
+                                <TextBlock Text="NOTA RAPIDA" Style="{StaticResource SectionTitleStyle}"/>
+                                <TextBlock Text="Argomento" FontSize="11" Foreground="{StaticResource MutedBrush}" Margin="0,12,0,5"/>
+                                <TextBox Text="{Binding NoteTopicInput, UpdateSourceTrigger=PropertyChanged}"/>
+                                <TextBlock Text="Contenuto" FontSize="11" Foreground="{StaticResource MutedBrush}" Margin="0,10,0,5"/>
+                                <TextBox Text="{Binding NoteContentInput, UpdateSourceTrigger=PropertyChanged}"
+                                         AcceptsReturn="True" TextWrapping="Wrap" MinHeight="86"
+                                         VerticalContentAlignment="Top"/>
+                                <Button Content="Salva nota" Command="{Binding SaveQuickNoteCommand}"
+                                        HorizontalAlignment="Left" Margin="0,12,0,0"/>
+                            </StackPanel>
+                        </Border>
+                        <Border Grid.Column="1" Style="{StaticResource CardBorderStyle}">
+                            <StackPanel>
+                                <TextBlock Text="REGISTRA LEZIONE" Style="{StaticResource SectionTitleStyle}"/>
+                                <TextBlock Text="Titolo della lezione" FontSize="11" Foreground="{StaticResource MutedBrush}" Margin="0,12,0,5"/>
+                                <TextBox Text="{Binding AttendanceTitleInput, UpdateSourceTrigger=PropertyChanged}"/>
+                                <Grid Margin="0,10,0,0">
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="12"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                    <StackPanel Grid.Column="0">
+                                        <TextBlock Text="Data e ora" FontSize="11" Foreground="{StaticResource MutedBrush}" Margin="0,0,0,5"/>
+                                        <TextBox Text="{Binding AttendanceDateInput, UpdateSourceTrigger=PropertyChanged}"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="2">
+                                        <TextBlock Text="Durata (min)" FontSize="11" Foreground="{StaticResource MutedBrush}" Margin="0,0,0,5"/>
+                                        <TextBox Text="{Binding AttendanceDurationInput, UpdateSourceTrigger=PropertyChanged}"/>
+                                    </StackPanel>
+                                </Grid>
+                                <TextBlock Text="Appunti (facoltativi)" FontSize="11" Foreground="{StaticResource MutedBrush}" Margin="0,10,0,5"/>
+                                <TextBox Text="{Binding AttendanceNotesInput, UpdateSourceTrigger=PropertyChanged}"/>
+                                <Button Content="Registra presenza" Command="{Binding RecordAttendanceCommand}"
+                                        HorizontalAlignment="Left" Margin="0,12,0,0"/>
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+
+                    <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,14">
+                        <StackPanel>
+                            <TextBlock Text="ULTIME NOTE" Style="{StaticResource SectionTitleStyle}" Margin="0,0,0,10"/>
+                            <DataGrid ItemsSource="{Binding QuickNotes}" IsReadOnly="True" MaxHeight="180">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="Argomento" Binding="{Binding Topic}" Width="160"/>
+                                    <DataGridTextColumn Header="Contenuto" Binding="{Binding Content}" Width="*"/>
+                                    <DataGridTextColumn Header="Aggiornata" Binding="{Binding UpdatedAt, StringFormat=dd/MM/yyyy HH:mm}" Width="150"/>
+                                </DataGrid.Columns>
+                            </DataGrid>
+                        </StackPanel>
+                    </Border>
+                    <Border Style="{StaticResource CardBorderStyle}">
+                        <StackPanel>
+                            <TextBlock Text="REGISTRO LEZIONI" Style="{StaticResource SectionTitleStyle}" Margin="0,0,0,10"/>
+                            <DataGrid ItemsSource="{Binding AttendanceRecords}" IsReadOnly="True" MaxHeight="200">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="Lezione" Binding="{Binding Title}" Width="*"/>
+                                    <DataGridTextColumn Header="Data" Binding="{Binding StartsAt, StringFormat=dd/MM/yyyy HH:mm}" Width="160"/>
+                                    <DataGridTextColumn Header="Durata" Binding="{Binding DurationMinutes}" Width="90"/>
+                                    <DataGridCheckBoxColumn Header="Presente" Binding="{Binding Attended}" Width="90"/>
+                                </DataGrid.Columns>
+                            </DataGrid>
+                        </StackPanel>
+                    </Border>
+                    <Border Background="{StaticResource SubtleBrush}" CornerRadius="8" Padding="12" Margin="0,14,0,0">
+                        <TextBlock Text="{Binding ProductivitySummary}" Foreground="{StaticResource InkBrush}"
+                                   FontSize="12" TextWrapping="Wrap"/>
+                    </Border>
+                </StackPanel>
+            </ScrollViewer>
         </TabItem>
 
         <TabItem>
