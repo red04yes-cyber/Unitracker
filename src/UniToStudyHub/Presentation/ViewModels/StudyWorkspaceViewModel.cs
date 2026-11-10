@@ -21,6 +21,7 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
     private readonly AcademicProfileService _academicProfile;
     private readonly FocusSessionService _focus;
     private readonly StudyTaskService _tasks;
+    private readonly ActivityLedgerService _activityLedger = new();
     private readonly ErrorJournalService _errors;
     private readonly DistractionService _distractions;
     private readonly EnergyService _energy;
@@ -45,6 +46,7 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
     private DateTimeOffset? _breakEndsAt;
     private bool _breakCompleted;
     private StudyTaskData? _selectedTask;
+    private TaskProgressSnapshot? _selectedTaskProgress;
     private FlashcardData? _selectedDueFlashcard;
     private ErrorJournalEntryData? _selectedErrorEntry;
     private DistractionData? _selectedDistraction;
@@ -194,8 +196,47 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
     public string SimulationQuestionDisplay => IsSimulationActive && _simulationIndex < _simulationQuestions.Count
         ? $"Quesito {_simulationIndex + 1}/{_simulationQuestions.Count} · {_simulationQuestions[_simulationIndex].Text}"
         : "Nessun quesito attivo.";
-    public StudyTaskData? SelectedTask { get => _selectedTask; set { if (ReferenceEquals(_selectedTask, value)) return; _selectedTask = value; OnPropertyChanged(); OnPropertyChanged(nameof(HasSelectedTask)); CompleteTaskCommand.NotifyCanExecuteChanged(); RemoveTaskCommand.NotifyCanExecuteChanged(); } }
+    public StudyTaskData? SelectedTask
+    {
+        get => _selectedTask;
+        set
+        {
+            if (ReferenceEquals(_selectedTask, value)) return;
+            _selectedTask = value;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(HasSelectedTask));
+            CompleteTaskCommand.NotifyCanExecuteChanged();
+            RemoveTaskCommand.NotifyCanExecuteChanged();
+            RefreshSelectedTaskProgress();
+        }
+    }
     public bool HasSelectedTask => SelectedTask is not null;
+    public TaskProgressSnapshot? SelectedTaskProgress
+    {
+        get => _selectedTaskProgress;
+        private set
+        {
+            if (EqualityComparer<TaskProgressSnapshot?>.Default.Equals(_selectedTaskProgress, value)) return;
+            _selectedTaskProgress = value;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(SelectedTaskProgressDisplay));
+            OnPropertyChanged(nameof(SelectedTaskProgressPercent));
+            OnPropertyChanged(nameof(SelectedTaskRemainingMinutesDisplay));
+            OnPropertyChanged(nameof(SelectedTaskOverEstimate));
+        }
+    }
+    public string SelectedTaskProgressDisplay => SelectedTaskProgress is not { } progress
+        ? "Seleziona un'attività per vedere il tempo registrato."
+        : !progress.HasEstimate
+            ? $"{progress.RecordedMinutes} min registrati · stima non configurata"
+            : progress.IsOverEstimate
+                ? $"{progress.RecordedMinutes} min registrati · oltre la stima"
+                : $"{progress.RecordedMinutes} min registrati · {progress.RemainingMinutes} min rimanenti";
+    public int SelectedTaskProgressPercent => SelectedTaskProgress?.ProgressPercent ?? 0;
+    public string SelectedTaskRemainingMinutesDisplay => SelectedTaskProgress is { HasEstimate: true } progress
+        ? $"{progress.RemainingMinutes} min rimanenti"
+        : "Stima non configurata";
+    public bool SelectedTaskOverEstimate => SelectedTaskProgress?.IsOverEstimate ?? false;
     public FlashcardData? SelectedDueFlashcard { get => _selectedDueFlashcard; set { Set(ref _selectedDueFlashcard, value); FlashcardRevealed = false; NotifyReviewCommands(); } }
     public ErrorJournalEntryData? SelectedErrorEntry { get => _selectedErrorEntry; set { Set(ref _selectedErrorEntry, value); ReviewErrorNeedsWorkCommand.NotifyCanExecuteChanged(); ReviewErrorRememberedCommand.NotifyCanExecuteChanged(); } }
     public DistractionData? SelectedDistraction { get => _selectedDistraction; set { Set(ref _selectedDistraction, value); ResolveDistractionCommand.NotifyCanExecuteChanged(); } }
@@ -610,9 +651,18 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
         {
             _breakEndsAt = null;
             _breakCompleted = false;
-            _focus.Start(_data, SelectedFocusCourse?.Id, FocusTopicInput, minutes);
+            var task = SelectedTask is { Status: StudyTaskStatus.Todo or StudyTaskStatus.InProgress }
+                ? SelectedTask
+                : null;
+            var courseId = !string.IsNullOrWhiteSpace(task?.CourseId)
+                ? task.CourseId
+                : SelectedFocusCourse?.Id;
+            var topic = string.IsNullOrWhiteSpace(FocusTopicInput) ? task?.Title ?? string.Empty : FocusTopicInput;
+            var session = _focus.Start(_data, courseId, topic, minutes);
+            _activityLedger.SyncFocusSession(_data, session, taskId: task?.Id);
             await SaveAsync();
             FocusTopicInput = string.Empty;
+            RefreshSelectedTaskProgress();
             RefreshFocusSnapshot();
         }
         catch (Exception ex) { WorkspaceStatus = $"Sessione non avviata: {ex.Message}"; }
@@ -639,7 +689,9 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
                     _breakCompleted = false;
                     break;
             }
+            _activityLedger.SyncFocusSession(_data, active);
             await SaveAsync();
+            RefreshSelectedTaskProgress();
             RefreshFocusSnapshot();
             RefreshProgress();
             RefreshCollections();
@@ -685,7 +737,19 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
     private async Task RemoveTaskAsync()
     {
         if (SelectedTask is null) return;
-        try { _tasks.Remove(_data, SelectedTask.Id); await SaveAsync(); SelectedTask = null; RefreshCollections(); }
+        var task = SelectedTask;
+        var hasRecordedHistory = _data.StudyActivities.Any(x =>
+            string.Equals(x.TaskId, task.Id, StringComparison.Ordinal));
+        try
+        {
+            _tasks.Remove(_data, task.Id);
+            await SaveAsync();
+            SelectedTask = null;
+            RefreshCollections();
+            WorkspaceStatus = hasRecordedHistory
+                ? "Attività rimossa dall'elenco; il task è stato conservato perché collegato allo storico di studio."
+                : "Attività rimossa.";
+        }
         catch (Exception ex) { WorkspaceStatus = $"Task non rimosso: {ex.Message}"; }
     }
 
@@ -1269,8 +1333,23 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(NoPdfDocuments));
         OnPropertyChanged(nameof(PdfDocuments));
         OnPropertyChanged(nameof(PdfDocumentSummary));
+        if (SelectedTask is not null && !ActiveTasks.Any(x => string.Equals(x.Id, SelectedTask.Id, StringComparison.Ordinal)))
+            SelectedTask = null;
+        else
+            RefreshSelectedTaskProgress();
         if (SelectedDueFlashcard is null || !DueFlashcards.Any(x => x.Id == SelectedDueFlashcard.Id))
             SelectedDueFlashcard = DueFlashcards.FirstOrDefault();
+    }
+
+    private void RefreshSelectedTaskProgress()
+    {
+        if (SelectedTask is null || !_data.StudyTasks.Any(x => string.Equals(x.Id, SelectedTask.Id, StringComparison.Ordinal)))
+        {
+            SelectedTaskProgress = null;
+            return;
+        }
+
+        SelectedTaskProgress = _activityLedger.GetTaskProgress(_data, SelectedTask.Id);
     }
 
     private void RefreshProgress()
