@@ -397,6 +397,8 @@ public sealed class MainViewModel : INotifyPropertyChanged
         _productivity.StopExamMode(_data); await SaveAsync(); RefreshExamModeDisplay(); ProductivitySummary = "Modalità esame disattivata.";
     }
 
+    public string ExportAttendanceCsv() => _productivity.ExportAttendanceCsv(_data);
+
     public void RefreshExamModeDisplay()
     {
         var snapshot = _productivity.GetExamMode(_data, DateTimeOffset.Now);
