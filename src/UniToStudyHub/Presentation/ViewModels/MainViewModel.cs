@@ -64,6 +64,8 @@ public sealed class MainViewModel : INotifyPropertyChanged
         }
     }
     public bool HasSelectedCourse => SelectedCourse is not null;
+    public bool HasSelectedCourseTopics => SelectedCourseTopics.Count > 0;
+    public bool HasSelectedCourseGrades => SelectedCourseGrades.Count > 0;
     public string SelectedCourseProgressDisplay
     {
         get
