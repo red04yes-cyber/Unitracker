@@ -80,6 +80,53 @@ public sealed class StudyProductivityService
         return reminder;
     }
 
+    public bool SynchronizeExamReminders(StudyData data)
+    {
+        ArgumentNullException.ThrowIfNull(data);
+        var changed = false;
+        foreach (var exam in data.Exams)
+        {
+            var reminder = data.Productivity.Reminders.FirstOrDefault(x => x.SourceExamId == exam.Id);
+            if (exam.Completed || !exam.PlannedDate.HasValue)
+            {
+                if (reminder is { Enabled: true })
+                {
+                    reminder.Enabled = false;
+                    changed = true;
+                }
+                continue;
+            }
+
+            var dueAt = new DateTimeOffset(exam.PlannedDate.Value.Date.AddHours(9));
+            var title = $"Esame: {exam.Name}";
+            if (reminder is null)
+            {
+                data.Productivity.Reminders.Add(new StudyReminderData
+                {
+                    Title = title,
+                    CourseId = exam.CourseId,
+                    SourceExamId = exam.Id,
+                    DueAt = dueAt,
+                    Kind = "Esame"
+                });
+                changed = true;
+                continue;
+            }
+
+            if (reminder.Title != title || reminder.CourseId != exam.CourseId ||
+                reminder.DueAt != dueAt || !reminder.Enabled)
+            {
+                reminder.Title = title;
+                reminder.CourseId = exam.CourseId;
+                reminder.DueAt = dueAt;
+                reminder.Enabled = true;
+                reminder.LastNotifiedAt = null;
+                changed = true;
+            }
+        }
+        return changed;
+    }
+
     public IReadOnlyList<StudyReminderData> GetDueReminders(StudyData data, DateTimeOffset now, TimeSpan lookAhead)
     {
         ArgumentNullException.ThrowIfNull(data);
