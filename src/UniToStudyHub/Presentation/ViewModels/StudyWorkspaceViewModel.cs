@@ -1355,7 +1355,7 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
             _simulationManualIncorrect++;
             var topic = _data.SyllabusTopics.FirstOrDefault(x => x.Id == question.SyllabusTopicId)?.Title
                 ?? "Argomento non specificato";
-            _errors.Add(_data, new ErrorJournalEntryData
+            var errorEntry = _errors.Add(_data, new ErrorJournalEntryData
             {
                 CourseId = question.CourseId,
                 SyllabusTopicId = question.SyllabusTopicId,
@@ -1367,8 +1367,17 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
                 RootCause = "Da approfondire dopo la simulazione",
                 Source = "Exam simulator"
             });
-            await SaveAsync();
-            RefreshSimulationHistoryAndWeakTopics();
+            try
+            {
+                await SaveAsync();
+                RefreshSimulationHistoryAndWeakTopics();
+            }
+            catch (Exception ex)
+            {
+                _data.ErrorJournalEntries.Remove(errorEntry);
+                SimulationStatus = $"Correzione non salvata: {ex.Message}";
+                return;
+            }
         }
         await AdvanceSimulationAsync();
     }
