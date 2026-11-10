@@ -78,6 +78,7 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
     private DateTimeOffset? _simulationStartedAt;
     private DateTimeOffset? _simulationDeadline;
     private bool _simulationAnswerPendingManualReview;
+    private bool _simulationWasTimed;
     private int _simulationManualCorrect;
     private int _simulationManualIncorrect;
     private string _simulationCountdownDisplay = "Nessun limite";
@@ -1292,6 +1293,7 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
         _simulationManualIncorrect = 0;
         _simulationAnswerPendingManualReview = false;
         _simulationStartedAt = DateTimeOffset.Now;
+        _simulationWasTimed = SimulationTimeLimitMinutesInput > 0;
         _simulationDeadline = SimulationTimeLimitMinutesInput > 0
             ? _simulationStartedAt.Value.AddMinutes(SimulationTimeLimitMinutesInput)
             : null;
@@ -1396,7 +1398,6 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
         var started = _simulationStartedAt ?? DateTimeOffset.Now.AddSeconds(-1);
         var ended = DateTimeOffset.Now;
         if (ended <= started) ended = started.AddSeconds(1);
-        var duration = Math.Max(1, (int)(ended - started).TotalSeconds);
         var result = $"Automatiche corrette: {_simulationCorrect}/{_simulationAutoMarked}; manuali corrette: {_simulationManualCorrect}; manuali errate: {_simulationManualIncorrect}; aperte valutate: {_simulationManualReview}.";
         var note = expired ? "Simulazione interrotta automaticamente alla scadenza del limite." : "Simulazione completata dall'utente.";
         try
@@ -1410,7 +1411,7 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
                 courseId: SelectedCourse?.Id,
                 note: note,
                 result: result,
-                tags: new[] { "exam-simulator", _simulationDeadline is null ? "timed" : "timed" });
+                tags: new[] { "exam-simulator", _simulationWasTimed ? "timed" : "untimed" });
             await SaveAsync();
             RefreshSimulationHistoryAndWeakTopics();
             SimulationStatus = expired
