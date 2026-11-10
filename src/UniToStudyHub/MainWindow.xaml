@@ -788,6 +788,19 @@
                             </DataGrid>
                         </StackPanel>
                     </Border>
+                    <Border Style="{StaticResource CardBorderStyle}" Margin="0,14,0,0">
+                        <StackPanel>
+                            <TextBlock Text="PROMEMORIA SALVATI" Style="{StaticResource SectionTitleStyle}" Margin="0,0,0,10"/>
+                            <DataGrid ItemsSource="{Binding ReminderRecords}" IsReadOnly="True" MaxHeight="170">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="Attività" Binding="{Binding Title}" Width="*"/>
+                                    <DataGridTextColumn Header="Tipo" Binding="{Binding Kind}" Width="110"/>
+                                    <DataGridTextColumn Header="Scadenza" Binding="{Binding DueAt, StringFormat=dd/MM/yyyy HH:mm}" Width="160"/>
+                                    <DataGridCheckBoxColumn Header="Attivo" Binding="{Binding Enabled}" Width="75"/>
+                                </DataGrid.Columns>
+                            </DataGrid>
+                        </StackPanel>
+                    </Border>
                     <Border Background="{StaticResource SubtleBrush}" CornerRadius="8" Padding="12" Margin="0,14,0,0">
                         <TextBlock Text="{Binding ProductivitySummary}" Foreground="{StaticResource InkBrush}"
                                    FontSize="12" TextWrapping="Wrap"/>
