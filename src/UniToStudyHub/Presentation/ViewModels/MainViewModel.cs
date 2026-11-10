@@ -91,6 +91,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
     {
         SelectedCourse = course;
         Workspace.SelectedTaskCourse = course;
+        Workspace.SelectedCourse = course;
         SaveCourseDetailsCommand.NotifyCanExecuteChanged();
     }
 
@@ -98,6 +99,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
     {
         SelectedCourse = null;
         Workspace.SelectedTaskCourse = null;
+        Workspace.SelectedCourse = null;
         SaveCourseDetailsCommand.NotifyCanExecuteChanged();
     }
 
