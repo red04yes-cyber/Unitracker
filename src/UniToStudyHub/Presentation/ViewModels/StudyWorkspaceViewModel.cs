@@ -263,7 +263,8 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
     public bool CanManuallyGradeCurrentAnswer => IsSimulationActive && _simulationAnswerPendingManualReview;
     public ObservableCollection<StudyActivityData> SimulationHistory { get; } = new();
     public ObservableCollection<ErrorPattern> WeakTopicPatterns { get; } = new();
-    public bool IsSimulationActive { get => _simulationActive; private set { Set(ref _simulationActive, value); OnPropertyChanged(nameof(SimulationQuestionDisplay)); OnPropertyChanged(nameof(CanManuallyGradeCurrentAnswer)); SubmitSimulationAnswerCommand?.NotifyCanExecuteChanged(); GradeSimulationAnswerCorrectCommand?.NotifyCanExecuteChanged(); GradeSimulationAnswerIncorrectCommand?.NotifyCanExecuteChanged(); } }
+    public bool IsSimulationActive { get => _simulationActive; private set { Set(ref _simulationActive, value); OnPropertyChanged(nameof(SimulationQuestionDisplay)); OnPropertyChanged(nameof(CanManuallyGradeCurrentAnswer)); OnPropertyChanged(nameof(CanChangeSimulationTimeLimit)); SubmitSimulationAnswerCommand?.NotifyCanExecuteChanged(); StartSimulationCommand?.NotifyCanExecuteChanged(); GradeSimulationAnswerCorrectCommand?.NotifyCanExecuteChanged(); GradeSimulationAnswerIncorrectCommand?.NotifyCanExecuteChanged(); } }
+    public bool CanChangeSimulationTimeLimit => !IsSimulationActive;
     public string SimulationQuestionDisplay => IsSimulationActive && _simulationIndex < _simulationQuestions.Count
         ? $"Quesito {_simulationIndex + 1}/{_simulationQuestions.Count} · {_simulationQuestions[_simulationIndex].Text}"
         : "Nessun quesito attivo.";
@@ -518,7 +519,7 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
         UpdateSyllabusPreparednessCommand = new AsyncRelayCommand(UpdateSyllabusPreparednessAsync, () => SelectedSyllabusTopic is not null);
         AddQuestionCommand = new AsyncRelayCommand(AddQuestionAsync, () => SelectedCourse is not null);
         EvaluateQuestionCommand = new AsyncRelayCommand(EvaluateQuestionAsync, () => SelectedQuestion is not null);
-        StartSimulationCommand = new AsyncRelayCommand(StartSimulationAsync, () => QuestionBankItems.Count > 0);
+        StartSimulationCommand = new AsyncRelayCommand(StartSimulationAsync, () => QuestionBankItems.Count > 0 && !IsSimulationActive);
         SubmitSimulationAnswerCommand = new AsyncRelayCommand(SubmitSimulationAnswerAsync, () => IsSimulationActive && !_simulationAnswerPendingManualReview);
         GradeSimulationAnswerCorrectCommand = new AsyncRelayCommand(() => GradeCurrentSimulationAnswerAsync(true), () => CanManuallyGradeCurrentAnswer);
         GradeSimulationAnswerIncorrectCommand = new AsyncRelayCommand(() => GradeCurrentSimulationAnswerAsync(false), () => CanManuallyGradeCurrentAnswer);
