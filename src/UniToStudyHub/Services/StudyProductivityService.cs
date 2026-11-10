@@ -224,7 +224,7 @@ public sealed class StudyProductivityService
     public StudyNextActivity? GetNextActivity(StudyData data, DateTimeOffset now)
     {
         var exam = data.Exams.Where(x => !x.Completed && x.PlannedDate.HasValue)
-            .Select(x => new StudyNextActivity(x.Name, new DateTimeOffset(x.PlannedDate.GetValueOrDefault()), "Exam", x.CourseId))
+            .Select(x => new StudyNextActivity(x.Name, new DateTimeOffset(x.PlannedDate.GetValueOrDefault().Date.AddHours(9)), "Exam", x.CourseId))
             .Where(x => x.StartsAt >= now);
         var reminder = data.Productivity.Reminders.Where(x => x.Enabled && x.DueAt >= now)
             .Select(x => new StudyNextActivity(x.Title, x.DueAt, x.Kind, x.CourseId));
