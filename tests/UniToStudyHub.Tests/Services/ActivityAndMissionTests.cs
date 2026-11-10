@@ -585,4 +585,25 @@ public sealed class ActivityAndMissionTests
         Assert.DoesNotContain(data.StudyTasks, x => x.Id == task.Id);
     }
 
+
+    [Fact]
+    public void TimerActivityWithoutFocusSessionIsRejectedByPersistenceValidation()
+    {
+        var data = Data();
+        data.StudyActivities.Add(new StudyActivityData
+        {
+            Id = "orphan-timer",
+            Type = StudyActivityType.Study,
+            Title = "Timer senza sessione",
+            StartedAt = Start,
+            EndedAt = Start.AddMinutes(5),
+            TimeZoneId = "UTC",
+            EffectiveSeconds = 300,
+            Origin = StudyActivityOrigin.Timer,
+            Status = StudyActivityStatus.Completed
+        });
+
+        Assert.Throws<InvalidDataException>(() => StudyDataEntityMapper.NormalizeAndValidate(data));
+    }
+
 }
