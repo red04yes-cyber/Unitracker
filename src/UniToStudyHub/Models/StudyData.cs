@@ -141,9 +141,16 @@ public sealed class SyllabusTopicData
 {
     public string Id { get; set; } = Guid.NewGuid().ToString("N");
     public string CourseId { get; set; } = string.Empty;
+    public string ParentTopicId { get; set; } = string.Empty;
+    public SyllabusTopicKind Kind { get; set; } = SyllabusTopicKind.Topic;
+    public int Position { get; set; }
     public string Title { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
     public SyllabusTopicStatus Status { get; set; }
+    /// <summary>Work completed on this entry, 0–100; independent from mastery.</summary>
+    public int CompletionPercent { get; set; }
+    /// <summary>Personal recall/understanding assessment; 0 means not rated.</summary>
+    public TopicPreparednessLevel Preparedness { get; set; } = TopicPreparednessLevel.Unrated;
     public int EstimatedMinutes { get; set; }
     public string SourceUrl { get; set; } = string.Empty;
     public DateTime? LastStudiedAt { get; set; }

@@ -296,10 +296,41 @@ public static class StudyDataEntityMapper
                 throw new InvalidDataException($"Syllabus topic '{topic.Id}' refers to a course that does not exist.");
             if (!Enum.IsDefined(topic.Status))
                 throw new InvalidDataException($"Syllabus topic '{topic.Id}' has an unknown status.");
-            if (topic.EstimatedMinutes < 0)
-                throw new InvalidDataException($"Syllabus topic '{topic.Id}' has negative estimated minutes.");
+            if (!Enum.IsDefined(topic.Kind))
+                throw new InvalidDataException($"Syllabus topic '{topic.Id}' has an unknown hierarchy kind.");
+            if (!Enum.IsDefined(topic.Preparedness))
+                throw new InvalidDataException($"Syllabus topic '{topic.Id}' has an unknown preparedness level.");
+            if (topic.CompletionPercent is < 0 or > 100)
+                throw new InvalidDataException($"Syllabus topic '{topic.Id}' has a completion percentage outside 0–100.");
+            if (topic.Position < 0 || topic.EstimatedMinutes < 0)
+                throw new InvalidDataException($"Syllabus topic '{topic.Id}' has a negative position or estimated duration.");
+            topic.ParentTopicId ??= string.Empty;
             topic.Description ??= string.Empty;
             topic.SourceUrl ??= string.Empty;
+        }
+
+        var syllabusById = data.SyllabusTopics.ToDictionary(x => x.Id, StringComparer.Ordinal);
+        foreach (var topic in data.SyllabusTopics)
+        {
+            if (topic.Kind == SyllabusTopicKind.Module && !string.IsNullOrWhiteSpace(topic.ParentTopicId))
+                throw new InvalidDataException($"Syllabus module '{topic.Id}' cannot have a parent.");
+            if (topic.Kind == SyllabusTopicKind.Chapter && string.IsNullOrWhiteSpace(topic.ParentTopicId))
+                throw new InvalidDataException($"Syllabus chapter '{topic.Id}' must belong to a module.");
+            if (topic.Kind == SyllabusTopicKind.Topic && string.IsNullOrWhiteSpace(topic.ParentTopicId))
+                continue; // Legacy flat topics remain valid.
+            if (string.IsNullOrWhiteSpace(topic.ParentTopicId)) continue;
+            if (!syllabusById.TryGetValue(topic.ParentTopicId, out var parent) ||
+                parent.CourseId != topic.CourseId)
+                throw new InvalidDataException($"Syllabus topic '{topic.Id}' refers to a missing or foreign parent.");
+            var validParent = topic.Kind switch
+            {
+                SyllabusTopicKind.Chapter => parent.Kind == SyllabusTopicKind.Module,
+                SyllabusTopicKind.Topic => parent.Kind == SyllabusTopicKind.Chapter,
+                _ => false
+            };
+            if (!validParent)
+                throw new InvalidDataException($"Syllabus topic '{topic.Id}' has an invalid parent hierarchy.");
+        }
         }
     }
 
@@ -831,9 +862,14 @@ public static class StudyDataEntityMapper
         {
             Id = x.Id,
             CourseId = x.CourseId,
+            ParentTopicId = x.ParentTopicId,
+            Kind = (int)x.Kind,
+            Position = x.Position,
             Title = x.Title,
             Description = x.Description,
             Status = (int)x.Status,
+            CompletionPercent = x.CompletionPercent,
+            Preparedness = (int)x.Preparedness,
             EstimatedMinutes = x.EstimatedMinutes,
             SourceUrl = x.SourceUrl,
             LastStudiedAt = x.LastStudiedAt,
@@ -1180,9 +1216,14 @@ public static class StudyDataEntityMapper
             {
                 Id = x.Id,
                 CourseId = x.CourseId,
+                ParentTopicId = x.ParentTopicId,
+                Kind = (SyllabusTopicKind)x.Kind,
+                Position = x.Position,
                 Title = x.Title,
                 Description = x.Description,
                 Status = (SyllabusTopicStatus)x.Status,
+                CompletionPercent = x.CompletionPercent,
+                Preparedness = (TopicPreparednessLevel)x.Preparedness,
                 EstimatedMinutes = x.EstimatedMinutes,
                 SourceUrl = x.SourceUrl,
                 LastStudiedAt = x.LastStudiedAt,

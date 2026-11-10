@@ -137,6 +137,12 @@ public sealed class StudyHubDbContext(DbContextOptions<StudyHubDbContext> option
             b.ToTable("SyllabusTopics");
             b.HasKey(x => x.Id);
             b.HasIndex(x => new { x.CourseId, x.Status });
+            b.HasIndex(x => new { x.CourseId, x.ParentTopicId, x.Position });
+            b.Property(x => x.ParentTopicId).HasMaxLength(64).HasDefaultValue(string.Empty).IsRequired();
+            b.Property(x => x.Kind).HasDefaultValue(2);
+            b.Property(x => x.Position).HasDefaultValue(0);
+            b.Property(x => x.CompletionPercent).HasDefaultValue(0);
+            b.Property(x => x.Preparedness).HasDefaultValue(0);
             b.Property(x => x.Title).HasMaxLength(400).IsRequired();
             b.Property(x => x.Description).HasMaxLength(12000).IsRequired();
             b.Property(x => x.SourceUrl).HasMaxLength(2048).IsRequired();

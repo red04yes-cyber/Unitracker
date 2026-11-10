@@ -1322,6 +1322,11 @@ namespace UniToStudyHub.Infrastructure.Data.Migrations
                     b.Property<string>("Id")
                         .HasColumnType("TEXT");
 
+                    b.Property<int>("CompletionPercent")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(0);
+
                     b.Property<string>("CourseId")
                         .IsRequired()
                         .HasColumnType("TEXT");
@@ -1334,8 +1339,29 @@ namespace UniToStudyHub.Infrastructure.Data.Migrations
                     b.Property<int>("EstimatedMinutes")
                         .HasColumnType("INTEGER");
 
+                    b.Property<int>("Kind")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(2);
+
                     b.Property<DateTime?>("LastStudiedAt")
                         .HasColumnType("TEXT");
+
+                    b.Property<string>("ParentTopicId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT")
+                        .HasDefaultValue("");
+
+                    b.Property<int>("Position")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(0);
+
+                    b.Property<int>("Preparedness")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(0);
 
                     b.Property<string>("SourceUrl")
                         .IsRequired()
@@ -1358,6 +1384,8 @@ namespace UniToStudyHub.Infrastructure.Data.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("CourseId", "Status");
+
+                    b.HasIndex("CourseId", "ParentTopicId", "Position");
 
                     b.ToTable("SyllabusTopics", (string)null);
                 });

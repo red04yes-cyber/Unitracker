@@ -109,9 +109,14 @@ public sealed class SyllabusTopicEntity
 {
     public string Id { get; set; } = string.Empty;
     public string CourseId { get; set; } = string.Empty;
+    public string ParentTopicId { get; set; } = string.Empty;
+    public int Kind { get; set; }
+    public int Position { get; set; }
     public string Title { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
     public int Status { get; set; }
+    public int CompletionPercent { get; set; }
+    public int Preparedness { get; set; }
     public int EstimatedMinutes { get; set; }
     public string SourceUrl { get; set; } = string.Empty;
     public DateTime? LastStudiedAt { get; set; }

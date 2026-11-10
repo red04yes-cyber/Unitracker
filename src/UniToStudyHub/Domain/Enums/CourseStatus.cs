@@ -23,6 +23,25 @@ public enum SyllabusTopicStatus
     Completed = 2
 }
 
+/// <summary>Hierarchy level for a syllabus entry.</summary>
+public enum SyllabusTopicKind
+{
+    Module = 0,
+    Chapter = 1,
+    Topic = 2
+}
+
+/// <summary>Self-assessed mastery, kept separate from work completion.</summary>
+public enum TopicPreparednessLevel
+{
+    Unrated = 0,
+    VeryLow = 1,
+    Low = 2,
+    Medium = 3,
+    High = 4,
+    ExamReady = 5
+}
+
 public enum QuestionType
 {
     Open = 0,

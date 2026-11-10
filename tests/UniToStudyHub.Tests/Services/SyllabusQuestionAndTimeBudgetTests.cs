@@ -37,6 +37,45 @@ public sealed class SyllabusQuestionAndTimeBudgetTests
     }
 
     [Fact]
+    public void SyllabusSupportsModuleChapterTopicHierarchyAndStableOrdering()
+    {
+        var data = Data();
+        var service = new SyllabusTrackerService();
+        var module = service.Add(data, "analisi", "Fondamenti", kind: SyllabusTopicKind.Module);
+        var chapter = service.Add(data, "analisi", "Limiti", parentTopicId: module.Id, kind: SyllabusTopicKind.Chapter);
+        var first = service.Add(data, "analisi", "Limiti notevoli", parentTopicId: chapter.Id, estimatedMinutes: 45);
+        var second = service.Add(data, "analisi", "Continuità", parentTopicId: chapter.Id, estimatedMinutes: 60);
+
+        Assert.Equal(new[] { module.Id, chapter.Id, first.Id, second.Id },
+            service.GetTopics(data, "analisi").Select(x => x.Id));
+        Assert.Equal(new[] { first.Id, second.Id }, service.GetChildren(data, "analisi", chapter.Id).Select(x => x.Id));
+        Assert.Throws<ArgumentException>(() => service.Add(data, "analisi", "Capitolo senza modulo",
+            kind: SyllabusTopicKind.Chapter));
+        Assert.Throws<ArgumentException>(() => service.Add(data, "analisi", "Modulo annidato",
+            parentTopicId: chapter.Id, kind: SyllabusTopicKind.Module));
+    }
+
+    [Fact]
+    public void CompletionAndPreparednessAreIndependentAndCoverageUsesLeafTopics()
+    {
+        var data = Data();
+        var service = new SyllabusTrackerService();
+        var module = service.Add(data, "analisi", "Fondamenti", kind: SyllabusTopicKind.Module);
+        var chapter = service.Add(data, "analisi", "Limiti", parentTopicId: module.Id, kind: SyllabusTopicKind.Chapter);
+        var topic = service.Add(data, "analisi", "Limiti notevoli", parentTopicId: chapter.Id, estimatedMinutes: 60);
+
+        service.UpdateCompletionPercent(data, topic.Id, 70);
+        service.UpdatePreparedness(data, topic.Id, TopicPreparednessLevel.Low);
+        var coverage = service.GetCoverage(data, "analisi");
+
+        Assert.Equal(1, coverage.TotalTopics);
+        Assert.Equal(70m, coverage.AverageCompletionPercent);
+        Assert.Equal(1m, coverage.AveragePreparedness);
+        Assert.Equal(1, coverage.RatedTopics);
+        Assert.Equal(SyllabusTopicStatus.NotStarted, topic.Status);
+    }
+
+    [Fact]
     public void ClosedQuestionEvaluatesDeterministicallyAndOpenQuestionNeedsReview()
     {
         var data = Data();
