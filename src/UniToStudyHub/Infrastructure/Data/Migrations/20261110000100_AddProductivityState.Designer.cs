@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using UniToStudyHub.Infrastructure.Data;
 
@@ -9,7 +10,6 @@ using UniToStudyHub.Infrastructure.Data;
 
 namespace UniToStudyHub.Infrastructure.Data.Migrations
 {
-    [DbContext(typeof(StudyHubDbContext))]
     public sealed partial class AddProductivityState : Migration
     {
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
