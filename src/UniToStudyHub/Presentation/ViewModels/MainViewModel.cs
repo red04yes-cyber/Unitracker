@@ -44,6 +44,63 @@ public sealed class MainViewModel : INotifyPropertyChanged
     public ObservableCollection<Exam> Exams => _data.Exams;
     public ObservableCollection<Announcement> Announcements => _data.Announcements;
     public ObservableCollection<Course> VisibleCourses { get; } = new();
+    public ObservableCollection<SyllabusTopicData> SelectedCourseTopics { get; } = new();
+    public ObservableCollection<Grade> SelectedCourseGrades { get; } = new();
+    private Course? _selectedCourse;
+    public Course? SelectedCourse
+    {
+        get => _selectedCourse;
+        private set
+        {
+            if (ReferenceEquals(_selectedCourse, value)) return;
+            _selectedCourse = value;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(HasSelectedCourse));
+            OnPropertyChanged(nameof(SelectedCourseProgressDisplay));
+            OnPropertyChanged(nameof(SelectedCourseExamDateDisplay));
+            OnPropertyChanged(nameof(SelectedCourseStatusDisplay));
+            OnPropertyChanged(nameof(SelectedCourseStudyHoursDisplay));
+            RefreshSelectedCourseCollections();
+        }
+    }
+    public bool HasSelectedCourse => SelectedCourse is not null;
+    public string SelectedCourseProgressDisplay
+    {
+        get
+        {
+            if (SelectedCourse is null) return "—";
+            var topics = _data.SyllabusTopics.Where(x => x.CourseId == SelectedCourse.Id &&
+                x.Kind == SyllabusTopicKind.Topic && !_data.SyllabusTopics.Any(child => child.ParentTopicId == x.Id)).ToList();
+            return topics.Count ==  0 ? "Da definire" :
+                $"{Math.Round(topics.Average(x => x.CompletionPercent))}%";
+        }
+    }
+    public string SelectedCourseExamDateDisplay =>
+        SelectedCourse?.AppealDate?.ToString("d MMMM yyyy", CultureInfo.GetCultureInfo("it-IT"))
+        ?? "Nessun appello individuale verificato";
+    public string SelectedCourseStatusDisplay => SelectedCourse?.Status.ToString() ?? "—";
+    public string SelectedCourseStudyHoursDisplay =>
+        SelectedCourse is null || SelectedCourse.EstimatedStudyHours <= 0
+            ? "Non indicate"
+            : $"{SelectedCourse.EstimatedStudyHours} ore";
+    public void OpenCourseDetail(Course course) => SelectedCourse = course;
+    public void CloseCourseDetail() => SelectedCourse = null;
+    private void RefreshSelectedCourseCollections()
+    {
+        SelectedCourseTopics.Clear();
+        SelectedCourseGrades.Clear();
+        if (SelectedCourse is not null)
+        {
+            foreach (var topic in _data.SyllabusTopics.Where(x => x.CourseId == SelectedCourse.Id)
+                         .OrderBy(x => x.Position).ThenBy(x => x.Title, StringComparer.CurrentCultureIgnoreCase))
+                SelectedCourseTopics.Add(topic);
+            foreach (var grade in _data.Grades.Where(x => x.CourseId == SelectedCourse.Id)
+                         .OrderByDescending(x => x.Date))
+                SelectedCourseGrades.Add(grade);
+        }
+        OnPropertyChanged(nameof(SelectedCourseProgressDisplay));
+    }
+
     public ObservableCollection<CalendarEvent> CalendarEvents => _data.CalendarEvents;
     public ObservableCollection<CalendarEvent> VisibleCalendarEvents { get; } = new();
     public ObservableCollection<CalendarEvent> SelectedDayEvents { get; } = new();
@@ -988,6 +1045,8 @@ public sealed class MainViewModel : INotifyPropertyChanged
 
         OnPropertyChanged(nameof(NoVisibleCourses));
         OnPropertyChanged(nameof(CourseEmptyMessage));
+        if (SelectedCourse is not null && !Courses.Any(x => x.Id == SelectedCourse.Id))
+            CloseCourseDetail();
     }
 
     private void OnWorkspaceDataReloaded(StudyData data)
@@ -995,6 +1054,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
         _data = data;
         RefreshCollections();
         RefreshVisibleCourses();
+        if (SelectedCourse is not null) SelectedCourse = Courses.FirstOrDefault(x => x.Id == SelectedCourse.Id);
         RefreshCourseSummary();
         RefreshCareerSummary();
         RefreshExamSummary();
