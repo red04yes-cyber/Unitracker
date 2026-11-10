@@ -90,12 +90,14 @@ public sealed class MainViewModel : INotifyPropertyChanged
     public void OpenCourseDetail(Course course)
     {
         SelectedCourse = course;
+        Workspace.SelectedTaskCourse = course;
         SaveCourseDetailsCommand.NotifyCanExecuteChanged();
     }
 
     public void CloseCourseDetail()
     {
         SelectedCourse = null;
+        Workspace.SelectedTaskCourse = null;
         SaveCourseDetailsCommand.NotifyCanExecuteChanged();
     }
 
