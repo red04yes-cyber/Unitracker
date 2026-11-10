@@ -62,6 +62,8 @@ public sealed class SyllabusTrackerService
         if (!Enum.IsDefined(status))
             throw new ArgumentOutOfRangeException(nameof(status));
         topic.Status = status;
+        if (status == SyllabusTopicStatus.Completed)
+            topic.CompletionPercent = 100;
         topic.LastStudiedAt = status == SyllabusTopicStatus.Completed ? (studiedAt ?? DateTime.UtcNow) : topic.LastStudiedAt;
         topic.UpdatedAt = DateTime.UtcNow;
     }
@@ -100,7 +102,7 @@ public sealed class SyllabusTrackerService
             topics.Where(x => x.Status != SyllabusTopicStatus.Completed).Sum(x => x.EstimatedMinutes))
         {
             AverageCompletionPercent = topics.Count == 0 ? 0m :
-                Math.Round(topics.Average(x => (decimal)x.CompletionPercent), 2, MidpointRounding.AwayFromZero),
+                Math.Round(topics.Average(x => (decimal)(x.Status == SyllabusTopicStatus.Completed ? 100 : x.CompletionPercent)), 2, MidpointRounding.AwayFromZero),
             AveragePreparedness = rated.Count == 0 ? 0m :
                 Math.Round(rated.Average(x => (decimal)(int)x.Preparedness), 2, MidpointRounding.AwayFromZero),
             RatedTopics = rated.Count

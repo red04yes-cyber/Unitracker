@@ -76,6 +76,19 @@ public sealed class SyllabusQuestionAndTimeBudgetTests
     }
 
     [Fact]
+    public void CompletingATopicAlsoMarksItsWorkProgressAsComplete()
+    {
+        var data = Data();
+        var service = new SyllabusTrackerService();
+        var topic = service.Add(data, "analisi", "Limiti", estimatedMinutes: 45);
+
+        service.UpdateStatus(data, topic.Id, SyllabusTopicStatus.Completed);
+
+        Assert.Equal(100, topic.CompletionPercent);
+        Assert.Equal(100m, service.GetCoverage(data, "analisi").AverageCompletionPercent);
+    }
+
+    [Fact]
     public void ClosedQuestionEvaluatesDeterministicallyAndOpenQuestionNeedsReview()
     {
         var data = Data();
