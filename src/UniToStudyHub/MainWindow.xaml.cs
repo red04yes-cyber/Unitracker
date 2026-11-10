@@ -12,6 +12,7 @@ public partial class MainWindow : Window
     private readonly DispatcherTimer _examModeTimer;
     private readonly DispatcherTimer _reminderTimer;
     private readonly System.Windows.Forms.NotifyIcon _reminderTrayIcon;
+    private DesktopNextActivityWidgetWindow? _desktopWidgetWindow;
     public MainWindow(MainViewModel viewModel)
     {
         InitializeComponent();
@@ -38,6 +39,24 @@ public partial class MainWindow : Window
         };
     }
 
+
+
+    private void OpenDesktopWidget_Click(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is not MainViewModel viewModel) return;
+        if (_desktopWidgetWindow is { IsVisible: true })
+        {
+            _desktopWidgetWindow.Activate();
+            return;
+        }
+
+        _desktopWidgetWindow = new DesktopNextActivityWidgetWindow(viewModel);
+        var workArea = SystemParameters.WorkArea;
+        _desktopWidgetWindow.Left = workArea.Right - _desktopWidgetWindow.Width - 18;
+        _desktopWidgetWindow.Top = workArea.Bottom - _desktopWidgetWindow.Height - 18;
+        _desktopWidgetWindow.Closed += (_, _) => _desktopWidgetWindow = null;
+        _desktopWidgetWindow.Show();
+    }
 
     private async Task CheckDueRemindersAsync(MainViewModel viewModel)
     {
