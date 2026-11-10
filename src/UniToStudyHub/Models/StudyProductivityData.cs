@@ -21,6 +21,7 @@ public sealed class StudyReminderData
     public string Id { get; set; } = Guid.NewGuid().ToString("N");
     public string Title { get; set; } = string.Empty;
     public string? CourseId { get; set; }
+    public string? SourceExamId { get; set; }
     public DateTimeOffset DueAt { get; set; }
     public string Kind { get; set; } = "Deadline";
     public bool Enabled { get; set; } = true;
