@@ -753,7 +753,7 @@
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate>
                                             <CheckBox IsChecked="{Binding IsVisible, UpdateSourceTrigger=PropertyChanged}"
-                                                      Content="{Binding Key}" Margin="0,4,0,4"/>
+                                                      Content="{Binding DisplayName}" Margin="0,4,0,4"/>
                                         </DataTemplate>
                                     </ItemsControl.ItemTemplate>
                                 </ItemsControl>
@@ -819,7 +819,12 @@
                     </Border>
                     <Border Style="{StaticResource CardBorderStyle}">
                         <StackPanel>
-                            <TextBlock Text="REGISTRO LEZIONI" Style="{StaticResource SectionTitleStyle}" Margin="0,0,0,10"/>
+                            <Grid Margin="0,0,0,10">
+                                <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                <TextBlock Text="REGISTRO LEZIONI" Style="{StaticResource SectionTitleStyle}" VerticalAlignment="Center"/>
+                                <Button Grid.Column="1" Content="Esporta CSV" Click="ExportAttendanceCsv_Click"
+                                        Style="{StaticResource QuietButtonStyle}"/>
+                            </Grid>
                             <DataGrid ItemsSource="{Binding AttendanceRecords}" IsReadOnly="True" MaxHeight="200">
                                 <DataGrid.Columns>
                                     <DataGridTextColumn Header="Lezione" Binding="{Binding Title}" Width="*"/>
