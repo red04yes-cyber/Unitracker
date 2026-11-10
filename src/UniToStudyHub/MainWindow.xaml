@@ -584,27 +584,67 @@
                                     </ScrollViewer>
                                 </TabItem>                      </TabItem>
                                 <TabItem Header="Programma">
-                                    <StackPanel Margin="12">
-                                        <TextBlock Text="Moduli, capitoli e argomenti" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}"/>
-                                        <ItemsControl ItemsSource="{Binding SelectedCourseTopics}" Margin="0,10,0,0">
-                                            <ItemsControl.ItemTemplate><DataTemplate>
-                                                <Border Background="{DynamicResource SubtleBrush}" CornerRadius="7" Padding="10" Margin="0,0,0,6">
-                                                    <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                                                        <StackPanel><TextBlock Text="{Binding Title}" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}"/>
-                                                            <TextBlock Text="{Binding Kind}" FontSize="10" Foreground="{DynamicResource MutedBrush}"/>
-                                                        </StackPanel>
-                                                        <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                                                            <TextBlock Text="{Binding CompletionPercent, StringFormat={}{0}%}" Foreground="{DynamicResource AccentBrush}" FontWeight="SemiBold" Margin="0,0,10,0"/>
-                                                            <TextBlock Text="{Binding Preparedness}" Foreground="{DynamicResource MutedBrush}" FontSize="10"/>
-                                                        </StackPanel>
+                                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                        <StackPanel Margin="12">
+                                            <TextBlock Text="Programma dell'insegnamento" FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}"/>
+                                            <TextBlock Text="Organizza il syllabus in moduli, capitoli e argomenti. Il livello di preparazione resta separato dalla percentuale completata."
+                                                       Foreground="{DynamicResource MutedBrush}" FontSize="10" TextWrapping="Wrap" Margin="0,4,0,12"/>
+                                            <Border Background="{DynamicResource SubtleBrush}" CornerRadius="8" Padding="12" Margin="0,0,0,12">
+                                                <StackPanel>
+                                                    <TextBox Text="{Binding Workspace.SyllabusTitleInput, UpdateSourceTrigger=PropertyChanged}" ToolTip="Nome del modulo, capitolo o argomento" Margin="0,0,0,8"/>
+                                                    <Grid>
+                                                        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                                        <ComboBox ItemsSource="{Binding Workspace.SyllabusKindOptions}" SelectedItem="{Binding Workspace.SyllabusKindInput}" Margin="0,0,8,8"/>
+                                                        <ComboBox Grid.Column="1" ItemsSource="{Binding Workspace.SyllabusParentOptions}" SelectedItem="{Binding Workspace.SelectedSyllabusParent}" DisplayMemberPath="Title" ToolTip="Elemento genitore" Margin="0,0,0,8"/>
                                                     </Grid>
-                                                </Border>
-                                            </DataTemplate></ItemsControl.ItemTemplate>
-                                        </ItemsControl>
-                                        <TextBlock Text="Non ci sono ancora argomenti per questa materia." Visibility="{Binding NoSelectedCourseTopics, Converter={StaticResource BooleanToVisibilityConverter}}"
-                                                   Foreground="{DynamicResource MutedBrush}" Margin="0,8,0,0"/>
-                                    </StackPanel>
-                                </TabItem>
+                                                    <Grid>
+                                                        <Grid.ColumnDefinitions><ColumnDefinition Width="100"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                                        <TextBox Text="{Binding Workspace.SyllabusMinutesInput, UpdateSourceTrigger=PropertyChanged}" ToolTip="Minuti stimati" Margin="0,0,8,0"/>
+                                                        <Button Grid.Column="1" Content="Aggiungi al programma" Command="{Binding Workspace.AddSyllabusTopicCommand}"/>
+                                                    </Grid>
+                                                </StackPanel>
+                                            </Border>
+                                            <TextBlock Text="Struttura del syllabus" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}" Margin="0,0,0,8"/>
+                                            <ListBox ItemsSource="{Binding Workspace.SyllabusTopics}" SelectedItem="{Binding Workspace.SelectedSyllabusTopic, Mode=TwoWay}"
+                                                     Background="Transparent" BorderThickness="0" MaxHeight="240">
+                                                <ListBox.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <Border Background="{DynamicResource SubtleBrush}" CornerRadius="7" Padding="10" Margin="0,0,0,6">
+                                                            <Grid>
+                                                                <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                                                <StackPanel>
+                                                                    <TextBlock Text="{Binding Title}" Foreground="{DynamicResource InkBrush}" FontWeight="SemiBold"/>
+                                                                    <TextBlock Text="{Binding Kind}" Foreground="{DynamicResource MutedBrush}" FontSize="10"/>
+                                                                </StackPanel>
+                                                                <StackPanel Grid.Column="1" HorizontalAlignment="Right">
+                                                                    <TextBlock Text="{Binding CompletionPercent, StringFormat={}{0}%}" Foreground="{DynamicResource AccentBrush}" FontWeight="SemiBold"/>
+                                                                    <TextBlock Text="{Binding Preparedness}" Foreground="{DynamicResource MutedBrush}" FontSize="10"/>
+                                                                </StackPanel>
+                                                            </Grid>
+                                                        </Border>
+                                                    </DataTemplate>
+                                                </ListBox.ItemTemplate>
+                                            </ListBox>
+                                            <TextBlock Text="Nessun elemento nel programma. Puoi aggiungere un modulo per iniziare." Visibility="{Binding Workspace.NoSyllabusTopics, Converter={StaticResource BooleanToVisibilityConverter}}"
+                                                       Foreground="{DynamicResource MutedBrush}" Margin="0,4,0,10"/>
+                                            <Border Background="{DynamicResource SubtleBrush}" CornerRadius="8" Padding="12" Margin="0,8,0,0"
+                                                    Visibility="{Binding Workspace.HasSelectedSyllabusTopic, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                                <StackPanel>
+                                                    <TextBlock Text="Progresso dell'elemento selezionato" Foreground="{DynamicResource InkBrush}" FontWeight="SemiBold"/>
+                                                    <TextBlock Text="{Binding Workspace.SyllabusCompletionInput, StringFormat={}{0}% completato}" Foreground="{DynamicResource MutedBrush}" FontSize="10" Margin="0,4,0,0"/>
+                                                    <Slider Minimum="0" Maximum="100" Value="{Binding Workspace.SyllabusCompletionInput, Mode=TwoWay}" Margin="0,6,0,4"/>
+                                                    <Button Content="Salva completamento" Command="{Binding Workspace.UpdateSyllabusProgressCommand}" HorizontalAlignment="Right"/>
+                                                    <TextBlock Text="Preparazione personale" Foreground="{DynamicResource InkBrush}" FontWeight="SemiBold" Margin="0,12,0,4"/>
+                                                    <ComboBox ItemsSource="{Binding Workspace.SyllabusPreparednessOptions}" SelectedItem="{Binding Workspace.SyllabusPreparednessInput}"/>
+                                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,8,0,0">
+                                                        <Button Content="Salva preparazione" Command="{Binding Workspace.UpdateSyllabusPreparednessCommand}" Margin="0,0,8,0"/>
+                                                        <Button Content="Segna completato" Command="{Binding Workspace.CompleteSyllabusTopicCommand}"/>
+                                                    </StackPanel>
+                                                </StackPanel>
+                                            </Border>
+                                        </StackPanel>
+                                    </ScrollViewer>
+                                </TabItem>                      </TabItem>
                                 <TabItem Header="Piano di studio">
                                     <ScrollViewer VerticalScrollBarVisibility="Auto">
                                         <StackPanel Margin="12">
