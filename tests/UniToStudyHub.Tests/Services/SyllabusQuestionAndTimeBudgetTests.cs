@@ -70,7 +70,7 @@ public sealed class SyllabusQuestionAndTimeBudgetTests
 
         Assert.Equal(1, coverage.TotalTopics);
         Assert.Equal(70m, coverage.AverageCompletionPercent);
-        Assert.Equal(1m, coverage.AveragePreparedness);
+        Assert.Equal(2m, coverage.AveragePreparedness);
         Assert.Equal(1, coverage.RatedTopics);
         Assert.Equal(SyllabusTopicStatus.NotStarted, topic.Status);
     }
