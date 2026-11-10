@@ -12,12 +12,12 @@ This slice adds a persisted productivity aggregate without introducing a second 
 - Attendance: lecture records link to existing courses and retain title, date/time, duration, attended state and optional notes. Attendance CSV generation is available.
 - Dashboard preferences: widget visibility and order are persisted; deterministic defaults are supplied before the user customizes the dashboard.
 - Course archive: the existing Course.Completed field remains the archive flag; no duplicate archive state is added.
-- WPF Study Lab: the Studio Lab tab now exposes daily/weekly goal editing, additive focus logging, current streak and weekly minutes, course-linked quick notes, and a lecture attendance form with recent-note and attendance tables. These actions save through the existing data store.
+- WPF Study Lab: the Studio Lab tab now exposes daily/weekly goal editing, additive focus logging, current streak and weekly minutes, course-linked quick notes, lecture attendance, reminder creation/listing and a next-activity summary. These actions save through the existing data store.
 
 ## Not included / integration still required
 
 - Native Windows toast scheduling and a true always-on desktop widget host.
-- WPF controls for reminders, exam-mode countdown, configurable dashboard widgets and next-activity display are still pending. The initial Study Lab UI covers focus, notes and attendance.
+- Native Windows toast scheduling, an always-on desktop widget host, and the live exam-mode countdown UI are still pending. Dashboard widget preferences are persisted but do not yet have a customization screen.
 - PDF and XLSX export, and a unified export workflow. Only attendance CSV is implemented here.
 - An OS background scheduler. Reminder lookup is deterministic and should be called by a bounded host scheduler.
 
