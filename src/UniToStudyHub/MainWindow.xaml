@@ -644,10 +644,10 @@
                         </Border>
                         <Border Grid.Column="1" Style="{StaticResource CardBorderStyle}" Margin="0,0,10,0">
                             <StackPanel>
-                                <TextBlock Text="FOCUS DI OGGI" Style="{StaticResource KpiLabelStyle}"/>
+                                <TextBlock Text="STREAK ATTUALE" Style="{StaticResource KpiLabelStyle}"/>
                                 <TextBlock Text="{Binding CurrentStreakDisplay}" FontSize="34"
                                            FontWeight="SemiBold" Foreground="{StaticResource AccentBrush}" Margin="0,12,0,0"/>
-                                <TextBlock Text="giorni di streak" FontSize="11"
+                                <TextBlock Text="giorni consecutivi" FontSize="11"
                                            Foreground="{StaticResource MutedBrush}"/>
                                 <TextBlock Text="{Binding WeeklyFocusDisplay}" FontSize="14"
                                            FontWeight="SemiBold" Foreground="{StaticResource InkBrush}" Margin="0,15,0,0"/>
@@ -770,7 +770,7 @@
                                 <DataGrid.Columns>
                                     <DataGridTextColumn Header="Argomento" Binding="{Binding Topic}" Width="160"/>
                                     <DataGridTextColumn Header="Contenuto" Binding="{Binding Content}" Width="*"/>
-                                    <DataGridTextColumn Header="Aggiornata" Binding="{Binding UpdatedAt, StringFormat=dd/MM/yyyy HH:mm}" Width="150"/>
+                                    <DataGridTextColumn Header="Aggiornata" Binding="{Binding UpdatedAt, StringFormat={}{0:dd/MM/yyyy HH:mm}}" Width="150"/>
                                 </DataGrid.Columns>
                             </DataGrid>
                         </StackPanel>
@@ -781,7 +781,7 @@
                             <DataGrid ItemsSource="{Binding AttendanceRecords}" IsReadOnly="True" MaxHeight="200">
                                 <DataGrid.Columns>
                                     <DataGridTextColumn Header="Lezione" Binding="{Binding Title}" Width="*"/>
-                                    <DataGridTextColumn Header="Data" Binding="{Binding StartsAt, StringFormat=dd/MM/yyyy HH:mm}" Width="160"/>
+                                    <DataGridTextColumn Header="Data" Binding="{Binding StartsAt, StringFormat={}{0:dd/MM/yyyy HH:mm}}" Width="160"/>
                                     <DataGridTextColumn Header="Durata" Binding="{Binding DurationMinutes}" Width="90"/>
                                     <DataGridCheckBoxColumn Header="Presente" Binding="{Binding Attended}" Width="90"/>
                                 </DataGrid.Columns>
@@ -795,7 +795,7 @@
                                 <DataGrid.Columns>
                                     <DataGridTextColumn Header="Attività" Binding="{Binding Title}" Width="*"/>
                                     <DataGridTextColumn Header="Tipo" Binding="{Binding Kind}" Width="110"/>
-                                    <DataGridTextColumn Header="Scadenza" Binding="{Binding DueAt, StringFormat=dd/MM/yyyy HH:mm}" Width="160"/>
+                                    <DataGridTextColumn Header="Scadenza" Binding="{Binding DueAt, StringFormat={}{0:dd/MM/yyyy HH:mm}}" Width="160"/>
                                     <DataGridCheckBoxColumn Header="Attivo" Binding="{Binding Enabled}" Width="75"/>
                                 </DataGrid.Columns>
                             </DataGrid>
