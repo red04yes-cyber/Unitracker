@@ -222,6 +222,8 @@ public sealed class MainViewModel : INotifyPropertyChanged
     public async Task InitializeAsync(CancellationToken cancellationToken = default)
     {
         _data = await _store.LoadAsync(cancellationToken);
+        if (_productivity.SynchronizeExamReminders(_data))
+            await SaveAsync(cancellationToken);
         MoodleUrlInput = _data.MoodleBaseUrl;
         RefreshCollections();
         RefreshVisibleCourses();
