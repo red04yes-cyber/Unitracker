@@ -728,6 +728,48 @@
                         </Grid.ColumnDefinitions>
                         <Border Grid.Column="0" Style="{StaticResource CardBorderStyle}" Margin="0,0,10,0">
                             <StackPanel>
+                                <TextBlock Text="MODALITÀ ESAME" Style="{StaticResource SectionTitleStyle}"/>
+                                <ComboBox ItemsSource="{Binding Exams}" SelectedItem="{Binding SelectedExamForMode}"
+                                          DisplayMemberPath="Name" Margin="0,10,0,0"/>
+                                <TextBlock Text="Fine sessione (yyyy-MM-dd HH:mm)" FontSize="11"
+                                           Foreground="{StaticResource MutedBrush}" Margin="0,10,0,5"/>
+                                <TextBox Text="{Binding ExamModeEndInput, UpdateSourceTrigger=PropertyChanged}"/>
+                                <TextBlock Text="{Binding ExamModeDisplay}" FontSize="18" FontWeight="SemiBold"
+                                           Foreground="{StaticResource AccentBrush}" TextWrapping="Wrap" Margin="0,13,0,0"/>
+                                <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
+                                    <Button Content="Avvia countdown" Command="{Binding StartExamModeCommand}"/>
+                                    <Button Content="Termina" Command="{Binding StopExamModeCommand}"
+                                            Style="{StaticResource QuietButtonStyle}" Margin="8,0,0,0"/>
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+                        <Border Grid.Column="1" Style="{StaticResource CardBorderStyle}">
+                            <StackPanel>
+                                <TextBlock Text="PERSONALIZZA DASHBOARD" Style="{StaticResource SectionTitleStyle}"/>
+                                <TextBlock Text="Scegli quali widget tenere tra le preferenze della dashboard."
+                                           FontSize="11" Foreground="{StaticResource MutedBrush}"
+                                           TextWrapping="Wrap" Margin="0,8,0,8"/>
+                                <ItemsControl ItemsSource="{Binding DashboardWidgetPreferences}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <CheckBox IsChecked="{Binding IsVisible, UpdateSourceTrigger=PropertyChanged}"
+                                                      Content="{Binding Key}" Margin="0,4,0,4"/>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                                <Button Content="Salva dashboard" Command="{Binding SaveDashboardWidgetsCommand}"
+                                        HorizontalAlignment="Left" Margin="0,12,0,0"/>
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+
+                    <Grid Margin="0,0,0,14">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Border Grid.Column="0" Style="{StaticResource CardBorderStyle}" Margin="0,0,10,0">
+                            <StackPanel>
                                 <TextBlock Text="NOTA RAPIDA" Style="{StaticResource SectionTitleStyle}"/>
                                 <TextBlock Text="Argomento" FontSize="11" Foreground="{StaticResource MutedBrush}" Margin="0,12,0,5"/>
                                 <TextBox Text="{Binding NoteTopicInput, UpdateSourceTrigger=PropertyChanged}"/>
