@@ -407,14 +407,21 @@ public sealed class MainViewModel : INotifyPropertyChanged
 
     private async Task SaveDashboardWidgetsAsync()
     {
-        try { _productivity.SetDashboardWidgets(_data, DashboardWidgetPreferences); await SaveAsync(); ProductivitySummary = "Dashboard aggiornata."; }
+        try { _productivity.SetDashboardWidgets(_data, DashboardWidgetPreferences); await SaveAsync(); RefreshDashboardWidgetPreferences(); ProductivitySummary = "Dashboard aggiornata."; }
         catch (Exception ex) { ProductivitySummary = $"Dashboard non salvata: {ex.Message}"; }
     }
 
     private void RefreshDashboardWidgetPreferences()
     {
         DashboardWidgetPreferences.Clear();
-        foreach (var item in _productivity.GetDashboardWidgets(_data)) DashboardWidgetPreferences.Add(new DashboardWidgetPreferenceData { Key = item.Key, IsVisible = item.IsVisible, Order = item.Order });
+        foreach (var item in _productivity.GetDashboardWidgets(_data))
+            DashboardWidgetPreferences.Add(new DashboardWidgetPreferenceData
+            {
+                Key = item.Key,
+                IsVisible = item.IsVisible,
+                Order = item.Order,
+                DisplayValue = GetDashboardWidgetValue(item.Key)
+            });
     }
     private async Task SaveQuickNoteAsync()
     {
@@ -444,7 +451,27 @@ public sealed class MainViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(WeeklyFocusDisplay));
         OnPropertyChanged(nameof(NextActivityDisplay));
         RefreshExamModeDisplay();
+        RefreshDashboardWidgetValues();
     }
+
+    private string GetDashboardWidgetValue(string key) => key switch
+    {
+        "next-activity" => NextActivityDisplay,
+        "weekly-goal" => WeeklyFocusDisplay,
+        "streak" => $"{CurrentStreakDisplay} giorni consecutivi",
+        "upcoming-exams" => $"{NextExamNameDisplay} · {NextExamDateDisplay}",
+        "recent-notes" => _data.Productivity.QuickNotes.OrderByDescending(x => x.UpdatedAt).FirstOrDefault() is { } note
+            ? $"{note.Topic}: {note.Content}"
+            : "Nessuna nota ancora",
+        _ => string.Empty
+    };
+
+    private void RefreshDashboardWidgetValues()
+    {
+        foreach (var widget in DashboardWidgetPreferences)
+            widget.DisplayValue = GetDashboardWidgetValue(widget.Key);
+    }
+
     private Exam? GetNextPlannedExam() =>
         Exams.Where(x => !x.Completed && x.PlannedDate.HasValue && x.PlannedDate.Value.Date >= DateTime.Today)
              .OrderBy(x => x.PlannedDate)
