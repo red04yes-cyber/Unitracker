@@ -31,7 +31,7 @@ jobs:
 
       - name: Verify immutable GitHub Action references
         shell: bash
-        run: ./scripts/verify-github-actions-pinning.sh
+        run: bash ./scripts/verify-github-actions-pinning.sh
 
       - name: Install gitleaks 8.30.1 with checksum verification
         shell: bash
