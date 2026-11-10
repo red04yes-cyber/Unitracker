@@ -23,6 +23,7 @@ public static class CompositionRoot
             sp.GetRequiredService<IDbContextFactory<StudyHubDbContext>>()));
         services.AddSingleton<IStudyDataStore, SqliteStudyDataStore>();
         services.AddSingleton<MoodleApplicationService>();
+        services.AddSingleton<StudyProductivityService>();
         return services;
     }
 }
