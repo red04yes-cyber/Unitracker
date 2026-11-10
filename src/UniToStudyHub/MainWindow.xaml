@@ -534,26 +534,55 @@
                                     </StackPanel>
                                 </TabItem>
                                 <TabItem Header="Informazioni">
-                                    <Grid Margin="12">
-                                        <Grid.ColumnDefinitions><ColumnDefinition Width="150"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-                                        <Grid.RowDefinitions>
-                                            <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
-                                            <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
-                                        </Grid.RowDefinitions>
-                                        <TextBlock Text="Docente" Foreground="{DynamicResource MutedBrush}"/>
-                                        <TextBlock Grid.Column="1" Text="{Binding SelectedCourse.Teacher, TargetNullValue='Non indicato'}" Foreground="{DynamicResource InkBrush}"/>
-                                        <TextBlock Grid.Row="1" Text="Anno accademico" Foreground="{DynamicResource MutedBrush}" Margin="0,8,0,0"/>
-                                        <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding SelectedCourse.AcademicYear}" Foreground="{DynamicResource InkBrush}" Margin="0,8,0,0"/>
-                                        <TextBlock Grid.Row="2" Text="Sessione" Foreground="{DynamicResource MutedBrush}" Margin="0,8,0,0"/>
-                                        <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding SelectedCourse.Session}" Foreground="{DynamicResource InkBrush}" Margin="0,8,0,0"/>
-                                        <TextBlock Grid.Row="3" Text="Ore stimate" Foreground="{DynamicResource MutedBrush}" Margin="0,8,0,0"/>
-                                        <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding SelectedCourseStudyHoursDisplay}" Foreground="{DynamicResource InkBrush}" Margin="0,8,0,0"/>
-                                        <TextBlock Grid.Row="4" Text="Syllabus ufficiale" Foreground="{DynamicResource MutedBrush}" Margin="0,8,0,0"/>
-                                        <TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding SelectedCourse.SyllabusUrl}" Foreground="{DynamicResource AccentBrush}" TextWrapping="Wrap" Margin="0,8,0,0"/>
-                                        <TextBlock Grid.Row="5" Text="Fonte dati" Foreground="{DynamicResource MutedBrush}" Margin="0,8,0,0"/>
-                                        <TextBlock Grid.Row="5" Grid.Column="1" Text="{Binding SelectedCourse.Source}" Foreground="{DynamicResource InkBrush}" Margin="0,8,0,0"/>
-                                    </Grid>
-                                </TabItem>
+                                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                        <StackPanel Margin="12">
+                                            <TextBlock Text="Dettagli dell'insegnamento" FontSize="14"
+                                                       FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}"/>
+                                            <TextBlock Text="Modifica i dati conosciuti: i campi non compilati restano vuoti e non vengono presentati come informazioni ufficiali."
+                                                       FontSize="10" Foreground="{DynamicResource MutedBrush}"
+                                                       TextWrapping="Wrap" Margin="0,4,0,14"/>
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="150"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="150"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                </Grid.ColumnDefinitions>
+                                                <Grid.RowDefinitions>
+                                                    <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
+                                                    <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
+                                                    <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
+                                                    <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
+                                                </Grid.RowDefinitions>
+                                                <TextBlock Text="Codice" Foreground="{DynamicResource MutedBrush}" VerticalAlignment="Center"/>
+                                                <TextBox Grid.Column="1" Text="{Binding SelectedCourse.Code, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,12,8"/>
+                                                <TextBlock Grid.Column="2" Text="CFU" Foreground="{DynamicResource MutedBrush}" VerticalAlignment="Center"/>
+                                                <TextBox Grid.Column="3" Text="{Binding SelectedCourse.Cfu, UpdateSourceTrigger=LostFocus}" Margin="0,0,0,8"/>
+                                                <TextBlock Grid.Row="1" Text="Docente" Foreground="{DynamicResource MutedBrush}" VerticalAlignment="Center"/>
+                                                <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding SelectedCourse.Teacher, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,12,8"/>
+                                                <TextBlock Grid.Row="1" Grid.Column="2" Text="Anno accademico" Foreground="{DynamicResource MutedBrush}" VerticalAlignment="Center"/>
+                                                <TextBox Grid.Row="1" Grid.Column="3" Text="{Binding SelectedCourse.AcademicYear, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,8"/>
+                                                <TextBlock Grid.Row="2" Text="Sessione" Foreground="{DynamicResource MutedBrush}" VerticalAlignment="Center"/>
+                                                <TextBox Grid.Row="2" Grid.Column="1" Text="{Binding SelectedCourse.Session, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,12,8"/>
+                                                <TextBlock Grid.Row="2" Grid.Column="2" Text="Ore stimate" Foreground="{DynamicResource MutedBrush}" VerticalAlignment="Center"/>
+                                                <TextBox Grid.Row="2" Grid.Column="3" Text="{Binding SelectedCourse.EstimatedStudyHours, UpdateSourceTrigger=LostFocus}" Margin="0,0,0,8"/>
+                                                <TextBlock Grid.Row="3" Text="Data appello" Foreground="{DynamicResource MutedBrush}" VerticalAlignment="Center"/>
+                                                <DatePicker Grid.Row="3" Grid.Column="1" SelectedDate="{Binding SelectedCourse.AppealDate, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,12,8"/>
+                                                <TextBlock Grid.Row="3" Grid.Column="2" Text="Syllabus ufficiale" Foreground="{DynamicResource MutedBrush}" VerticalAlignment="Center"/>
+                                                <TextBox Grid.Row="3" Grid.Column="3" Text="{Binding SelectedCourse.SyllabusUrl, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,8"/>
+                                                <TextBlock Grid.Row="4" Text="Riepilogo programma" Foreground="{DynamicResource MutedBrush}" VerticalAlignment="Top"/>
+                                                <TextBox Grid.Row="4" Grid.Column="1" Grid.ColumnSpan="3" Text="{Binding SelectedCourse.SyllabusSummary, UpdateSourceTrigger=PropertyChanged}" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="58" Margin="0,0,0,8"/>
+                                                <TextBlock Grid.Row="5" Text="Note personali" Foreground="{DynamicResource MutedBrush}" VerticalAlignment="Top"/>
+                                                <TextBox Grid.Row="5" Grid.Column="1" Grid.ColumnSpan="3" Text="{Binding SelectedCourse.Notes, UpdateSourceTrigger=PropertyChanged}" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="72" Margin="0,0,0,8"/>
+                                                <TextBlock Grid.Row="6" Text="Fonte dati" Foreground="{DynamicResource MutedBrush}" VerticalAlignment="Center"/>
+                                                <TextBlock Grid.Row="6" Grid.Column="1" Grid.ColumnSpan="3" Text="{Binding SelectedCourse.Source, TargetNullValue='Non indicata'}" Foreground="{DynamicResource InkBrush}" VerticalAlignment="Center"/>
+                                                <StackPanel Grid.Row="7" Grid.Column="1" Grid.ColumnSpan="3" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,0">
+                                                    <Button Content="Salva modifiche" Command="{Binding SaveCourseDetailsCommand}"/>
+                                                </StackPanel>
+                                            </Grid>
+                                        </StackPanel>
+                                    </ScrollViewer>
+                                </TabItem>                      </TabItem>
                                 <TabItem Header="Programma">
                                     <StackPanel Margin="12">
                                         <TextBlock Text="Moduli, capitoli e argomenti" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}"/>
