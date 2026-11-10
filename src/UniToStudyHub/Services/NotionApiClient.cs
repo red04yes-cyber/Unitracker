@@ -68,7 +68,7 @@ public sealed class NotionApiException : Exception
 /// </summary>
 public sealed class NotionApiClient
 {
-    public const string ApiVersion = "2025-09-03";
+    public const string ApiVersion = "2026-03-11";
     private const int PageSize = 100;
     private const int MaximumQueryPages = 20;
     private const int MaximumBlocksPerPage = 1000;

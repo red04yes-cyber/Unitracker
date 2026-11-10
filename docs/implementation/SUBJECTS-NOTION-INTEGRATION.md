@@ -39,7 +39,7 @@ Important data-quality rules:
 
 UniToStudyHub cannot reuse ChatGPT's connected Notion authorization. The desktop app needs its own Notion integration, shared with the relevant database/pages.
 
-The integration uses Notion API version 2025-09-03:
+The integration uses the current Notion API version 2026-03-11. This version retains the data-source endpoints used here; its breaking changes concern block insertion positioning, the archived-to-in_trash rename and the transcription-to-meeting_notes rename. This read-only client does not use those renamed fields or write endpoints. See the [official Notion upgrade guide](https://developers.notion.com/guides/get-started/upgrade-guide-2026-03-11).
 
 - GET /v1/data_sources/{data_source_id} reads the data-source schema.
 - POST /v1/data_sources/{data_source_id}/query reads database rows with cursor pagination.
