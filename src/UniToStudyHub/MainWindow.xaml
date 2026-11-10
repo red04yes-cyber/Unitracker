@@ -830,6 +830,7 @@
                                         <TextBox Text="{Binding AttendanceDurationInput, UpdateSourceTrigger=PropertyChanged}"/>
                                     </StackPanel>
                                 </Grid>
+                                <CheckBox Content="Presente alla lezione" IsChecked="{Binding AttendanceAttendedInput}" Margin="0,12,0,0"/>
                                 <TextBlock Text="Appunti (facoltativi)" FontSize="11" Foreground="{StaticResource MutedBrush}" Margin="0,10,0,5"/>
                                 <TextBox Text="{Binding AttendanceNotesInput, UpdateSourceTrigger=PropertyChanged}"/>
                                 <Button Content="Registra presenza" Command="{Binding RecordAttendanceCommand}"
