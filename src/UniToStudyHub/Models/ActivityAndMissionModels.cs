@@ -119,6 +119,24 @@ public sealed class StudyActivityData
 /// deliberately not a second task table: steps are checklist items, while
 /// tasks remain actionable units that can be scheduled and completed.
 /// </summary>
+/// <summary>
+/// Progress for one actionable task, derived from unique recorded activity
+/// intervals rather than planned calendar blocks. Overlapping timer/manual
+/// entries are counted once; an estimate of zero is reported as unconfigured.
+/// </summary>
+public sealed record TaskProgressSnapshot(
+    string TaskId,
+    int EstimatedMinutes,
+    int RecordedSeconds,
+    int RemainingSeconds,
+    int ProgressPercent,
+    bool IsOverEstimate)
+{
+    public bool HasEstimate => EstimatedMinutes > 0;
+    public int RecordedMinutes => (int)Math.Ceiling(RecordedSeconds / 60d);
+    public int RemainingMinutes => (int)Math.Ceiling(RemainingSeconds / 60d);
+}
+
 public sealed class StudyMissionData
 {
     public string Id { get; set; } = Guid.NewGuid().ToString("N");
