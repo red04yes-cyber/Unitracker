@@ -136,7 +136,14 @@ Tests in StudyPlannerServiceTests cover:
 - safe replacement of unchanged generated blocks;
 - preservation of user-edited generated events;
 - SQLite persistence round-trip;
-- ambiguous autumn and invalid spring DST boundaries.
+- ambiguous autumn and invalid spring DST boundaries;
+- task-link idempotence, course inference and cross-course rejection;
+- unique task-time progress across overlapping timer/manual intervals and pause gaps;
+- actual focus time retained when a timer is cancelled;
+- task-history retention on removal, zero-estimate behavior and estimate overruns;
+- task-linked Pomodoro startup and rejection before partial session creation;
+- SQLite round-trip of the existing StudyActivities.TaskId field.
 
-The test suite and Windows build must run in GitHub Actions before this slice is
+The task-progress slice adds ten focused service test cases and extends the
+SQLite activity round-trip test. GitHub Actions must pass before this slice is
 considered verified. No local build/test result is claimed in this document.
