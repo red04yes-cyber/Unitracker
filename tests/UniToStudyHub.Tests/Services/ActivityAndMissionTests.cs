@@ -514,4 +514,75 @@ public sealed class ActivityAndMissionTests
         Assert.Equal("analisi", activity.CourseId);
     }
 
+
+    [Fact]
+    public void PomodoroRejectsCrossCourseTaskBeforeCreatingAnySession()
+    {
+        var data = Data();
+        data.Courses.Add(new Course { Id = "fisica", Name = "Fisica", Cfu = 6 });
+        var task = new StudyTaskService().Add(data, new StudyTaskData
+        {
+            Id = "fisica-task",
+            CourseId = "fisica",
+            Title = "Esercizi di fisica",
+            EstimatedMinutes = 30
+        });
+        var pomodoro = new PomodoroService(new FocusSessionService(), new ActivityLedgerService());
+
+        Assert.Throws<ArgumentException>(() => pomodoro.Start(data, "analisi", task.Title, Start, task.Id));
+        Assert.Empty(data.StudySessions);
+        Assert.Null(data.PomodoroTimer);
+        Assert.Empty(data.StudyActivities);
+    }
+
+    [Fact]
+    public void TaskWithoutEstimateIsNotPresentedAsComplete()
+    {
+        var data = Data();
+        var task = new StudyTaskService().Add(data, new StudyTaskData
+        {
+            Id = "task-unestimated",
+            CourseId = "analisi",
+            Title = "Lettura libera",
+            EstimatedMinutes = 0
+        });
+        var ledger = new ActivityLedgerService();
+        ledger.AddManual(data, new StudyActivityData
+        {
+            CourseId = "analisi",
+            TaskId = task.Id,
+            Type = StudyActivityType.Reading,
+            Title = "Lettura",
+            StartedAt = Start,
+            EndedAt = Start.AddMinutes(5),
+            EffectiveSeconds = 300,
+            TimeZoneId = "UTC"
+        }, Start.AddMinutes(6));
+
+        var progress = ledger.GetTaskProgress(data, task.Id, Start.AddMinutes(7));
+
+        Assert.False(progress.HasEstimate);
+        Assert.Equal(300, progress.RecordedSeconds);
+        Assert.Equal(0, progress.ProgressPercent);
+        Assert.Equal(0, progress.RemainingSeconds);
+        Assert.False(progress.IsOverEstimate);
+    }
+
+    [Fact]
+    public void UnreferencedTaskCanStillBePhysicallyRemoved()
+    {
+        var data = Data();
+        var task = new StudyTaskService().Add(data, new StudyTaskData
+        {
+            Id = "task-unlinked",
+            CourseId = "analisi",
+            Title = "Attività senza storico",
+            EstimatedMinutes = 15
+        });
+
+        new StudyTaskService().Remove(data, task.Id, Start);
+
+        Assert.DoesNotContain(data.StudyTasks, x => x.Id == task.Id);
+    }
+
 }
