@@ -1,3 +1,5 @@
+using System.IO.Compression;
+using System.Text;
 using UniToStudyHub.Models;
 using UniToStudyHub.Services;
 using Xunit;
@@ -108,6 +110,32 @@ public sealed class StudyProductivityServiceTests
         Assert.False(widgets[0].IsVisible);
         Assert.Equal("streak", widgets[1].Key);
     }
+    [Fact]
+    public void AttendanceExportsProduceValidPdfAndXlsxContainers()
+    {
+        var data = DataWithCourse();
+        _service.RecordAttendance(data, "course-1", "Lezione introduttiva",
+            new DateTimeOffset(2026, 11, 10, 8, 0, 0, TimeSpan.Zero), 90, true, "Appunti iniziali");
+
+        var xlsx = StudyProductivityExportService.ExportAttendanceXlsx(data);
+        using (var stream = new MemoryStream(xlsx))
+        using (var archive = new ZipArchive(stream, ZipArchiveMode.Read))
+        {
+            Assert.Contains(archive.Entries, x => x.FullName == "xl/workbook.xml");
+            var sheet = archive.GetEntry("xl/worksheets/sheet1.xml")!;
+            using var reader = new StreamReader(sheet.Open());
+            var xml = reader.ReadToEnd();
+            Assert.Contains("Lezione introduttiva", xml);
+            Assert.Contains("Appunti iniziali", xml);
+        }
+
+        var pdf = StudyProductivityExportService.ExportAttendancePdf(data);
+        var pdfText = Encoding.ASCII.GetString(pdf);
+        Assert.StartsWith("%PDF-1.4", pdfText);
+        Assert.Contains("Lezione introduttiva", pdfText);
+        Assert.Contains("%%EOF", pdfText);
+    }
+
     [Fact]
     public void PlannedExamsSynchronizeIntoSingleUpdatableReminderRecords()
     {
