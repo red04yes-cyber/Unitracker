@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace UniToStudyHub.Models;
 
 /// <summary>Persisted study-productivity settings and records. All dates are local calendar dates or offset-aware instants.</summary>
@@ -56,6 +58,16 @@ public sealed class DashboardWidgetPreferenceData
     public string Key { get; set; } = string.Empty;
     public bool IsVisible { get; set; } = true;
     public int Order { get; set; }
+    [JsonIgnore]
+    public string DisplayName => Key switch
+    {
+        "next-activity" => "Prossima attività",
+        "weekly-goal" => "Obiettivo settimanale",
+        "streak" => "Streak di studio",
+        "upcoming-exams" => "Esami in arrivo",
+        "recent-notes" => "Note recenti",
+        _ => Key
+    };
 }
 
 public sealed class ExamModeData
