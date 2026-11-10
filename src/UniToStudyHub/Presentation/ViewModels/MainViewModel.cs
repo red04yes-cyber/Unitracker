@@ -413,6 +413,9 @@ public sealed class MainViewModel : INotifyPropertyChanged
     public void RefreshNextActivityDisplay() => OnPropertyChanged(nameof(NextActivityDisplay));
 
     public string ExportAttendanceCsv() => _productivity.ExportAttendanceCsv(_data);
+    public byte[] ExportAttendanceXlsx() => StudyProductivityExportService.ExportAttendanceXlsx(_data);
+
+    public byte[] ExportAttendancePdf() => StudyProductivityExportService.ExportAttendancePdf(_data);
 
     public void RefreshExamModeDisplay()
     {
