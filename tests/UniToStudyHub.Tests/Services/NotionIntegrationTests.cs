@@ -49,7 +49,7 @@ public sealed class NotionIntegrationTests
             if (request.RequestUri!.AbsolutePath.EndsWith("/data_sources/" + DataSourceId, StringComparison.Ordinal))
                 return Json("""
                     {
-                      "id":"fa1351aa-92d6-4d4c-9776-f2539e8f2425",
+                      "id":"11111111-1111-4111-8111-111111111111",
                       "title":[{"plain_text":"Esami — L-33 Economia e Statistica"}],
                       "properties":{"Esame":{"type":"title"},"CFU":{"type":"number"}}
                     }
@@ -79,7 +79,7 @@ public sealed class NotionIntegrationTests
     public async Task InvalidDataSourceDoesNotStoreToken()
     {
         var handler = new RoutingHandler((_, _) => Json("""
-            {"id":"fa1351aa-92d6-4d4c-9776-f2539e8f2425","title":[],"properties":{"Name":{"type":"title"}}}
+            {"id":"11111111-1111-4111-8111-111111111111","title":[],"properties":{"Name":{"type":"title"}}}
             """));
         var tokenStore = new InMemoryNotionTokenStore();
         var service = CreateService(handler, tokenStore);
@@ -215,7 +215,7 @@ public sealed class NotionIntegrationTests
         {
           "results": [
             {
-              "id":"3fd9d18d-5615-8162-9867-fe16db77087f",
+              "id":"22222222-2222-4222-8222-222222222222",
               "url":"https://www.notion.so/22222222222242228222822222222222",
               "last_edited_time":"2026-11-01T10:00:00.000Z",
               "properties":{

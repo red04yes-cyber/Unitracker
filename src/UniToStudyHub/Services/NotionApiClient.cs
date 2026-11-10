@@ -63,7 +63,7 @@ public sealed class NotionApiException : Exception
 
 /// <summary>
 /// Read-only Notion REST client. Uses the data-source API introduced in
-/// Notion-Version 2025-09-03. Tokens are attached per request and never logged.
+/// Notion-Version 2026-03-11. Tokens are attached per request and never logged.
 /// Imported page content is returned as data, never interpreted as instructions.
 /// </summary>
 public sealed class NotionApiClient
