@@ -181,12 +181,12 @@ public sealed class SqliteStudyDataStoreTests
                     }
                 }
             });
-            db.ProfileSettings.Add(new ProfileSettingsEntity
-            {
-                Id = 1, GraduationTarget = new DateTime(2027, 10, 1),
-                MoodleBaseUrl = "https://moodle.example.edu"
-            });
             await db.SaveChangesAsync();
+            // Seed this historical schema through SQL: the current EF model also
+            // maps ProductivityStateJson, which does not exist until the new migration.
+            await db.Database.ExecuteSqlRawAsync(
+                "INSERT INTO ProfileSettings (Id, GraduationTarget, MoodleBaseUrl) " +
+                "VALUES (1, '2027-10-01 00:00:00', 'https://moodle.example.edu')");
         }
 
         await database.MigrateAsync();
