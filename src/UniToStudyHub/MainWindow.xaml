@@ -644,7 +644,7 @@
                                             </Border>
                                         </StackPanel>
                                     </ScrollViewer>
-                                </TabItem>                      </TabItem>
+                                </TabItem>
                                 <TabItem Header="Piano di studio">
                                     <ScrollViewer VerticalScrollBarVisibility="Auto">
                                         <StackPanel Margin="12">
