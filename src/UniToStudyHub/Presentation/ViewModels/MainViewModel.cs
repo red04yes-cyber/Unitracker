@@ -412,7 +412,6 @@ public sealed class MainViewModel : INotifyPropertyChanged
     private void RefreshDashboardWidgetPreferences()
     {
         DashboardWidgetPreferences.Clear();
-        var labels = new Dictionary<string, string> { ["next-activity"] = "Prossima attività", ["weekly-goal"] = "Obiettivo settimanale", ["streak"] = "Streak di studio", ["upcoming-exams"] = "Esami in arrivo", ["recent-notes"] = "Note recenti" };
         foreach (var item in _productivity.GetDashboardWidgets(_data)) DashboardWidgetPreferences.Add(new DashboardWidgetPreferenceData { Key = item.Key, IsVisible = item.IsVisible, Order = item.Order });
     }
     private async Task SaveQuickNoteAsync()
