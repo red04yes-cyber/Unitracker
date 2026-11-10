@@ -5,6 +5,7 @@ public sealed class ProfileSettingsEntity
     public int Id { get; set; } = 1;
     public DateTime GraduationTarget { get; set; } = new(2027, 10, 1);
     public string MoodleBaseUrl { get; set; } = string.Empty;
+    public string ProductivityStateJson { get; set; } = "{}";
 }
 public sealed class CourseEntity
 {
