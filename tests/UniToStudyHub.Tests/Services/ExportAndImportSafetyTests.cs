@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.IO.Compression;
 using System.Text;
+using System.Text.Json;
 using UniToStudyHub.Models;
 using UniToStudyHub.Services;
 using Xunit;
@@ -87,7 +88,13 @@ public sealed class ExportAndImportSafetyTests
     private static string ExportText(StudyData data, StudyExportRequest request, StudyExportFormat format)
     {
         var bundle = new StudyDataExportService().Export(data, request, format, Start.AddHours(1));
-        if (format != StudyExportFormat.Xlsx)
+        if (format == StudyExportFormat.Json)
+        {
+            using var document = JsonDocument.Parse(bundle.Files.Single().Content);
+            return string.Join(Environment.NewLine, FlattenJsonStrings(document.RootElement));
+        }
+
+        if (format == StudyExportFormat.Csv)
             return string.Join(Environment.NewLine,
                 bundle.Files.Select(file => Encoding.UTF8.GetString(file.Content)));
 
@@ -97,6 +104,28 @@ public sealed class ExportAndImportSafetyTests
             using var reader = new StreamReader(entry.Open());
             return reader.ReadToEnd();
         }));
+    }
+
+    private static IEnumerable<string> FlattenJsonStrings(JsonElement element)
+    {
+        if (element.ValueKind == JsonValueKind.String)
+        {
+            yield return element.GetString() ?? string.Empty;
+            yield break;
+        }
+
+        if (element.ValueKind == JsonValueKind.Object)
+        {
+            foreach (var property in element.EnumerateObject())
+            foreach (var value in FlattenJsonStrings(property.Value))
+                yield return value;
+        }
+        else if (element.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var item in element.EnumerateArray())
+            foreach (var value in FlattenJsonStrings(item))
+                yield return value;
+        }
     }
 
     [Theory]
