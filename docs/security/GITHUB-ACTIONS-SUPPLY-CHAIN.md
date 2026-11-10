@@ -10,13 +10,14 @@ The current workflow set uses only these upstream actions:
 
 | Action | Human-readable release line | Immutable commit |
 | --- | --- | --- |
-| `actions/checkout` | `v4` | `11d5960a326750d5838078e36cf38b85af677262` |
-| `actions/setup-dotnet` | `v4` | `67a3573c9a986a3f9c594539f4ab511d57bb3ce9` |
-| `actions/upload-artifact` | `v4` | `ea165f8d65b6e75b540449e92b4886f43607fa02` |
+| `actions/checkout` | `v6` | `d23441a48e516b6c34aea4fa41551a30e30af803` |
+| `actions/setup-dotnet` | `v6` | `0f4a354dd5547a28c70b7853dbd95d5b67886e73` |
+| `actions/upload-artifact` | `v6` | `b7c566a772e6b6bfb58ed0dc250532a479d7789f` |
 
 The references above were resolved from the corresponding official
-`actions/*` repository `v4` refs on 10 November 2026. The workflow runner
-uses the commit SHA, not the mutable tag.
+`actions/*` repository `v6` refs on 10 November 2026. Their `action.yml`
+metadata declares `runs.using: node24`; the workflow runner uses the commit
+SHA, not the mutable tag.
 
 ## Updating an action
 
