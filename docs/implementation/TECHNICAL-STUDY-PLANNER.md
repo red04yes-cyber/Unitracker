@@ -144,6 +144,6 @@ Tests in StudyPlannerServiceTests cover:
 - task-linked Pomodoro startup and rejection before partial session creation;
 - SQLite round-trip of the existing StudyActivities.TaskId field.
 
-The task-progress slice adds ten focused service test cases and extends the
-SQLite activity round-trip test. GitHub Actions must pass before this slice is
+The task-progress slice adds eleven focused service test cases and extends
+the SQLite activity round-trip test. GitHub Actions must pass before this slice is
 considered verified. No local build/test result is claimed in this document.
