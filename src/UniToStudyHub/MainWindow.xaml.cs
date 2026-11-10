@@ -40,7 +40,11 @@ public partial class MainWindow : Window
         SystemThemeWatcher.Watch(this, Wpf.Ui.Controls.WindowBackdropType.Mica);
         DataContext = viewModel;
         _focusRefreshTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
-        _focusRefreshTimer.Tick += (_, _) => viewModel.Workspace.RefreshFocusSnapshot();
+        _focusRefreshTimer.Tick += async (_, _) =>
+        {
+            viewModel.Workspace.RefreshFocusSnapshot();
+            await viewModel.Workspace.RefreshSimulationSnapshotAsync();
+        };
         _focusRefreshTimer.Start();
         Closing += (_, _) =>
         {
