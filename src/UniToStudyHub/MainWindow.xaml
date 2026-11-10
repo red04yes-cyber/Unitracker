@@ -779,8 +779,13 @@
                                 <ItemsControl ItemsSource="{Binding DashboardWidgetPreferences}">
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate>
-                                            <CheckBox IsChecked="{Binding IsVisible, UpdateSourceTrigger=PropertyChanged}"
-                                                      Content="{Binding DisplayName}" Margin="0,4,0,4"/>
+                                            <Grid Margin="0,4,0,4">
+                                                <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="65"/></Grid.ColumnDefinitions>
+                                                <CheckBox IsChecked="{Binding IsVisible, UpdateSourceTrigger=PropertyChanged}"
+                                                          Content="{Binding DisplayName}" VerticalAlignment="Center"/>
+                                                <TextBox Grid.Column="1" Text="{Binding Order, UpdateSourceTrigger=PropertyChanged}"
+                                                         ToolTip="Posizione nella dashboard" Padding="5,3"/>
+                                            </Grid>
                                         </DataTemplate>
                                     </ItemsControl.ItemTemplate>
                                 </ItemsControl>
