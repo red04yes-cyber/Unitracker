@@ -44,6 +44,9 @@ public sealed class MainViewModel : INotifyPropertyChanged
     private string _reminderTitleInput = string.Empty;
     private string _reminderDateInput = DateTime.Now.AddHours(1).ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture);
     private string _reminderKindInput = "Scadenza";
+    private Exam? _selectedExamForMode;
+    private string _examModeEndInput = DateTime.Today.AddDays(1).AddHours(9).ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture);
+    private string _examModeDisplay = "Modalità esame non attiva";
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
@@ -55,6 +58,10 @@ public sealed class MainViewModel : INotifyPropertyChanged
     public ObservableCollection<QuickStudyNoteData> QuickNotes { get; } = new();
     public ObservableCollection<LectureAttendanceData> AttendanceRecords { get; } = new();
     public ObservableCollection<StudyReminderData> ReminderRecords { get; } = new();
+    public ObservableCollection<DashboardWidgetPreferenceData> DashboardWidgetPreferences { get; } = new();
+    public Exam? SelectedExamForMode { get => _selectedExamForMode; set => Set(ref _selectedExamForMode, value); }
+    public string ExamModeEndInput { get => _examModeEndInput; set => Set(ref _examModeEndInput, value); }
+    public string ExamModeDisplay { get => _examModeDisplay; private set => Set(ref _examModeDisplay, value); }
     public Course? SelectedProductivityCourse { get => _selectedProductivityCourse; set => Set(ref _selectedProductivityCourse, value); }
     public string DailyGoalInput { get => _dailyGoalInput; set => Set(ref _dailyGoalInput, value); }
     public string WeeklyGoalInput { get => _weeklyGoalInput; set => Set(ref _weeklyGoalInput, value); }
@@ -187,6 +194,9 @@ public sealed class MainViewModel : INotifyPropertyChanged
     public AsyncRelayCommand SaveQuickNoteCommand { get; }
     public AsyncRelayCommand RecordAttendanceCommand { get; }
     public AsyncRelayCommand AddReminderCommand { get; }
+    public AsyncRelayCommand StartExamModeCommand { get; }
+    public AsyncRelayCommand StopExamModeCommand { get; }
+    public AsyncRelayCommand SaveDashboardWidgetsCommand { get; }
 
     public MainViewModel(IStudyDataStore store, MoodleApplicationService moodle, CareerCalculatorService calculator, StudyProductivityService productivity)
     {
@@ -204,6 +214,9 @@ public sealed class MainViewModel : INotifyPropertyChanged
         SaveQuickNoteCommand = new AsyncRelayCommand(SaveQuickNoteAsync);
         RecordAttendanceCommand = new AsyncRelayCommand(RecordAttendanceAsync);
         AddReminderCommand = new AsyncRelayCommand(AddReminderAsync);
+        StartExamModeCommand = new AsyncRelayCommand(StartExamModeAsync);
+        StopExamModeCommand = new AsyncRelayCommand(StopExamModeAsync);
+        SaveDashboardWidgetsCommand = new AsyncRelayCommand(SaveDashboardWidgetsAsync);
     }
 
     public async Task InitializeAsync(CancellationToken cancellationToken = default)
@@ -217,6 +230,10 @@ public sealed class MainViewModel : INotifyPropertyChanged
         DailyGoalInput = _data.Productivity.DailyStudyGoalMinutes.ToString(CultureInfo.InvariantCulture);
         WeeklyGoalInput = _data.Productivity.WeeklyStudyGoalMinutes.ToString(CultureInfo.InvariantCulture);
         SelectedProductivityCourse = Courses.FirstOrDefault();
+        SelectedExamForMode = Exams.FirstOrDefault(x => !x.Completed && x.PlannedDate.HasValue);
+        if (SelectedExamForMode?.PlannedDate is DateTime planned) ExamModeEndInput = planned.Date.AddHours(9).ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture);
+        RefreshDashboardWidgetPreferences();
+        RefreshExamModeDisplay();
         RefreshProductivityCollections();
     }
 
@@ -368,6 +385,36 @@ public sealed class MainViewModel : INotifyPropertyChanged
         try { _productivity.AddReminder(_data, ReminderTitleInput, dueAt, ReminderKindInput, SelectedProductivityCourse?.Id); await SaveAsync(); RefreshProductivityCollections(); ReminderTitleInput = string.Empty; ProductivitySummary = "Promemoria salvato."; }
         catch (Exception ex) { ProductivitySummary = $"Promemoria non salvato: {ex.Message}"; }
     }
+    private async Task StartExamModeAsync()
+    {
+        if (SelectedExamForMode is null || !DateTimeOffset.TryParse(ExamModeEndInput, CultureInfo.GetCultureInfo("it-IT"), DateTimeStyles.AssumeLocal, out var endsAt)) { ProductivitySummary = "Seleziona un esame e imposta data e ora di fine."; return; }
+        try { _productivity.StartExamMode(_data, SelectedExamForMode.Id, SelectedExamForMode.Name, endsAt, DateTimeOffset.Now); await SaveAsync(); RefreshExamModeDisplay(); ProductivitySummary = "Modalità esame attivata."; }
+        catch (Exception ex) { ProductivitySummary = $"Modalità esame non attivata: {ex.Message}"; }
+    }
+
+    private async Task StopExamModeAsync()
+    {
+        _productivity.StopExamMode(_data); await SaveAsync(); RefreshExamModeDisplay(); ProductivitySummary = "Modalità esame disattivata.";
+    }
+
+    public void RefreshExamModeDisplay()
+    {
+        var snapshot = _productivity.GetExamMode(_data, DateTimeOffset.Now);
+        ExamModeDisplay = snapshot is null ? "Modalità esame non attiva" : snapshot.IsExpired ? $"{snapshot.Title}: tempo scaduto" : $"{snapshot.Title} · {snapshot.Remaining.Days}g {snapshot.Remaining.Hours:00}:{snapshot.Remaining.Minutes:00}:{snapshot.Remaining.Seconds:00}";
+    }
+
+    private async Task SaveDashboardWidgetsAsync()
+    {
+        try { _productivity.SetDashboardWidgets(_data, DashboardWidgetPreferences); await SaveAsync(); ProductivitySummary = "Dashboard aggiornata."; }
+        catch (Exception ex) { ProductivitySummary = $"Dashboard non salvata: {ex.Message}"; }
+    }
+
+    private void RefreshDashboardWidgetPreferences()
+    {
+        DashboardWidgetPreferences.Clear();
+        var labels = new Dictionary<string, string> { ["next-activity"] = "Prossima attività", ["weekly-goal"] = "Obiettivo settimanale", ["streak"] = "Streak di studio", ["upcoming-exams"] = "Esami in arrivo", ["recent-notes"] = "Note recenti" };
+        foreach (var item in _productivity.GetDashboardWidgets(_data)) DashboardWidgetPreferences.Add(new DashboardWidgetPreferenceData { Key = item.Key, IsVisible = item.IsVisible, Order = item.Order });
+    }
     private async Task SaveQuickNoteAsync()
     {
         if (SelectedProductivityCourse is null) { ProductivitySummary = "Seleziona una materia per collegare la nota."; return; }
@@ -395,6 +442,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(CurrentStreakDisplay));
         OnPropertyChanged(nameof(WeeklyFocusDisplay));
         OnPropertyChanged(nameof(NextActivityDisplay));
+        RefreshExamModeDisplay();
     }
     private Exam? GetNextPlannedExam() =>
         Exams.Where(x => !x.Completed && x.PlannedDate.HasValue && x.PlannedDate.Value.Date >= DateTime.Today)
