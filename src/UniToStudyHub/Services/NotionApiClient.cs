@@ -93,7 +93,9 @@ public sealed class NotionApiClient
         using var document = await SendJsonAsync(token, HttpMethod.Get, $"data_sources/{id}", null,
             cancellationToken).ConfigureAwait(false);
         var root = document.RootElement;
-        var name = ReadRichText(root, "title");
+        var name = root.TryGetProperty("title", out var titleElement)
+            ? ReadRichText(titleElement)
+            : string.Empty;
         var properties = new Dictionary<string, string>(StringComparer.Ordinal);
         if (root.TryGetProperty("properties", out var propertyObject) &&
             propertyObject.ValueKind == JsonValueKind.Object)

@@ -66,7 +66,7 @@ public sealed class NotionIntegrationTests
 
         var preview = await service.ConnectAndPreviewAsync("secret_test_token_123", DataSourceId);
 
-        Assert.Equal(1, preview.Courses.Count);
+        Assert.Single(preview.Courses);
         Assert.Equal("Microeconomia", preview.Courses[0].Name);
         Assert.Equal("ECM0305", preview.Courses[0].Code);
         Assert.Equal(9, preview.Courses[0].Cfu);
