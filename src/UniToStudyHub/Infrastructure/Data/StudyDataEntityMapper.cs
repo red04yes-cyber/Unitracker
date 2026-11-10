@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.IO;
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using UniToStudyHub.Domain.Entities;
 using UniToStudyHub.Domain.Enums;
@@ -25,6 +26,12 @@ public static class StudyDataEntityMapper
         data.Exams ??= new ObservableCollection<Models.Exam>();
         data.Announcements ??= new ObservableCollection<Announcement>();
         data.CareerExams ??= new ObservableCollection<CareerExamData>();
+        data.Productivity ??= new StudyProductivityData();
+        data.Productivity.Reminders ??= new List<StudyReminderData>();
+        data.Productivity.StudyDays ??= new List<StudyDayLogData>();
+        data.Productivity.QuickNotes ??= new List<QuickStudyNoteData>();
+        data.Productivity.Attendance ??= new List<LectureAttendanceData>();
+        data.Productivity.DashboardWidgets ??= new List<DashboardWidgetPreferenceData>();
 
         EnsureNoNullItems(data.Courses, "course");
         EnsureNoNullItems(data.Grades, "grade");
@@ -112,6 +119,8 @@ public static class StudyDataEntityMapper
             }
         }
 
+        ValidateProductivity(data, courseIds);
+
         // Rehydrate the domain aggregate to enforce state, grade and recording
         // invariants before data is persisted or imported.
         _ = ToDomainExams(data.CareerExams);
@@ -188,13 +197,45 @@ public static class StudyDataEntityMapper
         return parsed;
     }
 
+    private static void ValidateProductivity(StudyData data, HashSet<string> courseIds)
+    {
+        var state = data.Productivity;
+        if (state.DailyStudyGoalMinutes is < 1 or > 1440 ||
+            state.WeeklyStudyGoalMinutes < state.DailyStudyGoalMinutes ||
+            state.WeeklyStudyGoalMinutes > 10080)
+            throw new InvalidDataException("Study goals are outside the supported range.");
+        EnsureUniqueIds(state.Reminders, x => x.Id, "reminder");
+        EnsureUniqueIds(state.QuickNotes, x => x.Id, "quick note");
+        EnsureUniqueIds(state.Attendance, x => x.Id, "attendance record");
+        if (state.Reminders.Any(x => string.IsNullOrWhiteSpace(x.Title) ||
+            (x.CourseId is not null && !courseIds.Contains(x.CourseId))))
+            throw new InvalidDataException("A reminder has an invalid title or course reference.");
+        if (state.StudyDays.Any(x => x.FocusMinutes < 0 || x.FocusMinutes > 1440))
+            throw new InvalidDataException("A study-day log has invalid focus minutes.");
+        if (state.StudyDays.GroupBy(x => x.Date).Any(x => x.Count() > 1))
+            throw new InvalidDataException("Duplicate study-day log dates were found.");
+        if (state.QuickNotes.Any(x => !courseIds.Contains(x.CourseId) ||
+            string.IsNullOrWhiteSpace(x.Topic) || string.IsNullOrWhiteSpace(x.Content)))
+            throw new InvalidDataException("A quick note has an invalid course, topic or content.");
+        if (state.Attendance.Any(x => !courseIds.Contains(x.CourseId) ||
+            string.IsNullOrWhiteSpace(x.Title) || x.DurationMinutes is < 1 or > 1440))
+            throw new InvalidDataException("An attendance record has an invalid course, title or duration.");
+        if (state.DashboardWidgets.Any(x => string.IsNullOrWhiteSpace(x.Key) || x.Order < 0) ||
+            state.DashboardWidgets.Select(x => x.Key).Distinct(StringComparer.Ordinal).Count() != state.DashboardWidgets.Count)
+            throw new InvalidDataException("Dashboard widget preferences contain invalid or duplicate keys.");
+        if (state.ActiveExamMode is { } exam && (string.IsNullOrWhiteSpace(exam.ExamId) ||
+            string.IsNullOrWhiteSpace(exam.Title) || exam.EndsAt <= exam.StartedAt))
+            throw new InvalidDataException("The active exam mode is invalid.");
+    }
+
     public static void AddToContext(StudyHubDbContext db, StudyData data)
     {
         db.ProfileSettings.Add(new ProfileSettingsEntity
         {
             Id = 1,
             GraduationTarget = data.GraduationTarget,
-            MoodleBaseUrl = data.MoodleBaseUrl
+            MoodleBaseUrl = data.MoodleBaseUrl,
+            ProductivityStateJson = JsonSerializer.Serialize(data.Productivity)
         });
         db.Courses.AddRange(data.Courses.Select(x => new CourseEntity
         {
@@ -239,7 +280,10 @@ public static class StudyDataEntityMapper
         var result = new StudyData
         {
             GraduationTarget = settings?.GraduationTarget ?? new DateTime(2027, 10, 1),
-            MoodleBaseUrl = settings?.MoodleBaseUrl ?? string.Empty
+            MoodleBaseUrl = settings?.MoodleBaseUrl ?? string.Empty,
+            Productivity = string.IsNullOrWhiteSpace(settings?.ProductivityStateJson)
+                ? new StudyProductivityData()
+                : JsonSerializer.Deserialize<StudyProductivityData>(settings.ProductivityStateJson) ?? new StudyProductivityData()
         };
         foreach (var x in await db.Courses.AsNoTracking().ToListAsync(cancellationToken))
             result.Courses.Add(new Course { Id = x.Id, MoodleCourseId = x.MoodleCourseId, Name = x.Name, Code = x.Code, Cfu = x.Cfu, Completed = x.Completed });
