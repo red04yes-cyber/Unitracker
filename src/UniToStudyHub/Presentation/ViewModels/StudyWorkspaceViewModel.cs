@@ -128,6 +128,8 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
     public ObservableCollection<BackupInfo> BackupItems { get; } = new();
     public ObservableCollection<CourseProgressRow> CourseProgressRows { get; } = new();
     public ObservableCollection<SyllabusTopicData> SyllabusTopics { get; } = new();
+    public bool NoSyllabusTopics => SyllabusTopics.Count == 0;
+    public bool HasSelectedSyllabusTopic => SelectedSyllabusTopic is not null;
     public ObservableCollection<SyllabusTopicData> SyllabusParentOptions { get; } = new();
     public ObservableCollection<QuestionBankItemData> QuestionBankItems { get; } = new();
     public IReadOnlyList<string> SyllabusKindOptions { get; } = new[] { "Modulo", "Capitolo", "Argomento" };
@@ -196,6 +198,7 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
             if (ReferenceEquals(_selectedSyllabusTopic, value)) return;
             _selectedSyllabusTopic = value;
             OnPropertyChanged();
+            OnPropertyChanged(nameof(HasSelectedSyllabusTopic));
             SyllabusCompletionInput = value?.CompletionPercent ?? 0;
             SyllabusPreparednessInput = PreparednessLabel(value?.Preparedness ?? TopicPreparednessLevel.Unrated);
             CompleteSyllabusTopicCommand?.NotifyCanExecuteChanged();
@@ -1302,6 +1305,8 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
         if (SelectedQuestion is null || !QuestionBankItems.Any(x => x.Id == SelectedQuestion.Id))
             SelectedQuestion = QuestionBankItems.FirstOrDefault();
         OnPropertyChanged(nameof(SyllabusTopics));
+        OnPropertyChanged(nameof(NoSyllabusTopics));
+        OnPropertyChanged(nameof(HasSelectedSyllabusTopic));
         OnPropertyChanged(nameof(QuestionBankItems));
         RefreshSyllabusParentOptions();
         AddSyllabusTopicCommand?.NotifyCanExecuteChanged();
