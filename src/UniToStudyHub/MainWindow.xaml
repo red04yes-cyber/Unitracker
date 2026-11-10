@@ -582,7 +582,7 @@
                                             </Grid>
                                         </StackPanel>
                                     </ScrollViewer>
-                                </TabItem>                      </TabItem>
+                                </TabItem>
                                 <TabItem Header="Programma">
                                     <ScrollViewer VerticalScrollBarVisibility="Auto">
                                         <StackPanel Margin="12">
