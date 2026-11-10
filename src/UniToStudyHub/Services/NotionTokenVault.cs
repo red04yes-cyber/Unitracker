@@ -45,13 +45,11 @@ public sealed class NotionTokenVault : INotionTokenStore
     {
         var normalized = Normalize(token);
         _store.Write(SecretName, normalized);
-        AppDiagnostics.Info("notion", "Token dell'integrazione Notion archiviato con protezione DPAPI.");
     }
 
     public bool Delete()
     {
         var deleted = _store.Delete(SecretName);
-        if (deleted) AppDiagnostics.Info("notion", "Credenziali Notion locali rimosse.");
         return deleted;
     }
 

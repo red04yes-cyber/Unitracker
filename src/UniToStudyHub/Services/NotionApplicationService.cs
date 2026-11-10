@@ -1,9 +1,7 @@
 using System.Security.Cryptography;
 using System.Text;
 using UniToStudyHub.Domain.Enums;
-using UniToStudyHub.Infrastructure.Data;
 using UniToStudyHub.Models;
-using UniToStudyHub.Security;
 
 namespace UniToStudyHub.Services;
 
@@ -66,7 +64,6 @@ public sealed class NotionApplicationService
         cancellationToken.ThrowIfCancellationRequested();
         _tokens.Save(normalizedToken);
 
-        AppDiagnostics.Info("notion", $"Connessione verificata: {courses.Count} record letti dal data source.");
         return new NotionConnectionPreview(dataSource, courses, DateTimeOffset.UtcNow);
     }
 
