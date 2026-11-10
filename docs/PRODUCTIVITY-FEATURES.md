@@ -10,15 +10,14 @@ This slice adds a persisted productivity aggregate without introducing a second 
 - Exam mode: persists the selected exam, start instant and end instant. Remaining time is derived from timestamps, so it survives restarts without relying on a running timer loop.
 - Quick notes: notes are linked to an existing course and a required topic; an existing note can be updated by ID.
 - Attendance: lecture records link to existing courses and retain title, date/time, duration, attended state and optional notes. Attendance CSV generation is available.
-- Dashboard preferences: widget visibility and order are persisted; deterministic defaults are supplied before the user customizes the dashboard.
+- Dashboard preferences: widget visibility and order are persisted; deterministic defaults are supplied before the user customizes the dashboard. The WPF Study Lab now exposes visibility toggles for the five built-in widgets.
 - Course archive: the existing Course.Completed field remains the archive flag; no duplicate archive state is added.
-- WPF Study Lab: the Studio Lab tab now exposes daily/weekly goal editing, additive focus logging, current streak and weekly minutes, course-linked quick notes, lecture attendance, reminder creation/listing and a next-activity summary. These actions save through the existing data store.
+- WPF Study Lab: the Studio Lab tab now exposes daily/weekly goal editing, additive focus logging, current streak and weekly minutes, course-linked quick notes, lecture attendance, reminder creation/listing and a next-activity summary. It also exposes a timestamp-derived exam countdown with a live one-second display refresh, dashboard widget visibility controls and a Save File workflow for attendance CSV. These actions save through the existing data store.
 
 ## Not included / integration still required
 
 - Native Windows toast scheduling and a true always-on desktop widget host.
-- Native Windows toast scheduling, an always-on desktop widget host, and the live exam-mode countdown UI are still pending. Dashboard widget preferences are persisted but do not yet have a customization screen.
-- PDF and XLSX export, and a unified export workflow. Only attendance CSV is implemented here.
+- PDF and XLSX export, and a unified export workflow. Attendance CSV can now be saved from the WPF screen.
 - An OS background scheduler. Reminder lookup is deterministic and should be called by a bounded host scheduler.
 
 ## Persistence and verification
