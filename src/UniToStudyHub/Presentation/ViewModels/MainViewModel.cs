@@ -6,7 +6,6 @@ using UniToStudyHub.Domain.Services;
 using UniToStudyHub.Models;
 using UniToStudyHub.Presentation.Commands;
 using UniToStudyHub.Services;
-using System.Globalization;
 
 namespace UniToStudyHub.Presentation.ViewModels;
 
