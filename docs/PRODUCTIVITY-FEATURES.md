@@ -4,7 +4,7 @@ This slice adds a persisted productivity aggregate without introducing a second 
 
 ## Implemented application contracts
 
-- Study goals and streaks: configurable daily/weekly minute goals, additive focus logging, weekly totals, current streak and longest streak. A day counts only when recorded focus meets the daily threshold. The current streak may include yesterday while the current day is still in progress.
+- Study goals and streaks: configurable daily/weekly minute goals, additive focus logging, weekly totals, current streak and longest streak. A day counts only when recorded focus meets the daily threshold. A single calendar day is capped at 1,440 focus minutes, including across multiple logging calls; streak calculations aggregate rows by calendar date. The current streak may include yesterday while the current day is still in progress.
 - Reminders: dated reminders with optional course links, due-window lookup and a 12-hour notification suppression marker. The service supplies notification candidates; an OS notification host still needs to display them.
 - Next activity: chooses the nearest future planned exam or enabled reminder. The desktop companion preference is persisted, but a separate Windows desktop widget host is not part of this slice.
 - Exam mode: persists the selected exam, start instant and end instant. Remaining time is derived from timestamps, so it survives restarts without relying on a running timer loop.
