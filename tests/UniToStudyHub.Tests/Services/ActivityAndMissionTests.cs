@@ -341,7 +341,7 @@ public sealed class ActivityAndMissionTests
         });
         var focus = new FocusSessionService();
         var ledger = new ActivityLedgerService();
-        var session = focus.Start(data, "analisi", task.Title, 25, Start);
+        var session = focus.Start(data, null, task.Title, 25, Start);
 
         var created = ledger.SyncFocusSession(data, session, Start.AddMinutes(5), task.Id);
         var refreshed = ledger.SyncFocusSession(data, session, Start.AddMinutes(10));
@@ -349,6 +349,7 @@ public sealed class ActivityAndMissionTests
         Assert.Single(data.StudyActivities);
         Assert.Equal(task.Id, created.TaskId);
         Assert.Equal(task.Id, refreshed.TaskId);
+        Assert.Equal("analisi", session.CourseId);
         Assert.Same(created, refreshed);
         Assert.Single(data.ActivityRevisions);
     }
