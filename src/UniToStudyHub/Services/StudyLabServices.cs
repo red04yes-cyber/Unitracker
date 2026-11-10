@@ -271,9 +271,22 @@ public sealed class StudyTaskService
         task.UpdatedAt = now ?? DateTimeOffset.Now;
     }
 
-    public void Remove(StudyData data, string taskId)
+    public void Remove(StudyData data, string taskId, DateTimeOffset? now = null)
     {
+        ArgumentNullException.ThrowIfNull(data);
         var task = Find(data, taskId);
+        if (data.StudyActivities.Any(x => string.Equals(x.TaskId, task.Id, StringComparison.Ordinal)))
+        {
+            // Keep the task as a historical reference for recorded activities.
+            // It disappears from the open-task list without orphaning the ledger.
+            if (task.Status is StudyTaskStatus.Todo or StudyTaskStatus.InProgress)
+            {
+                task.Status = StudyTaskStatus.Cancelled;
+                task.CompletedAt = null;
+            }
+            task.UpdatedAt = now ?? DateTimeOffset.Now;
+            return;
+        }
         data.StudyTasks.Remove(task);
     }
 
