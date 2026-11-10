@@ -77,6 +77,56 @@ public partial class MainWindow : Window
         }
     }
 
+    private void ExportAttendanceXlsx_Click(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is not MainViewModel viewModel) return;
+        var dialog = new SaveFileDialog
+        {
+            Title = "Esporta registro lezioni in Excel",
+            Filter = "Cartella di lavoro Excel (*.xlsx)|*.xlsx",
+            FileName = "presenze-lezioni.xlsx",
+            DefaultExt = ".xlsx",
+            AddExtension = true
+        };
+        if (dialog.ShowDialog(this) != true) return;
+        try
+        {
+            File.WriteAllBytes(dialog.FileName, viewModel.ExportAttendanceXlsx());
+            MessageBox.Show(this, "File Excel esportato correttamente.", "Esportazione completata",
+                MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, $"Esportazione non riuscita: {ex.Message}", "Errore",
+                MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private void ExportAttendancePdf_Click(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is not MainViewModel viewModel) return;
+        var dialog = new SaveFileDialog
+        {
+            Title = "Esporta registro lezioni in PDF",
+            Filter = "Documento PDF (*.pdf)|*.pdf",
+            FileName = "presenze-lezioni.pdf",
+            DefaultExt = ".pdf",
+            AddExtension = true
+        };
+        if (dialog.ShowDialog(this) != true) return;
+        try
+        {
+            File.WriteAllBytes(dialog.FileName, viewModel.ExportAttendancePdf());
+            MessageBox.Show(this, "File PDF esportato correttamente.", "Esportazione completata",
+                MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, $"Esportazione non riuscita: {ex.Message}", "Errore",
+                MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
     private void ExportAttendanceCsv_Click(object sender, RoutedEventArgs e)
     {
         if (DataContext is not MainViewModel viewModel) return;
