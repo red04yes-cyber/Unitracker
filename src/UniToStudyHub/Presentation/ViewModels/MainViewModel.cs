@@ -6,6 +6,7 @@ using UniToStudyHub.Domain.Services;
 using UniToStudyHub.Models;
 using UniToStudyHub.Presentation.Commands;
 using UniToStudyHub.Services;
+using System.Globalization;
 
 namespace UniToStudyHub.Presentation.ViewModels;
 
@@ -14,6 +15,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
     private readonly IStudyDataStore _store;
     private readonly MoodleApplicationService _moodle;
     private readonly CareerCalculatorService _calculator;
+    private readonly StudyProductivityService _productivity;
     private StudyData _data = new();
     private Course? _selectedGradeCourse;
     private string _courseNameInput = string.Empty;
@@ -29,6 +31,17 @@ public sealed class MainViewModel : INotifyPropertyChanged
     private string _statusMessage = string.Empty;
     private string _courseSearchText = string.Empty;
     private string _courseFilter = "active";
+    private Course? _selectedProductivityCourse;
+    private string _dailyGoalInput = "60";
+    private string _weeklyGoalInput = "600";
+    private string _focusMinutesInput = "30";
+    private string _noteTopicInput = string.Empty;
+    private string _noteContentInput = string.Empty;
+    private string _attendanceTitleInput = string.Empty;
+    private string _attendanceDurationInput = "60";
+    private string _attendanceDateInput = DateTime.Now.ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture);
+    private string _attendanceNotesInput = string.Empty;
+    private string _productivitySummary = string.Empty;
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
@@ -37,6 +50,28 @@ public sealed class MainViewModel : INotifyPropertyChanged
     public ObservableCollection<Exam> Exams => _data.Exams;
     public ObservableCollection<Announcement> Announcements => _data.Announcements;
     public ObservableCollection<Course> VisibleCourses { get; } = new();
+    public ObservableCollection<QuickStudyNoteData> QuickNotes { get; } = new();
+    public ObservableCollection<LectureAttendanceData> AttendanceRecords { get; } = new();
+    public Course? SelectedProductivityCourse { get => _selectedProductivityCourse; set => Set(ref _selectedProductivityCourse, value); }
+    public string DailyGoalInput { get => _dailyGoalInput; set => Set(ref _dailyGoalInput, value); }
+    public string WeeklyGoalInput { get => _weeklyGoalInput; set => Set(ref _weeklyGoalInput, value); }
+    public string FocusMinutesInput { get => _focusMinutesInput; set => Set(ref _focusMinutesInput, value); }
+    public string NoteTopicInput { get => _noteTopicInput; set => Set(ref _noteTopicInput, value); }
+    public string NoteContentInput { get => _noteContentInput; set => Set(ref _noteContentInput, value); }
+    public string AttendanceTitleInput { get => _attendanceTitleInput; set => Set(ref _attendanceTitleInput, value); }
+    public string AttendanceDurationInput { get => _attendanceDurationInput; set => Set(ref _attendanceDurationInput, value); }
+    public string AttendanceDateInput { get => _attendanceDateInput; set => Set(ref _attendanceDateInput, value); }
+    public string AttendanceNotesInput { get => _attendanceNotesInput; set => Set(ref _attendanceNotesInput, value); }
+    public string ProductivitySummary { get => _productivitySummary; private set => Set(ref _productivitySummary, value); }
+    public string CurrentStreakDisplay => _productivity.GetStreak(_data, DateOnly.FromDateTime(DateTime.Today)).CurrentStreakDays.ToString(CultureInfo.CurrentCulture);
+    public string WeeklyFocusDisplay
+    {
+        get
+        {
+            var snapshot = _productivity.GetStreak(_data, DateOnly.FromDateTime(DateTime.Today));
+            return $"{snapshot.MinutesThisWeek} / {snapshot.WeeklyGoalMinutes} min";
+        }
+    }
 
     public string CourseNameInput { get => _courseNameInput; set => Set(ref _courseNameInput, value); }
     public string CourseCfuInput { get => _courseCfuInput; set => Set(ref _courseCfuInput, value); }
@@ -133,17 +168,26 @@ public sealed class MainViewModel : INotifyPropertyChanged
     public AsyncRelayCommand PlanExamsCommand { get; }
     public AsyncRelayCommand ConnectMoodleCommand { get; }
     public AsyncRelayCommand SyncMoodleCommand { get; }
+    public AsyncRelayCommand SaveStudyGoalsCommand { get; }
+    public AsyncRelayCommand RecordFocusCommand { get; }
+    public AsyncRelayCommand SaveQuickNoteCommand { get; }
+    public AsyncRelayCommand RecordAttendanceCommand { get; }
 
-    public MainViewModel(IStudyDataStore store, MoodleApplicationService moodle, CareerCalculatorService calculator)
+    public MainViewModel(IStudyDataStore store, MoodleApplicationService moodle, CareerCalculatorService calculator, StudyProductivityService productivity)
     {
         _store = store;
         _moodle = moodle;
         _calculator = calculator;
+        _productivity = productivity;
         AddCourseCommand = new AsyncRelayCommand(AddCourseAsync);
         AddGradeCommand = new AsyncRelayCommand(AddGradeAsync, () => SelectedGradeCourse is not null);
         PlanExamsCommand = new AsyncRelayCommand(PlanExamsAsync);
         ConnectMoodleCommand = new AsyncRelayCommand(ConnectMoodleAsync);
         SyncMoodleCommand = new AsyncRelayCommand(SyncMoodleAsync);
+        SaveStudyGoalsCommand = new AsyncRelayCommand(SaveStudyGoalsAsync);
+        RecordFocusCommand = new AsyncRelayCommand(RecordFocusAsync);
+        SaveQuickNoteCommand = new AsyncRelayCommand(SaveQuickNoteAsync);
+        RecordAttendanceCommand = new AsyncRelayCommand(RecordAttendanceAsync);
     }
 
     public async Task InitializeAsync(CancellationToken cancellationToken = default)
@@ -154,6 +198,10 @@ public sealed class MainViewModel : INotifyPropertyChanged
         RefreshVisibleCourses();
         RefreshCareerSummary();
         RefreshExamSummary();
+        DailyGoalInput = _data.Productivity.DailyStudyGoalMinutes.ToString(CultureInfo.InvariantCulture);
+        WeeklyGoalInput = _data.Productivity.WeeklyStudyGoalMinutes.ToString(CultureInfo.InvariantCulture);
+        SelectedProductivityCourse = Courses.FirstOrDefault();
+        RefreshProductivityCollections();
     }
 
     private async Task AddCourseAsync()
@@ -284,6 +332,46 @@ public sealed class MainViewModel : INotifyPropertyChanged
         }
     }
 
+    private async Task SaveStudyGoalsAsync()
+    {
+        if (!int.TryParse(DailyGoalInput, out var daily) || !int.TryParse(WeeklyGoalInput, out var weekly)) { ProductivitySummary = "Inserisci obiettivi espressi in minuti."; return; }
+        try { _productivity.SetGoals(_data, daily, weekly); await SaveAsync(); RefreshProductivitySummary(); ProductivitySummary = "Obiettivi di studio salvati."; }
+        catch (Exception ex) { ProductivitySummary = $"Obiettivi non salvati: {ex.Message}"; }
+    }
+
+    private async Task RecordFocusAsync()
+    {
+        if (!int.TryParse(FocusMinutesInput, out var minutes)) { ProductivitySummary = "Inserisci i minuti della sessione."; return; }
+        try { _productivity.RecordFocus(_data, DateOnly.FromDateTime(DateTime.Today), minutes); await SaveAsync(); RefreshProductivitySummary(); ProductivitySummary = $"Registrati {minutes} minuti di studio."; FocusMinutesInput = "30"; }
+        catch (Exception ex) { ProductivitySummary = $"Sessione non registrata: {ex.Message}"; }
+    }
+
+    private async Task SaveQuickNoteAsync()
+    {
+        if (SelectedProductivityCourse is null) { ProductivitySummary = "Seleziona una materia per collegare la nota."; return; }
+        try { _productivity.SaveQuickNote(_data, null, SelectedProductivityCourse.Id, NoteTopicInput, NoteContentInput); await SaveAsync(); RefreshProductivityCollections(); NoteTopicInput = string.Empty; NoteContentInput = string.Empty; ProductivitySummary = $"Nota salvata per {SelectedProductivityCourse.Name}."; }
+        catch (Exception ex) { ProductivitySummary = $"Nota non salvata: {ex.Message}"; }
+    }
+
+    private async Task RecordAttendanceAsync()
+    {
+        if (SelectedProductivityCourse is null || !DateTimeOffset.TryParse(AttendanceDateInput, CultureInfo.GetCultureInfo("it-IT"), DateTimeStyles.AssumeLocal, out var startsAt) || !int.TryParse(AttendanceDurationInput, out var duration)) { ProductivitySummary = "Controlla materia, data e durata della lezione."; return; }
+        try { _productivity.RecordAttendance(_data, SelectedProductivityCourse.Id, AttendanceTitleInput, startsAt, duration, true, AttendanceNotesInput); await SaveAsync(); RefreshProductivityCollections(); AttendanceTitleInput = string.Empty; AttendanceNotesInput = string.Empty; ProductivitySummary = "Presenza registrata."; }
+        catch (Exception ex) { ProductivitySummary = $"Presenza non registrata: {ex.Message}"; }
+    }
+
+    private void RefreshProductivityCollections()
+    {
+        QuickNotes.Clear(); foreach (var note in _data.Productivity.QuickNotes.OrderByDescending(x => x.UpdatedAt)) QuickNotes.Add(note);
+        AttendanceRecords.Clear(); foreach (var row in _data.Productivity.Attendance.OrderByDescending(x => x.StartsAt)) AttendanceRecords.Add(row);
+        RefreshProductivitySummary();
+    }
+
+    private void RefreshProductivitySummary()
+    {
+        OnPropertyChanged(nameof(CurrentStreakDisplay));
+        OnPropertyChanged(nameof(WeeklyFocusDisplay));
+    }
     private Exam? GetNextPlannedExam() =>
         Exams.Where(x => !x.Completed && x.PlannedDate.HasValue && x.PlannedDate.Value.Date >= DateTime.Today)
              .OrderBy(x => x.PlannedDate)
