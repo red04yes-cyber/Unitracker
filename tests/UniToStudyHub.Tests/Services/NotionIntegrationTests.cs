@@ -357,7 +357,9 @@ public sealed class NotionIntegrationTests
             CancellationToken cancellationToken)
         {
             RequestCount++;
-            return Task.FromResult(route(request, cancellationToken));
+            var response = route(request, cancellationToken);
+            response.RequestMessage ??= request;
+            return Task.FromResult(response);
         }
     }
 

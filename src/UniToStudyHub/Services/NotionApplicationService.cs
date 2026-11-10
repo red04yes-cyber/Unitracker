@@ -268,7 +268,7 @@ public sealed class NotionApplicationService
                     changed = true;
                 }
             }
-            else if (!course.Archived && importedStatus is not null && course.Status != CourseStatus.Passed &&
+            else if (!course.Archived && course.Status != CourseStatus.Archived && importedStatus is not null && course.Status != CourseStatus.Passed &&
                      StatusRank(importedStatus.Value) > StatusRank(course.Status))
             {
                 course.Status = importedStatus.Value;
@@ -281,23 +281,33 @@ public sealed class NotionApplicationService
                 {
                     warnings.Add($"Voto o CFU non validi per '{record.Name}': il voto non è stato importato.");
                 }
-                else if (!HasGrade(data, course.Id, grade))
+                else
                 {
-                    data.Grades.Add(new Grade
+                    if (course.Status != CourseStatus.Passed || !course.Completed)
                     {
-                        Id = DeterministicGradeId(record.PageId, grade),
-                        CourseId = course.Id,
-                        CourseName = course.Name,
-                        Value = grade,
-                        Cfu = record.Cfu.Value,
-                        // The Notion register does not expose an exam date for
-                        // these marks. UnixEpoch is the existing unknown-date
-                        // sentinel understood by the career migration.
-                        Date = DateTime.UnixEpoch,
-                        CountsTowardAverage = true
-                    });
-                    addedGrades++;
-                    changed = true;
+                        course.Status = CourseStatus.Passed;
+                        course.Completed = true;
+                        changed = true;
+                    }
+
+                    if (!HasGrade(data, course.Id, grade))
+                    {
+                        data.Grades.Add(new Grade
+                        {
+                            Id = DeterministicGradeId(record.PageId, grade),
+                            CourseId = course.Id,
+                            CourseName = course.Name,
+                            Value = grade,
+                            Cfu = record.Cfu.Value,
+                            // The Notion register does not expose an exam date for
+                            // these marks. UnixEpoch is the existing unknown-date
+                            // sentinel understood by the career migration.
+                            Date = DateTime.UnixEpoch,
+                            CountsTowardAverage = true
+                        });
+                        addedGrades++;
+                        changed = true;
+                    }
                 }
             }
 
@@ -371,6 +381,7 @@ public sealed class NotionApplicationService
         CourseStatus.Prepared => 2,
         CourseStatus.ExamScheduled or CourseStatus.Failed => 3,
         CourseStatus.Passed => 4,
+        CourseStatus.Archived => 5,
         _ => 0
     };
 

@@ -24,7 +24,7 @@ The connected workspace contains:
 - Esami — L-33 Economia e Statistica — the live course data source.
 - UniToStudyHub — Import Economia e Statistica — import manifest and five JSON attachments.
 
-The live data source currently returns 27 rows. The Notion import manifest reports 5 passed marks / 36 CFU, 33 study activities and 13 lesson notes. These are source-reported counts; the attachments have not yet been imported into the app.
+The live data source currently returns 27 rows, of which 26 have a course page and one is a reference row. All 26 non-reference course pages were inspected. They share sections for course profile, exam, materials, study plan and appointments/results, but many fields are still marked as pending verification. The Notion import manifest reports 5 passed marks / 36 CFU, 33 study activities and 13 lesson notes. These are source-reported counts; the attachments have not yet been imported into the app.
 
 Important data-quality rules:
 
