@@ -186,7 +186,7 @@ public sealed class NotionApplicationService
                     changed = true;
                 }
             }
-            else if (importedStatus is not null && course.Status != CourseStatus.Passed &&
+            else if (!course.Archived && importedStatus is not null && course.Status != CourseStatus.Passed &&
                      StatusRank(importedStatus.Value) > StatusRank(course.Status))
             {
                 course.Status = importedStatus.Value;
@@ -277,7 +277,7 @@ public sealed class NotionApplicationService
         CourseStatus.NotStarted => 0,
         CourseStatus.InProgress => 1,
         CourseStatus.Prepared => 2,
-        CourseStatus.ExamScheduled => 3,
+        CourseStatus.ExamScheduled or CourseStatus.Failed => 3,
         CourseStatus.Passed => 4,
         _ => 0
     };

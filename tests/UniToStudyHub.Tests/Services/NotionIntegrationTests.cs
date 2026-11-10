@@ -10,8 +10,8 @@ namespace UniToStudyHub.Tests.Services;
 
 public sealed class NotionIntegrationTests
 {
-    private static readonly string DataSourceId = "fa1351aa-92d6-4d4c-9776-f2539e8f2425";
-    private static readonly string PageId = "3fd9d18d-5615-8162-9867-fe16db77087f";
+    private static readonly string DataSourceId = "11111111-1111-4111-8111-111111111111";
+    private static readonly string PageId = "22222222-2222-4222-8222-222222222222";
 
     [Fact]
     public void NotionTokenVaultProtectsTokenAndDeletesItOnDisconnect()
@@ -216,7 +216,7 @@ public sealed class NotionIntegrationTests
           "results": [
             {
               "id":"3fd9d18d-5615-8162-9867-fe16db77087f",
-              "url":"https://www.notion.so/3fd9d18d561581629867fe16db77087f",
+              "url":"https://www.notion.so/22222222222242228222822222222222",
               "last_edited_time":"2026-11-01T10:00:00.000Z",
               "properties":{
                 "Esame":{"title":[{"plain_text":"Microeconomia"}]},

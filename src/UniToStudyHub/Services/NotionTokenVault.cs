@@ -62,7 +62,7 @@ public sealed class NotionTokenVault : INotionTokenStore
 
         var normalized = token.Trim();
         if (normalized.Length is < 8 or > ProtectedSecretStore.MaximumSecretBytes ||
-            normalized.Any(char.IsControl))
+            normalized.Any(character => char.IsControl(character) || char.IsWhiteSpace(character)))
             throw new ArgumentException("Il token Notion non ha un formato valido.", nameof(token));
 
         return normalized;
