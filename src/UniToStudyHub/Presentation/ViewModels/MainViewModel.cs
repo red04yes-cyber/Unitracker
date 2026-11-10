@@ -41,6 +41,9 @@ public sealed class MainViewModel : INotifyPropertyChanged
     private string _attendanceDateInput = DateTime.Now.ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture);
     private string _attendanceNotesInput = string.Empty;
     private string _productivitySummary = string.Empty;
+    private string _reminderTitleInput = string.Empty;
+    private string _reminderDateInput = DateTime.Now.AddHours(1).ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture);
+    private string _reminderKindInput = "Scadenza";
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
@@ -51,6 +54,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
     public ObservableCollection<Course> VisibleCourses { get; } = new();
     public ObservableCollection<QuickStudyNoteData> QuickNotes { get; } = new();
     public ObservableCollection<LectureAttendanceData> AttendanceRecords { get; } = new();
+    public ObservableCollection<StudyReminderData> ReminderRecords { get; } = new();
     public Course? SelectedProductivityCourse { get => _selectedProductivityCourse; set => Set(ref _selectedProductivityCourse, value); }
     public string DailyGoalInput { get => _dailyGoalInput; set => Set(ref _dailyGoalInput, value); }
     public string WeeklyGoalInput { get => _weeklyGoalInput; set => Set(ref _weeklyGoalInput, value); }
@@ -62,6 +66,17 @@ public sealed class MainViewModel : INotifyPropertyChanged
     public string AttendanceDateInput { get => _attendanceDateInput; set => Set(ref _attendanceDateInput, value); }
     public string AttendanceNotesInput { get => _attendanceNotesInput; set => Set(ref _attendanceNotesInput, value); }
     public string ProductivitySummary { get => _productivitySummary; private set => Set(ref _productivitySummary, value); }
+    public string ReminderTitleInput { get => _reminderTitleInput; set => Set(ref _reminderTitleInput, value); }
+    public string ReminderDateInput { get => _reminderDateInput; set => Set(ref _reminderDateInput, value); }
+    public string ReminderKindInput { get => _reminderKindInput; set => Set(ref _reminderKindInput, value); }
+    public string NextActivityDisplay
+    {
+        get
+        {
+            var next = _productivity.GetNextActivity(_data, DateTimeOffset.Now);
+            return next is null ? "Nessuna attività futura pianificata" : $"{next.Title} · {next.StartsAt.ToLocalTime():dd/MM/yyyy HH:mm}";
+        }
+    }
     public string CurrentStreakDisplay => _productivity.GetStreak(_data, DateOnly.FromDateTime(DateTime.Today)).CurrentStreakDays.ToString(CultureInfo.CurrentCulture);
     public string WeeklyFocusDisplay
     {
@@ -171,6 +186,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
     public AsyncRelayCommand RecordFocusCommand { get; }
     public AsyncRelayCommand SaveQuickNoteCommand { get; }
     public AsyncRelayCommand RecordAttendanceCommand { get; }
+    public AsyncRelayCommand AddReminderCommand { get; }
 
     public MainViewModel(IStudyDataStore store, MoodleApplicationService moodle, CareerCalculatorService calculator, StudyProductivityService productivity)
     {
@@ -187,6 +203,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
         RecordFocusCommand = new AsyncRelayCommand(RecordFocusAsync);
         SaveQuickNoteCommand = new AsyncRelayCommand(SaveQuickNoteAsync);
         RecordAttendanceCommand = new AsyncRelayCommand(RecordAttendanceAsync);
+        AddReminderCommand = new AsyncRelayCommand(AddReminderAsync);
     }
 
     public async Task InitializeAsync(CancellationToken cancellationToken = default)
@@ -345,6 +362,12 @@ public sealed class MainViewModel : INotifyPropertyChanged
         catch (Exception ex) { ProductivitySummary = $"Sessione non registrata: {ex.Message}"; }
     }
 
+    private async Task AddReminderAsync()
+    {
+        if (!DateTimeOffset.TryParse(ReminderDateInput, CultureInfo.GetCultureInfo("it-IT"), DateTimeStyles.AssumeLocal, out var dueAt)) { ProductivitySummary = "Inserisci una data e un'ora valide per la scadenza."; return; }
+        try { _productivity.AddReminder(_data, ReminderTitleInput, dueAt, ReminderKindInput, SelectedProductivityCourse?.Id); await SaveAsync(); RefreshProductivityCollections(); ReminderTitleInput = string.Empty; ProductivitySummary = "Promemoria salvato."; }
+        catch (Exception ex) { ProductivitySummary = $"Promemoria non salvato: {ex.Message}"; }
+    }
     private async Task SaveQuickNoteAsync()
     {
         if (SelectedProductivityCourse is null) { ProductivitySummary = "Seleziona una materia per collegare la nota."; return; }
@@ -363,6 +386,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
     {
         QuickNotes.Clear(); foreach (var note in _data.Productivity.QuickNotes.OrderByDescending(x => x.UpdatedAt)) QuickNotes.Add(note);
         AttendanceRecords.Clear(); foreach (var row in _data.Productivity.Attendance.OrderByDescending(x => x.StartsAt)) AttendanceRecords.Add(row);
+        ReminderRecords.Clear(); foreach (var row in _data.Productivity.Reminders.OrderBy(x => x.DueAt)) ReminderRecords.Add(row);
         RefreshProductivitySummary();
     }
 
@@ -370,6 +394,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
     {
         OnPropertyChanged(nameof(CurrentStreakDisplay));
         OnPropertyChanged(nameof(WeeklyFocusDisplay));
+        OnPropertyChanged(nameof(NextActivityDisplay));
     }
     private Exam? GetNextPlannedExam() =>
         Exams.Where(x => !x.Completed && x.PlannedDate.HasValue && x.PlannedDate.Value.Date >= DateTime.Today)
