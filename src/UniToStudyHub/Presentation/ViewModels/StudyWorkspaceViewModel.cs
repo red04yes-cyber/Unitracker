@@ -21,7 +21,7 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
     private readonly AcademicProfileService _academicProfile;
     private readonly FocusSessionService _focus;
     private readonly StudyTaskService _tasks;
-    private readonly ActivityLedgerService _activityLedger = new();
+    private readonly ActivityLedgerService _activityLedger;
     private readonly ErrorJournalService _errors;
     private readonly DistractionService _distractions;
     private readonly EnergyService _energy;
@@ -412,6 +412,7 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
         AcademicProfileService academicProfile,
         FocusSessionService focus,
         StudyTaskService tasks,
+        ActivityLedgerService activityLedger,
         ErrorJournalService errors,
         DistractionService distractions,
         EnergyService energy,
@@ -431,6 +432,7 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
         _academicProfile = academicProfile;
         _focus = focus;
         _tasks = tasks;
+        _activityLedger = activityLedger;
         _errors = errors;
         _distractions = distractions;
         _energy = energy;
