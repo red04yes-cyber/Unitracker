@@ -36,6 +36,112 @@ public sealed class ExportAndImportSafetyTests
         return data;
     }
 
+    private static StudyData LinkedSessionData(
+        DateTimeOffset sessionStart,
+        DateTimeOffset sessionEnd,
+        string sessionCourseId,
+        string sessionTopic)
+    {
+        var data = new StudyData
+        {
+            Courses = new ObservableCollection<Course>
+            {
+                new() { Id = "course-a", Name = "Corso A", Cfu = 6 },
+                new() { Id = "course-b", Name = "Corso B", Cfu = 6 }
+            }
+        };
+        var session = new StudySessionData
+        {
+            Id = "session-course-b",
+            CourseId = sessionCourseId,
+            Topic = sessionTopic,
+            PlannedMinutes = 30,
+            StartedAt = sessionStart,
+            EndedAt = sessionEnd,
+            State = StudySessionState.Completed,
+            Notes = "nota riservata corso B",
+            NotesArePrivate = false
+        };
+        session.Segments.Add(new StudySessionSegmentData
+        {
+            Id = "segment-course-b",
+            Type = StudySessionSegmentType.Focus,
+            StartedAt = sessionStart,
+            EndedAt = sessionEnd
+        });
+        data.StudySessions.Add(session);
+        data.StudyActivities.Add(new StudyActivityData
+        {
+            Id = "activity-course-a",
+            Title = "Attività corso A",
+            CourseId = "course-a",
+            SessionId = session.Id,
+            StartedAt = Start.AddMinutes(5),
+            EndedAt = Start.AddMinutes(25),
+            TimeZoneId = "UTC",
+            EffectiveSeconds = 1200
+        });
+        return data;
+    }
+
+    private static string ExportText(StudyData data, StudyExportRequest request, StudyExportFormat format)
+    {
+        var bundle = new StudyDataExportService().Export(data, request, format, Start.AddHours(1));
+        if (format != StudyExportFormat.Xlsx)
+            return string.Join(Environment.NewLine,
+                bundle.Files.Select(file => Encoding.UTF8.GetString(file.Content)));
+
+        using var archive = new ZipArchive(new MemoryStream(bundle.Files.Single().Content), ZipArchiveMode.Read);
+        return string.Join(Environment.NewLine, archive.Entries.Select(entry =>
+        {
+            using var reader = new StreamReader(entry.Open());
+            return reader.ReadToEnd();
+        }));
+    }
+
+    [Theory]
+    [InlineData(StudyExportFormat.Csv)]
+    [InlineData(StudyExportFormat.Xlsx)]
+    [InlineData(StudyExportFormat.Json)]
+    public void LinkedSessionFromAnotherCourseIsExcludedFromScopedExports(StudyExportFormat format)
+    {
+        var data = LinkedSessionData(Start, Start.AddMinutes(30), "course-b", "Sessione corso B");
+        var request = Request with
+        {
+            CourseIds = new[] { "course-a" },
+            IncludePrivateNotes = true
+        };
+
+        var exported = ExportText(data, request, format);
+
+        Assert.Contains("Attività corso A", exported, StringComparison.Ordinal);
+        Assert.DoesNotContain("Sessione corso B", exported, StringComparison.Ordinal);
+        Assert.DoesNotContain("nota riservata corso B", exported, StringComparison.Ordinal);
+        Assert.DoesNotContain("segment-course-b", exported, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData(StudyExportFormat.Csv)]
+    [InlineData(StudyExportFormat.Xlsx)]
+    [InlineData(StudyExportFormat.Json)]
+    public void LinkedSessionOutsideDateRangeIsExcludedFromScopedExports(StudyExportFormat format)
+    {
+        var sessionStart = Start.AddDays(-2);
+        var data = LinkedSessionData(
+            sessionStart,
+            sessionStart.AddMinutes(30),
+            "course-a",
+            "Sessione fuori intervallo");
+        var request = Request with { IncludePrivateNotes = true };
+
+        var exported = ExportText(data, request, format);
+
+        Assert.Contains("Attività corso A", exported, StringComparison.Ordinal);
+        Assert.DoesNotContain("Sessione fuori intervallo", exported, StringComparison.Ordinal);
+        Assert.DoesNotContain("nota riservata corso B", exported, StringComparison.Ordinal);
+        Assert.DoesNotContain("segment-course-b", exported, StringComparison.Ordinal);
+    }
+
     [Fact]
     public void JsonExportEscapesHtmlSensitiveText()
     {
