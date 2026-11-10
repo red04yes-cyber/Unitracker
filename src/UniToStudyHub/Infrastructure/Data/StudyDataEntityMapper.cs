@@ -460,6 +460,8 @@ public static class StudyDataEntityMapper
                 throw new InvalidDataException($"Study activity '{activity.Id}' has no title.");
             if (!Enum.IsDefined(activity.Type) || !Enum.IsDefined(activity.Origin) || !Enum.IsDefined(activity.Status))
                 throw new InvalidDataException($"Study activity '{activity.Id}' has an invalid type, origin or status.");
+            if (activity.Origin == StudyActivityOrigin.Timer && string.IsNullOrWhiteSpace(activity.SessionId))
+                throw new InvalidDataException($"Timer activity '{activity.Id}' is not linked to a focus session.");
             if (activity.StartedAt == default || activity.EndedAt is { } ended && ended <= activity.StartedAt)
                 throw new InvalidDataException($"Study activity '{activity.Id}' has invalid timestamps.");
             if (activity.Status == StudyActivityStatus.Completed && activity.EndedAt is null)
