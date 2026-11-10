@@ -10,6 +10,8 @@ namespace UniToStudyHub;
 public partial class MainWindow : Window
 {
     private readonly DispatcherTimer _examModeTimer;
+    private readonly DispatcherTimer _reminderTimer;
+    private readonly System.Windows.Forms.NotifyIcon _reminderTrayIcon;
     public MainWindow(MainViewModel viewModel)
     {
         InitializeComponent();
@@ -17,7 +19,43 @@ public partial class MainWindow : Window
         _examModeTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
         _examModeTimer.Tick += (_, _) => viewModel.RefreshExamModeDisplay();
         _examModeTimer.Start();
-        Closed += (_, _) => _examModeTimer.Stop();
+        _reminderTrayIcon = new System.Windows.Forms.NotifyIcon
+        {
+            Icon = System.Drawing.SystemIcons.Information,
+            Text = "UniTo Study Hub",
+            Visible = true
+        };
+        _reminderTimer = new DispatcherTimer { Interval = TimeSpan.FromMinutes(1) };
+        _reminderTimer.Tick += async (_, _) => await CheckDueRemindersAsync(viewModel);
+        Loaded += async (_, _) => await CheckDueRemindersAsync(viewModel);
+        _reminderTimer.Start();
+        Closed += (_, _) =>
+        {
+            _examModeTimer.Stop();
+            _reminderTimer.Stop();
+            _reminderTrayIcon.Visible = false;
+            _reminderTrayIcon.Dispose();
+        };
+    }
+
+
+    private async Task CheckDueRemindersAsync(MainViewModel viewModel)
+    {
+        try
+        {
+            var due = await viewModel.CollectDueReminderNotificationsAsync();
+            foreach (var reminder in due)
+            {
+                _reminderTrayIcon.BalloonTipTitle = "Promemoria universitario";
+                _reminderTrayIcon.BalloonTipText = $"{reminder.Title} · {reminder.DueAt.ToLocalTime():dd/MM HH:mm}";
+                _reminderTrayIcon.BalloonTipIcon = System.Windows.Forms.ToolTipIcon.Info;
+                _reminderTrayIcon.ShowBalloonTip(8000);
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Reminder notification failed: {ex}");
+        }
     }
 
     private void ExportAttendanceCsv_Click(object sender, RoutedEventArgs e)
