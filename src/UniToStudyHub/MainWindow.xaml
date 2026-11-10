@@ -228,6 +228,33 @@
                         </Border>
                     </Grid>
 
+                    <ItemsControl ItemsSource="{Binding DashboardWidgetPreferences}" Margin="0,0,0,18">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate><UniformGrid Columns="3"/></ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border Margin="0,0,10,10">
+                                    <Border.Style>
+                                        <Style TargetType="Border" BasedOn="{StaticResource CardBorderStyle}">
+                                            <Setter Property="Visibility" Value="Visible"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsVisible}" Value="False">
+                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Border.Style>
+                                    <StackPanel>
+                                        <TextBlock Text="{Binding DisplayName}" Style="{StaticResource KpiLabelStyle}"/>
+                                        <TextBlock Text="{Binding DisplayValue}" FontSize="14" FontWeight="SemiBold"
+                                                   Foreground="{StaticResource InkBrush}" TextWrapping="Wrap" Margin="0,9,0,0"/>
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
                     <UniformGrid Columns="4" Margin="0,0,0,22">
                         <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,10,0">
                             <StackPanel>
