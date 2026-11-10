@@ -109,9 +109,24 @@ public sealed class StudyDataExportService
         var sessionIds = sessions.Select(x => x.Id).ToHashSet(StringComparer.Ordinal);
         foreach (var activity in activities)
         {
-            if (!string.IsNullOrWhiteSpace(activity.SessionId) && sessionIds.Add(activity.SessionId) &&
-                data.StudySessions.FirstOrDefault(x => x.Id == activity.SessionId) is { } linked)
-                sessions.Add(linked);
+            if (string.IsNullOrWhiteSpace(activity.SessionId) || sessionIds.Contains(activity.SessionId))
+                continue;
+
+            var linked = data.StudySessions.FirstOrDefault(x => x.Id == activity.SessionId);
+            if (linked is null)
+                continue;
+
+            // A linked record must still satisfy the export's date and course
+            // filters. Otherwise a malformed cross-course or out-of-range link
+            // could disclose a session's notes and segments in a scoped export.
+            var overlapsRange = linked.StartedAt < rangeEnd && (linked.EndedAt ?? now) > rangeStart;
+            var matchesCourse = courses is null || courses.Count == 0 ||
+                                (!string.IsNullOrWhiteSpace(linked.CourseId) && courses.Contains(linked.CourseId));
+            if (!overlapsRange || !matchesCourse)
+                continue;
+
+            sessionIds.Add(linked.Id);
+            sessions.Add(linked);
         }
         sessions = sessions.OrderBy(x => x.StartedAt).ThenBy(x => x.Id, StringComparer.Ordinal).ToList();
 
