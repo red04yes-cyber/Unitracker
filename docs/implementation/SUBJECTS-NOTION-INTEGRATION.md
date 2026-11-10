@@ -14,7 +14,7 @@ This work implements the subject-sheet direction agreed in the product discovery
 - Analytics must show formulas, periods, denominators and missing-data caveats.
 - AI is opt-in and cannot change grades, syllabus, materials or plans without approval.
 
-The UI owner must expose bindings for these capabilities. This technical slice does not change XAML, styles, layout or navigation.
+The current first UI slice adds a selected-course workspace directly below the subject cards, with seven progressive tabs and bindings to the existing course, syllabus and grade records. It does not yet implement editing of all metadata, the adaptive planner, materials management or the AI tutor.
 
 ## Notion sources inspected
 
@@ -99,8 +99,8 @@ Never bind or display the raw token. Never trigger merge automatically after a s
 
 ## Next vertical slices
 
-1. Subject shell and information — subject list/grid, course detail tabs, metadata and custom fields; persist selected subject and safe Notion source identity.
-2. Syllabus and preparedness — module/chapter/topic hierarchy, completion percentage, self-rated preparedness, study activity links, preview/edit/deduplicate page-content import.
+1. Complete the subject shell — add list/grid toggle, editable subject metadata and custom fields; persist selected subject and safe Notion source identity.
+2. Complete syllabus and preparedness — improve tree indentation and parent roll-ups, link study activities, and add preview/edit/deduplicate page-content import.
 3. Exams and grades — multiple attempts, grade provenance, accepted/rejected state, weighted average and isolated what-if scenarios.
 4. Materials — hierarchy, custom categories/tags, topic relationships, search and safe preview.
 5. Adaptive study plan — transparent proposals based on exam date, syllabus, preparedness, difficulty, available time and actual study; lock/override controls.
