@@ -591,6 +591,8 @@ public sealed class ActivityLedgerService
             throw new ArgumentException("Activity enums contain an invalid value.", nameof(activity));
         if (activity.StartedAt == default)
             throw new ArgumentException("Activity start is required.", nameof(activity));
+        if (activity.Origin == StudyActivityOrigin.Timer && string.IsNullOrWhiteSpace(activity.SessionId))
+            throw new ArgumentException("Timer activities must reference their persisted focus session.", nameof(activity));
         if (activity.EndedAt is { } end && end <= activity.StartedAt)
             throw new ArgumentException("Activity end must be after its start.", nameof(activity));
         if (activity.EndedAt is null && activity.Status is StudyActivityStatus.Completed)
