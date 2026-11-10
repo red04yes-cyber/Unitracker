@@ -8,7 +8,7 @@ namespace UniToStudyHub.Infrastructure.Data.Migrations;
 
 [DbContext(typeof(StudyHubDbContext))]
 [Migration("20261110000100_AddProductivityState")]
-public sealed class AddProductivityState : Migration
+public sealed partial class AddProductivityState : Migration
 {
     protected override void Up(MigrationBuilder migrationBuilder)
     {
