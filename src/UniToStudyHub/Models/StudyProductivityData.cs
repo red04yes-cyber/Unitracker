@@ -53,13 +53,24 @@ public sealed class LectureAttendanceData
     public string? Notes { get; set; }
 }
 
-public sealed class DashboardWidgetPreferenceData
+public sealed class DashboardWidgetPreferenceData : System.ComponentModel.INotifyPropertyChanged
 {
+    public event System.ComponentModel.PropertyChangedEventHandler? PropertyChanged;
     public string Key { get; set; } = string.Empty;
     public bool IsVisible { get; set; } = true;
     public int Order { get; set; }
+    private string _displayValue = string.Empty;
     [JsonIgnore]
-    public string DisplayValue { get; set; } = string.Empty;
+    public string DisplayValue
+    {
+        get => _displayValue;
+        set
+        {
+            if (string.Equals(_displayValue, value, StringComparison.Ordinal)) return;
+            _displayValue = value;
+            PropertyChanged?.Invoke(this, new System.ComponentModel.PropertyChangedEventArgs(nameof(DisplayValue)));
+        }
+    }
     [JsonIgnore]
     public string DisplayName => Key switch
     {
