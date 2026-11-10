@@ -157,7 +157,8 @@ public sealed class ActivityLedgerService
     public StudyActivityData SyncFocusSession(
         StudyData data,
         StudySessionData session,
-        DateTimeOffset? now = null)
+        DateTimeOffset? now = null,
+        string? taskId = null)
     {
         ArgumentNullException.ThrowIfNull(data);
         ArgumentNullException.ThrowIfNull(session);
@@ -172,6 +173,31 @@ public sealed class ActivityLedgerService
         if (existing is not null && existing.Origin != StudyActivityOrigin.Timer)
             return existing;
 
+        var effectiveTaskId = string.IsNullOrWhiteSpace(taskId)
+            ? existing?.TaskId ?? string.Empty
+            : taskId.Trim();
+        var linkedTask = string.IsNullOrWhiteSpace(effectiveTaskId)
+            ? null
+            : data.StudyTasks.FirstOrDefault(x => string.Equals(x.Id, effectiveTaskId, StringComparison.Ordinal))
+                ?? throw new ArgumentException($"Study task '{effectiveTaskId}' does not exist.", nameof(taskId));
+        if (existing is null && linkedTask is not null &&
+            linkedTask.Status is not (StudyTaskStatus.Todo or StudyTaskStatus.InProgress))
+            throw new InvalidOperationException("A new focus session can only be linked to an open task.");
+        if (linkedTask is not null &&
+            !string.IsNullOrWhiteSpace(session.CourseId) &&
+            !string.IsNullOrWhiteSpace(linkedTask.CourseId) &&
+            !string.Equals(session.CourseId, linkedTask.CourseId, StringComparison.Ordinal))
+            throw new ArgumentException("The focus session and linked task belong to different courses.", nameof(taskId));
+
+        var activityCourseId = string.IsNullOrWhiteSpace(session.CourseId)
+            ? linkedTask?.CourseId ?? string.Empty
+            : session.CourseId;
+        var previousTaskId = existing?.TaskId ?? string.Empty;
+        var taskLinkChanged = existing is not null &&
+            !string.Equals(previousTaskId, effectiveTaskId, StringComparison.Ordinal);
+        var beforeTaskLink = taskLinkChanged
+            ? JsonSerializer.Serialize(existing, RevisionJsonOptions)
+            : null;
         var effective = FocusSessionService.ElapsedSeconds(session, at);
         var isNew = existing is null;
         if (isNew)
@@ -181,7 +207,8 @@ public sealed class ActivityLedgerService
                 Id = Guid.NewGuid().ToString("N"),
                 Type = StudyActivityType.Study,
                 Title = string.IsNullOrWhiteSpace(session.Topic) ? "Sessione di studio" : session.Topic,
-                CourseId = session.CourseId,
+                CourseId = activityCourseId,
+                TaskId = effectiveTaskId,
                 SessionId = session.Id,
                 StartedAt = session.StartedAt,
                 TimeZoneId = TimeZoneInfo.Local.Id,
@@ -192,7 +219,8 @@ public sealed class ActivityLedgerService
         }
 
         existing!.Title = string.IsNullOrWhiteSpace(session.Topic) ? existing.Title : session.Topic.Trim();
-        existing.CourseId = session.CourseId;
+        existing.CourseId = activityCourseId;
+        existing.TaskId = effectiveTaskId;
         existing.EffectiveSeconds = effective;
         existing.EndedAt = session.State is StudySessionState.Completed or StudySessionState.Cancelled
             ? session.EndedAt ?? at
@@ -210,7 +238,44 @@ public sealed class ActivityLedgerService
             data.StudyActivities.Add(existing);
             AddRevision(data, existing, ActivityRevisionAction.Created, "Sessione focus", null, at);
         }
+        else if (taskLinkChanged)
+        {
+            existing.Revision++;
+            AddRevision(data, existing, ActivityRevisionAction.Updated, "Collegamento al task", beforeTaskLink, at);
+        }
         return existing;
+    }
+
+    /// <summary>
+    /// Calculates task progress from unique real activity intervals. Planned
+    /// calendar blocks are deliberately excluded; overlapping manual and timer
+    /// records are unioned so the same minute is never credited twice.
+    /// </summary>
+    public TaskProgressSnapshot GetTaskProgress(
+        StudyData data,
+        string taskId,
+        DateTimeOffset? now = null)
+    {
+        ArgumentNullException.ThrowIfNull(data);
+        if (string.IsNullOrWhiteSpace(taskId))
+            throw new ArgumentException("Task id is required.", nameof(taskId));
+        var task = data.StudyTasks.FirstOrDefault(x => string.Equals(x.Id, taskId, StringComparison.Ordinal))
+            ?? throw new ArgumentException($"Study task '{taskId}' does not exist.", nameof(taskId));
+        var recordedSeconds = UnionSeconds(GetRecordedIntervals(data, now ?? DateTimeOffset.Now)
+            .Where(x => string.Equals(x.Activity.TaskId, task.Id, StringComparison.Ordinal))
+            .Select(x => (x.Start, x.End)));
+        var estimatedSeconds = Math.Max(0, task.EstimatedMinutes) * 60;
+        var remainingSeconds = Math.Max(0, estimatedSeconds - recordedSeconds);
+        var progressPercent = estimatedSeconds == 0
+            ? 0
+            : Math.Clamp((int)Math.Round(recordedSeconds * 100d / estimatedSeconds), 0, 100);
+        return new TaskProgressSnapshot(
+            task.Id,
+            Math.Max(0, task.EstimatedMinutes),
+            recordedSeconds,
+            remainingSeconds,
+            progressPercent,
+            estimatedSeconds > 0 && recordedSeconds > estimatedSeconds);
     }
 
     public IReadOnlyList<StudyActivityData> SyncFocusSessions(StudyData data, DateTimeOffset? now = null) =>
@@ -644,7 +709,10 @@ public sealed class ActivityLedgerService
         var sessions = data.StudySessions.ToDictionary(x => x.Id, StringComparer.Ordinal);
         var intervals = new List<(DateTimeOffset Start, DateTimeOffset End, StudyActivityData Activity)>();
         foreach (var activity in data.StudyActivities.Where(x =>
-                     !x.IsDeleted && x.Status is StudyActivityStatus.Running or StudyActivityStatus.Completed))
+                     !x.IsDeleted &&
+                     (x.Status is StudyActivityStatus.Running or StudyActivityStatus.Completed ||
+                      x.Status == StudyActivityStatus.Cancelled &&
+                      x.Origin == StudyActivityOrigin.Timer && x.EffectiveSeconds > 0)))
         {
             StudySessionData? session = null;
             if (!string.IsNullOrWhiteSpace(activity.SessionId))
