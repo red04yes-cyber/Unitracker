@@ -1334,7 +1334,10 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
         var result = _readiness.Calculate(_data, SelectedCourse.Id);
         var score = result.Score is null ? "non disponibile" : $"{result.Score:0.##}%";
         var missing = result.MissingData.Count == 0 ? "Nessun dato mancante." : string.Join(" · ", result.MissingData);
-        ReadinessStatus = $"{SelectedCourse.Name}: {score} · {result.Coverage.CompletedTopics}/{result.Coverage.TotalTopics} argomenti · {missing}";
+        var preparedness = result.Coverage.RatedTopics == 0
+            ? "preparazione personale non autovalutata"
+            : $"autovalutazione media {result.Coverage.AveragePreparedness:0.0}/5";
+        ReadinessStatus = $"{SelectedCourse.Name}: {score} · {result.Coverage.CompletedTopics}/{result.Coverage.TotalTopics} argomenti completati · avanzamento medio {result.Coverage.AverageCompletionPercent:0.#}% · {preparedness} · {missing}";
     }
 
     private static IReadOnlyList<StudyAvailabilityWindow> ParseDailyAvailability(string input)
