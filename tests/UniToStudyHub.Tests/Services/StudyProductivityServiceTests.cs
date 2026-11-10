@@ -1,5 +1,6 @@
 using UniToStudyHub.Models;
 using UniToStudyHub.Services;
+using Xunit;
 
 namespace UniToStudyHub.Tests.Services;
 
