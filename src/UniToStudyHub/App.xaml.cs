@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using System.Windows;
+using MessageBox = System.Windows.MessageBox;
 using UniToStudyHub.Infrastructure;
 using UniToStudyHub.Infrastructure.Data;
 using UniToStudyHub.Presentation.Composition;
