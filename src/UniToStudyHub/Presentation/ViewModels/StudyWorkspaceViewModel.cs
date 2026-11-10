@@ -83,6 +83,7 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
     private int _simulationManualIncorrect;
     private string _simulationCountdownDisplay = "Nessun limite";
     private readonly ActivityLedgerService _activityLedger = new();
+    private readonly TimedSimulationService _simulationTimer = new();
     private string _focusTopicInput = string.Empty;
     private string _focusMinutesInput = "25";
     private string _focusRemainingDisplay = "25:00";
@@ -570,15 +571,13 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
             return;
         }
 
-        var remaining = _simulationDeadline.Value - DateTimeOffset.Now;
-        if (remaining <= TimeSpan.Zero)
+        if (_simulationTimer.IsExpired(_simulationDeadline, DateTimeOffset.Now))
         {
             await EndSimulationAsync(expired: true);
             return;
         }
 
-        var seconds = Math.Max(0, (int)Math.Ceiling(remaining.TotalSeconds));
-        SimulationCountdownDisplay = $"{seconds / 60:00}:{seconds % 60:00}";
+        SimulationCountdownDisplay = _simulationTimer.FormatCountdown(_simulationDeadline, DateTimeOffset.Now);
     }
 
     private void RefreshBreakSnapshot()
@@ -1295,9 +1294,7 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
         _simulationAnswerPendingManualReview = false;
         _simulationStartedAt = DateTimeOffset.Now;
         _simulationWasTimed = SimulationTimeLimitMinutesInput > 0;
-        _simulationDeadline = SimulationTimeLimitMinutesInput > 0
-            ? _simulationStartedAt.Value.AddMinutes(SimulationTimeLimitMinutesInput)
-            : null;
+        _simulationDeadline = _simulationTimer.CreateDeadline(_simulationStartedAt.Value, SimulationTimeLimitMinutesInput);
         QuestionAnswerInput = string.Empty;
         IsSimulationActive = _simulationQuestions.Count > 0;
         SimulationCountdownDisplay = _simulationDeadline is null ? "Senza limite" : $"{SimulationTimeLimitMinutesInput:00}:00";
@@ -1311,7 +1308,7 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
     private async Task SubmitSimulationAnswerAsync()
     {
         if (!IsSimulationActive || _simulationIndex >= _simulationQuestions.Count) return;
-        if (_simulationDeadline is DateTimeOffset deadline && DateTimeOffset.Now >= deadline)
+        if (_simulationTimer.IsExpired(_simulationDeadline, DateTimeOffset.Now))
         {
             await EndSimulationAsync(expired: true);
             return;
@@ -1338,7 +1335,7 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
     private async Task GradeCurrentSimulationAnswerAsync(bool correct)
     {
         if (!CanManuallyGradeCurrentAnswer || _simulationIndex >= _simulationQuestions.Count) return;
-        if (_simulationDeadline is DateTimeOffset deadline && DateTimeOffset.Now >= deadline)
+        if (_simulationTimer.IsExpired(_simulationDeadline, DateTimeOffset.Now))
         {
             await EndSimulationAsync(expired: true);
             return;
