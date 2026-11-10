@@ -400,14 +400,23 @@ public sealed class NotionApiClient
         return null;
     }
 
-    private static string? GetSelect(JsonElement properties, string name) =>
-        properties.ValueKind == JsonValueKind.Object &&
-        properties.TryGetProperty(name, out var property) &&
-        property.TryGetProperty("select", out var select) &&
-        select.ValueKind == JsonValueKind.Object &&
-        select.TryGetProperty("name", out var selected)
-            ? selected.GetString()
-            : null;
+    private static string? GetSelect(JsonElement properties, string name)
+    {
+        if (properties.ValueKind != JsonValueKind.Object ||
+            !properties.TryGetProperty(name, out var property)) return null;
+
+        if (property.TryGetProperty("select", out var select) &&
+            select.ValueKind == JsonValueKind.Object &&
+            select.TryGetProperty("name", out var selected))
+            return selected.GetString();
+
+        if (property.TryGetProperty("status", out var status) &&
+            status.ValueKind == JsonValueKind.Object &&
+            status.TryGetProperty("name", out var statusName))
+            return statusName.GetString();
+
+        return null;
+    }
 
     private static IReadOnlyList<string> GetMultiSelect(JsonElement properties, string name)
     {

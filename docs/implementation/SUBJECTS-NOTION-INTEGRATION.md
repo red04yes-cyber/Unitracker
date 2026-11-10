@@ -79,9 +79,11 @@ Capabilities:
 9. Grade import uses the existing unknown-date sentinel; it does not invent an exam date.
 10. Individual appeal dates are not copied into the calendar because the current Course model cannot preserve source URL, verification timestamp and verification state together.
 
-The current course-row merge is deliberately conservative: it fills missing local metadata and does not overwrite non-empty user values. The JSON bundle import reuses StudyDataImportService and therefore keeps existing local records on ID conflicts. A future field-level sync policy can allow selected Notion-owned fields to refresh after explicit user configuration.
+The current course-row merge is deliberately conservative: it fills missing local metadata and does not overwrite non-empty user values. The JSON bundle import reuses StudyDataImportService and therefore keeps existing local records on ID conflicts. Its Merge strategy also deliberately preserves local profile/settings fields (including graduation target, Moodle endpoint and Pomodoro preferences); those values must be shown separately in the preview and adopted only through a later explicit settings action. A future field-level sync policy can allow selected Notion-owned fields to refresh after explicit user configuration.
 
 ## UI binding contract still needed
+
+The current Notion bundle declares a November 2027 graduation target. Because the existing Merge contract protects local settings, this target is not applied automatically; the UI should show it as a proposed profile-setting difference and require a separate explicit confirmation.
 
 The UI should expose:
 
