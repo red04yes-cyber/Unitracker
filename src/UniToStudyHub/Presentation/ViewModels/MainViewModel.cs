@@ -502,6 +502,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(NextExamNameDisplay));
         OnPropertyChanged(nameof(NextExamDateDisplay));
         OnPropertyChanged(nameof(NoPlannedExams));
+        RefreshDashboardWidgetValues();
     }
 
     private void RefreshVisibleCourses()
