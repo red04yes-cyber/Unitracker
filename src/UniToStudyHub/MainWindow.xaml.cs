@@ -1,15 +1,21 @@
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Threading;
 using UniToStudyHub.Presentation.ViewModels;
 
 namespace UniToStudyHub;
 
 public partial class MainWindow : Window
 {
+    private readonly DispatcherTimer _examModeTimer;
     public MainWindow(MainViewModel viewModel)
     {
         InitializeComponent();
         DataContext = viewModel;
+        _examModeTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
+        _examModeTimer.Tick += (_, _) => viewModel.RefreshExamModeDisplay();
+        _examModeTimer.Start();
+        Closed += (_, _) => _examModeTimer.Stop();
     }
 
     private void MoodleTokenBox_PasswordChanged(object sender, RoutedEventArgs e)
