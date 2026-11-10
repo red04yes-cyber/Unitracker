@@ -45,7 +45,10 @@ public sealed class StudyProductivityService
             .ToDictionary(x => x.Key, x => x.Sum(y => y.FocusMinutes));
         var dailyGoal = data.Productivity.DailyStudyGoalMinutes;
         var current = 0;
-        for (var day = today; daily.TryGetValue(day, out var value) && value >= dailyGoal; day = day.AddDays(-1))
+        var anchor = daily.TryGetValue(today, out var todayValue) && todayValue >= dailyGoal
+            ? today
+            : today.AddDays(-1);
+        for (var day = anchor; daily.TryGetValue(day, out var value) && value >= dailyGoal; day = day.AddDays(-1))
             current++;
         var longest = 0;
         var run = 0;
@@ -78,7 +81,8 @@ public sealed class StudyProductivityService
     {
         ArgumentNullException.ThrowIfNull(data);
         if (lookAhead < TimeSpan.Zero) throw new ArgumentOutOfRangeException(nameof(lookAhead));
-        return data.Productivity.Reminders.Where(x => x.Enabled && x.DueAt <= now + lookAhead && x.DueAt >= now - TimeSpan.FromDays(1))
+        return data.Productivity.Reminders.Where(x => x.Enabled && x.DueAt <= now + lookAhead && x.DueAt >= now - TimeSpan.FromDays(1) &&
+            (x.LastNotifiedAt is null || x.LastNotifiedAt < now.AddHours(-12)))
             .OrderBy(x => x.DueAt).ToArray();
     }
 
