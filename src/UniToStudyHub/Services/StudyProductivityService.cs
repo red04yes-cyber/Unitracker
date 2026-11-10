@@ -97,7 +97,7 @@ public sealed class StudyProductivityService
                 continue;
             }
 
-            var dueAt = new DateTimeOffset(exam.PlannedDate.Value.Date.AddHours(9));
+            var dueAt = new DateTimeOffset(exam.PlannedDate.GetValueOrDefault().Date.AddHours(9));
             var title = $"Esame: {exam.Name}";
             if (reminder is null)
             {
