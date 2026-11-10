@@ -1232,7 +1232,7 @@
                                 <StackPanel>
                                     <TextBlock Text="Simulazione rapida" Style="{StaticResource SectionTitleStyle}"/>
                                     <TextBlock Text="Limite di tempo (0 = nessun limite)" FontSize="10" Foreground="{DynamicResource MutedBrush}" Margin="0,8,0,0"/>
-                                    <ComboBox ItemsSource="{Binding Workspace.SimulationTimeLimitOptions}" SelectedItem="{Binding Workspace.SimulationTimeLimitMinutesInput, Mode=TwoWay}" Margin="0,5,0,0"/>
+                                    <ComboBox ItemsSource="{Binding Workspace.SimulationTimeLimitOptions}" SelectedItem="{Binding Workspace.SimulationTimeLimitMinutesInput, Mode=TwoWay}" IsEnabled="{Binding Workspace.CanChangeSimulationTimeLimit}" Margin="0,5,0,0"/>
                                     <Button Content="Avvia simulazione (max 10 quesiti)" Command="{Binding Workspace.StartSimulationCommand}" Margin="0,8,0,0"/>
                                     <Border Background="{DynamicResource WarningSoftBrush}" CornerRadius="7" Padding="9,7" Margin="0,8,0,0">
                                         <StackPanel Orientation="Horizontal">
