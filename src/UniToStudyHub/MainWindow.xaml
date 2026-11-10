@@ -686,6 +686,48 @@
                         </Grid.ColumnDefinitions>
                         <Border Grid.Column="0" Style="{StaticResource CardBorderStyle}" Margin="0,0,10,0">
                             <StackPanel>
+                                <TextBlock Text="PROMEMORIA" Style="{StaticResource SectionTitleStyle}"/>
+                                <TextBlock Text="Titolo" FontSize="11" Foreground="{StaticResource MutedBrush}" Margin="0,12,0,5"/>
+                                <TextBox Text="{Binding ReminderTitleInput, UpdateSourceTrigger=PropertyChanged}"/>
+                                <Grid Margin="0,10,0,0">
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="12"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                    <StackPanel Grid.Column="0">
+                                        <TextBlock Text="Scadenza (yyyy-MM-dd HH:mm)" FontSize="10" Foreground="{StaticResource MutedBrush}" Margin="0,0,0,5"/>
+                                        <TextBox Text="{Binding ReminderDateInput, UpdateSourceTrigger=PropertyChanged}"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="2">
+                                        <TextBlock Text="Tipo" FontSize="11" Foreground="{StaticResource MutedBrush}" Margin="0,0,0,5"/>
+                                        <ComboBox Text="{Binding ReminderKindInput, UpdateSourceTrigger=PropertyChanged}" IsEditable="True">
+                                            <ComboBoxItem Content="Scadenza"/>
+                                            <ComboBoxItem Content="Esame"/>
+                                            <ComboBoxItem Content="Studio"/>
+                                        </ComboBox>
+                                    </StackPanel>
+                                </Grid>
+                                <Button Content="Aggiungi promemoria" Command="{Binding AddReminderCommand}"
+                                        HorizontalAlignment="Left" Margin="0,12,0,0"/>
+                            </StackPanel>
+                        </Border>
+                        <Border Grid.Column="1" Style="{StaticResource CardBorderStyle}">
+                            <StackPanel>
+                                <TextBlock Text="PROSSIMA ATTIVITÀ" Style="{StaticResource SectionTitleStyle}"/>
+                                <TextBlock Text="{Binding NextActivityDisplay}" FontSize="16"
+                                           Foreground="{StaticResource InkBrush}" TextWrapping="Wrap"
+                                           Margin="0,14,0,0"/>
+                                <TextBlock Text="Calcolata dal promemoria o dall'esame pianificato più vicino."
+                                           FontSize="10" Foreground="{StaticResource MutedBrush}"
+                                           TextWrapping="Wrap" Margin="0,9,0,0"/>
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+
+                    <Grid Margin="0,0,0,14">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Border Grid.Column="0" Style="{StaticResource CardBorderStyle}" Margin="0,0,10,0">
+                            <StackPanel>
                                 <TextBlock Text="NOTA RAPIDA" Style="{StaticResource SectionTitleStyle}"/>
                                 <TextBlock Text="Argomento" FontSize="11" Foreground="{StaticResource MutedBrush}" Margin="0,12,0,5"/>
                                 <TextBox Text="{Binding NoteTopicInput, UpdateSourceTrigger=PropertyChanged}"/>
