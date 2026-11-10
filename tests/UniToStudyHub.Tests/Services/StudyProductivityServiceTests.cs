@@ -108,4 +108,29 @@ public sealed class StudyProductivityServiceTests
         Assert.False(widgets[0].IsVisible);
         Assert.Equal("streak", widgets[1].Key);
     }
+    [Fact]
+    public void FocusCannotPushADayPastTwentyFourHours()
+    {
+        var data = DataWithCourse();
+        _service.RecordFocus(data, new DateOnly(2026, 11, 10), 1400);
+
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            _service.RecordFocus(data, new DateOnly(2026, 11, 10), 41));
+        Assert.Equal(1400, data.Productivity.StudyDays.Single().FocusMinutes);
+    }
+
+    [Fact]
+    public void LongestStreakAggregatesDuplicateRowsForTheSameCalendarDay()
+    {
+        var data = DataWithCourse();
+        data.Productivity.StudyDays.Add(new StudyDayLogData { Date = new DateOnly(2026, 11, 9), FocusMinutes = 30 });
+        data.Productivity.StudyDays.Add(new StudyDayLogData { Date = new DateOnly(2026, 11, 9), FocusMinutes = 30 });
+        data.Productivity.StudyDays.Add(new StudyDayLogData { Date = new DateOnly(2026, 11, 10), FocusMinutes = 60 });
+
+        var result = _service.GetStreak(data, new DateOnly(2026, 11, 10));
+
+        Assert.Equal(2, result.CurrentStreakDays);
+        Assert.Equal(2, result.LongestStreakDays);
+    }
+
 }
