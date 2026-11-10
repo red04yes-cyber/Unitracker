@@ -200,11 +200,12 @@
                                 <TextBlock Text="Il piano giornaliero e le sessioni di focus arriveranno con Studio Lab. Intanto puoi organizzare le materie e gli esami da preparare."
                                            Foreground="#D0DAE9" FontSize="12"
                                            TextWrapping="Wrap" MaxWidth="620"/>
-                                <Button Content="Apri le materie"
-                                        Style="{StaticResource SecondaryButtonStyle}"
-                                        HorizontalAlignment="Left"
-                                        Margin="0,18,0,0"
-                                        Click="NavigateToSubjects_Click"/>
+                                <StackPanel Orientation="Horizontal" Margin="0,18,0,0">
+                                    <Button Content="Apri le materie" Style="{StaticResource SecondaryButtonStyle}"
+                                            HorizontalAlignment="Left" Click="NavigateToSubjects_Click"/>
+                                    <Button Content="Widget desktop" Style="{StaticResource SecondaryButtonStyle}"
+                                            HorizontalAlignment="Left" Margin="8,0,0,0" Click="OpenDesktopWidget_Click"/>
+                                </StackPanel>
                             </StackPanel>
                         </Border>
 
