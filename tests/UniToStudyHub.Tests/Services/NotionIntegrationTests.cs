@@ -190,8 +190,8 @@ public sealed class NotionIntegrationTests
             {
                 Assert.Equal("Bearer secret_test_token_123", request.Headers.Authorization?.ToString());
                 Assert.Equal(NotionApiClient.ApiVersion, request.Headers.GetValues("Notion-Version").Single());
-                Assert.True(request.RequestUri.AbsolutePath.EndsWith(
-                    "/blocks/33333333-3333-4333-8333-333333333333/children", StringComparison.Ordinal));
+                Assert.EndsWith("/blocks/33333333-3333-4333-8333-333333333333/children",
+                    request.RequestUri.AbsolutePath, StringComparison.Ordinal);
                 return Json("""
                     {
                       "results":[

@@ -3,6 +3,7 @@ using System.Text;
 using UniToStudyHub.Domain.Enums;
 using UniToStudyHub.Infrastructure.Data;
 using UniToStudyHub.Models;
+using UniToStudyHub.Security;
 
 namespace UniToStudyHub.Services;
 
