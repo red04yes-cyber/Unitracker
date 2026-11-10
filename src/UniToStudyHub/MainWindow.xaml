@@ -606,10 +606,54 @@
                                     </StackPanel>
                                 </TabItem>
                                 <TabItem Header="Piano di studio">
-                                    <StackPanel Margin="12">
-                                        <TextBlock Text="Il piano adattivo verrà collegato qui alle attività della materia. Per ora non vengono create attività automatiche o date ipotetiche."
-                                                   Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap"/>
-                                    </StackPanel>
+                                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                        <StackPanel Margin="12">
+                                            <TextBlock Text="Attività della materia" FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}"/>
+                                            <TextBlock Text="Crea attività collegate a questo insegnamento. Le attività restano nel piano generale e vengono mostrate qui senza duplicarle."
+                                                       Foreground="{DynamicResource MutedBrush}" FontSize="10" TextWrapping="Wrap" Margin="0,4,0,12"/>
+                                            <Border Background="{DynamicResource SubtleBrush}" CornerRadius="8" Padding="12" Margin="0,0,0,12">
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="100"/><ColumnDefinition Width="150"/></Grid.ColumnDefinitions>
+                                                    <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                                                    <TextBox Text="{Binding Workspace.TaskTitleInput, UpdateSourceTrigger=PropertyChanged}" Grid.ColumnSpan="3" ToolTip="Titolo dell'attività" Margin="0,0,0,8"/>
+                                                    <TextBox Grid.Row="1" Text="{Binding Workspace.TaskMinutesInput, UpdateSourceTrigger=PropertyChanged}" ToolTip="Minuti stimati" Margin="0,0,8,8"/>
+                                                    <DatePicker Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2" SelectedDate="{Binding Workspace.TaskDueDateInput, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,8"/>
+                                                    <TextBlock Grid.Row="2" Text="Priorità 1–5" Foreground="{DynamicResource MutedBrush}" VerticalAlignment="Center"/>
+                                                    <TextBox Grid.Row="2" Grid.Column="1" Text="{Binding Workspace.TaskPriorityInput, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,8,0"/>
+                                                    <Button Grid.Row="2" Grid.Column="2" Content="Aggiungi attività" Command="{Binding Workspace.AddTaskCommand}"/>
+                                                </Grid>
+                                            </Border>
+                                            <TextBlock Text="Attività collegate" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}" Margin="0,0,0,8"/>
+                                            <ListBox ItemsSource="{Binding Workspace.SelectedCourseTasks}" SelectedItem="{Binding Workspace.SelectedTask, Mode=TwoWay}"
+                                                     Background="Transparent" BorderThickness="0" MaxHeight="260"
+                                                     Visibility="{Binding Workspace.HasSelectedCourseTasks, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                                <ListBox.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <Border Background="{DynamicResource SubtleBrush}" CornerRadius="7" Padding="10" Margin="0,0,0,6">
+                                                            <Grid>
+                                                                <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                                                <StackPanel>
+                                                                    <TextBlock Text="{Binding Title}" Foreground="{DynamicResource InkBrush}" FontWeight="SemiBold"/>
+                                                                    <TextBlock Text="{Binding EstimatedMinutes, StringFormat={}{0} min}" Foreground="{DynamicResource MutedBrush}" FontSize="10"/>
+                                                                </StackPanel>
+                                                                <StackPanel Grid.Column="1" HorizontalAlignment="Right">
+                                                                    <TextBlock Text="{Binding Status}" Foreground="{DynamicResource AccentBrush}" FontSize="10"/>
+                                                                    <TextBlock Text="{Binding DueAt, StringFormat={}{0:d}}" Foreground="{DynamicResource MutedBrush}" FontSize="10"/>
+                                                                </StackPanel>
+                                                            </Grid>
+                                                        </Border>
+                                                    </DataTemplate>
+                                                </ListBox.ItemTemplate>
+                                            </ListBox>
+                                            <TextBlock Text="Non ci sono ancora attività per questa materia." Visibility="{Binding Workspace.NoSelectedCourseTasks, Converter={StaticResource BooleanToVisibilityConverter}}"
+                                                       Foreground="{DynamicResource MutedBrush}" Margin="0,4,0,8"/>
+                                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                                <Button Content="Completa selezionata" Command="{Binding Workspace.CompleteTaskCommand}" Margin="0,0,8,0"/>
+                                                <Button Content="Rimuovi selezionata" Command="{Binding Workspace.RemoveTaskCommand}"/>
+                                            </StackPanel>
+                                            <TextBlock Text="{Binding Workspace.WorkspaceStatus}" Foreground="{DynamicResource MutedBrush}" FontSize="10" TextWrapping="Wrap" Margin="0,10,0,0"/>
+                                        </StackPanel>
+                                    </ScrollViewer>
                                 </TabItem>
                                 <TabItem Header="Esami e voti">
                                     <StackPanel Margin="12">
