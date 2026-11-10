@@ -347,6 +347,20 @@ public partial class MainWindow : Window
             viewModel.MoodleToken = passwordBox.Password;
     }
 
+    private void OpenCourseDetail_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is FrameworkElement element &&
+            element.DataContext is UniToStudyHub.Models.Course course &&
+            DataContext is MainViewModel viewModel)
+            viewModel.OpenCourseDetail(course);
+    }
+
+    private void CloseCourseDetail_Click(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is MainViewModel viewModel)
+            viewModel.CloseCourseDetail();
+    }
+
     private void CourseFilter_Checked(object sender, RoutedEventArgs e)
     {
         if (sender is RadioButton radioButton &&
