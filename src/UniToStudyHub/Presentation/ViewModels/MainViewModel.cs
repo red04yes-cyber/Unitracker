@@ -87,8 +87,49 @@ public sealed class MainViewModel : INotifyPropertyChanged
         SelectedCourse is null || SelectedCourse.EstimatedStudyHours <= 0
             ? "Non indicate"
             : $"{SelectedCourse.EstimatedStudyHours} ore";
-    public void OpenCourseDetail(Course course) => SelectedCourse = course;
-    public void CloseCourseDetail() => SelectedCourse = null;
+    public void OpenCourseDetail(Course course)
+    {
+        SelectedCourse = course;
+        SaveCourseDetailsCommand.NotifyCanExecuteChanged();
+    }
+
+    public void CloseCourseDetail()
+    {
+        SelectedCourse = null;
+        SaveCourseDetailsCommand.NotifyCanExecuteChanged();
+    }
+
+    private async Task SaveCourseDetailsAsync()
+    {
+        if (SelectedCourse is null) return;
+        if (SelectedCourse.Cfu < 0 || SelectedCourse.EstimatedStudyHours < 0)
+        {
+            StatusMessage = "CFU e ore stimate non possono essere negativi.";
+            return;
+        }
+
+        var course = SelectedCourse;
+        course.Name = course.Name.Trim();
+        course.Code = course.Code.Trim();
+        course.Teacher = course.Teacher.Trim();
+        course.AcademicYear = course.AcademicYear.Trim();
+        course.Session = course.Session.Trim();
+        course.SyllabusUrl = course.SyllabusUrl.Trim();
+        course.SyllabusSummary = course.SyllabusSummary.Trim();
+        course.Notes = course.Notes.Trim();
+        course.UpdatedAt = DateTime.UtcNow;
+        try
+        {
+            await SaveAsync();
+            StatusMessage = $"Dettagli di {course.Name} salvati.";
+            OnPropertyChanged(nameof(SelectedCourseStudyHoursDisplay));
+            OnPropertyChanged(nameof(SelectedCourseStatusDisplay));
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Salvataggio dettagli non riuscito: {ex.Message}";
+        }
+    }
     private void RefreshSelectedCourseCollections()
     {
         SelectedCourseTopics.Clear();
@@ -291,6 +332,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
     }
 
     public AsyncRelayCommand AddCourseCommand { get; }
+    public AsyncRelayCommand SaveCourseDetailsCommand { get; }
     public AsyncRelayCommand AddGradeCommand { get; }
     public AsyncRelayCommand PlanExamsCommand { get; }
     public AsyncRelayCommand ConnectMoodleCommand { get; }
@@ -312,6 +354,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
         Workspace = workspace;
         Workspace.DataReloaded += OnWorkspaceDataReloaded;
         AddCourseCommand = new AsyncRelayCommand(AddCourseAsync);
+        SaveCourseDetailsCommand = new AsyncRelayCommand(SaveCourseDetailsAsync, () => SelectedCourse is not null);
         AddGradeCommand = new AsyncRelayCommand(AddGradeAsync, () => SelectedGradeCourse is not null);
         PlanExamsCommand = new AsyncRelayCommand(PlanExamsAsync);
         ConnectMoodleCommand = new AsyncRelayCommand(ConnectMoodleAsync);
