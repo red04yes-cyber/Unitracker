@@ -9,7 +9,7 @@ This slice adds a persisted productivity aggregate without introducing a second 
 - Next activity: chooses the nearest future planned exam or enabled reminder. A separate always-on-top, taskbar-hidden WPF desktop widget can be opened from the home dashboard and refreshes its displayed activity every 30 seconds.
 - Exam mode: persists the selected exam, start instant and end instant. Remaining time is derived from timestamps, so it survives restarts without relying on a running timer loop.
 - Quick notes: notes are linked to an existing course and a required topic; an existing note can be updated by ID.
-- Attendance: lecture records link to existing courses and retain title, date/time, duration, attended state and optional notes. Attendance CSV generation is available.
+- Attendance: lecture records link to existing courses and retain title, date/time, duration, attended state and optional notes. Attendance CSV, XLSX and PDF exports are available from the WPF register screen.
 - Dashboard preferences: widget visibility and order are persisted; deterministic defaults are supplied before the user customizes the dashboard. The WPF Study Lab exposes visibility and order controls, and the home dashboard renders the selected widgets with live values.
 - Course archive: the existing Course.Completed field remains the archive flag; no duplicate archive state is added.
 - WPF Study Lab: the Studio Lab tab exposes daily/weekly goal editing, additive focus logging, current streak and weekly minutes, course-linked quick notes, lecture attendance, reminder creation/listing and a next-activity summary. It also exposes a timestamp-derived exam countdown with a live one-second display refresh, dashboard widget visibility/order controls and a Save File workflow for attendance CSV. The home dashboard renders configurable widgets with live values, and a dedicated always-on-top desktop companion displays the next activity. Productivity actions persist through the existing data store.
@@ -17,7 +17,7 @@ This slice adds a persisted productivity aggregate without introducing a second 
 ## Not included / integration still required
 
 - Reminder notifications are delivered only while the app is running; there is no Windows background task or notification scheduling after the app exits.
-- PDF and XLSX export, and a unified export workflow. Attendance CSV can now be saved from the WPF screen.
+- Export is currently implemented for the attendance register in CSV, XLSX and PDF formats. A unified export workflow for the rest of the study data (notes, goals, reminders and exam plan) is not included.
 - An OS background scheduler. Reminder lookup is deterministic and should be called by a bounded host scheduler.
 
 ## Persistence and verification
