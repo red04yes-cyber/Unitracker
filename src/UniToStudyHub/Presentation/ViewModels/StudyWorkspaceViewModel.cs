@@ -74,6 +74,14 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
     private int _simulationManualReview;
     private bool _simulationActive;
     private string _simulationStatus = "Avvia una simulazione per esercitarti con i quesiti della materia selezionata.";
+    private int _simulationTimeLimitMinutesInput;
+    private DateTimeOffset? _simulationStartedAt;
+    private DateTimeOffset? _simulationDeadline;
+    private bool _simulationAnswerPendingManualReview;
+    private int _simulationManualCorrect;
+    private int _simulationManualIncorrect;
+    private string _simulationCountdownDisplay = "Nessun limite";
+    private readonly ActivityLedgerService _activityLedger = new();
     private string _focusTopicInput = string.Empty;
     private string _focusMinutesInput = "25";
     private string _focusRemainingDisplay = "25:00";
@@ -247,7 +255,13 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
     public string ReadinessStatus { get => _readinessStatus; private set => Set(ref _readinessStatus, value); }
     public string ExportStatus { get => _exportStatus; private set => Set(ref _exportStatus, value); }
     public string SimulationStatus { get => _simulationStatus; private set => Set(ref _simulationStatus, value); }
-    public bool IsSimulationActive { get => _simulationActive; private set { Set(ref _simulationActive, value); OnPropertyChanged(nameof(SimulationQuestionDisplay)); SubmitSimulationAnswerCommand?.NotifyCanExecuteChanged(); } }
+    public IReadOnlyList<int> SimulationTimeLimitOptions { get; } = new[] { 0, 10, 15, 20, 30, 45, 60, 90 };
+    public int SimulationTimeLimitMinutesInput { get => _simulationTimeLimitMinutesInput; set => Set(ref _simulationTimeLimitMinutesInput, Math.Clamp(value, 0, 90)); }
+    public string SimulationCountdownDisplay { get => _simulationCountdownDisplay; private set => Set(ref _simulationCountdownDisplay, value); }
+    public bool CanManuallyGradeCurrentAnswer => IsSimulationActive && _simulationAnswerPendingManualReview;
+    public ObservableCollection<StudyActivityData> SimulationHistory { get; } = new();
+    public ObservableCollection<ErrorPattern> WeakTopicPatterns { get; } = new();
+    public bool IsSimulationActive { get => _simulationActive; private set { Set(ref _simulationActive, value); OnPropertyChanged(nameof(SimulationQuestionDisplay)); OnPropertyChanged(nameof(CanManuallyGradeCurrentAnswer)); SubmitSimulationAnswerCommand?.NotifyCanExecuteChanged(); GradeSimulationAnswerCorrectCommand?.NotifyCanExecuteChanged(); GradeSimulationAnswerIncorrectCommand?.NotifyCanExecuteChanged(); } }
     public string SimulationQuestionDisplay => IsSimulationActive && _simulationIndex < _simulationQuestions.Count
         ? $"Quesito {_simulationIndex + 1}/{_simulationQuestions.Count} · {_simulationQuestions[_simulationIndex].Text}"
         : "Nessun quesito attivo.";
@@ -424,6 +438,8 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
     public AsyncRelayCommand EvaluateQuestionCommand { get; }
     public AsyncRelayCommand StartSimulationCommand { get; }
     public AsyncRelayCommand SubmitSimulationAnswerCommand { get; }
+    public AsyncRelayCommand GradeSimulationAnswerCorrectCommand { get; }
+    public AsyncRelayCommand GradeSimulationAnswerIncorrectCommand { get; }
 
     public StudyWorkspaceViewModel(
         IStudyDataStore store,
@@ -501,7 +517,9 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
         AddQuestionCommand = new AsyncRelayCommand(AddQuestionAsync, () => SelectedCourse is not null);
         EvaluateQuestionCommand = new AsyncRelayCommand(EvaluateQuestionAsync, () => SelectedQuestion is not null);
         StartSimulationCommand = new AsyncRelayCommand(StartSimulationAsync, () => QuestionBankItems.Count > 0);
-        SubmitSimulationAnswerCommand = new AsyncRelayCommand(SubmitSimulationAnswerAsync, () => IsSimulationActive);
+        SubmitSimulationAnswerCommand = new AsyncRelayCommand(SubmitSimulationAnswerAsync, () => IsSimulationActive && !_simulationAnswerPendingManualReview);
+        GradeSimulationAnswerCorrectCommand = new AsyncRelayCommand(() => GradeCurrentSimulationAnswerAsync(true), () => CanManuallyGradeCurrentAnswer);
+        GradeSimulationAnswerIncorrectCommand = new AsyncRelayCommand(() => GradeCurrentSimulationAnswerAsync(false), () => CanManuallyGradeCurrentAnswer);
     }
 
     public void Initialize(StudyData data)
@@ -540,6 +558,25 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
         }
         RefreshBreakSnapshot();
         NotifyFocusState();
+    }
+
+    public async Task RefreshSimulationSnapshotAsync()
+    {
+        if (!IsSimulationActive || _simulationDeadline is null)
+        {
+            if (!IsSimulationActive) SimulationCountdownDisplay = "Nessun limite attivo";
+            return;
+        }
+
+        var remaining = _simulationDeadline.Value - DateTimeOffset.Now;
+        if (remaining <= TimeSpan.Zero)
+        {
+            await EndSimulationAsync(expired: true);
+            return;
+        }
+
+        var seconds = Math.Max(0, (int)Math.Ceiling(remaining.TotalSeconds));
+        SimulationCountdownDisplay = $"{seconds / 60:00}:{seconds % 60:00}";
     }
 
     private void RefreshBreakSnapshot()
@@ -1251,42 +1288,157 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
         _simulationCorrect = 0;
         _simulationAutoMarked = 0;
         _simulationManualReview = 0;
+        _simulationManualCorrect = 0;
+        _simulationManualIncorrect = 0;
+        _simulationAnswerPendingManualReview = false;
+        _simulationStartedAt = DateTimeOffset.Now;
+        _simulationDeadline = SimulationTimeLimitMinutesInput > 0
+            ? _simulationStartedAt.Value.AddMinutes(SimulationTimeLimitMinutesInput)
+            : null;
         QuestionAnswerInput = string.Empty;
         IsSimulationActive = _simulationQuestions.Count > 0;
+        SimulationCountdownDisplay = _simulationDeadline is null ? "Senza limite" : $"{SimulationTimeLimitMinutesInput:00}:00";
         SimulationStatus = IsSimulationActive
-            ? $"Simulazione avviata: {_simulationQuestions.Count} quesiti. Le risposte aperte sono segnalate per revisione."
+            ? $"Simulazione avviata: {_simulationQuestions.Count} quesiti. Le risposte aperte richiedono correzione manuale."
             : "Non ci sono domande per questa materia.";
         OnPropertyChanged(nameof(SimulationQuestionDisplay));
         return Task.CompletedTask;
     }
 
-    private Task SubmitSimulationAnswerAsync()
+    private async Task SubmitSimulationAnswerAsync()
     {
-        if (!IsSimulationActive || _simulationIndex >= _simulationQuestions.Count)
-            return Task.CompletedTask;
+        if (!IsSimulationActive || _simulationIndex >= _simulationQuestions.Count) return;
+        if (_simulationDeadline is DateTimeOffset deadline && DateTimeOffset.Now >= deadline)
+        {
+            await EndSimulationAsync(expired: true);
+            return;
+        }
+
         var question = _simulationQuestions[_simulationIndex];
         var evaluation = _questionBank.Evaluate(question, QuestionAnswerInput);
         if (evaluation.RequiresManualReview)
-            _simulationManualReview++;
-        else
         {
-            _simulationAutoMarked++;
-            if (evaluation.IsCorrect == true) _simulationCorrect++;
+            _simulationAnswerPendingManualReview = true;
+            OnPropertyChanged(nameof(CanManuallyGradeCurrentAnswer));
+            SubmitSimulationAnswerCommand.NotifyCanExecuteChanged();
+            GradeSimulationAnswerCorrectCommand.NotifyCanExecuteChanged();
+            GradeSimulationAnswerIncorrectCommand.NotifyCanExecuteChanged();
+            SimulationStatus = "Risposta aperta acquisita. Valutala manualmente prima di passare al quesito successivo.";
+            return;
         }
 
+        _simulationAutoMarked++;
+        if (evaluation.IsCorrect == true) _simulationCorrect++;
+        await AdvanceSimulationAsync();
+    }
+
+    private async Task GradeCurrentSimulationAnswerAsync(bool correct)
+    {
+        if (!CanManuallyGradeCurrentAnswer || _simulationIndex >= _simulationQuestions.Count) return;
+        if (_simulationDeadline is DateTimeOffset deadline && DateTimeOffset.Now >= deadline)
+        {
+            await EndSimulationAsync(expired: true);
+            return;
+        }
+
+        var question = _simulationQuestions[_simulationIndex];
+        _simulationManualReview++;
+        if (correct)
+        {
+            _simulationManualCorrect++;
+        }
+        else
+        {
+            _simulationManualIncorrect++;
+            var topic = _data.SyllabusTopics.FirstOrDefault(x => x.Id == question.SyllabusTopicId)?.Title
+                ?? "Argomento non specificato";
+            _errors.Add(_data, new ErrorJournalEntryData
+            {
+                CourseId = question.CourseId,
+                SyllabusTopicId = question.SyllabusTopicId,
+                Topic = topic,
+                Question = question.Text,
+                IncorrectAnswer = QuestionAnswerInput,
+                CorrectAnswer = question.CorrectAnswer,
+                ErrorType = "Risposta aperta valutata manualmente",
+                RootCause = "Da approfondire dopo la simulazione",
+                Source = "Exam simulator"
+            });
+        }
+        await AdvanceSimulationAsync();
+    }
+
+    private async Task AdvanceSimulationAsync()
+    {
+        _simulationAnswerPendingManualReview = false;
+        OnPropertyChanged(nameof(CanManuallyGradeCurrentAnswer));
+        GradeSimulationAnswerCorrectCommand.NotifyCanExecuteChanged();
+        GradeSimulationAnswerIncorrectCommand.NotifyCanExecuteChanged();
         _simulationIndex++;
         QuestionAnswerInput = string.Empty;
         if (_simulationIndex >= _simulationQuestions.Count)
-        {
-            IsSimulationActive = false;
-            SimulationStatus = $"Simulazione conclusa: {_simulationCorrect}/{_simulationAutoMarked} corrette tra le risposte chiuse; {_simulationManualReview} aperte da rivedere manualmente. Il tentativo non viene registrato come esame ufficiale.";
-        }
+            await EndSimulationAsync(expired: false);
         else
         {
             SimulationStatus = $"Risposta acquisita. Restano {_simulationQuestions.Count - _simulationIndex} quesiti.";
             OnPropertyChanged(nameof(SimulationQuestionDisplay));
+            SubmitSimulationAnswerCommand.NotifyCanExecuteChanged();
         }
-        return Task.CompletedTask;
+    }
+
+    private async Task EndSimulationAsync(bool expired)
+    {
+        if (!IsSimulationActive) return;
+        IsSimulationActive = false;
+        _simulationDeadline = null;
+        _simulationAnswerPendingManualReview = false;
+        OnPropertyChanged(nameof(CanManuallyGradeCurrentAnswer));
+        var started = _simulationStartedAt ?? DateTimeOffset.Now.AddSeconds(-1);
+        var ended = DateTimeOffset.Now;
+        if (ended <= started) ended = started.AddSeconds(1);
+        var duration = Math.Max(1, (int)(ended - started).TotalSeconds);
+        var result = $"Automatiche corrette: {_simulationCorrect}/{_simulationAutoMarked}; manuali corrette: {_simulationManualCorrect}; manuali errate: {_simulationManualIncorrect}; aperte valutate: {_simulationManualReview}.";
+        var note = expired ? "Simulazione interrotta automaticamente alla scadenza del limite." : "Simulazione completata dall'utente.";
+        try
+        {
+            _activityLedger.AddQuickLog(
+                _data,
+                StudyActivityType.Simulation,
+                "Simulazione esame",
+                started,
+                ended,
+                courseId: SelectedCourse?.Id,
+                note: note,
+                result: result,
+                tags: new[] { "exam-simulator", _simulationDeadline is null ? "timed" : "timed" });
+            await SaveAsync();
+            RefreshSimulationHistoryAndWeakTopics();
+            SimulationStatus = expired
+                ? $"Tempo scaduto. La simulazione è stata chiusa e salvata. {result}"
+                : $"Simulazione conclusa. {result} Il tentativo non è un esame ufficiale.";
+        }
+        catch (Exception ex)
+        {
+            SimulationStatus = $"Simulazione terminata, ma lo storico non è stato salvato: {ex.Message}";
+        }
+        SimulationCountdownDisplay = expired ? "Tempo scaduto" : "Completata";
+    }
+
+    private void RefreshSimulationHistoryAndWeakTopics()
+    {
+        SimulationHistory.Clear();
+        foreach (var activity in _data.StudyActivities
+                     .Where(x => !x.IsDeleted && x.Type == StudyActivityType.Simulation && x.Title == "Simulazione esame" &&
+                                 (SelectedCourse is null || x.CourseId == SelectedCourse.Id))
+                     .OrderByDescending(x => x.StartedAt).Take(20))
+            SimulationHistory.Add(activity);
+
+        WeakTopicPatterns.Clear();
+        foreach (var pattern in new ErrorPatternService().Detect(_data)
+                     .Where(x => SelectedCourse is null || x.CourseId == SelectedCourse.Id))
+            WeakTopicPatterns.Add(pattern);
+        OnPropertyChanged(nameof(SimulationHistory));
+        OnPropertyChanged(nameof(WeakTopicPatterns));
     }
 
     private void RefreshSyllabusAndQuestions()
@@ -1308,6 +1460,7 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(NoSyllabusTopics));
         OnPropertyChanged(nameof(HasSelectedSyllabusTopic));
         OnPropertyChanged(nameof(QuestionBankItems));
+        RefreshSimulationHistoryAndWeakTopics();
         RefreshSyllabusParentOptions();
         AddSyllabusTopicCommand?.NotifyCanExecuteChanged();
         AddQuestionCommand?.NotifyCanExecuteChanged();
