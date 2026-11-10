@@ -59,6 +59,8 @@ public sealed class DashboardWidgetPreferenceData
     public bool IsVisible { get; set; } = true;
     public int Order { get; set; }
     [JsonIgnore]
+    public string DisplayValue { get; set; } = string.Empty;
+    [JsonIgnore]
     public string DisplayName => Key switch
     {
         "next-activity" => "Prossima attività",
