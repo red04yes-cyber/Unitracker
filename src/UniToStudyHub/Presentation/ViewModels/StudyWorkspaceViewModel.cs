@@ -1443,10 +1443,9 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
     private void RefreshSelectedCourseTasks()
     {
         SelectedCourseTasks.Clear();
-        if (SelectedTaskCourse is null) return;
 
         foreach (var task in _data.StudyTasks
-                     .Where(x => x.CourseId == SelectedTaskCourse.Id)
+                     .Where(x => SelectedTaskCourse is not null && x.CourseId == SelectedTaskCourse.Id)
                      .OrderBy(x => x.Status == StudyTaskStatus.Completed)
                      .ThenBy(x => x.DueAt ?? DateTimeOffset.MaxValue)
                      .ThenByDescending(x => x.Priority))
