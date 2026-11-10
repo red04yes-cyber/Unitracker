@@ -30,6 +30,9 @@ public static class CompositionRoot
             sp.GetRequiredService<IDbContextFactory<StudyHubDbContext>>()));
         services.AddSingleton<IStudyDataStore, SqliteStudyDataStore>();
         services.AddSingleton<IMoodleTokenStore>(_ => new MoodleTokenVault(dataDirectory));
+        services.AddSingleton<INotionTokenStore>(_ => new NotionTokenVault(dataDirectory));
+        services.AddSingleton(_ => new HttpClient { Timeout = TimeSpan.FromSeconds(30) });
+        services.AddSingleton<NotionApiClient>();
         services.AddSingleton<MoodleApplicationService>();
         services.AddSingleton<AcademicProfileService>();
         services.AddSingleton<CareerApplicationService>();
@@ -80,10 +83,12 @@ public static class CompositionRoot
             sp.GetRequiredService<AiCredentialStore>(),
             sp.GetRequiredService<BackupService>(),
             dataDirectory,
-            aiPreferences: sp.GetRequiredService<AiProviderPreferencesStore>()));
+            aiPreferences: sp.GetRequiredService<AiProviderPreferencesStore>(),
+            notionTokens: sp.GetRequiredService<INotionTokenStore>()));
         services.AddSingleton(sp => new StudyDataImportService(
             sp.GetRequiredService<IStudyDataStore>(),
             sp.GetRequiredService<BackupService>()));
+        services.AddSingleton<NotionApplicationService>();
         return services;
     }
 }

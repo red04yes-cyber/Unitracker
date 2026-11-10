@@ -130,6 +130,71 @@ public sealed class StudyDataImportService
             Convert.ToHexString(SHA256.HashData(payload.Span)), counts, duplicates, warnings);
     }
 
+    /// <summary>
+    /// Validates an ordered set of exports and combines them into one preview.
+    /// Earlier files win on ID conflicts, matching the documented Notion bundle
+    /// order (core data first, then lessons and course sheets). The caller still
+    /// has to explicitly apply the returned preview.
+    /// </summary>
+    public async Task<StudyDataImportPreview> PreviewMultipleAsync(
+        IEnumerable<ReadOnlyMemory<byte>> payloads,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(payloads);
+        var sources = payloads.ToList();
+        if (sources.Count == 0)
+            throw new InvalidDataException("Il pacchetto di importazione non contiene file.");
+        if (sources.Count > 20)
+            throw new InvalidDataException("Il pacchetto contiene più di 20 file.");
+
+        long totalBytes = 0;
+        foreach (var source in sources)
+        {
+            totalBytes += source.Length;
+            if (source.IsEmpty || totalBytes > MaximumImportBytes)
+                throw new InvalidDataException("Il pacchetto è vuoto o supera il limite complessivo di 64 MB.");
+        }
+
+        var previews = new List<StudyDataImportPreview>(sources.Count);
+        foreach (var source in sources)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            previews.Add(await PreviewAsync(source, cancellationToken).ConfigureAwait(false));
+        }
+
+        var combined = new StudyData();
+        var warnings = new List<string>();
+        foreach (var preview in previews)
+        {
+            var repeated = CountDuplicates(combined, preview.ImportedData).Values.Sum();
+            if (repeated > 0)
+                warnings.Add($"{repeated} record con ID ripetuto nel pacchetto: viene mantenuta la prima occorrenza.");
+            combined = Merge(combined, preview.ImportedData);
+            warnings.AddRange(preview.Warnings);
+        }
+
+        StudyDataEntityMapper.NormalizeAndValidate(combined);
+        var counts = CountItems(combined);
+        if (counts.Values.Sum() > MaximumImportedRecords)
+            throw new InvalidDataException("Il pacchetto contiene più di 100.000 record: importazione rifiutata.");
+
+        var existing = await _store.LoadAsync(cancellationToken).ConfigureAwait(false);
+        var duplicates = CountDuplicates(existing, combined);
+        if (duplicates.Values.Sum() > 0)
+            warnings.Add("I record già presenti nel database locale saranno mantenuti durante l'unione.");
+
+        var generatedDates = previews.Where(x => x.GeneratedAt.HasValue)
+            .Select(x => x.GeneratedAt!.Value).ToList();
+        DateTimeOffset? generatedAt = generatedDates.Count == 0 ? null : generatedDates.Max();
+        using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
+        foreach (var source in sources)
+            hash.AppendData(source.ToArray());
+
+        return new StudyDataImportPreview(combined, generatedAt,
+            Convert.ToHexString(hash.GetHashAndReset()), counts, duplicates,
+            warnings.Distinct(StringComparer.Ordinal).ToList());
+    }
+
     public async Task<StudyDataImportResult> ApplyAsync(
         StudyDataImportPreview preview,
         StudyDataImportStrategy strategy,

@@ -48,6 +48,33 @@ public sealed class StudyDataImportServiceTests
     }
 
     [Fact]
+    public async Task PreviewMultipleCombinesFilesInOrderAndKeepsFirstRecordOnIdConflict()
+    {
+        await using var database = await SqliteTestDatabase.CreateFileAsync();
+        var store = new SqliteStudyDataStore(database.Factory);
+        var service = new StudyDataImportService(store);
+        var core = Data(("course-1", "Nome dal file principale"), ("course-2", "Secondo corso"));
+        var courseSheets = Data(("course-1", "Nome duplicato da scheda"), ("course-3", "Terzo corso"));
+
+        var preview = await service.PreviewMultipleAsync(new ReadOnlyMemory<byte>[]
+        {
+            Export(core),
+            Export(courseSheets)
+        });
+
+        Assert.Equal(3, preview.ItemCounts["Corsi"]);
+        Assert.Contains(preview.Warnings, warning =>
+            warning.Contains("record con ID ripetuto", StringComparison.Ordinal));
+
+        await service.ApplyAsync(preview, StudyDataImportStrategy.Merge);
+
+        var saved = await store.LoadAsync();
+        Assert.Equal(3, saved.Courses.Count);
+        Assert.Equal("Nome dal file principale", saved.Courses.Single(x => x.Id == "course-1").Name);
+        Assert.Contains(saved.Courses, x => x.Id == "course-3");
+    }
+
+    [Fact]
     public async Task MergeAddsMissingRecordsAndPreservesExistingRecordsAndSettings()
     {
         await using var database = await SqliteTestDatabase.CreateFileAsync();

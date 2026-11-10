@@ -93,6 +93,7 @@ public sealed class PrivacyService
 
     private readonly IStudyDataStore _store;
     private readonly IMoodleTokenStore? _tokens;
+    private readonly INotionTokenStore? _notionTokens;
     private readonly AiCredentialStore? _aiKeys;
     private readonly BackupService? _backups;
     private readonly string? _dataDirectory;
@@ -106,10 +107,12 @@ public sealed class PrivacyService
         BackupService? backups = null,
         string? dataDirectory = null,
         string? moodleFilesDirectory = null,
-        AiProviderPreferencesStore? aiPreferences = null)
+        AiProviderPreferencesStore? aiPreferences = null,
+        INotionTokenStore? notionTokens = null)
     {
         _store = store ?? throw new ArgumentNullException(nameof(store));
         _tokens = tokens;
+        _notionTokens = notionTokens;
         _aiKeys = aiKeys;
         _backups = backups;
         _dataDirectory = string.IsNullOrWhiteSpace(dataDirectory) ? null : Path.GetFullPath(dataDirectory);
@@ -182,6 +185,7 @@ public sealed class PrivacyService
 
         var credentialsRemoved = false;
         if (_tokens is not null && _tokens.Delete()) credentialsRemoved = true;
+        if (_notionTokens is not null && _notionTokens.Delete()) credentialsRemoved = true;
         if (_aiKeys is not null && _aiKeys.DeleteAll() > 0) credentialsRemoved = true;
 
         var deletedBackups = 0;
