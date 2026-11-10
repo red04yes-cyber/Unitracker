@@ -259,6 +259,10 @@ namespace UniToStudyHub.Infrastructure.Data.Migrations
                         .HasMaxLength(2048)
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("ProductivityStateJson")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
                     b.HasKey("Id");
 
                     b.ToTable("ProfileSettings", (string)null);
