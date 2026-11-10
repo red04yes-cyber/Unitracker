@@ -475,6 +475,8 @@
                                         <TextBlock Text="{Binding Code, TargetNullValue='Codice non indicato'}"
                                                    FontSize="11" Foreground="{DynamicResource MutedBrush}"
                                                    Margin="0,7,0,13"/>
+                                        <TextBlock Text="{Binding AppealDate, StringFormat='Appello: {0:d MMM yyyy}', TargetNullValue='Appello non indicato'}"
+                                                   FontSize="10" Foreground="{DynamicResource MutedBrush}" Margin="0,0,0,10"/>
                                         <Border x:Name="CourseStatusBorder"
                                                 Background="{DynamicResource SubtleBrush}" CornerRadius="6"
                                                 Padding="8,5" HorizontalAlignment="Left">
@@ -482,6 +484,9 @@
                                                        FontSize="9" FontWeight="Bold"
                                                        Foreground="{DynamicResource MutedBrush}"/>
                                         </Border>
+                                        <Button Content="Apri scheda materia  →" Click="OpenCourseDetail_Click"
+                                                Style="{StaticResource QuietButtonStyle}" HorizontalAlignment="Left"
+                                                Margin="0,12,0,0" Padding="0,5"/>
                                     </StackPanel>
                                 </Border>
                                 <DataTemplate.Triggers>
@@ -494,6 +499,116 @@
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
+
+                    <Border Style="{StaticResource CardBorderStyle}" Margin="0,12,0,16"
+                            Visibility="{Binding HasSelectedCourse, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <StackPanel>
+                            <Grid Margin="0,0,0,16">
+                                <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                <StackPanel>
+                                    <TextBlock Text="SCHEDA MATERIA" FontSize="9" FontWeight="Bold"
+                                               Foreground="{DynamicResource AccentBrush}"/>
+                                    <TextBlock Text="{Binding SelectedCourse.Name}" FontSize="23" FontWeight="SemiBold"
+                                               Foreground="{DynamicResource InkBrush}" Margin="0,5,0,0"/>
+                                    <TextBlock Text="{Binding SelectedCourse.Code}" FontSize="11"
+                                               Foreground="{DynamicResource MutedBrush}" Margin="0,3,0,0"/>
+                                </StackPanel>
+                                <Button Grid.Column="1" Content="Chiudi scheda" Click="CloseCourseDetail_Click"
+                                        Style="{StaticResource QuietButtonStyle}" VerticalAlignment="Top"/>
+                            </Grid>
+                            <UniformGrid Columns="4" Margin="0,0,0,14">
+                                <StackPanel><TextBlock Text="CFU" Style="{StaticResource KpiLabelStyle}"/><TextBlock Text="{Binding SelectedCourse.Cfu}" FontSize="20" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}"/></StackPanel>
+                                <StackPanel><TextBlock Text="AVANZAMENTO" Style="{StaticResource KpiLabelStyle}"/><TextBlock Text="{Binding SelectedCourseProgressDisplay}" FontSize="20" FontWeight="SemiBold" Foreground="{DynamicResource AccentBrush}"/></StackPanel>
+                                <StackPanel><TextBlock Text="PROSSIMO APPELLO" Style="{StaticResource KpiLabelStyle}"/><TextBlock Text="{Binding SelectedCourseExamDateDisplay}" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}" TextWrapping="Wrap"/></StackPanel>
+                                <StackPanel><TextBlock Text="STATO" Style="{StaticResource KpiLabelStyle}"/><TextBlock Text="{Binding SelectedCourseStatusDisplay}" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}"/></StackPanel>
+                            </UniformGrid>
+                            <TabControl>
+                                <TabItem Header="Panoramica">
+                                    <StackPanel Margin="12">
+                                        <TextBlock Text="{Binding SelectedCourse.SyllabusSummary, TargetNullValue='Nessun riepilogo del programma disponibile.'}"
+                                                   Foreground="{DynamicResource InkBrush}" TextWrapping="Wrap"/>
+                                        <TextBlock Text="{Binding SelectedCourse.Notes}" Foreground="{DynamicResource MutedBrush}"
+                                                   TextWrapping="Wrap" Margin="0,10,0,0"/>
+                                        <TextBlock Text="Il progresso usa solo gli argomenti foglia del syllabus; se il programma non è stato inserito, resta non definito."
+                                                   FontSize="10" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,12,0,0"/>
+                                    </StackPanel>
+                                </TabItem>
+                                <TabItem Header="Informazioni">
+                                    <Grid Margin="12">
+                                        <Grid.ColumnDefinitions><ColumnDefinition Width="150"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
+                                        </Grid.RowDefinitions>
+                                        <TextBlock Text="Docente" Foreground="{DynamicResource MutedBrush}"/>
+                                        <TextBlock Grid.Column="1" Text="{Binding SelectedCourse.Teacher, TargetNullValue='Non indicato'}" Foreground="{DynamicResource InkBrush}"/>
+                                        <TextBlock Grid.Row="1" Text="Anno accademico" Foreground="{DynamicResource MutedBrush}" Margin="0,8,0,0"/>
+                                        <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding SelectedCourse.AcademicYear}" Foreground="{DynamicResource InkBrush}" Margin="0,8,0,0"/>
+                                        <TextBlock Grid.Row="2" Text="Sessione" Foreground="{DynamicResource MutedBrush}" Margin="0,8,0,0"/>
+                                        <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding SelectedCourse.Session}" Foreground="{DynamicResource InkBrush}" Margin="0,8,0,0"/>
+                                        <TextBlock Grid.Row="3" Text="Ore stimate" Foreground="{DynamicResource MutedBrush}" Margin="0,8,0,0"/>
+                                        <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding SelectedCourseStudyHoursDisplay}" Foreground="{DynamicResource InkBrush}" Margin="0,8,0,0"/>
+                                        <TextBlock Grid.Row="4" Text="Syllabus ufficiale" Foreground="{DynamicResource MutedBrush}" Margin="0,8,0,0"/>
+                                        <TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding SelectedCourse.SyllabusUrl}" Foreground="{DynamicResource AccentBrush}" TextWrapping="Wrap" Margin="0,8,0,0"/>
+                                        <TextBlock Grid.Row="5" Text="Fonte dati" Foreground="{DynamicResource MutedBrush}" Margin="0,8,0,0"/>
+                                        <TextBlock Grid.Row="5" Grid.Column="1" Text="{Binding SelectedCourse.Source}" Foreground="{DynamicResource InkBrush}" Margin="0,8,0,0"/>
+                                    </Grid>
+                                </TabItem>
+                                <TabItem Header="Programma">
+                                    <StackPanel Margin="12">
+                                        <TextBlock Text="Moduli, capitoli e argomenti" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}"/>
+                                        <ItemsControl ItemsSource="{Binding SelectedCourseTopics}" Margin="0,10,0,0">
+                                            <ItemsControl.ItemTemplate><DataTemplate>
+                                                <Border Background="{DynamicResource SubtleBrush}" CornerRadius="7" Padding="10" Margin="0,0,0,6">
+                                                    <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                                        <StackPanel><TextBlock Text="{Binding Title}" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}"/>
+                                                            <TextBlock Text="{Binding Kind}" FontSize="10" Foreground="{DynamicResource MutedBrush}"/>
+                                                        </StackPanel>
+                                                        <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                                            <TextBlock Text="{Binding CompletionPercent, StringFormat={}{0}%}" Foreground="{DynamicResource AccentBrush}" FontWeight="SemiBold" Margin="0,0,10,0"/>
+                                                            <TextBlock Text="{Binding Preparedness}" Foreground="{DynamicResource MutedBrush}" FontSize="10"/>
+                                                        </StackPanel>
+                                                    </Grid>
+                                                </Border>
+                                            </DataTemplate></ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                        <TextBlock Text="Non ci sono ancora argomenti per questa materia." Visibility="{Binding SelectedCourseTopics.Count, Converter={StaticResource ZeroToVisibilityConverter}}"
+                                                   Foreground="{DynamicResource MutedBrush}" Margin="0,8,0,0"/>
+                                    </StackPanel>
+                                </TabItem>
+                                <TabItem Header="Piano di studio">
+                                    <StackPanel Margin="12">
+                                        <TextBlock Text="Il piano adattivo verrà collegato qui alle attività della materia. Per ora non vengono create attività automatiche o date ipotetiche."
+                                                   Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap"/>
+                                    </StackPanel>
+                                </TabItem>
+                                <TabItem Header="Esami e voti">
+                                    <StackPanel Margin="12">
+                                        <ItemsControl ItemsSource="{Binding SelectedCourseGrades}">
+                                            <ItemsControl.ItemTemplate><DataTemplate>
+                                                <Grid Margin="0,0,0,8"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                                    <TextBlock Text="{Binding Date, StringFormat='d MMM yyyy'}" Foreground="{DynamicResource MutedBrush}"/>
+                                                    <TextBlock Grid.Column="1" Text="{Binding Value}" FontSize="15" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}"/>
+                                                </Grid>
+                                            </DataTemplate></ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                        <TextBlock Text="Nessun voto accettato registrato per questa materia." Foreground="{DynamicResource MutedBrush}"/>
+                                    </StackPanel>
+                                </TabItem>
+                                <TabItem Header="Materiali">
+                                    <TextBlock Margin="12" Text="La libreria materiali per materia sarà collegata nella prossima fase. I file esistenti non vengono duplicati né spostati." Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap"/>
+                                </TabItem>
+                                <TabItem Header="Statistiche e AI">
+                                    <StackPanel Margin="12">
+                                        <TextBlock Text="Statistiche" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}"/>
+                                        <TextBlock Text="{Binding SelectedCourseProgressDisplay, StringFormat='Completamento syllabus: {0}'}" Foreground="{DynamicResource MutedBrush}" Margin="0,5,0,12"/>
+                                        <TextBlock Text="Tutor AI non attivato in questa scheda. Nessun contenuto viene inviato a un provider senza consenso esplicito."
+                                                   Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap"/>
+                                    </StackPanel>
+                                </TabItem>
+                            </TabControl>
+                        </StackPanel>
+                    </Border>
 
                     <StackPanel Visibility="{Binding NoVisibleCourses, Converter={StaticResource BooleanToVisibilityConverter}}"
                                 HorizontalAlignment="Stretch">
