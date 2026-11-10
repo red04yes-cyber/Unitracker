@@ -572,7 +572,7 @@
                                                 </Border>
                                             </DataTemplate></ItemsControl.ItemTemplate>
                                         </ItemsControl>
-                                        <TextBlock Text="Non ci sono ancora argomenti per questa materia." Visibility="{Binding HasSelectedCourseTopics, Converter={StaticResource BooleanToVisibilityConverter}}"
+                                        <TextBlock Text="Non ci sono ancora argomenti per questa materia." Visibility="{Binding NoSelectedCourseTopics, Converter={StaticResource BooleanToVisibilityConverter}}"
                                                    Foreground="{DynamicResource MutedBrush}" Margin="0,8,0,0"/>
                                     </StackPanel>
                                 </TabItem>
@@ -593,7 +593,7 @@
                                             </DataTemplate></ItemsControl.ItemTemplate>
                                         </ItemsControl>
                                         <TextBlock Text="Nessun voto accettato registrato per questa materia."
-                                                   Visibility="{Binding HasSelectedCourseGrades, Converter={StaticResource BooleanToVisibilityConverter}, ConverterParameter=Inverse}"
+                                                   Visibility="{Binding NoSelectedCourseGrades, Converter={StaticResource BooleanToVisibilityConverter}}"
                                                    Foreground="{DynamicResource MutedBrush}"/>
                                     </StackPanel>
                                 </TabItem>
