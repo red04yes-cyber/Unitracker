@@ -30,6 +30,7 @@
     <Compile Include="../../src/UniToStudyHub/Services/WindowsTokenVault.cs" Link="Linked/Services/WindowsTokenVault.cs" />
     <Compile Include="../../src/UniToStudyHub/Services/ExamPlanner.cs" Link="Linked/Services/ExamPlanner.cs" />
     <Compile Include="../../src/UniToStudyHub/Services/StudyProductivityService.cs" Link="Linked/Services/StudyProductivityService.cs" />
+    <Compile Include="../../src/UniToStudyHub/Services/StudyProductivityExportService.cs" Link="Linked/Services/StudyProductivityExportService.cs" />
     <Compile Include="../../src/UniToStudyHub/Presentation/Commands/*.cs" Link="Linked/Presentation/Commands/%(Filename)%(Extension)" />
     <Compile Include="../../src/UniToStudyHub/Presentation/ViewModels/MainViewModel.cs" Link="Linked/Presentation/ViewModels/MainViewModel.cs" />
     <Compile Include="../../src/UniToStudyHub/Presentation/Composition/PresentationServiceRegistration.cs" Link="Linked/Presentation/Composition/PresentationServiceRegistration.cs" />
