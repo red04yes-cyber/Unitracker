@@ -13,7 +13,7 @@ mapfile -t action_refs < <(
     | sed -E 's/^[[:space:]]*uses:[[:space:]]*//'
 )
 
-if ( ${#action_refs[@]} == 0 )); then
+if (( ${#action_refs[@]} == 0 )); then
   printf 'No GitHub Action references found in %s\n' "$workflow_directory" >&2
   exit 1
 fi
