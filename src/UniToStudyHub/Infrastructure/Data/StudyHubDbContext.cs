@@ -23,6 +23,7 @@ public sealed class StudyHubDbContext(DbContextOptions<StudyHubDbContext> option
             b.ToTable("ProfileSettings");
             b.HasKey(x => x.Id);
             b.Property(x => x.MoodleBaseUrl).HasMaxLength(2048).IsRequired();
+            b.Property(x => x.ProductivityStateJson).IsRequired();
         });
 
         modelBuilder.Entity<CourseEntity>(b =>
