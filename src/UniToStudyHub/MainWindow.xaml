@@ -1243,6 +1243,8 @@
                                     <TextBlock Text="{Binding Workspace.SimulationQuestionDisplay}" FontSize="11" Foreground="{DynamicResource InkBrush}" TextWrapping="Wrap" Margin="0,8,0,0"/>
                                     <TextBlock Text="Per le domande aperte, invia la risposta e assegnale manualmente un esito." FontSize="9" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,5,0,0"/>
                                     <Button Content="Invia risposta" Command="{Binding Workspace.SubmitSimulationAnswerCommand}" IsEnabled="{Binding Workspace.IsSimulationActive}" Style="{StaticResource SecondaryButtonStyle}" Margin="0,8,0,0"/>
+                                    <TextBlock Text="Correzione / risposta attesa (necessaria se segni l'errore)" FontSize="9" Foreground="{DynamicResource MutedBrush}" Margin="0,7,0,0"/>
+                                    <TextBox Text="{Binding Workspace.ManualCorrectAnswerInput, UpdateSourceTrigger=PropertyChanged}" IsEnabled="{Binding Workspace.CanManuallyGradeCurrentAnswer}" ToolTip="Inserisci la risposta corretta o una breve correzione" Margin="0,4,0,0"/>
                                     <WrapPanel Margin="0,7,0,0">
                                         <Button Content="Valuta: corretta" Command="{Binding Workspace.GradeSimulationAnswerCorrectCommand}" IsEnabled="{Binding Workspace.CanManuallyGradeCurrentAnswer}" Margin="0,0,8,0"/>
                                         <Button Content="Valuta: da correggere" Command="{Binding Workspace.GradeSimulationAnswerIncorrectCommand}" IsEnabled="{Binding Workspace.CanManuallyGradeCurrentAnswer}" Style="{StaticResource SecondaryButtonStyle}"/>
