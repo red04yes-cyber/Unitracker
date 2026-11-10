@@ -34,6 +34,8 @@ public sealed class CompositionRootTests
             var calculator = provider.GetRequiredService<CareerCalculatorService>();
             var migrator = provider.GetRequiredService<LegacyJsonMigrator>();
             var moodle = provider.GetRequiredService<MoodleApplicationService>();
+            var notionTokens = provider.GetRequiredService<INotionTokenStore>();
+            var notion = provider.GetRequiredService<NotionApplicationService>();
             var profile = provider.GetRequiredService<AcademicProfileService>();
             var career = provider.GetRequiredService<CareerApplicationService>();
             var syllabus = provider.GetRequiredService<SyllabusTrackerService>();
@@ -47,6 +49,8 @@ public sealed class CompositionRootTests
             Assert.Same(calculator, provider.GetRequiredService<CareerCalculatorService>());
             Assert.Same(migrator, provider.GetRequiredService<LegacyJsonMigrator>());
             Assert.Same(moodle, provider.GetRequiredService<MoodleApplicationService>());
+            Assert.Same(notionTokens, provider.GetRequiredService<INotionTokenStore>());
+            Assert.Same(notion, provider.GetRequiredService<NotionApplicationService>());
             Assert.Same(profile, provider.GetRequiredService<AcademicProfileService>());
             Assert.Same(career, provider.GetRequiredService<CareerApplicationService>());
             Assert.Same(syllabus, provider.GetRequiredService<SyllabusTrackerService>());
