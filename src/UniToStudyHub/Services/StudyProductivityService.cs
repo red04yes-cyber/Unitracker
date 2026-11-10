@@ -35,7 +35,10 @@ public sealed class StudyProductivityService
             row = new StudyDayLogData { Date = date };
             data.Productivity.StudyDays.Add(row);
         }
-        row.FocusMinutes = checked(row.FocusMinutes + minutes);
+        var total = checked(row.FocusMinutes + minutes);
+        if (total > 1440)
+            throw new ArgumentOutOfRangeException(nameof(minutes), "A study day cannot contain more than 24 hours of focus time.");
+        row.FocusMinutes = total;
     }
 
     public StudyStreakSnapshot GetStreak(StudyData data, DateOnly today)
@@ -53,12 +56,12 @@ public sealed class StudyProductivityService
         var longest = 0;
         var run = 0;
         DateOnly? previous = null;
-        foreach (var row in data.Productivity.StudyDays.OrderBy(x => x.Date))
+        foreach (var day in daily.OrderBy(x => x.Key))
         {
-            if (row.FocusMinutes < dailyGoal) { run = 0; previous = row.Date; continue; }
-            run = previous is not null && row.Date == previous.Value.AddDays(1) ? run + 1 : 1;
+            if (day.Value < dailyGoal) { run = 0; previous = day.Key; continue; }
+            run = previous is not null && day.Key == previous.Value.AddDays(1) ? run + 1 : 1;
             longest = Math.Max(longest, run);
-            previous = row.Date;
+            previous = day.Key;
         }
         var weekStart = today.AddDays(-(((int)today.DayOfWeek + 6) % 7));
         var weekMinutes = daily.Where(x => x.Key >= weekStart && x.Key <= today).Sum(x => x.Value);
