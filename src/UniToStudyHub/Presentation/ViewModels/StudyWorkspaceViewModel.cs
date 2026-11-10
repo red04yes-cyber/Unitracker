@@ -56,6 +56,7 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
     private string _plannerStatus = "Imposta le tue fasce reali di disponibilità per creare un'anteprima.";
     private StudyPlanPreview? _currentPlanPreview;
     private SyllabusTopicData? _selectedSyllabusTopic;
+    private SyllabusTopicData? _selectedSyllabusParent;
     private QuestionBankItemData? _selectedQuestion;
     private string _syllabusTitleInput = string.Empty;
     private string _syllabusMinutesInput = "30";
@@ -126,7 +127,14 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
     public ObservableCollection<BackupInfo> BackupItems { get; } = new();
     public ObservableCollection<CourseProgressRow> CourseProgressRows { get; } = new();
     public ObservableCollection<SyllabusTopicData> SyllabusTopics { get; } = new();
+    public ObservableCollection<SyllabusTopicData> SyllabusParentOptions { get; } = new();
     public ObservableCollection<QuestionBankItemData> QuestionBankItems { get; } = new();
+    public IReadOnlyList<string> SyllabusKindOptions { get; } = new[] { "Modulo", "Capitolo", "Argomento" };
+    public IReadOnlyList<string> SyllabusPreparednessOptions { get; } =
+        new[] { "Non valutata", "Molto bassa", "Bassa", "Media", "Alta", "Pronto per l'esame" };
+    private string _syllabusKindInput = "Argomento";
+    private string _syllabusPreparednessInput = "Non valutata";
+    private int _syllabusCompletionInput;
     public ObservableCollection<DailyProgressRow> DailyProgressRows { get; } = new();
     public ObservableCollection<Course> Courses => _data.Courses;
     public ObservableCollection<PdfDocumentData> PdfDocuments => _data.PdfDocuments;
@@ -173,7 +181,43 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
     public SyllabusTopicData? SelectedSyllabusTopic
     {
         get => _selectedSyllabusTopic;
-        set { Set(ref _selectedSyllabusTopic, value); CompleteSyllabusTopicCommand?.NotifyCanExecuteChanged(); }
+        set
+        {
+            if (ReferenceEquals(_selectedSyllabusTopic, value)) return;
+            _selectedSyllabusTopic = value;
+            OnPropertyChanged();
+            SyllabusCompletionInput = value?.CompletionPercent ?? 0;
+            SyllabusPreparednessInput = PreparednessLabel(value?.Preparedness ?? TopicPreparednessLevel.Unrated);
+            CompleteSyllabusTopicCommand?.NotifyCanExecuteChanged();
+            UpdateSyllabusProgressCommand?.NotifyCanExecuteChanged();
+            UpdateSyllabusPreparednessCommand?.NotifyCanExecuteChanged();
+        }
+    }
+    public SyllabusTopicData? SelectedSyllabusParent
+    {
+        get => _selectedSyllabusParent;
+        set { if (ReferenceEquals(_selectedSyllabusParent, value)) return; _selectedSyllabusParent = value; OnPropertyChanged(); }
+    }
+    public string SyllabusKindInput
+    {
+        get => _syllabusKindInput;
+        set
+        {
+            if (_syllabusKindInput == value) return;
+            _syllabusKindInput = value;
+            OnPropertyChanged();
+            RefreshSyllabusParentOptions();
+        }
+    }
+    public string SyllabusPreparednessInput
+    {
+        get => _syllabusPreparednessInput;
+        set => Set(ref _syllabusPreparednessInput, value);
+    }
+    public int SyllabusCompletionInput
+    {
+        get => _syllabusCompletionInput;
+        set => Set(ref _syllabusCompletionInput, Math.Clamp(value, 0, 100));
     }
     public QuestionBankItemData? SelectedQuestion
     {
@@ -361,6 +405,8 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
     public AsyncRelayCommand ApplyStudyPlanCommand { get; }
     public AsyncRelayCommand AddSyllabusTopicCommand { get; }
     public AsyncRelayCommand CompleteSyllabusTopicCommand { get; }
+    public AsyncRelayCommand UpdateSyllabusProgressCommand { get; }
+    public AsyncRelayCommand UpdateSyllabusPreparednessCommand { get; }
     public AsyncRelayCommand AddQuestionCommand { get; }
     public AsyncRelayCommand EvaluateQuestionCommand { get; }
     public AsyncRelayCommand StartSimulationCommand { get; }
@@ -437,6 +483,8 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
         ApplyStudyPlanCommand = new AsyncRelayCommand(ApplyStudyPlanAsync, () => HasPlanPreview);
         AddSyllabusTopicCommand = new AsyncRelayCommand(AddSyllabusTopicAsync, () => SelectedCourse is not null);
         CompleteSyllabusTopicCommand = new AsyncRelayCommand(CompleteSyllabusTopicAsync, () => SelectedSyllabusTopic is not null);
+        UpdateSyllabusProgressCommand = new AsyncRelayCommand(UpdateSyllabusProgressAsync, () => SelectedSyllabusTopic is not null);
+        UpdateSyllabusPreparednessCommand = new AsyncRelayCommand(UpdateSyllabusPreparednessAsync, () => SelectedSyllabusTopic is not null);
         AddQuestionCommand = new AsyncRelayCommand(AddQuestionAsync, () => SelectedCourse is not null);
         EvaluateQuestionCommand = new AsyncRelayCommand(EvaluateQuestionAsync, () => SelectedQuestion is not null);
         StartSimulationCommand = new AsyncRelayCommand(StartSimulationAsync, () => QuestionBankItems.Count > 0);
@@ -1012,25 +1060,33 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
         if (SelectedCourse is null) return;
         if (!int.TryParse(SyllabusMinutesInput, NumberStyles.Integer, CultureInfo.InvariantCulture, out var minutes) || minutes < 0)
         {
-            WorkspaceStatus = "Inserisci una stima in minuti valida per l'argomento.";
+            WorkspaceStatus = "Inserisci una stima in minuti valida.";
             return;
         }
 
+        var kind = SyllabusKindInput switch
+        {
+            "Modulo" => SyllabusTopicKind.Module,
+            "Capitolo" => SyllabusTopicKind.Chapter,
+            _ => SyllabusTopicKind.Topic
+        };
+        var parentId = kind == SyllabusTopicKind.Module ? string.Empty : SelectedSyllabusParent?.Id ?? string.Empty;
         SyllabusTopicData? created = null;
         try
         {
-            created = _syllabus.Add(_data, SelectedCourse.Id, SyllabusTitleInput, estimatedMinutes: minutes);
+            created = _syllabus.Add(_data, SelectedCourse.Id, SyllabusTitleInput,
+                estimatedMinutes: minutes, parentTopicId: parentId, kind: kind);
             await SaveAsync();
             SyllabusTitleInput = string.Empty;
             RefreshSyllabusAndQuestions();
             SelectedSyllabusTopic = SyllabusTopics.FirstOrDefault(x => x.Id == created.Id);
             RefreshReadiness();
-            WorkspaceStatus = "Argomento aggiunto al syllabus.";
+            WorkspaceStatus = $"{SyllabusKindInput} aggiunto al programma.";
         }
         catch (Exception ex)
         {
             if (created is not null) _data.SyllabusTopics.Remove(created);
-            WorkspaceStatus = $"Argomento non salvato: {ex.Message}";
+            WorkspaceStatus = $"Elemento del programma non salvato: {ex.Message}";
         }
     }
 
@@ -1040,22 +1096,89 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
         var topic = SelectedSyllabusTopic;
         var previousStatus = topic.Status;
         var previousStudiedAt = topic.LastStudiedAt;
+        var previousPercent = topic.CompletionPercent;
         try
         {
             _syllabus.UpdateStatus(_data, topic.Id, SyllabusTopicStatus.Completed);
+            _syllabus.UpdateCompletionPercent(_data, topic.Id, 100);
             await SaveAsync();
             RefreshSyllabusAndQuestions();
             SelectedSyllabusTopic = SyllabusTopics.FirstOrDefault(x => x.Id == topic.Id);
             RefreshReadiness();
-            WorkspaceStatus = "Argomento contrassegnato come completato.";
+            WorkspaceStatus = "Elemento contrassegnato come completato.";
         }
         catch (Exception ex)
         {
             topic.Status = previousStatus;
             topic.LastStudiedAt = previousStudiedAt;
-            WorkspaceStatus = $"Aggiornamento syllabus non salvato: {ex.Message}";
+            topic.CompletionPercent = previousPercent;
+            WorkspaceStatus = $"Aggiornamento programma non salvato: {ex.Message}";
         }
     }
+
+    private async Task UpdateSyllabusProgressAsync()
+    {
+        if (SelectedSyllabusTopic is null) return;
+        var topic = SelectedSyllabusTopic;
+        var previous = topic.CompletionPercent;
+        try
+        {
+            _syllabus.UpdateCompletionPercent(_data, topic.Id, SyllabusCompletionInput);
+            await SaveAsync();
+            RefreshSyllabusAndQuestions();
+            SelectedSyllabusTopic = SyllabusTopics.FirstOrDefault(x => x.Id == topic.Id);
+            WorkspaceStatus = "Avanzamento aggiornato.";
+        }
+        catch (Exception ex)
+        {
+            topic.CompletionPercent = previous;
+            SyllabusCompletionInput = previous;
+            WorkspaceStatus = $"Avanzamento non salvato: {ex.Message}";
+        }
+    }
+
+    private async Task UpdateSyllabusPreparednessAsync()
+    {
+        if (SelectedSyllabusTopic is null) return;
+        var topic = SelectedSyllabusTopic;
+        var previous = topic.Preparedness;
+        var level = ParsePreparedness(SyllabusPreparednessInput);
+        try
+        {
+            _syllabus.UpdatePreparedness(_data, topic.Id, level);
+            await SaveAsync();
+            RefreshSyllabusAndQuestions();
+            SelectedSyllabusTopic = SyllabusTopics.FirstOrDefault(x => x.Id == topic.Id);
+            RefreshReadiness();
+            WorkspaceStatus = "Autovalutazione della preparazione aggiornata.";
+        }
+        catch (Exception ex)
+        {
+            topic.Preparedness = previous;
+            SyllabusPreparednessInput = PreparednessLabel(previous);
+            WorkspaceStatus = $"Autovalutazione non salvata: {ex.Message}";
+        }
+    }
+
+    private static TopicPreparednessLevel ParsePreparedness(string label) => label switch
+    {
+        "Molto bassa" => TopicPreparednessLevel.VeryLow,
+        "Bassa" => TopicPreparednessLevel.Low,
+        "Media" => TopicPreparednessLevel.Medium,
+        "Alta" => TopicPreparednessLevel.High,
+        "Pronto per l'esame" => TopicPreparednessLevel.ExamReady,
+        _ => TopicPreparednessLevel.Unrated
+    };
+
+    private static string PreparednessLabel(TopicPreparednessLevel level) => level switch
+    {
+        TopicPreparednessLevel.VeryLow => "Molto bassa",
+        TopicPreparednessLevel.Low => "Bassa",
+        TopicPreparednessLevel.Medium => "Media",
+        TopicPreparednessLevel.High => "Alta",
+        TopicPreparednessLevel.ExamReady => "Pronto per l'esame",
+        _ => "Non valutata"
+    };
 
     private async Task AddQuestionAsync()
     {
@@ -1169,11 +1292,35 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
             SelectedQuestion = QuestionBankItems.FirstOrDefault();
         OnPropertyChanged(nameof(SyllabusTopics));
         OnPropertyChanged(nameof(QuestionBankItems));
+        RefreshSyllabusParentOptions();
         AddSyllabusTopicCommand?.NotifyCanExecuteChanged();
         AddQuestionCommand?.NotifyCanExecuteChanged();
         CompleteSyllabusTopicCommand?.NotifyCanExecuteChanged();
+        UpdateSyllabusProgressCommand?.NotifyCanExecuteChanged();
+        UpdateSyllabusPreparednessCommand?.NotifyCanExecuteChanged();
         EvaluateQuestionCommand?.NotifyCanExecuteChanged();
         StartSimulationCommand?.NotifyCanExecuteChanged();
+    }
+
+    private void RefreshSyllabusParentOptions()
+    {
+        SyllabusParentOptions.Clear();
+        if (SelectedCourse is null || SyllabusKindInput == "Modulo")
+        {
+            SelectedSyllabusParent = null;
+            OnPropertyChanged(nameof(SyllabusParentOptions));
+            return;
+        }
+
+        var requiredKind = SyllabusKindInput == "Capitolo"
+            ? SyllabusTopicKind.Module
+            : SyllabusTopicKind.Chapter;
+        foreach (var item in SyllabusTopics.Where(x => x.Kind == requiredKind))
+            SyllabusParentOptions.Add(item);
+        if (SelectedSyllabusParent is null ||
+            !SyllabusParentOptions.Any(x => x.Id == SelectedSyllabusParent.Id))
+            SelectedSyllabusParent = SyllabusParentOptions.FirstOrDefault();
+        OnPropertyChanged(nameof(SyllabusParentOptions));
     }
 
     private void RefreshReadiness()

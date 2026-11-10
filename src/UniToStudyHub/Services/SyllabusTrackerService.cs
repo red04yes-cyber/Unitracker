@@ -100,9 +100,9 @@ public sealed class SyllabusTrackerService
             topics.Where(x => x.Status != SyllabusTopicStatus.Completed).Sum(x => x.EstimatedMinutes))
         {
             AverageCompletionPercent = topics.Count == 0 ? 0m :
-                Math.Round(topics.Average(x => x.CompletionPercent), 2, MidpointRounding.AwayFromZero),
+                Math.Round(topics.Average(x => (decimal)x.CompletionPercent), 2, MidpointRounding.AwayFromZero),
             AveragePreparedness = rated.Count == 0 ? 0m :
-                Math.Round(rated.Average(x => (int)x.Preparedness), 2, MidpointRounding.AwayFromZero),
+                Math.Round(rated.Average(x => (decimal)(int)x.Preparedness), 2, MidpointRounding.AwayFromZero),
             RatedTopics = rated.Count
         };
     }

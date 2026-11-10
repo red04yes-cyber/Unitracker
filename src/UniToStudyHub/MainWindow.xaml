@@ -954,13 +954,34 @@
                 <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
                     <Border Grid.Column="0" Background="{DynamicResource SubtleBrush}" CornerRadius="8" Padding="12" Margin="0,0,8,0">
                         <StackPanel>
-                            <TextBlock Text="Programma / syllabus" Style="{StaticResource SectionTitleStyle}"/>
-                            <TextBox Text="{Binding Workspace.SyllabusTitleInput, UpdateSourceTrigger=PropertyChanged}" ToolTip="Argomento" Margin="0,9,0,0"/>
+                            <TextBlock Text="Programma gerarchico" Style="{StaticResource SectionTitleStyle}"/>
+                            <ComboBox ItemsSource="{Binding Workspace.SyllabusKindOptions}" SelectedItem="{Binding Workspace.SyllabusKindInput}" Margin="0,9,0,0"/>
+                            <ComboBox ItemsSource="{Binding Workspace.SyllabusParentOptions}" DisplayMemberPath="Title"
+                                      SelectedItem="{Binding Workspace.SelectedSyllabusParent}"
+                                      ToolTip="Modulo o capitolo di appartenenza" Margin="0,6,0,0"/>
+                            <TextBox Text="{Binding Workspace.SyllabusTitleInput, UpdateSourceTrigger=PropertyChanged}" ToolTip="Nome del modulo, capitolo o argomento" Margin="0,6,0,0"/>
                             <TextBox Text="{Binding Workspace.SyllabusMinutesInput, UpdateSourceTrigger=PropertyChanged}" ToolTip="Minuti stimati" Margin="0,6,0,0"/>
-                            <Button Content="Aggiungi argomento" Command="{Binding Workspace.AddSyllabusTopicCommand}" Margin="0,8,0,8"/>
-                            <ListBox ItemsSource="{Binding Workspace.SyllabusTopics}" SelectedItem="{Binding Workspace.SelectedSyllabusTopic}" MaxHeight="180">
-                                <ListBox.ItemTemplate><DataTemplate><StackPanel Margin="4"><TextBlock Text="{Binding Title}" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}"/><TextBlock Text="{Binding Status}" FontSize="9" Foreground="{DynamicResource MutedBrush}"/><TextBlock Text="{Binding EstimatedMinutes, StringFormat={}{0} min stimati}" FontSize="9" Foreground="{DynamicResource MutedBrush}"/></StackPanel></DataTemplate></ListBox.ItemTemplate>
+                            <Button Content="Aggiungi al programma" Command="{Binding Workspace.AddSyllabusTopicCommand}" Margin="0,8,0,8"/>
+                            <ListBox ItemsSource="{Binding Workspace.SyllabusTopics}" SelectedItem="{Binding Workspace.SelectedSyllabusTopic}" MaxHeight="190">
+                                <ListBox.ItemTemplate><DataTemplate>
+                                    <StackPanel Margin="4">
+                                        <TextBlock Text="{Binding Kind}" FontSize="8" FontWeight="Bold" Foreground="{DynamicResource AccentBrush}"/>
+                                        <TextBlock Text="{Binding Title}" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}" TextWrapping="Wrap"/>
+                                        <TextBlock Text="{Binding CompletionPercent, StringFormat={}{0}% completato}" FontSize="9" Foreground="{DynamicResource MutedBrush}"/>
+                                        <TextBlock Text="{Binding Status}" FontSize="9" Foreground="{DynamicResource MutedBrush}"/>
+                                        <TextBlock Text="{Binding EstimatedMinutes, StringFormat={}{0} min stimati}" FontSize="9" Foreground="{DynamicResource MutedBrush}"/>
+                                    </StackPanel>
+                                </DataTemplate></ListBox.ItemTemplate>
                             </ListBox>
+                            <TextBlock Text="Avanzamento personale" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}" Margin="0,8,0,0"/>
+                            <Slider Minimum="0" Maximum="100" TickFrequency="10" IsSnapToTickEnabled="True"
+                                    Value="{Binding Workspace.SyllabusCompletionInput, Mode=TwoWay}" Margin="0,6,0,0"/>
+                            <TextBlock Text="{Binding Workspace.SyllabusCompletionInput, StringFormat={}{0}%}" FontSize="9" Foreground="{DynamicResource MutedBrush}"/>
+                            <Button Content="Salva avanzamento" Command="{Binding Workspace.UpdateSyllabusProgressCommand}" Margin="0,6,0,0"/>
+                            <TextBlock Text="Quanto ti senti preparato?" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}" Margin="0,8,0,0"/>
+                            <ComboBox ItemsSource="{Binding Workspace.SyllabusPreparednessOptions}"
+                                      SelectedItem="{Binding Workspace.SyllabusPreparednessInput}" Margin="0,6,0,0"/>
+                            <Button Content="Salva preparazione" Command="{Binding Workspace.UpdateSyllabusPreparednessCommand}" Margin="0,6,0,0"/>
                             <Button Content="Segna completato" Command="{Binding Workspace.CompleteSyllabusTopicCommand}" Style="{StaticResource SecondaryButtonStyle}" Margin="0,8,0,0"/>
                         </StackPanel>
                     </Border>
