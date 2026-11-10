@@ -563,9 +563,10 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
 
     public async Task RefreshSimulationSnapshotAsync()
     {
-        if (!IsSimulationActive || _simulationDeadline is null)
+        if (!IsSimulationActive) return;
+        if (_simulationDeadline is null)
         {
-            if (!IsSimulationActive) SimulationCountdownDisplay = "Nessun limite attivo";
+            SimulationCountdownDisplay = "Senza limite";
             return;
         }
 
@@ -1366,6 +1367,8 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
                 RootCause = "Da approfondire dopo la simulazione",
                 Source = "Exam simulator"
             });
+            await SaveAsync();
+            RefreshSimulationHistoryAndWeakTopics();
         }
         await AdvanceSimulationAsync();
     }
