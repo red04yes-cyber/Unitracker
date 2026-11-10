@@ -8,7 +8,7 @@ if [[ ! -d "$workflow_directory" ]]; then
 fi
 
 mapfile -t action_refs < <(
-  grep -RhoE --include='*.yml' --include='*.yaml' '^[[:space:]]*uses:[[:space:]]*[^[:space:]]+' "$workflow_directory" \
+  grep -RhoE --include='*.yml' --include='*.yaml' '^[[:space:]]*(-[[:space:]]*)?uses:[[:space:]]*[^[:space:]]+' "$workflow_directory" \
     | sed -E 's/^[[:space:]]*uses:[[:space:]]*//'
 )
 
