@@ -71,7 +71,6 @@ public sealed class PomodoroService(FocusSessionService focus, ActivityLedgerSer
         var active = GetActive(data);
         if (active is not null)
             throw new InvalidOperationException("A Pomodoro phase is already running or paused.");
-        CloseCompletedRun(data, at);
 
         var resolvedCourseId = courseId;
         if (!string.IsNullOrWhiteSpace(taskId))
@@ -88,6 +87,7 @@ public sealed class PomodoroService(FocusSessionService focus, ActivityLedgerSer
                 resolvedCourseId = task.CourseId;
         }
 
+        CloseCompletedRun(data, at);
         var settings = data.PomodoroSettings ??= new PomodoroSettingsData();
         var session = focus.Start(data, resolvedCourseId, topic, settings.FocusMinutes, at);
         session.PlannedMinutes = settings.FocusMinutes;
