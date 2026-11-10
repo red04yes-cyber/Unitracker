@@ -1231,10 +1231,48 @@
                             <Border Background="{DynamicResource PanelBrush}" CornerRadius="8" Padding="10" Margin="0,12,0,0">
                                 <StackPanel>
                                     <TextBlock Text="Simulazione rapida" Style="{StaticResource SectionTitleStyle}"/>
+                                    <TextBlock Text="Limite di tempo (0 = nessun limite)" FontSize="10" Foreground="{DynamicResource MutedBrush}" Margin="0,8,0,0"/>
+                                    <ComboBox ItemsSource="{Binding Workspace.SimulationTimeLimitOptions}" SelectedItem="{Binding Workspace.SimulationTimeLimitMinutesInput, Mode=TwoWay}" Margin="0,5,0,0"/>
                                     <Button Content="Avvia simulazione (max 10 quesiti)" Command="{Binding Workspace.StartSimulationCommand}" Margin="0,8,0,0"/>
+                                    <Border Background="{DynamicResource WarningSoftBrush}" CornerRadius="7" Padding="9,7" Margin="0,8,0,0">
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock Text="TEMPO RIMANENTE" FontSize="9" FontWeight="Bold" Foreground="{DynamicResource WarningBrush}" VerticalAlignment="Center"/>
+                                            <TextBlock Text="{Binding Workspace.SimulationCountdownDisplay}" FontSize="16" FontWeight="SemiBold" Foreground="{DynamicResource WarningBrush}" Margin="12,0,0,0"/>
+                                        </StackPanel>
+                                    </Border>
                                     <TextBlock Text="{Binding Workspace.SimulationQuestionDisplay}" FontSize="11" Foreground="{DynamicResource InkBrush}" TextWrapping="Wrap" Margin="0,8,0,0"/>
-                                    <Button Content="Invia risposta e continua" Command="{Binding Workspace.SubmitSimulationAnswerCommand}" IsEnabled="{Binding Workspace.IsSimulationActive}" Style="{StaticResource SecondaryButtonStyle}" Margin="0,8,0,0"/>
+                                    <TextBlock Text="Per le domande aperte, invia la risposta e assegnale manualmente un esito." FontSize="9" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,5,0,0"/>
+                                    <Button Content="Invia risposta" Command="{Binding Workspace.SubmitSimulationAnswerCommand}" IsEnabled="{Binding Workspace.IsSimulationActive}" Style="{StaticResource SecondaryButtonStyle}" Margin="0,8,0,0"/>
+                                    <WrapPanel Margin="0,7,0,0">
+                                        <Button Content="Valuta: corretta" Command="{Binding Workspace.GradeSimulationAnswerCorrectCommand}" IsEnabled="{Binding Workspace.CanManuallyGradeCurrentAnswer}" Margin="0,0,8,0"/>
+                                        <Button Content="Valuta: da correggere" Command="{Binding Workspace.GradeSimulationAnswerIncorrectCommand}" IsEnabled="{Binding Workspace.CanManuallyGradeCurrentAnswer}" Style="{StaticResource SecondaryButtonStyle}"/>
+                                    </WrapPanel>
                                     <TextBlock Text="{Binding Workspace.SimulationStatus}" FontSize="10" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,8,0,0"/>
+                                    <Grid Margin="0,12,0,0">
+                                        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                        <StackPanel Grid.Column="0" Margin="0,0,6,0">
+                                            <TextBlock Text="Storico simulazioni" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}"/>
+                                            <ListBox ItemsSource="{Binding Workspace.SimulationHistory}" MaxHeight="115" Margin="0,5,0,0">
+                                                <ListBox.ItemTemplate><DataTemplate>
+                                                    <StackPanel Margin="3">
+                                                        <TextBlock Text="{Binding StartedAt, StringFormat={}{0:dd/MM/yyyy HH:mm}}" FontSize="9" Foreground="{DynamicResource MutedBrush}"/>
+                                                        <TextBlock Text="{Binding Result}" FontSize="9" Foreground="{DynamicResource InkBrush}" TextWrapping="Wrap"/>
+                                                    </StackPanel>
+                                                </DataTemplate></ListBox.ItemTemplate>
+                                            </ListBox>
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="1" Margin="6,0,0,0">
+                                            <TextBlock Text="Argomenti da rinforzare" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}"/>
+                                            <ListBox ItemsSource="{Binding Workspace.WeakTopicPatterns}" MaxHeight="115" Margin="0,5,0,0">
+                                                <ListBox.ItemTemplate><DataTemplate>
+                                                    <StackPanel Margin="3">
+                                                        <TextBlock Text="{Binding Topic}" FontSize="9" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}" TextWrapping="Wrap"/>
+                                                        <TextBlock Text="{Binding Count, StringFormat={}{0} errori ricorrenti}" FontSize="9" Foreground="{DynamicResource MutedBrush}"/>
+                                                    </StackPanel>
+                                                </DataTemplate></ListBox.ItemTemplate>
+                                            </ListBox>
+                                        </StackPanel>
+                                    </Grid>
                                 </StackPanel>
                             </Border>
                         </StackPanel>
