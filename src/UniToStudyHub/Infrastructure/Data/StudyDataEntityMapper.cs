@@ -331,7 +331,6 @@ public static class StudyDataEntityMapper
             if (!validParent)
                 throw new InvalidDataException($"Syllabus topic '{topic.Id}' has an invalid parent hierarchy.");
         }
-        }
     }
 
     private static void ValidateQuestions(StudyData data)
