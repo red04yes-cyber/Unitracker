@@ -738,6 +738,10 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
     {
         if (SelectedTask is null) return;
         var task = SelectedTask;
+        var originalIndex = _data.StudyTasks.IndexOf(task);
+        var originalStatus = task.Status;
+        var originalCompletedAt = task.CompletedAt;
+        var originalUpdatedAt = task.UpdatedAt;
         var hasRecordedHistory = _data.StudyActivities.Any(x =>
             string.Equals(x.TaskId, task.Id, StringComparison.Ordinal));
         try
@@ -750,7 +754,16 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
                 ? "Attività rimossa dall'elenco; il task è stato conservato perché collegato allo storico di studio."
                 : "Attività rimossa.";
         }
-        catch (Exception ex) { WorkspaceStatus = $"Task non rimosso: {ex.Message}"; }
+        catch (Exception ex)
+        {
+            if (!_data.StudyTasks.Contains(task))
+                _data.StudyTasks.Insert(Math.Clamp(originalIndex, 0, _data.StudyTasks.Count), task);
+            task.Status = originalStatus;
+            task.CompletedAt = originalCompletedAt;
+            task.UpdatedAt = originalUpdatedAt;
+            RefreshCollections();
+            WorkspaceStatus = $"Task non rimosso: {ex.Message}";
+        }
     }
 
     private async Task AddFlashcardAsync()
