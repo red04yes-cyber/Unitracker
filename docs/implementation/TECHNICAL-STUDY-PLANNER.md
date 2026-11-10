@@ -94,6 +94,35 @@ preference values into StudyPlannerOptions before preview generation.
 - To start work from a planned block, call the existing focus/Pomodoro flow
   explicitly and link the resulting session to the task/course.
 
+## Task-linked focus progress
+
+- Selecting an open task in the existing Study Lab task list and starting the
+  focus timer links the generated timer activity to that task. If the task has
+  a course, that course takes precedence over the separate focus-course picker;
+  if the topic field is empty, the task title is used as the focus topic.
+- ActivityLedgerService.SyncFocusSession accepts an optional task ID and stores
+  it in the existing StudyActivities.TaskId column. Repeated synchronization
+  preserves the link and updates the same activity row; no new table or schema
+  migration is required.
+- PomodoroService.Start accepts the same optional task ID. Subsequent pause,
+  resume, break and completion transitions keep the link through the existing
+  idempotent ledger synchronization.
+- ActivityLedgerService.GetTaskProgress derives recorded seconds from actual
+  focus segments and completed manual ledger intervals. It unions overlapping
+  timer/manual intervals, excludes pause gaps and soft-deleted activities,
+  clamps the progress bar at 100%, and reports estimate overruns separately.
+  An estimate of zero is shown as unconfigured rather than as 100% complete.
+- A cancelled timer still contributes focus segments actually recorded before
+  cancellation. A cancelled non-timer activity remains excluded.
+- Removing a task that is referenced by activity history changes an open task
+  to Cancelled instead of deleting its row. This preserves the TaskId foreign
+  reference and audit trail; unreferenced tasks are still physically removed.
+- The existing WPF workspace exposes SelectedTaskProgress,
+  SelectedTaskProgressDisplay, SelectedTaskProgressPercent,
+  SelectedTaskRemainingMinutesDisplay and SelectedTaskOverEstimate for binding.
+  The current XAML remains owned by the UI workstream; no visual layout change is
+  included in this service-layer slice.
+
 ## Validation
 
 Tests in StudyPlannerServiceTests cover:
