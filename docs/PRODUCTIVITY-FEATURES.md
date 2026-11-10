@@ -12,11 +12,12 @@ This slice adds a persisted productivity aggregate without introducing a second 
 - Attendance: lecture records link to existing courses and retain title, date/time, duration, attended state and optional notes. Attendance CSV generation is available.
 - Dashboard preferences: widget visibility and order are persisted; deterministic defaults are supplied before the user customizes the dashboard.
 - Course archive: the existing Course.Completed field remains the archive flag; no duplicate archive state is added.
+- WPF Study Lab: the Studio Lab tab now exposes daily/weekly goal editing, additive focus logging, current streak and weekly minutes, course-linked quick notes, and a lecture attendance form with recent-note and attendance tables. These actions save through the existing data store.
 
 ## Not included / integration still required
 
 - Native Windows toast scheduling and a true always-on desktop widget host.
-- WPF controls/bindings for these contracts; the visual shell is intentionally not changed by this backend slice.
+- WPF controls for reminders, exam-mode countdown, configurable dashboard widgets and next-activity display are still pending. The initial Study Lab UI covers focus, notes and attendance.
 - PDF and XLSX export, and a unified export workflow. Only attendance CSV is implemented here.
 - An OS background scheduler. Reminder lookup is deterministic and should be called by a bounded host scheduler.
 
@@ -24,7 +25,7 @@ This slice adds a persisted productivity aggregate without introducing a second 
 
 StudyDataEntityMapper validates course references, IDs, date/minute ranges, goals and dashboard preference uniqueness before saving. Productivity JSON is stored in the existing ProfileSettings row. The migration adds a non-null column with a default empty JSON object so existing profiles remain readable.
 
-Focused tests cover weekly goal/streak calculations, reminder suppression, topic-linked notes, attendance CSV, exam-mode countdown and dashboard preference ordering. Run the repository's cross-platform test project with:
+Focused tests cover weekly goal/streak calculations, reminder suppression, topic-linked notes, attendance CSV, exam-mode countdown, dashboard preference ordering, the daily focus cap and duplicate-date streak aggregation. A GitHub Actions workflow now runs the cross-platform tests and a Windows WPF build for this branch/PR. Run the repository's cross-platform test project locally with:
 
 ```powershell
 dotnet test .\tests\UniToStudyHub.Tests\UniToStudyHub.Tests.csproj
