@@ -109,6 +109,38 @@ public sealed class StudyProductivityServiceTests
         Assert.Equal("streak", widgets[1].Key);
     }
     [Fact]
+    public void PlannedExamsSynchronizeIntoSingleUpdatableReminderRecords()
+    {
+        var data = DataWithCourse();
+        var exam = new Exam
+        {
+            Id = "exam-1",
+            CourseId = "course-1",
+            Name = "Analisi I",
+            PlannedDate = new DateTime(2026, 11, 12, 14, 30, 0)
+        };
+
+        data.Exams.Add(exam);
+        Assert.True(_service.SynchronizeExamReminders(data));
+        var reminder = Assert.Single(data.Productivity.Reminders);
+        Assert.Equal("Esame: Analisi I", reminder.Title);
+        Assert.Equal("exam-1", reminder.SourceExamId);
+        Assert.Equal(9, reminder.DueAt.Hour);
+        Assert.False(_service.SynchronizeExamReminders(data));
+
+        reminder.LastNotifiedAt = DateTimeOffset.Now;
+        exam.PlannedDate = new DateTime(2026, 11, 13, 16, 0, 0);
+        Assert.True(_service.SynchronizeExamReminders(data));
+        Assert.Same(reminder, Assert.Single(data.Productivity.Reminders));
+        Assert.Equal(13, reminder.DueAt.Day);
+        Assert.Null(reminder.LastNotifiedAt);
+
+        exam.Completed = true;
+        Assert.True(_service.SynchronizeExamReminders(data));
+        Assert.False(reminder.Enabled);
+    }
+
+    [Fact]
     public void FocusCannotPushADayPastTwentyFourHours()
     {
         var data = DataWithCourse();
