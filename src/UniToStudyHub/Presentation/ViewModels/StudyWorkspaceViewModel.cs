@@ -119,6 +119,7 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
     public event Action<StudyData>? DataReloaded;
 
     public ObservableCollection<StudyTaskData> ActiveTasks { get; } = new();
+    public ObservableCollection<StudyTaskData> SelectedCourseTasks { get; } = new();
     public ObservableCollection<FlashcardData> DueFlashcards { get; } = new();
     public ObservableCollection<ErrorJournalEntryData> OpenErrorEntries { get; } = new();
     public ObservableCollection<DistractionData> OpenDistractions { get; } = new();
@@ -155,7 +156,16 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
         }
     }
     public Course? SelectedFocusCourse { get => _selectedFocusCourse; set => Set(ref _selectedFocusCourse, value); }
-    public Course? SelectedTaskCourse { get => _selectedTaskCourse; set => Set(ref _selectedTaskCourse, value); }
+    public Course? SelectedTaskCourse
+    {
+        get => _selectedTaskCourse;
+        set
+        {
+            if (ReferenceEquals(_selectedTaskCourse, value)) return;
+            Set(ref _selectedTaskCourse, value);
+            RefreshSelectedCourseTasks();
+        }
+    }
     public IReadOnlyList<string> FocusPresetOptions { get; } = new[] { "25/5 · classico", "50/10 · lungo", "90/15 · profondo" };
     public string FocusPresetInput
     {
@@ -718,6 +728,7 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
             TaskTitleInput = string.Empty;
             TaskDueDateInput = null;
             RefreshCollections();
+            RefreshSelectedCourseTasks();
             RefreshProgress();
         }
         catch (Exception ex) { WorkspaceStatus = $"Task non salvato: {ex.Message}"; }
@@ -726,14 +737,14 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
     private async Task CompleteTaskAsync()
     {
         if (SelectedTask is null) return;
-        try { _tasks.Complete(_data, SelectedTask.Id); await SaveAsync(); SelectedTask = null; RefreshCollections(); RefreshProgress(); }
+        try { _tasks.Complete(_data, SelectedTask.Id); await SaveAsync(); SelectedTask = null; RefreshCollections(); RefreshSelectedCourseTasks(); RefreshProgress(); }
         catch (Exception ex) { WorkspaceStatus = $"Task non completato: {ex.Message}"; }
     }
 
     private async Task RemoveTaskAsync()
     {
         if (SelectedTask is null) return;
-        try { _tasks.Remove(_data, SelectedTask.Id); await SaveAsync(); SelectedTask = null; RefreshCollections(); }
+        try { _tasks.Remove(_data, SelectedTask.Id); await SaveAsync(); SelectedTask = null; RefreshCollections(); RefreshSelectedCourseTasks(); }
         catch (Exception ex) { WorkspaceStatus = $"Task non rimosso: {ex.Message}"; }
     }
 
@@ -1399,6 +1410,7 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
                      .OrderBy(x => x.DueAt ?? DateTimeOffset.MaxValue)
                      .ThenByDescending(x => x.Priority))
             ActiveTasks.Add(item);
+        RefreshSelectedCourseTasks();
         DueFlashcards.Clear();
         foreach (var item in _flashcards.GetDue(_data)) DueFlashcards.Add(item);
         OpenErrorEntries.Clear();
@@ -1422,6 +1434,27 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
         if (SelectedDueFlashcard is null || !DueFlashcards.Any(x => x.Id == SelectedDueFlashcard.Id))
             SelectedDueFlashcard = DueFlashcards.FirstOrDefault();
     }
+
+    private void RefreshSelectedCourseTasks()
+    {
+        SelectedCourseTasks.Clear();
+        if (SelectedTaskCourse is null) return;
+
+        foreach (var task in _data.StudyTasks
+                     .Where(x => x.CourseId == SelectedTaskCourse.Id)
+                     .OrderBy(x => x.Status == StudyTaskStatus.Completed)
+                     .ThenBy(x => x.DueAt ?? DateTimeOffset.MaxValue)
+                     .ThenByDescending(x => x.Priority))
+            SelectedCourseTasks.Add(task);
+
+        if (SelectedTask is not null && !SelectedCourseTasks.Any(x => x.Id == SelectedTask.Id))
+            SelectedTask = null;
+        OnPropertyChanged(nameof(HasSelectedCourseTasks));
+        OnPropertyChanged(nameof(NoSelectedCourseTasks));
+    }
+
+    public bool HasSelectedCourseTasks => SelectedCourseTasks.Count > 0;
+    public bool NoSelectedCourseTasks => SelectedCourseTasks.Count == 0;
 
     private void RefreshProgress()
     {
