@@ -188,6 +188,12 @@ public sealed class ActivityLedgerService
             !string.IsNullOrWhiteSpace(linkedTask.CourseId) &&
             !string.Equals(session.CourseId, linkedTask.CourseId, StringComparison.Ordinal))
             throw new ArgumentException("The focus session and linked task belong to different courses.", nameof(taskId));
+        if (linkedTask is not null && string.IsNullOrWhiteSpace(session.CourseId) &&
+            !string.IsNullOrWhiteSpace(linkedTask.CourseId))
+        {
+            session.CourseId = linkedTask.CourseId;
+            session.UpdatedAt = at;
+        }
 
         var activityCourseId = string.IsNullOrWhiteSpace(session.CourseId)
             ? linkedTask?.CourseId ?? string.Empty
