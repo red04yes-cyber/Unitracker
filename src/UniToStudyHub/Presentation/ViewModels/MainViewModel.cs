@@ -40,6 +40,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
     private string _attendanceDurationInput = "60";
     private string _attendanceDateInput = DateTime.Now.ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture);
     private string _attendanceNotesInput = string.Empty;
+    private bool _attendanceAttendedInput = true;
     private string _productivitySummary = string.Empty;
     private string _reminderTitleInput = string.Empty;
     private string _reminderDateInput = DateTime.Now.AddHours(1).ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture);
@@ -72,6 +73,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
     public string AttendanceDurationInput { get => _attendanceDurationInput; set => Set(ref _attendanceDurationInput, value); }
     public string AttendanceDateInput { get => _attendanceDateInput; set => Set(ref _attendanceDateInput, value); }
     public string AttendanceNotesInput { get => _attendanceNotesInput; set => Set(ref _attendanceNotesInput, value); }
+    public bool AttendanceAttendedInput { get => _attendanceAttendedInput; set => Set(ref _attendanceAttendedInput, value); }
     public string ProductivitySummary { get => _productivitySummary; private set => Set(ref _productivitySummary, value); }
     public string ReminderTitleInput { get => _reminderTitleInput; set => Set(ref _reminderTitleInput, value); }
     public string ReminderDateInput { get => _reminderDateInput; set => Set(ref _reminderDateInput, value); }
@@ -451,7 +453,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
     private async Task RecordAttendanceAsync()
     {
         if (SelectedProductivityCourse is null || !DateTimeOffset.TryParse(AttendanceDateInput, CultureInfo.GetCultureInfo("it-IT"), DateTimeStyles.AssumeLocal, out var startsAt) || !int.TryParse(AttendanceDurationInput, out var duration)) { ProductivitySummary = "Controlla materia, data e durata della lezione."; return; }
-        try { _productivity.RecordAttendance(_data, SelectedProductivityCourse.Id, AttendanceTitleInput, startsAt, duration, true, AttendanceNotesInput); await SaveAsync(); RefreshProductivityCollections(); AttendanceTitleInput = string.Empty; AttendanceNotesInput = string.Empty; ProductivitySummary = "Presenza registrata."; }
+        try { _productivity.RecordAttendance(_data, SelectedProductivityCourse.Id, AttendanceTitleInput, startsAt, duration, AttendanceAttendedInput, AttendanceNotesInput); await SaveAsync(); RefreshProductivityCollections(); AttendanceTitleInput = string.Empty; AttendanceNotesInput = string.Empty; ProductivitySummary = "Presenza registrata."; }
         catch (Exception ex) { ProductivitySummary = $"Presenza non registrata: {ex.Message}"; }
     }
 
