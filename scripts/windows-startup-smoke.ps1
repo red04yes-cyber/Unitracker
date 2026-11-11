@@ -74,6 +74,114 @@ try {
         throw "WPF startup created an empty SQLite database."
     }
 
+
+    # Exercise every NavigationView destination through real mouse input.
+    Add-Type -AssemblyName UIAutomationClient
+    Add-Type -AssemblyName UIAutomationTypes
+    Add-Type -TypeDefinition @'
+using System;
+using System.Runtime.InteropServices;
+using System.Threading;
+
+public static class UniToStudyHubSmokeDesktop
+{
+    [DllImport("user32.dll", SetLastError = true)]
+    private static extern bool SetCursorPos(int x, int y);
+
+    [DllImport("user32.dll")]
+    private static extern bool SetForegroundWindow(IntPtr hWnd);
+
+    [DllImport("user32.dll")]
+    private static extern void mouse_event(uint flags, uint dx, uint dy, uint data, UIntPtr extraInfo);
+
+    public static void ClickAt(IntPtr hWnd, int x, int y)
+    {
+        _ = SetForegroundWindow(hWnd);
+        if (!SetCursorPos(x, y))
+            throw new InvalidOperationException("Unable to position the mouse for UI smoke testing.");
+
+        Thread.Sleep(100);
+        mouse_event(0x0002, 0, 0, 0, UIntPtr.Zero);
+        Thread.Sleep(60);
+        mouse_event(0x0004, 0, 0, 0, UIntPtr.Zero);
+    }
+}
+'@
+
+    $navigationChecks = @(
+        @{ Name = 'Materie'; NavigationId = 'Navigation.Courses'; HeadingId = 'PageHeading.Courses' },
+        @{ Name = 'Calendario'; NavigationId = 'Navigation.Calendar'; HeadingId = 'PageHeading.Calendar' },
+        @{ Name = 'Studio Lab'; NavigationId = 'Navigation.StudyLab'; HeadingId = 'PageHeading.StudyLab' },
+        @{ Name = 'Accademia'; NavigationId = 'Navigation.Academy'; HeadingId = 'PageHeading.Academy' },
+        @{ Name = 'Progressi'; NavigationId = 'Navigation.Progress'; HeadingId = 'PageHeading.Progress' },
+        @{ Name = 'Impostazioni'; NavigationId = 'Navigation.Settings'; HeadingId = 'PageHeading.Settings' },
+        @{ Name = 'Oggi'; NavigationId = 'Navigation.Today'; HeadingId = 'PageHeading.Dashboard' }
+    )
+
+    foreach ($check in $navigationChecks) {
+        $automationRoot = [System.Windows.Automation.AutomationElement]::FromHandle($process.MainWindowHandle)
+        $navigationCondition = [System.Windows.Automation.PropertyCondition]::new(
+            [System.Windows.Automation.AutomationElement]::AutomationIdProperty,
+            $check.NavigationId)
+        $navigationItem = $automationRoot.FindFirst(
+            [System.Windows.Automation.TreeScope]::Descendants,
+            $navigationCondition)
+        if ($null -eq $navigationItem) {
+            throw "Navigation item '$($check.Name)' was not exposed to Windows UI Automation."
+        }
+
+        $point = $navigationItem.GetClickablePoint()
+        [UniToStudyHubSmokeDesktop]::ClickAt(
+            $process.MainWindowHandle,
+            [int][Math]::Round($point.X),
+            [int][Math]::Round($point.Y))
+
+        $heading = $null
+        $navigationDeadline = (Get-Date).AddSeconds(5)
+        do {
+            Start-Sleep -Milliseconds 200
+            $automationRoot = [System.Windows.Automation.AutomationElement]::FromHandle($process.MainWindowHandle)
+            $headingCondition = [System.Windows.Automation.PropertyCondition]::new(
+                [System.Windows.Automation.AutomationElement]::AutomationIdProperty,
+                $check.HeadingId)
+            $heading = $automationRoot.FindFirst(
+                [System.Windows.Automation.TreeScope]::Descendants,
+                $headingCondition)
+        } while ($null -eq $heading -and (Get-Date) -lt $navigationDeadline)
+
+        if ($null -eq $heading -or $heading.Current.IsOffscreen) {
+            throw "Navigation to '$($check.Name)' did not display its expected page heading '$($check.HeadingId)'."
+        }
+        Write-Host "Navigation smoke passed: $($check.Name)."
+    }
+
+    # Capture the resulting window as an optional CI artifact for visual inspection.
+    try {
+        Add-Type -AssemblyName System.Drawing.Common -ErrorAction Stop
+        $windowRect = [System.Windows.Automation.AutomationElement]::FromHandle($process.MainWindowHandle).Current.BoundingRectangle
+        $left = [int][Math]::Round($windowRect.Left)
+        $top = [int][Math]::Round($windowRect.Top)
+        $width = [int][Math]::Round($windowRect.Width)
+        $height = [int][Math]::Round($windowRect.Height)
+        if ($width -gt 0 -and $height -gt 0) {
+            $bitmap = [System.Drawing.Bitmap]::new($width, $height)
+            $graphics = [System.Drawing.Graphics]::FromImage($bitmap)
+            try {
+                $graphics.CopyFromScreen($left, $top, 0, 0, $bitmap.Size)
+                New-Item -ItemType Directory -Path 'artifacts' -Force | Out-Null
+                $screenshotPath = Join-Path (Resolve-Path 'artifacts').Path 'windows-navigation-smoke.png'
+                $bitmap.Save($screenshotPath, [System.Drawing.Imaging.ImageFormat]::Png)
+                Write-Host "Windows navigation screenshot: $screenshotPath"
+            } finally {
+                $graphics.Dispose()
+                $bitmap.Dispose()
+            }
+        }
+    } catch {
+        Write-Warning "Unable to capture optional Windows UI screenshot: $($_.Exception.Message)"
+    }
+
+    Write-Host "WPF startup and seven-destination navigation smoke passed."
     Write-Host "WPF startup smoke passed: window '$($process.MainWindowTitle)', database '$database'."
 }
 finally {
