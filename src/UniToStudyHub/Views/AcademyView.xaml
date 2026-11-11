@@ -4,7 +4,7 @@
     <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
         <StackPanel Margin="32,30,32,36">
             <TextBlock Text="MATERIALI DIDATTICI" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource AiBrush}"/>
-            <TextBlock AutomationProperties.AutomationId="PageHeading.Academy" Text="Accademia" Style="{StaticResource PageTitleStyle}" Margin="0,7,0,4"/>
+            <TextBlock AutomationProperties.IsControlElement="True" AutomationProperties.AutomationId="PageHeading.Academy" Text="Accademia" Style="{StaticResource PageTitleStyle}" Margin="0,7,0,4"/>
             <TextBlock Text="Materiali, studio attivo e strumenti di preparazione. Le funzioni AI sono in progresso e arriveranno in una fase successiva." Style="{StaticResource PageSubtitleStyle}" Margin="0,0,0,22"/>
             <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="0.9*"/><ColumnDefinition Width="1.4*"/></Grid.ColumnDefinitions>
                 <Border Grid.Column="0" Style="{StaticResource CardBorderStyle}" Margin="0,0,12,0">
