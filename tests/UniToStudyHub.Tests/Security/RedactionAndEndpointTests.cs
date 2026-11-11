@@ -91,6 +91,31 @@ public sealed class RedactionAndEndpointTests
     }
 
     [Fact]
+    public void ExceptionLogsIncludeStackTraceAndRedactSensitiveDetails()
+    {
+        const string token = "abcdef0123456789abcdef0123456789";
+        Exception exception;
+        try
+        {
+            ThrowDiagnosticException(token);
+            throw new InvalidOperationException("Expected diagnostic exception was not thrown.");
+        }
+        catch (InvalidOperationException ex)
+        {
+            exception = ex;
+        }
+
+        var logged = SecurityRedaction.ExceptionForLog(exception);
+
+        Assert.Contains(nameof(ThrowDiagnosticException), logged, StringComparison.Ordinal);
+        Assert.DoesNotContain(token, logged, StringComparison.Ordinal);
+        Assert.Contains("[REDACTED]", logged, StringComparison.Ordinal);
+    }
+
+    private static void ThrowDiagnosticException(string token) =>
+        throw new InvalidOperationException($"Startup failed with wstoken={token}.");
+
+    [Fact]
     public void UserMessagesKeepValidationDetailButNotCredentials()
     {
         var validation = SecurityRedaction.ForUser(new InvalidDataException("Il PDF supera il limite di 25 MB."));
