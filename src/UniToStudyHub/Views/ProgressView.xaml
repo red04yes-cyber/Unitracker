@@ -4,7 +4,7 @@
     <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
         <StackPanel Margin="32,30,32,36">
             <TextBlock Text="IL TUO ANDAMENTO" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource AccentBrush}"/>
-            <TextBlock Text="Progressi" Style="{StaticResource PageTitleStyle}" Margin="0,7,0,4"/>
+            <TextBlock AutomationProperties.AutomationId="PageHeading.Progress" Text="Progressi" Style="{StaticResource PageTitleStyle}" Margin="0,7,0,4"/>
             <TextBlock Text="{Binding Workspace.ProgressPeriodDisplay, StringFormat='Periodo · {0}'}" Style="{StaticResource PageSubtitleStyle}" Margin="0,0,0,22"/>
             <UniformGrid Columns="3" Margin="0,0,0,12">
                 <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,10,10"><StackPanel><TextBlock Text="TEMPO DI FOCUS" Style="{StaticResource KpiLabelStyle}"/><TextBlock Text="{Binding Workspace.FocusMinutesDisplay}" FontSize="24" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}" Margin="0,9,0,0"/></StackPanel></Border>
