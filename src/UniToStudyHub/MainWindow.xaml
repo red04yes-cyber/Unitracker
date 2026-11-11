@@ -88,6 +88,7 @@
         </ui:NavigationView>
 
         <TabControl x:Name="MainTabs"
+                    AutomationProperties.AutomationId="MainTabs"
                     SelectedIndex="0"
                     Background="{DynamicResource PageBrush}"
                     BorderThickness="0"
@@ -100,7 +101,7 @@
                 </ControlTemplate>
             </TabControl.Template>
 
-        <TabItem>
+        <TabItem AutomationProperties.AutomationId="PageTab.Dashboard">
             <TabItem.Header>
                 <StackPanel Orientation="Horizontal">
                     <Border Width="30" Height="30" CornerRadius="8" Background="{DynamicResource NavyBrush}">
@@ -117,7 +118,7 @@
             <views:DashboardView x:Name="DashboardPage"/>
         </TabItem>
 
-        <TabItem>
+        <TabItem AutomationProperties.AutomationId="PageTab.Courses">
             <TabItem.Header>
                 <StackPanel Orientation="Horizontal">
                     <Border Width="30" Height="30" CornerRadius="8" Background="{DynamicResource NavyBrush}">
@@ -134,7 +135,7 @@
             <views:CoursesView x:Name="CoursesPage"/>
         </TabItem>
 
-        <TabItem>
+        <TabItem AutomationProperties.AutomationId="PageTab.Calendar">
             <TabItem.Header>
                 <StackPanel Orientation="Horizontal">
                     <Border Width="30" Height="30" CornerRadius="8" Background="{DynamicResource NavyBrush}">
@@ -151,7 +152,7 @@
             <views:CalendarView x:Name="CalendarPage"/>
         </TabItem>
 
-        <TabItem>
+        <TabItem AutomationProperties.AutomationId="PageTab.StudyLab">
             <TabItem.Header>
                 <StackPanel Orientation="Horizontal">
                     <Border Width="30" Height="30" CornerRadius="8" Background="{DynamicResource NavyBrush}">
@@ -168,7 +169,7 @@
             <views:StudyLabView x:Name="StudyLabPage"/>
         </TabItem>
 
-        <TabItem>
+        <TabItem AutomationProperties.AutomationId="PageTab.Academy">
             <TabItem.Header>
                 <StackPanel Orientation="Horizontal">
                     <Border Width="30" Height="30" CornerRadius="8" Background="{DynamicResource NavyBrush}">
@@ -185,7 +186,7 @@
             <views:AcademyView x:Name="AcademyPage"/>
         </TabItem>
 
-        <TabItem>
+        <TabItem AutomationProperties.AutomationId="PageTab.Progress">
             <TabItem.Header>
                 <StackPanel Orientation="Horizontal">
                     <Border Width="30" Height="30" CornerRadius="8" Background="{DynamicResource NavyBrush}">
@@ -202,7 +203,7 @@
             <views:ProgressView x:Name="ProgressPage"/>
         </TabItem>
 
-        <TabItem>
+        <TabItem AutomationProperties.AutomationId="PageTab.Settings">
             <TabItem.Header>
                 <StackPanel Orientation="Horizontal">
                     <Border Width="30" Height="30" CornerRadius="8" Background="{DynamicResource NavyBrush}">
