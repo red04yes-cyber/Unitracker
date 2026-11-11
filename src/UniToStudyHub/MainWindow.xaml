@@ -42,15 +42,15 @@
                 </StackPanel>
             </ui:NavigationView.PaneHeader>
             <ui:NavigationView.MenuItems>
-                <ui:NavigationViewItem Content="Oggi" Tag="0" Click="NavigationItem_Click"/>
-                <ui:NavigationViewItem Content="Materie" Tag="1" Click="NavigationItem_Click"/>
-                <ui:NavigationViewItem Content="Calendario" Tag="2" Click="NavigationItem_Click"/>
-                <ui:NavigationViewItem Content="Studio Lab" Tag="3" Click="NavigationItem_Click"/>
-                <ui:NavigationViewItem Content="Accademia" Tag="4" Click="NavigationItem_Click"/>
-                <ui:NavigationViewItem Content="Progressi" Tag="5" Click="NavigationItem_Click"/>
+                <ui:NavigationViewItem AutomationProperties.AutomationId="Navigation.Today" Content="Oggi" Tag="0" Click="NavigationItem_Click"/>
+                <ui:NavigationViewItem AutomationProperties.AutomationId="Navigation.Courses" Content="Materie" Tag="1" Click="NavigationItem_Click"/>
+                <ui:NavigationViewItem AutomationProperties.AutomationId="Navigation.Calendar" Content="Calendario" Tag="2" Click="NavigationItem_Click"/>
+                <ui:NavigationViewItem AutomationProperties.AutomationId="Navigation.StudyLab" Content="Studio Lab" Tag="3" Click="NavigationItem_Click"/>
+                <ui:NavigationViewItem AutomationProperties.AutomationId="Navigation.Academy" Content="Accademia" Tag="4" Click="NavigationItem_Click"/>
+                <ui:NavigationViewItem AutomationProperties.AutomationId="Navigation.Progress" Content="Progressi" Tag="5" Click="NavigationItem_Click"/>
             </ui:NavigationView.MenuItems>
             <ui:NavigationView.FooterMenuItems>
-                <ui:NavigationViewItem Content="Impostazioni" Tag="6" Click="NavigationItem_Click"/>
+                <ui:NavigationViewItem AutomationProperties.AutomationId="Navigation.Settings" Content="Impostazioni" Tag="6" Click="NavigationItem_Click"/>
             </ui:NavigationView.FooterMenuItems>
             <ui:NavigationView.Header>
                 <Border Background="{DynamicResource PanelBrush}"
