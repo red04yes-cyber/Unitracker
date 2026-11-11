@@ -52,6 +52,16 @@ try {
     if ($process.MainWindowHandle -eq 0) {
         throw "WPF app did not create a main window within 60 seconds."
     }
+    if ($process.MainWindowTitle -eq 'Errore di avvio') {
+        $logPath = Join-Path $dataDirectory 'logs/unitracker.log'
+        if (Test-Path $logPath) {
+            Write-Host "Startup failure diagnostics:"
+            Get-Content -LiteralPath $logPath -Tail 160 | ForEach-Object { Write-Host $_ }
+        } else {
+            Write-Host "Startup failure log not found at: $logPath"
+        }
+        throw "The application displayed its startup error dialog. See diagnostics above."
+    }
     if ($process.MainWindowTitle -ne 'UniTo StudyHub') {
         throw "Unexpected WPF main window title: '$($process.MainWindowTitle)'."
     }
