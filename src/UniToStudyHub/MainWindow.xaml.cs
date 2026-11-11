@@ -363,7 +363,7 @@ public partial class MainWindow : Wpf.Ui.Controls.FluentWindow
             SettingsPage.MoodleTokenBox.Clear();
     }
 
-    private void SettingsPage.MoodleTokenBox_PasswordChanged(object sender, RoutedEventArgs e)
+    private void MoodleTokenBox_PasswordChanged(object sender, RoutedEventArgs e)
     {
         if (DataContext is MainViewModel viewModel && sender is PasswordBox passwordBox)
             viewModel.MoodleToken = passwordBox.Password;
