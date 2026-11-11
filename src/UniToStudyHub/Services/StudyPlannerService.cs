@@ -229,19 +229,52 @@ public sealed class StudyPlannerService
     {
         ArgumentNullException.ThrowIfNull(data);
         ArgumentNullException.ThrowIfNull(preview);
+        ArgumentNullException.ThrowIfNull(preview.Options);
+        ArgumentNullException.ThrowIfNull(preview.Blocks);
+
+        var normalizedOptions = ValidateOptions(preview.Options);
+        if (preview.From != normalizedOptions.From ||
+            preview.To != normalizedOptions.To ||
+            !string.Equals(preview.TimeZoneId, normalizedOptions.TimeZoneId, StringComparison.Ordinal))
+            throw new ArgumentException("The preview metadata does not match its validated options.", nameof(preview));
+
         var now = appliedAt ?? DateTimeOffset.Now;
+        var zone = TimeZoneInfo.FindSystemTimeZoneById(normalizedOptions.TimeZoneId);
+        var periodStart = StartOfLocalDay(preview.From, zone);
+        var periodEnd = StartOfLocalDay(preview.To.AddDays(1), zone);
         var warnings = new List<string>(preview.Warnings);
 
-        if (preview.Options.ReplaceExistingGeneratedBlocks)
-            ClearGeneratedPlan(data, preview.From, preview.To, preview.TimeZoneId);
+        // A replacement is staged against the calendar without the unchanged
+        // generated blocks that it intends to replace. Nothing is removed until
+        // every proposed block has passed revalidation.
+        var replaceableBlocks = normalizedOptions.ReplaceExistingGeneratedBlocks
+            ? FindUnchangedGeneratedBlocks(data, preview.From, preview.To, normalizedOptions.TimeZoneId)
+            : Array.Empty<CalendarEvent>();
+        var replaceableSet = new HashSet<CalendarEvent>(replaceableBlocks);
 
-        var added = 0;
+        var plannedMinutesByTask = new Dictionary<string, long>(StringComparer.Ordinal);
+        foreach (var candidate in preview.Blocks)
+        {
+            if (string.IsNullOrWhiteSpace(candidate.TaskId)) continue;
+            plannedMinutesByTask[candidate.TaskId] =
+                plannedMinutesByTask.GetValueOrDefault(candidate.TaskId) + candidate.PlannedMinutes;
+        }
+
+        var staged = new List<CalendarEvent>();
+        var stagedExternalIds = new HashSet<string>(StringComparer.Ordinal);
         var alreadyPresent = 0;
         var conflicts = 0;
         var skipped = 0;
 
         foreach (var block in preview.Blocks)
         {
+            if (string.IsNullOrWhiteSpace(block.TaskId))
+            {
+                skipped++;
+                warnings.Add("Un blocco senza identificativo task è stato ignorato.");
+                continue;
+            }
+
             var task = data.StudyTasks.FirstOrDefault(x =>
                 string.Equals(x.Id, block.TaskId, StringComparison.Ordinal));
             if (task is null || task.Status is StudyTaskStatus.Completed or StudyTaskStatus.Cancelled)
@@ -251,52 +284,111 @@ public sealed class StudyPlannerService
                 continue;
             }
 
-            if (block.EndsAt <= block.StartsAt || block.PlannedMinutes <= 0)
+            var currentPriority = Math.Clamp(task.Priority, 1, 5);
+            if (!string.Equals(task.Title, block.Title, StringComparison.Ordinal) ||
+                !string.Equals(task.CourseId, block.CourseId, StringComparison.Ordinal) ||
+                task.DueAt != block.DueAt ||
+                currentPriority != block.Priority)
             {
                 skipped++;
-                warnings.Add($"Il blocco di \"{block.Title}\" non è valido ed è stato ignorato.");
+                warnings.Add($"Il task \"{task.Title}\" è cambiato dopo l'anteprima; rigenera il piano prima di applicarlo.");
+                continue;
+            }
+
+            if (plannedMinutesByTask.GetValueOrDefault(task.Id) > task.EstimatedMinutes)
+            {
+                skipped++;
+                warnings.Add($"La stima del task \"{task.Title}\" è stata ridotta dopo l'anteprima; rigenera il piano.");
+                continue;
+            }
+
+            if (string.IsNullOrWhiteSpace(block.Title) ||
+                block.PlannedMinutes is < 1 or > 180 ||
+                block.EndsAt <= block.StartsAt ||
+                block.EndsAt - block.StartsAt != TimeSpan.FromMinutes(block.PlannedMinutes) ||
+                block.StartsAt < periodStart ||
+                block.StartsAt >= periodEnd ||
+                block.EndsAt > periodEnd ||
+                block.StartsAt < now)
+            {
+                skipped++;
+                warnings.Add($"Il blocco di \"{block.Title}\" è scaduto, fuori intervallo o non valido; rigenera il piano.");
                 continue;
             }
 
             var externalId = BuildExternalId(block);
-            if (data.CalendarEvents.Any(x =>
+            if (stagedExternalIds.Contains(externalId) ||
+                data.CalendarEvents.Any(x =>
+                    !replaceableSet.Contains(x) &&
                     string.Equals(x.ExternalId, externalId, StringComparison.Ordinal)))
             {
                 alreadyPresent++;
                 continue;
             }
 
-            if (data.CalendarEvents.Any(x =>
-                    !x.IsCancelled && x.StartsAt < block.EndsAt && x.EndsAt > block.StartsAt))
+            var overlapsExisting = data.CalendarEvents.Any(x =>
+                !x.IsCancelled &&
+                !replaceableSet.Contains(x) &&
+                x.StartsAt < block.EndsAt &&
+                x.EndsAt > block.StartsAt);
+            var overlapsStaged = staged.Any(x =>
+                x.StartsAt < block.EndsAt && x.EndsAt > block.StartsAt);
+            if (overlapsExisting || overlapsStaged)
             {
                 conflicts++;
                 warnings.Add($"Il calendario è cambiato: il blocco di \"{block.Title}\" alle {block.StartsAt:t} è in conflitto e non è stato salvato.");
                 continue;
             }
 
+            var courseName = data.Courses.FirstOrDefault(x =>
+                string.Equals(x.Id, task.CourseId, StringComparison.Ordinal))?.Name ?? string.Empty;
             var item = new CalendarEvent
             {
                 Id = BuildEventId(externalId),
-                Title = block.Title,
+                Title = task.Title,
                 Category = CalendarEventCategory.Study,
                 StartsAt = block.StartsAt,
                 EndsAt = block.EndsAt,
-                CourseId = string.IsNullOrWhiteSpace(block.CourseId) ? null : block.CourseId,
-                CourseName = block.CourseName,
+                CourseId = string.IsNullOrWhiteSpace(task.CourseId) ? null : task.CourseId,
+                CourseName = courseName,
                 Source = CalendarEventSource.Planner,
                 Verification = CalendarEventVerification.Indicative,
-                TimeZoneId = preview.TimeZoneId,
+                TimeZoneId = normalizedOptions.TimeZoneId,
                 ExternalId = externalId,
-                Notes = $"Blocco di studio indicativo collegato al task {block.TaskId}.",
+                Notes = $"Blocco di studio indicativo collegato al task {task.Id}.",
                 CreatedAt = now,
                 UpdatedAt = now
             };
             CalendarService.Validate(item);
-            data.CalendarEvents.Add(item);
-            added++;
+            staged.Add(item);
+            stagedExternalIds.Add(externalId);
         }
 
-        return new StudyPlanApplyResult(added, alreadyPresent, conflicts, skipped, warnings);
+        if (normalizedOptions.ReplaceExistingGeneratedBlocks && preview.Blocks.Count == 0)
+        {
+            warnings.Add("L'anteprima non contiene blocchi: il piano esistente è stato conservato. Usa la rimozione esplicita per svuotarlo.");
+            return new StudyPlanApplyResult(0, alreadyPresent, conflicts, skipped, warnings);
+        }
+
+        if (normalizedOptions.ReplaceExistingGeneratedBlocks && (conflicts > 0 || skipped > 0))
+        {
+            // A partial replacement could silently erase a valid previous plan
+            // while applying only a subset of the new one. Abort it as a unit.
+            skipped += staged.Count;
+            warnings.Add("Sostituzione annullata: il piano precedente è stato conservato perché almeno un blocco non è più applicabile.");
+            return new StudyPlanApplyResult(0, alreadyPresent, conflicts, skipped, warnings);
+        }
+
+        if (normalizedOptions.ReplaceExistingGeneratedBlocks)
+        {
+            foreach (var item in replaceableBlocks)
+                data.CalendarEvents.Remove(item);
+        }
+
+        foreach (var item in staged)
+            data.CalendarEvents.Add(item);
+
+        return new StudyPlanApplyResult(staged.Count, alreadyPresent, conflicts, skipped, warnings);
     }
 
     /// <summary>
@@ -341,18 +433,30 @@ public sealed class StudyPlannerService
         string? timeZoneId = null)
     {
         ArgumentNullException.ThrowIfNull(data);
+        var remove = FindUnchangedGeneratedBlocks(data, from, to, timeZoneId);
+        foreach (var item in remove)
+            data.CalendarEvents.Remove(item);
+        return remove.Length;
+    }
+
+    private static CalendarEvent[] FindUnchangedGeneratedBlocks(
+        StudyData data,
+        DateOnly from,
+        DateOnly to,
+        string? timeZoneId)
+    {
         if (to < from) throw new ArgumentOutOfRangeException(nameof(to));
+        if (to == DateOnly.MaxValue)
+            throw new ArgumentOutOfRangeException(nameof(to), "The plan end date cannot be DateOnly.MaxValue.");
+
         var zone = TimeZoneInfo.FindSystemTimeZoneById(
             string.IsNullOrWhiteSpace(timeZoneId) ? TimeZoneInfo.Local.Id : timeZoneId);
         var start = StartOfLocalDay(from, zone);
         var end = StartOfLocalDay(to.AddDays(1), zone);
-        var remove = data.CalendarEvents
+        return data.CalendarEvents
             .Where(IsUnchangedGeneratedPlannerBlock)
             .Where(x => x.StartsAt < end && x.EndsAt > start)
             .ToArray();
-        foreach (var item in remove)
-            data.CalendarEvents.Remove(item);
-        return remove.Length;
     }
 
     private static StudyPlannerOptions ValidateOptions(StudyPlannerOptions options)
