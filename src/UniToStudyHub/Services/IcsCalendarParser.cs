@@ -26,7 +26,6 @@ public sealed class IcsCalendarParser
     {
         var from = windowStart ?? new DateTimeOffset(DateTime.Today.AddYears(-1));
         var to = windowEnd ?? from.AddYears(3);
-        if (to <= from) throw new ArgumentOutOfRangeException(nameof(windowEnd));
         return (from, to);
     }
 
@@ -41,6 +40,7 @@ public sealed class IcsCalendarParser
         if (maxEvents < 1) throw new ArgumentOutOfRangeException(nameof(maxEvents));
 
         var (from, to) = ResolveWindow(windowStart, windowEnd);
+        if (to <= from) throw new ArgumentOutOfRangeException(nameof(windowEnd));
 
         var warnings = new List<string>();
         var events = new List<CalendarEvent>();
