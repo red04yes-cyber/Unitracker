@@ -19,8 +19,8 @@ explicit clear action.
   changed since preview generation.
 - Reject a preview when its aggregate planned minutes exceed the task's current
   estimate.
-- Validate block duration, planning-window boundaries and that a block has not
-  already started.
+- Validate block duration, planning-window boundaries and that a block has not started more than two minutes before apply (a short
+  grace period avoids rejecting a preview while the user confirms it).
 - Re-resolve the course name from the current local snapshot rather than copying
   potentially stale display text from the preview.
 - Recheck existing calendar conflicts and duplicate external IDs at apply time.
@@ -49,7 +49,7 @@ explicit clear action.
 8. Task title changes after preview.
 9. Reduced task estimates after preview.
 10. Task deadline changes after preview.
-11. Blocks that have already started.
+11. Blocks that started beyond the two-minute apply grace period.
 12. Current course-name resolution at apply time.
 13. Safe rejection of a clear range ending at `DateOnly.MaxValue`.
 14. Null entries in a malformed preview collection.
