@@ -12,6 +12,7 @@ namespace UniToStudyHub.Services;
 public sealed class StudyPlannerService
 {
     private const string GeneratedExternalIdPrefix = "study-plan:v1:";
+    private static readonly TimeSpan PreviewStartGrace = TimeSpan.FromMinutes(2);
     private readonly ActivityLedgerService _ledger = new();
 
     public StudyPlanPreview CreatePreview(
@@ -318,7 +319,7 @@ public sealed class StudyPlannerService
                 block.StartsAt < periodStart ||
                 block.StartsAt >= periodEnd ||
                 block.EndsAt > periodEnd ||
-                block.StartsAt < now)
+                block.StartsAt < now - PreviewStartGrace)
             {
                 skipped++;
                 warnings.Add($"Il blocco di \"{block.Title}\" è scaduto, fuori intervallo o non valido; rigenera il piano.");
