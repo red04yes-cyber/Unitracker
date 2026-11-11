@@ -334,4 +334,263 @@ public sealed class StudyPlannerServiceTests
             TimeZoneInfo.FindSystemTimeZoneById("Europe/Rome")).DateTime));
         Assert.Contains(preview.Warnings, x => x.Contains("cambio di orario legale/solare", StringComparison.Ordinal));
     }
+
+    [Fact]
+    public void ReplacePlanPreservesExistingBlocksWhenReplacementConflicts()
+    {
+        var data = Data();
+        AddTask(data, minutes: 50);
+        var service = new StudyPlannerService();
+        var initial = service.CreatePreview(data, Options(), Now);
+        service.Apply(data, initial, Now);
+        var previous = Assert.Single(data.CalendarEvents);
+
+        var replacement = service.CreatePreview(data, Options(replace: true), Now.AddMinutes(1));
+        var proposed = Assert.Single(replacement.Blocks);
+        data.CalendarEvents.Add(new CalendarEvent
+        {
+            Id = "new-manual-conflict",
+            Title = "Nuovo impegno",
+            Category = CalendarEventCategory.Personal,
+            StartsAt = proposed.StartsAt,
+            EndsAt = proposed.EndsAt,
+            TimeZoneId = "Europe/Rome"
+        });
+
+        var result = service.Apply(data, replacement, Now.AddMinutes(2));
+
+        Assert.Equal(0, result.Added);
+        Assert.Equal(1, result.Conflicts);
+        Assert.Contains(data.CalendarEvents, item => item.Id == previous.Id);
+        Assert.Contains(data.CalendarEvents, item => item.Id == "new-manual-conflict");
+        Assert.Equal(2, data.CalendarEvents.Count);
+    }
+
+    [Fact]
+    public void ReplacePlanPreservesExistingBlocksWhenTaskClosesAfterPreview()
+    {
+        var data = Data();
+        var task = AddTask(data, minutes: 50);
+        var service = new StudyPlannerService();
+        var initial = service.CreatePreview(data, Options(), Now);
+        service.Apply(data, initial, Now);
+        var previous = Assert.Single(data.CalendarEvents);
+
+        var replacement = service.CreatePreview(data, Options(replace: true), Now.AddMinutes(1));
+        task.Status = StudyTaskStatus.Completed;
+
+        var result = service.Apply(data, replacement, Now.AddMinutes(2));
+
+        Assert.Equal(0, result.Added);
+        Assert.Equal(1, result.Skipped);
+        Assert.Contains(data.CalendarEvents, item => item.Id == previous.Id);
+        Assert.Single(data.CalendarEvents);
+    }
+
+    [Fact]
+    public void ReplacePlanPreservesExistingBlocksWhenPreviewIsEmpty()
+    {
+        var data = Data();
+        AddTask(data, minutes: 50);
+        var service = new StudyPlannerService();
+        var initial = service.CreatePreview(data, Options(), Now);
+        service.Apply(data, initial, Now);
+        var previous = Assert.Single(data.CalendarEvents);
+
+        var emptyReplacement = service.CreatePreview(
+            data,
+            Options(availability: Array.Empty<StudyAvailabilityWindow>(), replace: true),
+            Now.AddMinutes(1));
+        Assert.Empty(emptyReplacement.Blocks);
+
+        var result = service.Apply(data, emptyReplacement, Now.AddMinutes(2));
+
+        Assert.Equal(0, result.Added);
+        Assert.Contains(result.Warnings, warning => warning.Contains("piano esistente è stato conservato", StringComparison.Ordinal));
+        Assert.Contains(data.CalendarEvents, item => item.Id == previous.Id);
+        Assert.Single(data.CalendarEvents);
+    }
+
+    [Fact]
+    public void ReplacePlanIsAtomicWhenAnyReplacementBlockConflicts()
+    {
+        var data = Data();
+        AddTask(data, "first", 50);
+        AddTask(data, "second", 50);
+        var service = new StudyPlannerService();
+        var initial = service.CreatePreview(data, Options(), Now);
+        Assert.Equal(2, initial.Blocks.Count);
+        service.Apply(data, initial, Now);
+        var previousIds = data.CalendarEvents.Select(item => item.Id).ToHashSet(StringComparer.Ordinal);
+
+        var replacement = service.CreatePreview(data, Options(replace: true), Now.AddMinutes(1));
+        var conflictingBlock = replacement.Blocks[1];
+        data.CalendarEvents.Add(new CalendarEvent
+        {
+            Id = "new-manual-conflict",
+            Title = "Nuovo impegno",
+            Category = CalendarEventCategory.Personal,
+            StartsAt = conflictingBlock.StartsAt,
+            EndsAt = conflictingBlock.EndsAt,
+            TimeZoneId = "Europe/Rome"
+        });
+
+        var result = service.Apply(data, replacement, Now.AddMinutes(2));
+
+        Assert.Equal(0, result.Added);
+        Assert.Equal(1, result.Conflicts);
+        Assert.Equal(1, result.Skipped);
+        Assert.All(previousIds, id => Assert.Contains(data.CalendarEvents, item => item.Id == id));
+        Assert.Equal(3, data.CalendarEvents.Count);
+    }
+
+    [Fact]
+    public void ApplyRejectsPreviewMetadataThatDoesNotMatchOptions()
+    {
+        var data = Data();
+        AddTask(data, minutes: 50);
+        var service = new StudyPlannerService();
+        var preview = service.CreatePreview(data, Options(), Now) with { TimeZoneId = "UTC" };
+
+        Assert.Throws<ArgumentException>(() => service.Apply(data, preview, Now));
+        Assert.Empty(data.CalendarEvents);
+    }
+
+    [Fact]
+    public void ApplySkipsBlocksOutsideThePreviewDateRange()
+    {
+        var data = Data();
+        AddTask(data, minutes: 50);
+        var service = new StudyPlannerService();
+        var preview = service.CreatePreview(data, Options(), Now);
+        var block = Assert.Single(preview.Blocks);
+        var outside = block with
+        {
+            StartsAt = block.StartsAt.AddDays(-1),
+            EndsAt = block.EndsAt.AddDays(-1)
+        };
+
+        var result = service.Apply(data, preview with { Blocks = new[] { outside } }, Now);
+
+        Assert.Equal(0, result.Added);
+        Assert.Equal(1, result.Skipped);
+        Assert.Empty(data.CalendarEvents);
+    }
+
+    [Fact]
+    public void ApplySkipsBlocksWhoseDurationDoesNotMatchTheirPlannedMinutes()
+    {
+        var data = Data();
+        AddTask(data, minutes: 50);
+        var service = new StudyPlannerService();
+        var preview = service.CreatePreview(data, Options(), Now);
+        var block = Assert.Single(preview.Blocks);
+
+        var result = service.Apply(
+            data,
+            preview with { Blocks = new[] { block with { EndsAt = block.EndsAt.AddMinutes(-1) } } },
+            Now);
+
+        Assert.Equal(0, result.Added);
+        Assert.Equal(1, result.Skipped);
+        Assert.Empty(data.CalendarEvents);
+    }
+
+    [Fact]
+    public void ApplySkipsBlocksWhenTaskTitleChangesAfterPreview()
+    {
+        var data = Data();
+        var task = AddTask(data, minutes: 50);
+        var service = new StudyPlannerService();
+        var preview = service.CreatePreview(data, Options(), Now);
+        task.Title = "Titolo aggiornato";
+
+        var result = service.Apply(data, preview, Now);
+
+        Assert.Equal(0, result.Added);
+        Assert.Equal(1, result.Skipped);
+        Assert.Empty(data.CalendarEvents);
+        Assert.Contains(result.Warnings, warning => warning.Contains("cambiato dopo l'anteprima", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void ApplySkipsBlocksWhenTaskEstimateIsReducedAfterPreview()
+    {
+        var data = Data();
+        var task = AddTask(data, minutes: 50);
+        var service = new StudyPlannerService();
+        var preview = service.CreatePreview(data, Options(), Now);
+        task.EstimatedMinutes = 30;
+
+        var result = service.Apply(data, preview, Now);
+
+        Assert.Equal(0, result.Added);
+        Assert.Equal(1, result.Skipped);
+        Assert.Empty(data.CalendarEvents);
+        Assert.Contains(result.Warnings, warning => warning.Contains("stima del task", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void ApplySkipsBlocksWhenTaskDeadlineChangesAfterPreview()
+    {
+        var data = Data();
+        var task = AddTask(data, minutes: 50, dueAt: Now.AddDays(1));
+        var service = new StudyPlannerService();
+        var preview = service.CreatePreview(data, Options(), Now);
+        task.DueAt = Now.AddHours(2);
+
+        var result = service.Apply(data, preview, Now);
+
+        Assert.Equal(0, result.Added);
+        Assert.Equal(1, result.Skipped);
+        Assert.Empty(data.CalendarEvents);
+    }
+
+    [Fact]
+    public void ApplySkipsBlocksThatHaveAlreadyStarted()
+    {
+        var data = Data();
+        AddTask(data, minutes: 50);
+        var service = new StudyPlannerService();
+        var preview = service.CreatePreview(data, Options(), Now);
+
+        var result = service.Apply(data, preview, Now.AddHours(2));
+
+        Assert.Equal(0, result.Added);
+        Assert.Equal(1, result.Skipped);
+        Assert.Empty(data.CalendarEvents);
+    }
+
+    [Fact]
+    public void ApplyUsesCurrentCourseNameInsteadOfStalePreviewText()
+    {
+        var data = Data();
+        AddTask(data, minutes: 50);
+        var service = new StudyPlannerService();
+        var preview = service.CreatePreview(data, Options(), Now);
+        data.Courses.Single().Name = "Analisi matematica";
+
+        var result = service.Apply(data, preview, Now);
+
+        Assert.Equal(1, result.Added);
+        Assert.Equal("Analisi matematica", Assert.Single(data.CalendarEvents).CourseName);
+    }
+
+    [Fact]
+    public void ClearGeneratedPlanRejectsDateOnlyMaxValueWithoutChangingCalendar()
+    {
+        var data = Data();
+        AddTask(data, minutes: 50);
+        var service = new StudyPlannerService();
+        var preview = service.CreatePreview(data, Options(), Now);
+        service.Apply(data, preview, Now);
+        var existingId = Assert.Single(data.CalendarEvents).Id;
+
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            service.ClearGeneratedPlan(data, DateOnly.MaxValue, DateOnly.MaxValue, "Europe/Rome"));
+
+        Assert.Contains(data.CalendarEvents, item => item.Id == existingId);
+        Assert.Single(data.CalendarEvents);
+    }
+
 }
