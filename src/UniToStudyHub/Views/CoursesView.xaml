@@ -6,7 +6,7 @@
                     <StackPanel Margin="32,30,32,36">
                         <TextBlock Text="CARRIERA UNIVERSITARIA" FontSize="10"
                                    FontWeight="Bold" Foreground="{DynamicResource AccentBrush}"/>
-                        <TextBlock Text="Le tue materie" Style="{StaticResource PageTitleStyle}"
+                        <TextBlock AutomationProperties.AutomationId="PageHeading.Courses" Text="Le tue materie" Style="{StaticResource PageTitleStyle}"
                                    Margin="0,7,0,4"/>
                         <TextBlock Text="Tieni insieme insegnamenti da preparare, esami conclusi e risultati registrati."
                                    Style="{StaticResource PageSubtitleStyle}" Margin="0,0,0,22"/>
