@@ -37,7 +37,7 @@ explicit clear action.
 
 ## Verification
 
-`StudyPlannerServiceTests` adds 13 regression cases covering:
+`StudyPlannerServiceTests` adds 14 regression cases covering:
 
 1. Existing-plan preservation after a new calendar conflict.
 2. Existing-plan preservation when a task is completed after preview.
@@ -52,6 +52,7 @@ explicit clear action.
 11. Blocks that have already started.
 12. Current course-name resolution at apply time.
 13. Safe rejection of a clear range ending at `DateOnly.MaxValue`.
+14. Null entries in a malformed preview collection.
 
 The existing tests continue to cover idempotent application, calendar conflict
 rechecks, preservation of user-edited planner blocks, SQLite persistence,
