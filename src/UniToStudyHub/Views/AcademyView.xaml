@@ -1,0 +1,107 @@
+<UserControl x:Class="UniToStudyHub.Views.AcademyView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+        <StackPanel Margin="32,30,32,36">
+            <TextBlock Text="MATERIALI DIDATTICI" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource AiBrush}"/>
+            <TextBlock Text="Accademia" Style="{StaticResource PageTitleStyle}" Margin="0,7,0,4"/>
+            <TextBlock Text="Materiali, studio attivo e strumenti di preparazione. Le funzioni AI sono in progresso e arriveranno in una fase successiva." Style="{StaticResource PageSubtitleStyle}" Margin="0,0,0,22"/>
+            <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="0.9*"/><ColumnDefinition Width="1.4*"/></Grid.ColumnDefinitions>
+                <Border Grid.Column="0" Style="{StaticResource CardBorderStyle}" Margin="0,0,12,0">
+                    <StackPanel>
+                        <TextBlock Text="Libreria documenti" Style="{StaticResource SectionTitleStyle}"/>
+                        <TextBlock Text="Importazione locale: il documento non viene inviato a un servizio remoto." FontSize="10" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,5,0,12"/>
+                        <Button Content="Importa PDF" Click="ImportPdf_Click" HorizontalAlignment="Left"/>
+                        <ListBox ItemsSource="{Binding Workspace.PdfDocuments}" SelectedItem="{Binding Workspace.SelectedPdf}" Margin="0,12,0,0" MinHeight="230">
+                            <ListBox.ItemTemplate><DataTemplate><StackPanel Margin="5"><TextBlock Text="{Binding FileName}" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}" TextWrapping="Wrap"/><TextBlock Text="{Binding PageCount, StringFormat={}{0} pagine}" FontSize="10" Foreground="{DynamicResource MutedBrush}" Margin="0,3,0,0"/><TextBlock Text="{Binding HasExtractableText, StringFormat='Testo estraibile: {0}'}" FontSize="9" Foreground="{DynamicResource MutedBrush}"/></StackPanel></DataTemplate></ListBox.ItemTemplate>
+                        </ListBox>
+                        <TextBlock Text="La libreria è vuota: importa il primo PDF." Visibility="{Binding Workspace.NoPdfDocuments, Converter={StaticResource BooleanToVisibilityConverter}}" FontSize="10" Foreground="{DynamicResource MutedBrush}" Margin="2,7,2,0"/>
+                        <TextBlock Text="{Binding Workspace.PdfDocumentSummary}" FontSize="10" Foreground="{DynamicResource MutedBrush}" Margin="0,10,0,0"/>
+                        <TextBlock Text="Anteprima del testo estratto" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}" Margin="0,14,0,6"/>
+                        <ListBox ItemsSource="{Binding Workspace.SelectedPdf.Pages}" MaxHeight="250">
+                            <ListBox.ItemTemplate><DataTemplate>
+                                <StackPanel Margin="4">
+                                    <TextBlock Text="{Binding PageNumber, StringFormat='Pagina {0}'}" FontSize="9" FontWeight="SemiBold" Foreground="{DynamicResource AccentBrush}"/>
+                                    <TextBlock Text="{Binding Text}" FontSize="10" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" MaxHeight="100"/>
+                                </StackPanel>
+                            </DataTemplate></ListBox.ItemTemplate>
+                        </ListBox>
+                        <TextBlock Text="{Binding Workspace.PdfStatus}" FontSize="10" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,7,0,0"/>
+                    </StackPanel>
+                </Border>
+                <StackPanel Grid.Column="1">
+                    <Border Style="{StaticResource CardBorderStyle}">
+                        <StackPanel>
+                            <TextBlock Text="Ricerca nel documento" Style="{StaticResource SectionTitleStyle}"/>
+                            <TextBlock Text="Gli estratti provengono dal testo memorizzato pagina per pagina." FontSize="11" Foreground="{DynamicResource MutedBrush}" Margin="0,5,0,12"/>
+                            <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBox Text="{Binding Workspace.PdfSearchQuery, UpdateSourceTrigger=PropertyChanged}" ToolTip="Cerca una frase o un concetto"/><Button Grid.Column="1" Content="Cerca" Command="{Binding Workspace.SearchPdfCommand}" Margin="8,0,0,0"/></Grid>
+                            <ListBox ItemsSource="{Binding Workspace.PdfSearchHits}" MaxHeight="230" Margin="0,12,0,0"><ListBox.ItemTemplate><DataTemplate><StackPanel Margin="5"><TextBlock Text="{Binding PageNumber, StringFormat='Pagina {0}'}" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource AccentBrush}"/><TextBlock Text="{Binding Snippet}" FontSize="11" Foreground="{DynamicResource InkBrush}" TextWrapping="Wrap"/></StackPanel></DataTemplate></ListBox.ItemTemplate></ListBox>
+                            <TextBlock Text="Nessun risultato da mostrare." Visibility="{Binding Workspace.NoPdfSearchHits, Converter={StaticResource BooleanToVisibilityConverter}}" FontSize="10" Foreground="{DynamicResource MutedBrush}" Margin="2,7,2,0"/>
+                        </StackPanel>
+                    </Border>
+                    <Border Style="{StaticResource CardBorderStyle}" Margin="0,12,0,0">
+                        <StackPanel>
+                            <TextBlock Text="AI Study Director" Style="{StaticResource SectionTitleStyle}"/>
+                            <TextBlock Text="Genera un piano personalizzato o una simulazione orale usando i dati locali del corso selezionato. Le proposte non modificano il calendario e non sono quesiti ufficiali." FontSize="11" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,7,0,10"/>
+                            <WrapPanel>
+                                <Button Content="Genera piano di studio" Command="{Binding Workspace.GenerateAiPlanCommand}" Margin="0,0,8,8"/>
+                                <Button Content="Simulazione orale" Command="{Binding Workspace.GenerateOralPracticeCommand}" Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,0,8"/>
+                            </WrapPanel>
+                            <TextBlock Text="{Binding Workspace.AiStatusMessage}" FontSize="10" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,3,0,8"/>
+                            <Border Background="{DynamicResource SubtleBrush}" CornerRadius="8" Padding="12">
+                                <TextBlock Text="{Binding Workspace.AiResponseText}" FontSize="11" Foreground="{DynamicResource InkBrush}" TextWrapping="Wrap"/>
+                            </Border>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </Grid>
+            <Border Style="{StaticResource CardBorderStyle}" Margin="0,14,0,0">
+                <StackPanel>
+                    <TextBlock Text="Syllabus e preparazione all'esame" Style="{StaticResource SectionTitleStyle}"/>
+                    <TextBlock Text="Scegli una materia: il syllabus e la banca domande sono salvati localmente. La percentuale di preparazione è una stima trasparente basata solo sui dati inseriti." FontSize="10" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,5,0,10"/>
+                    <ComboBox ItemsSource="{Binding Workspace.Courses}" DisplayMemberPath="Name" SelectedItem="{Binding Workspace.SelectedCourse}" ToolTip="Materia" Margin="0,0,0,10"/>
+                    <TextBlock Text="{Binding Workspace.ReadinessStatus}" FontSize="11" Foreground="{DynamicResource InkBrush}" TextWrapping="Wrap" Margin="0,0,0,12"/>
+                    <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                        <Border Grid.Column="0" Background="{DynamicResource SubtleBrush}" CornerRadius="8" Padding="12" Margin="0,0,8,0">
+                            <StackPanel>
+                                <TextBlock Text="Programma / syllabus" Style="{StaticResource SectionTitleStyle}"/>
+                                <TextBox Text="{Binding Workspace.SyllabusTitleInput, UpdateSourceTrigger=PropertyChanged}" ToolTip="Argomento" Margin="0,9,0,0"/>
+                                <TextBox Text="{Binding Workspace.SyllabusMinutesInput, UpdateSourceTrigger=PropertyChanged}" ToolTip="Minuti stimati" Margin="0,6,0,0"/>
+                                <Button Content="Aggiungi argomento" Command="{Binding Workspace.AddSyllabusTopicCommand}" Margin="0,8,0,8"/>
+                                <ListBox ItemsSource="{Binding Workspace.SyllabusTopics}" SelectedItem="{Binding Workspace.SelectedSyllabusTopic}" MaxHeight="180">
+                                    <ListBox.ItemTemplate><DataTemplate><StackPanel Margin="4"><TextBlock Text="{Binding Title}" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}"/><TextBlock Text="{Binding Status}" FontSize="9" Foreground="{DynamicResource MutedBrush}"/><TextBlock Text="{Binding EstimatedMinutes, StringFormat={}{0} min stimati}" FontSize="9" Foreground="{DynamicResource MutedBrush}"/></StackPanel></DataTemplate></ListBox.ItemTemplate>
+                                </ListBox>
+                                <Button Content="Segna completato" Command="{Binding Workspace.CompleteSyllabusTopicCommand}" Style="{StaticResource SecondaryButtonStyle}" Margin="0,8,0,0"/>
+                            </StackPanel>
+                        </Border>
+                        <Border Grid.Column="1" Background="{DynamicResource SubtleBrush}" CornerRadius="8" Padding="12" Margin="8,0,0,0">
+                            <StackPanel>
+                                <TextBlock Text="Banca domande / quiz" Style="{StaticResource SectionTitleStyle}"/>
+                                <TextBox Text="{Binding Workspace.QuestionTextInput, UpdateSourceTrigger=PropertyChanged}" ToolTip="Domanda" Margin="0,9,0,0"/>
+                                <TextBox Text="{Binding Workspace.QuestionOptionsInput, UpdateSourceTrigger=PropertyChanged}" ToolTip="Opzioni chiuse separate da ; (vuoto = risposta aperta)" Margin="0,6,0,0"/>
+                                <TextBox Text="{Binding Workspace.QuestionCorrectAnswerInput, UpdateSourceTrigger=PropertyChanged}" ToolTip="Risposta corretta (per scelta chiusa)" Margin="0,6,0,0"/>
+                                <Button Content="Aggiungi domanda" Command="{Binding Workspace.AddQuestionCommand}" Margin="0,8,0,8"/>
+                                <ListBox ItemsSource="{Binding Workspace.QuestionBankItems}" SelectedItem="{Binding Workspace.SelectedQuestion}" MaxHeight="110">
+                                    <ListBox.ItemTemplate><DataTemplate><StackPanel Margin="4"><TextBlock Text="{Binding Text}" FontSize="10" Foreground="{DynamicResource InkBrush}" TextWrapping="Wrap"/><TextBlock Text="{Binding Type}" FontSize="9" Foreground="{DynamicResource MutedBrush}"/></StackPanel></DataTemplate></ListBox.ItemTemplate>
+                                </ListBox>
+                                <TextBox Text="{Binding Workspace.QuestionAnswerInput, UpdateSourceTrigger=PropertyChanged}" ToolTip="La tua risposta" Margin="0,8,0,0"/>
+                                <Button Content="Verifica / valuta" Command="{Binding Workspace.EvaluateQuestionCommand}" Margin="0,7,0,0"/>
+                                <TextBlock Text="{Binding Workspace.QuestionStatus}" FontSize="10" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,8,0,0"/>
+                                <Border Background="{DynamicResource PanelBrush}" CornerRadius="8" Padding="10" Margin="0,12,0,0">
+                                    <StackPanel>
+                                        <TextBlock Text="Simulazione rapida" Style="{StaticResource SectionTitleStyle}"/>
+                                        <Button Content="Avvia simulazione (max 10 quesiti)" Command="{Binding Workspace.StartSimulationCommand}" Margin="0,8,0,0"/>
+                                        <TextBlock Text="{Binding Workspace.SimulationQuestionDisplay}" FontSize="11" Foreground="{DynamicResource InkBrush}" TextWrapping="Wrap" Margin="0,8,0,0"/>
+                                        <Button Content="Invia risposta e continua" Command="{Binding Workspace.SubmitSimulationAnswerCommand}" IsEnabled="{Binding Workspace.IsSimulationActive}" Style="{StaticResource SecondaryButtonStyle}" Margin="0,8,0,0"/>
+                                        <TextBlock Text="{Binding Workspace.SimulationStatus}" FontSize="10" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,8,0,0"/>
+                                    </StackPanel>
+                                </Border>
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+                    <TextBlock Text="{Binding Workspace.WorkspaceStatus}" FontSize="10" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,10,0,0"/>
+                </StackPanel>
+            </Border>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>
