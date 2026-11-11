@@ -51,6 +51,39 @@
             <ui:NavigationView.FooterMenuItems>
                 <ui:NavigationViewItem Content="Impostazioni" Tag="6" Click="NavigationItem_Click"/>
             </ui:NavigationView.FooterMenuItems>
+            <ui:NavigationView.Header>
+                <Border Background="{DynamicResource PanelBrush}"
+                        BorderBrush="{DynamicResource BorderBrush}"
+                        BorderThickness="0,0,0,1"
+                        Padding="26,13">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel VerticalAlignment="Center">
+                            <TextBlock Text="UNITO STUDYHUB" FontSize="9"
+                                       FontWeight="Bold" Foreground="{DynamicResource MutedBrush}"/>
+                            <TextBlock Text="Il tuo spazio personale" FontSize="13"
+                                       FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}"
+                                       Margin="0,3,0,0"/>
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" Orientation="Horizontal"
+                                    VerticalAlignment="Center">
+                            <Border Background="{DynamicResource SubtleBrush}"
+                                    CornerRadius="7" Padding="10,7"
+                                    VerticalAlignment="Center">
+                                <TextBlock Text="{Binding MoodleStatus}" FontSize="10"
+                                           Foreground="{DynamicResource MutedBrush}"/>
+                            </Border>
+                            <Button Content="Impostazioni"
+                                    Style="{StaticResource QuietButtonStyle}"
+                                    Margin="10,0,0,0"
+                                    Click="NavigateToSettings_Click"/>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+            </ui:NavigationView.Header>
         </ui:NavigationView>
 
         <TabControl x:Name="MainTabs"
