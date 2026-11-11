@@ -173,6 +173,100 @@ END:VCALENDAR
     }
 
     [Fact]
+    public void IcsImportReconcilesOnlyOccurrencesInsideRequestedWindow()
+    {
+        var data = Data();
+        const string uid = "series-1";
+        var before = new DateTimeOffset(2026, 11, 3, 9, 0, 0, TimeSpan.Zero);
+        var first = new DateTimeOffset(2026, 11, 4, 9, 0, 0, TimeSpan.Zero);
+        var second = new DateTimeOffset(2026, 11, 5, 9, 0, 0, TimeSpan.Zero);
+        var staleInside = new DateTimeOffset(2026, 11, 6, 9, 0, 0, TimeSpan.Zero);
+        var after = new DateTimeOffset(2026, 11, 10, 9, 0, 0, TimeSpan.Zero);
+        data.CalendarEvents.Add(IcsOccurrence("outside-before", uid, before));
+        data.CalendarEvents.Add(IcsOccurrence("inside-first", uid, first));
+        data.CalendarEvents.Add(IcsOccurrence("inside-second", uid, second));
+        data.CalendarEvents.Add(IcsOccurrence("stale-inside", uid, staleInside));
+        data.CalendarEvents.Add(IcsOccurrence("outside-after", uid, after));
+
+        const string ics = """
+BEGIN:VCALENDAR
+BEGIN:VEVENT
+UID:series-1
+SUMMARY:Lezione aggiornata
+DTSTART;TZID=UTC:20261104T090000
+DTEND;TZID=UTC:20261104T100000
+RRULE:FREQ=DAILY;COUNT=2
+END:VEVENT
+END:VCALENDAR
+""";
+        var windowStart = new DateTimeOffset(2026, 11, 4, 0, 0, 0, TimeSpan.Zero);
+        var windowEnd = new DateTimeOffset(2026, 11, 7, 0, 0, 0, TimeSpan.Zero);
+
+        var result = new IcsImportService().ImportText(ics, data, windowStart, windowEnd);
+
+        Assert.Equal(0, result.Added);
+        Assert.Equal(2, result.Updated);
+        Assert.Equal(1, result.Removed);
+        Assert.Contains(data.CalendarEvents, item => item.Id == "outside-before");
+        Assert.Contains(data.CalendarEvents, item => item.Id == "outside-after");
+        Assert.DoesNotContain(data.CalendarEvents, item => item.Id == "stale-inside");
+        Assert.Equal("Lezione aggiornata", data.CalendarEvents.Single(item => item.Id == "inside-first").Title);
+        Assert.Equal("Lezione aggiornata", data.CalendarEvents.Single(item => item.Id == "inside-second").Title);
+    }
+
+    [Fact]
+    public void IcsImportWithoutExplicitWindowPreservesOccurrencesOutsideDefaultWindow()
+    {
+        var data = Data();
+        const string uid = "default-window-series";
+        var defaultStart = new DateTimeOffset(DateTime.Today.AddYears(-1));
+        var defaultEnd = defaultStart.AddYears(3);
+        var before = defaultStart.AddDays(-2).AddHours(9);
+        var inside = defaultStart.AddDays(2).AddHours(9);
+        var after = defaultEnd.AddDays(2).AddHours(9);
+        var insideUtc = inside.ToUniversalTime();
+        data.CalendarEvents.Add(IcsOccurrence("default-before", uid, before));
+        data.CalendarEvents.Add(IcsOccurrence("default-inside", uid, insideUtc));
+        data.CalendarEvents.Add(IcsOccurrence("default-after", uid, after));
+
+        var startText = insideUtc.ToString("yyyyMMdd'T'HHmmss'Z'", System.Globalization.CultureInfo.InvariantCulture);
+        var endText = insideUtc.AddHours(1).ToString("yyyyMMdd'T'HHmmss'Z'", System.Globalization.CultureInfo.InvariantCulture);
+        var ics = $"""
+BEGIN:VCALENDAR
+BEGIN:VEVENT
+UID:default-window-series
+SUMMARY:Evento nel periodo predefinito
+DTSTART:{{startText}}
+DTEND:{{endText}}
+END:VEVENT
+END:VCALENDAR
+""";
+
+        var result = new IcsImportService().ImportText(ics, data);
+
+        Assert.Equal(0, result.Added);
+        Assert.Equal(1, result.Updated);
+        Assert.Equal(0, result.Removed);
+        Assert.Contains(data.CalendarEvents, item => item.Id == "default-before");
+        Assert.Contains(data.CalendarEvents, item => item.Id == "default-after");
+        Assert.Contains(data.CalendarEvents, item => item.Id == "default-inside");
+        Assert.Equal(3, data.CalendarEvents.Count);
+    }
+
+    private static CalendarEvent IcsOccurrence(string id, string uid, DateTimeOffset startsAt) => new()
+    {
+        Id = id,
+        Source = CalendarEventSource.Ics,
+        ExternalId = $"{uid}#{startsAt.ToUniversalTime():O}",
+        Title = "Titolo precedente",
+        Category = CalendarEventCategory.Lecture,
+        StartsAt = startsAt,
+        EndsAt = startsAt.AddHours(1),
+        TimeZoneId = "UTC",
+        Verification = CalendarEventVerification.Unverified
+    };
+
+    [Fact]
     public void CalendarCrudValidatesIntervalsAndKeepsMidnightEventsSeparate()
     {
         var data = Data();
