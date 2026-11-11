@@ -39,10 +39,17 @@ public partial class MainWindow : Wpf.Ui.Controls.FluentWindow
         SettingsPage.ShowPrivacyInventory_ClickRequested += ShowPrivacyInventory_Click;
         SettingsPage.ExportDiagnostics_ClickRequested += ExportDiagnostics_Click;
         SettingsPage.DeleteAllPrivacyData_ClickRequested += DeleteAllPrivacyData_Click;
+        // NavigationView creates its internal content presenter in OnApplyTemplate.
+        // The window constructor runs before that template is guaranteed to exist,
+        // so defer ReplaceContent until the visual tree is loaded.
         RootLayout.Children.Remove(MainTabs);
         MainTabs.Visibility = Visibility.Visible;
-        RootNavigationView.ReplaceContent(MainTabs);
-        NavigateToTab(0);
+        Loaded += (_, _) =>
+        {
+            if (!RootNavigationView.ReplaceContent(MainTabs))
+                throw new InvalidOperationException("Impossibile inizializzare il contenuto della navigazione.");
+            NavigateToTab(0);
+        };
         _aiCredentials = aiCredentials;
         _aiPreferences = aiPreferences;
         _privacy = privacy;
