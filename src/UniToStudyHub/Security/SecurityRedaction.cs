@@ -92,9 +92,11 @@ public static class SecurityRedaction
     public static string ExceptionForLog(Exception exception)
     {
         ArgumentNullException.ThrowIfNull(exception);
-        var builder = new StringBuilder();
-        builder.Append(exception.GetType().Name).Append(": ").Append(ForLog(exception.Message, 1000));
-        return builder.ToString();
+        // Keep the full sanitized exception chain and stack trace in the local
+        // log. This is essential for diagnosing startup failures without asking
+        // users to expose raw logs; ForLog redacts secrets and personal paths,
+        // removes control characters, and caps the resulting entry.
+        return ForLog(exception.ToString(), 3500);
     }
 
     /// <summary>
