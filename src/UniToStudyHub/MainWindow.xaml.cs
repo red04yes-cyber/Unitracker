@@ -21,6 +21,10 @@ public partial class MainWindow : Wpf.Ui.Controls.FluentWindow
         StudyDataImportService dataImport)
     {
         InitializeComponent();
+        RootLayout.Children.Remove(MainTabs);
+        MainTabs.Visibility = Visibility.Visible;
+        RootNavigationView.ReplaceContent(MainTabs);
+        NavigateToTab(0);
         _aiCredentials = aiCredentials;
         _aiPreferences = aiPreferences;
         _privacy = privacy;
@@ -462,13 +466,44 @@ public partial class MainWindow : Wpf.Ui.Controls.FluentWindow
             viewModel.Workspace.RemoveTaskCommand.Execute(null);
     }
 
+    private void NavigationItem_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is Wpf.Ui.Controls.NavigationViewItem item &&
+            int.TryParse(item.Tag?.ToString(), out var index))
+        {
+            NavigateToTab(index);
+        }
+    }
+
+    private void NavigateToTab(int index)
+    {
+        if (index < 0 || index >= MainTabs.Items.Count)
+            return;
+
+        MainTabs.SelectedIndex = index;
+
+        var navigationItems = RootNavigationView.MenuItems
+            .Cast<object>()
+            .Concat(RootNavigationView.FooterMenuItems.Cast<object>())
+            .OfType<Wpf.Ui.Controls.NavigationViewItem>()
+            .ToArray();
+
+        foreach (var item in navigationItems)
+            item.Deactivate(RootNavigationView);
+
+        var selectedItem = navigationItems.FirstOrDefault(item =>
+            int.TryParse(item.Tag?.ToString(), out var itemIndex) && itemIndex == index);
+
+        selectedItem?.Activate(RootNavigationView);
+    }
+
     private void NavigateToSubjects_Click(object sender, RoutedEventArgs e)
     {
-        MainTabs.SelectedIndex = 1;
+        NavigateToTab(1);
     }
 
     private void NavigateToSettings_Click(object sender, RoutedEventArgs e)
     {
-        MainTabs.SelectedIndex = 6;
+        NavigateToTab(6);
     }
 }
