@@ -44,39 +44,39 @@
             <ui:NavigationView.MenuItems>
                 <ui:NavigationViewItem AutomationProperties.AutomationId="Navigation.Today" Content="Oggi" Tag="0" Click="NavigationItem_Click">
                     <ui:NavigationViewItem.Icon>
-                        <ui:SymbolIcon Symbol="Home24" />
+                        <ui:SymbolIcon Symbol="Home24" FontSize="18" Foreground="#53627A" />
                     </ui:NavigationViewItem.Icon>
                 </ui:NavigationViewItem>
                 <ui:NavigationViewItem AutomationProperties.AutomationId="Navigation.Courses" Content="Materie" Tag="1" Click="NavigationItem_Click">
                     <ui:NavigationViewItem.Icon>
-                        <ui:SymbolIcon Symbol="BookOpen24" />
+                        <ui:SymbolIcon Symbol="BookOpen24" FontSize="18" Foreground="#53627A" />
                     </ui:NavigationViewItem.Icon>
                 </ui:NavigationViewItem>
                 <ui:NavigationViewItem AutomationProperties.AutomationId="Navigation.Calendar" Content="Calendario" Tag="2" Click="NavigationItem_Click">
                     <ui:NavigationViewItem.Icon>
-                        <ui:SymbolIcon Symbol="CalendarLtr24" />
+                        <ui:SymbolIcon Symbol="CalendarLtr24" FontSize="18" Foreground="#53627A" />
                     </ui:NavigationViewItem.Icon>
                 </ui:NavigationViewItem>
                 <ui:NavigationViewItem AutomationProperties.AutomationId="Navigation.StudyLab" Content="Studio Lab" Tag="3" Click="NavigationItem_Click">
                     <ui:NavigationViewItem.Icon>
-                        <ui:SymbolIcon Symbol="BrainCircuit24" />
+                        <ui:SymbolIcon Symbol="BrainCircuit24" FontSize="18" Foreground="#53627A" />
                     </ui:NavigationViewItem.Icon>
                 </ui:NavigationViewItem>
                 <ui:NavigationViewItem AutomationProperties.AutomationId="Navigation.Academy" Content="Accademia" Tag="4" Click="NavigationItem_Click">
                     <ui:NavigationViewItem.Icon>
-                        <ui:SymbolIcon Symbol="HatGraduation24" />
+                        <ui:SymbolIcon Symbol="HatGraduation24" FontSize="18" Foreground="#53627A" />
                     </ui:NavigationViewItem.Icon>
                 </ui:NavigationViewItem>
                 <ui:NavigationViewItem AutomationProperties.AutomationId="Navigation.Progress" Content="Progressi" Tag="5" Click="NavigationItem_Click">
                     <ui:NavigationViewItem.Icon>
-                        <ui:SymbolIcon Symbol="ChartMultiple24" />
+                        <ui:SymbolIcon Symbol="ChartMultiple24" FontSize="18" Foreground="#53627A" />
                     </ui:NavigationViewItem.Icon>
                 </ui:NavigationViewItem>
             </ui:NavigationView.MenuItems>
             <ui:NavigationView.FooterMenuItems>
                 <ui:NavigationViewItem AutomationProperties.AutomationId="Navigation.Settings" Content="Impostazioni" Tag="6" Click="NavigationItem_Click">
                     <ui:NavigationViewItem.Icon>
-                        <ui:SymbolIcon Symbol="Settings24" />
+                        <ui:SymbolIcon Symbol="Settings24" FontSize="18" Foreground="#53627A" />
                     </ui:NavigationViewItem.Icon>
                 </ui:NavigationViewItem>
             </ui:NavigationView.FooterMenuItems>
