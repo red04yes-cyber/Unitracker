@@ -4,7 +4,7 @@
     <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
         <StackPanel Margin="32,30,32,36">
             <TextBlock Text="ORGANIZZAZIONE" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource AccentBrush}"/>
-            <TextBlock Text="Calendario" Style="{StaticResource PageTitleStyle}" Margin="0,7,0,4"/>
+            <TextBlock AutomationProperties.AutomationId="PageHeading.Calendar" Text="Calendario" Style="{StaticResource PageTitleStyle}" Margin="0,7,0,4"/>
             <TextBlock Text="Lezioni, esami, scadenze e sessioni di studio. Ogni evento conserva la propria provenienza." Style="{StaticResource PageSubtitleStyle}" Margin="0,0,0,22"/>
             <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,16">
                 <StackPanel>
