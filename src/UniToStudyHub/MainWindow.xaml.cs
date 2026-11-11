@@ -22,6 +22,23 @@ public partial class MainWindow : Wpf.Ui.Controls.FluentWindow
     {
         InitializeComponent();
         DashboardPage.NavigateToSubjectsRequested += (_, _) => NavigateToTab(1);
+        CoursesPage.CourseFilter_CheckedRequested += CourseFilter_Checked;
+        CalendarPage.DeleteCalendarEvent_ClickRequested += DeleteCalendarEvent_Click;
+        StudyLabPage.RemoveStudyTask_ClickRequested += RemoveStudyTask_Click;
+        AcademyPage.ImportPdf_ClickRequested += ImportPdf_Click;
+        ProgressPage.ExportProgress_ClickRequested += ExportProgress_Click;
+        SettingsPage.SaveAiSettings_ClickRequested += SaveAiSettings_Click;
+        SettingsPage.RevokeAiConsent_ClickRequested += RevokeAiConsent_Click;
+        SettingsPage.MoodleTokenBox_PasswordChangedRequested += MoodleTokenBox_PasswordChanged;
+        SettingsPage.ConnectMoodle_ClickRequested += ConnectMoodle_Click;
+        SettingsPage.DisconnectMoodle_ClickRequested += DisconnectMoodle_Click;
+        SettingsPage.RestoreBackup_ClickRequested += RestoreBackup_Click;
+        SettingsPage.ExportAllData_ClickRequested += ExportAllData_Click;
+        SettingsPage.ImportAllData_ClickRequested += ImportAllData_Click;
+        SettingsPage.ResetPrivacy_ClickRequested += ResetPrivacy_Click;
+        SettingsPage.ShowPrivacyInventory_ClickRequested += ShowPrivacyInventory_Click;
+        SettingsPage.ExportDiagnostics_ClickRequested += ExportDiagnostics_Click;
+        SettingsPage.DeleteAllPrivacyData_ClickRequested += DeleteAllPrivacyData_Click;
         RootLayout.Children.Remove(MainTabs);
         MainTabs.Visibility = Visibility.Visible;
         RootNavigationView.ReplaceContent(MainTabs);
@@ -33,14 +50,14 @@ public partial class MainWindow : Wpf.Ui.Controls.FluentWindow
         var savedAi = _aiPreferences.Load();
         if (savedAi is not null)
         {
-            AiProviderBox.SelectedValue = savedAi.Provider;
-            AiModelBox.Text = savedAi.Model;
-            AiConsentBox.IsChecked = savedAi.ConsentGranted;
+            SettingsPage.AiProviderBox.SelectedValue = savedAi.Provider;
+            SettingsPage.AiModelBox.Text = savedAi.Model;
+            SettingsPage.AiConsentBox.IsChecked = savedAi.ConsentGranted;
         }
         else
         {
-            AiProviderBox.SelectedValue = "openai";
-            AiModelBox.Text = "gpt-4.1-mini";
+            SettingsPage.AiProviderBox.SelectedValue = "openai";
+            SettingsPage.AiModelBox.Text = "gpt-4.1-mini";
         }
         SystemThemeWatcher.Watch(this, Wpf.Ui.Controls.WindowBackdropType.Mica);
         DataContext = viewModel;
@@ -56,9 +73,9 @@ public partial class MainWindow : Wpf.Ui.Controls.FluentWindow
 
     private void SaveAiSettings_Click(object sender, RoutedEventArgs e)
     {
-        var provider = AiProviderBox.SelectedValue as string;
-        var model = AiModelBox.Text.Trim();
-        var consent = AiConsentBox.IsChecked == true;
+        var provider = SettingsPage.AiProviderBox.SelectedValue as string;
+        var model = SettingsPage.AiModelBox.Text.Trim();
+        var consent = SettingsPage.AiConsentBox.IsChecked == true;
         if (provider is not ("openai" or "ollama" or "gemini"))
         {
             MessageBox.Show(this, "Seleziona un provider valido.", "Configurazione AI",
@@ -74,8 +91,8 @@ public partial class MainWindow : Wpf.Ui.Controls.FluentWindow
 
         try
         {
-            if ((provider is "openai" or "gemini") && !string.IsNullOrWhiteSpace(AiApiKeyBox.Password))
-                _aiCredentials.SaveKey(provider, AiApiKeyBox.Password);
+            if ((provider is "openai" or "gemini") && !string.IsNullOrWhiteSpace(SettingsPage.AiApiKeyBox.Password))
+                _aiCredentials.SaveKey(provider, SettingsPage.AiApiKeyBox.Password);
             if ((provider is "openai" or "gemini") && consent &&
                 string.IsNullOrWhiteSpace(_aiCredentials.LoadKey(provider)) &&
                 string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable(provider == "gemini" ? "STUDYHUB_GEMINI_API_KEY" : "STUDYHUB_OPENAI_API_KEY")))
@@ -86,7 +103,7 @@ public partial class MainWindow : Wpf.Ui.Controls.FluentWindow
             }
 
             _aiPreferences.Save(new AiProviderPreferences(provider, model, consent));
-            AiApiKeyBox.Clear();
+            SettingsPage.AiApiKeyBox.Clear();
             MessageBox.Show(this,
                 "Configurazione salvata sul dispositivo. Chiudi e riapri UniToStudyHub per applicare la selezione del provider. Nessuna chiave è stata salvata nei file di configurazione.",
                 "Configurazione AI salvata", MessageBoxButton.OK, MessageBoxImage.Information);
@@ -100,9 +117,9 @@ public partial class MainWindow : Wpf.Ui.Controls.FluentWindow
 
     private void RevokeAiConsent_Click(object sender, RoutedEventArgs e)
     {
-        var provider = AiProviderBox.SelectedValue as string;
+        var provider = SettingsPage.AiProviderBox.SelectedValue as string;
         if (provider is not ("openai" or "ollama" or "gemini")) provider = "openai";
-        var model = string.IsNullOrWhiteSpace(AiModelBox.Text) ? "gpt-4.1-mini" : AiModelBox.Text.Trim();
+        var model = string.IsNullOrWhiteSpace(SettingsPage.AiModelBox.Text) ? "gpt-4.1-mini" : SettingsPage.AiModelBox.Text.Trim();
         var confirm = MessageBox.Show(this,
             "Il consenso AI verrà revocato e l'app si chiuderà per interrompere immediatamente la sessione del provider. Le chiavi protette resteranno salvate, ma non verranno usate senza un nuovo consenso.",
             "Revoca consenso AI", MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No);
@@ -110,7 +127,7 @@ public partial class MainWindow : Wpf.Ui.Controls.FluentWindow
         try
         {
             _aiPreferences.Save(new AiProviderPreferences(provider, model, false));
-            AiConsentBox.IsChecked = false;
+            SettingsPage.AiConsentBox.IsChecked = false;
             Application.Current.Shutdown();
         }
         catch (Exception ex)
@@ -208,7 +225,7 @@ public partial class MainWindow : Wpf.Ui.Controls.FluentWindow
 
     private async void ResetPrivacy_Click(object sender, RoutedEventArgs e)
     {
-        var scope = PrivacyResetScopeBox.SelectedIndex switch
+        var scope = SettingsPage.PrivacyResetScopeBox.SelectedIndex switch
         {
             0 => PrivacyResetScope.StudyLab,
             1 => PrivacyResetScope.Calendar,
@@ -232,7 +249,7 @@ public partial class MainWindow : Wpf.Ui.Controls.FluentWindow
         try
         {
             var result = await _privacy.ResetAsync(scope, confirmed: true,
-                createSafetyBackup: PrivacySafetyBackupBox.IsChecked == true);
+                createSafetyBackup: SettingsPage.PrivacySafetyBackupBox.IsChecked == true);
             MessageBox.Show(this,
                 $"Reset completato. Record rimossi: {result.DeletedRecords}. File rimossi: {result.DeletedFiles}. " +
                 (result.CredentialsRemoved ? "Credenziali Moodle rimosse. " : string.Empty) +
@@ -272,7 +289,7 @@ public partial class MainWindow : Wpf.Ui.Controls.FluentWindow
 
     private async void DeleteAllPrivacyData_Click(object sender, RoutedEventArgs e)
     {
-        var includeBackups = PrivacyDeleteBackupsBox.IsChecked == true;
+        var includeBackups = SettingsPage.PrivacyDeleteBackupsBox.IsChecked == true;
         var backupText = includeBackups
             ? "Anche tutti i backup cifrati verranno eliminati."
             : "I backup cifrati esistenti resteranno sul dispositivo.";
@@ -343,10 +360,10 @@ public partial class MainWindow : Wpf.Ui.Controls.FluentWindow
         if (DataContext is not MainViewModel viewModel) return;
         await viewModel.ConnectMoodleAsync();
         if (viewModel.IsMoodleConnected)
-            MoodleTokenBox.Clear();
+            SettingsPage.MoodleTokenBox.Clear();
     }
 
-    private void MoodleTokenBox_PasswordChanged(object sender, RoutedEventArgs e)
+    private void SettingsPage.MoodleTokenBox_PasswordChanged(object sender, RoutedEventArgs e)
     {
         if (DataContext is MainViewModel viewModel && sender is PasswordBox passwordBox)
             viewModel.MoodleToken = passwordBox.Password;
@@ -416,7 +433,7 @@ public partial class MainWindow : Wpf.Ui.Controls.FluentWindow
         if (result != MessageBoxResult.Yes) return;
 
         viewModel.DisconnectMoodleCommand.Execute(null);
-        MoodleTokenBox.Clear();
+        SettingsPage.MoodleTokenBox.Clear();
     }
 
     private void RestoreBackup_Click(object sender, RoutedEventArgs e)
