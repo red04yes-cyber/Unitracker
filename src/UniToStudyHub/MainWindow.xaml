@@ -267,7 +267,9 @@
                                 <TextBlock Text="FOCUS REGISTRATO" Style="{StaticResource KpiLabelStyle}"/>
                                 <TextBlock Text="{Binding Workspace.FocusMinutesDisplay}" FontSize="24"
                                            FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}" Margin="0,8,0,2"/>
-                                <TextBlock Text="Periodo: {Binding Workspace.ProgressPeriodDisplay}" FontSize="10"
+                                <TextBlock Text="Periodo di riferimento" FontSize="10"
+                                           Foreground="{DynamicResource MutedBrush}"/>
+                                <TextBlock Text="{Binding Workspace.ProgressPeriodDisplay}" FontSize="10"
                                            Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap"/>
                             </StackPanel>
                         </ui:CardControl>
