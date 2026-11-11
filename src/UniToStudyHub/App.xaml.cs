@@ -142,6 +142,7 @@ public partial class App : System.Windows.Application
             services.AddSingleton<MainWindow>();
 
             _serviceProvider = services.BuildServiceProvider(validateScopes: true);
+            AppDiagnostics.Info("startup", "Dependency container configured.");
             await using var scope = _serviceProvider.CreateAsyncScope();
 
             var factory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<StudyHubDbContext>>();
@@ -150,14 +151,18 @@ public partial class App : System.Windows.Application
                 await StudyHubDatabase.UpgradePreliminaryMigrationHistoryAsync(db);
                 await db.Database.MigrateAsync();
             }
+            AppDiagnostics.Info("startup", "Database migrations completed.");
 
             var migrator = scope.ServiceProvider.GetRequiredService<LegacyJsonMigrator>();
             await migrator.MigrateAsync();
+            AppDiagnostics.Info("startup", "Legacy data migration completed.");
 
             var viewModel = _serviceProvider.GetRequiredService<MainViewModel>();
             await viewModel.InitializeAsync();
+            AppDiagnostics.Info("startup", "Workspace initialized.");
 
             var window = _serviceProvider.GetRequiredService<MainWindow>();
+            AppDiagnostics.Info("startup", "Main window constructed.");
             MainWindow = window;
             window.Show();
             AppDiagnostics.Info("startup", "Main window shown successfully.");
