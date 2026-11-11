@@ -231,7 +231,9 @@ public sealed class StudyPlannerService
         ArgumentNullException.ThrowIfNull(preview);
         ArgumentNullException.ThrowIfNull(preview.Options);
         ArgumentNullException.ThrowIfNull(preview.Blocks);
+        ArgumentNullException.ThrowIfNull(preview.Warnings);
 
+        var blocks = preview.Blocks.ToArray();
         var normalizedOptions = ValidateOptions(preview.Options);
         if (preview.From != normalizedOptions.From ||
             preview.To != normalizedOptions.To ||
@@ -253,9 +255,9 @@ public sealed class StudyPlannerService
         var replaceableSet = new HashSet<CalendarEvent>(replaceableBlocks);
 
         var plannedMinutesByTask = new Dictionary<string, long>(StringComparer.Ordinal);
-        foreach (var candidate in preview.Blocks)
+        foreach (var candidate in blocks)
         {
-            if (string.IsNullOrWhiteSpace(candidate.TaskId)) continue;
+            if (candidate is null || string.IsNullOrWhiteSpace(candidate.TaskId)) continue;
             plannedMinutesByTask[candidate.TaskId] =
                 plannedMinutesByTask.GetValueOrDefault(candidate.TaskId) + candidate.PlannedMinutes;
         }
@@ -266,8 +268,15 @@ public sealed class StudyPlannerService
         var conflicts = 0;
         var skipped = 0;
 
-        foreach (var block in preview.Blocks)
+        foreach (var block in blocks)
         {
+            if (block is null)
+            {
+                skipped++;
+                warnings.Add("Un blocco nullo nell'anteprima è stato ignorato.");
+                continue;
+            }
+
             if (string.IsNullOrWhiteSpace(block.TaskId))
             {
                 skipped++;
@@ -364,7 +373,7 @@ public sealed class StudyPlannerService
             stagedExternalIds.Add(externalId);
         }
 
-        if (normalizedOptions.ReplaceExistingGeneratedBlocks && preview.Blocks.Count == 0)
+        if (normalizedOptions.ReplaceExistingGeneratedBlocks && blocks.Length == 0)
         {
             warnings.Add("L'anteprima non contiene blocchi: il piano esistente è stato conservato. Usa la rimozione esplicita per svuotarlo.");
             return new StudyPlanApplyResult(0, alreadyPresent, conflicts, skipped, warnings);
