@@ -109,13 +109,13 @@ public static class UniToStudyHubSmokeDesktop
 '@
 
     $navigationChecks = @(
-        @{ Name = 'Materie'; NavigationId = 'Navigation.Courses'; PageId = 'Page.Courses' },
-        @{ Name = 'Calendario'; NavigationId = 'Navigation.Calendar'; PageId = 'Page.Calendar' },
-        @{ Name = 'Studio Lab'; NavigationId = 'Navigation.StudyLab'; PageId = 'Page.StudyLab' },
-        @{ Name = 'Accademia'; NavigationId = 'Navigation.Academy'; PageId = 'Page.Academy' },
-        @{ Name = 'Progressi'; NavigationId = 'Navigation.Progress'; PageId = 'Page.Progress' },
-        @{ Name = 'Impostazioni'; NavigationId = 'Navigation.Settings'; PageId = 'Page.Settings' },
-        @{ Name = 'Oggi'; NavigationId = 'Navigation.Today'; PageId = 'Page.Dashboard' }
+        @{ Name = 'Materie'; NavigationId = 'Navigation.Courses'; TabId = 'PageTab.Courses' },
+        @{ Name = 'Calendario'; NavigationId = 'Navigation.Calendar'; TabId = 'PageTab.Calendar' },
+        @{ Name = 'Studio Lab'; NavigationId = 'Navigation.StudyLab'; TabId = 'PageTab.StudyLab' },
+        @{ Name = 'Accademia'; NavigationId = 'Navigation.Academy'; TabId = 'PageTab.Academy' },
+        @{ Name = 'Progressi'; NavigationId = 'Navigation.Progress'; TabId = 'PageTab.Progress' },
+        @{ Name = 'Impostazioni'; NavigationId = 'Navigation.Settings'; TabId = 'PageTab.Settings' },
+        @{ Name = 'Oggi'; NavigationId = 'Navigation.Today'; TabId = 'PageTab.Dashboard' }
     )
 
     foreach ($check in $navigationChecks) {
@@ -136,21 +136,34 @@ public static class UniToStudyHubSmokeDesktop
             [int][Math]::Round($point.X),
             [int][Math]::Round($point.Y))
 
-        $heading = $null
+        $selectedTab = $null
         $navigationDeadline = (Get-Date).AddSeconds(5)
         do {
             Start-Sleep -Milliseconds 200
             $automationRoot = [System.Windows.Automation.AutomationElement]::FromHandle($process.MainWindowHandle)
-            $headingCondition = [System.Windows.Automation.PropertyCondition]::new(
+            $tabControlCondition = [System.Windows.Automation.PropertyCondition]::new(
                 [System.Windows.Automation.AutomationElement]::AutomationIdProperty,
-                $check.PageId)
-            $heading = $automationRoot.FindFirst(
+                'MainTabs')
+            $tabControl = $automationRoot.FindFirst(
                 [System.Windows.Automation.TreeScope]::Descendants,
-                $headingCondition)
-        } while ($null -eq $heading -and (Get-Date) -lt $navigationDeadline)
+                $tabControlCondition)
+            if ($null -ne $tabControl) {
+                try {
+                    $selectionPattern = $tabControl.GetCurrentPattern(
+                        [System.Windows.Automation.SelectionPattern]::Pattern)
+                    $selectedItems = $selectionPattern.Current.GetSelection()
+                    if ($selectedItems.Count -gt 0) {
+                        $selectedTab = $selectedItems[0]
+                    }
+                } catch {
+                    $selectedTab = $null
+                }
+            }
+        } while (($null -eq $selectedTab -or $selectedTab.Current.AutomationId -ne $check.TabId) -and (Get-Date) -lt $navigationDeadline)
 
-        if ($null -eq $heading -or $heading.Current.IsOffscreen) {
-            throw "Navigation to '$($check.Name)' did not display its expected page view '$($check.PageId)'."
+        if ($null -eq $selectedTab -or $selectedTab.Current.AutomationId -ne $check.TabId) {
+            $actualTab = if ($null -eq $selectedTab) { '<none>' } else { $selectedTab.Current.AutomationId }
+            throw "Navigation to '$($check.Name)' selected '$actualTab' instead of '$($check.TabId)'."
         }
         Write-Host "Navigation smoke passed: $($check.Name)."
     }
