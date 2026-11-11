@@ -593,4 +593,23 @@ public sealed class StudyPlannerServiceTests
         Assert.Single(data.CalendarEvents);
     }
 
+
+    [Fact]
+    public void ApplySkipsNullBlocksInMalformedPreview()
+    {
+        var data = Data();
+        AddTask(data, minutes: 50);
+        var service = new StudyPlannerService();
+        var preview = service.CreatePreview(data, Options(), Now) with
+        {
+            Blocks = new StudyPlanBlock[] { null! }
+        };
+
+        var result = service.Apply(data, preview, Now);
+
+        Assert.Equal(0, result.Added);
+        Assert.Equal(1, result.Skipped);
+        Assert.Empty(data.CalendarEvents);
+    }
+
 }
