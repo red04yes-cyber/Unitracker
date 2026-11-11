@@ -21,6 +21,7 @@ public partial class MainWindow : Wpf.Ui.Controls.FluentWindow
         StudyDataImportService dataImport)
     {
         InitializeComponent();
+        DashboardPage.NavigateToSubjectsRequested += (_, _) => NavigateToTab(1);
         RootLayout.Children.Remove(MainTabs);
         MainTabs.Visibility = Visibility.Visible;
         RootNavigationView.ReplaceContent(MainTabs);
