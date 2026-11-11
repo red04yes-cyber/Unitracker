@@ -109,13 +109,13 @@ public static class UniToStudyHubSmokeDesktop
 '@
 
     $navigationChecks = @(
-        @{ Name = 'Materie'; NavigationId = 'Navigation.Courses'; HeadingId = 'PageHeading.Courses' },
-        @{ Name = 'Calendario'; NavigationId = 'Navigation.Calendar'; HeadingId = 'PageHeading.Calendar' },
-        @{ Name = 'Studio Lab'; NavigationId = 'Navigation.StudyLab'; HeadingId = 'PageHeading.StudyLab' },
-        @{ Name = 'Accademia'; NavigationId = 'Navigation.Academy'; HeadingId = 'PageHeading.Academy' },
-        @{ Name = 'Progressi'; NavigationId = 'Navigation.Progress'; HeadingId = 'PageHeading.Progress' },
-        @{ Name = 'Impostazioni'; NavigationId = 'Navigation.Settings'; HeadingId = 'PageHeading.Settings' },
-        @{ Name = 'Oggi'; NavigationId = 'Navigation.Today'; HeadingId = 'PageHeading.Dashboard' }
+        @{ Name = 'Materie'; NavigationId = 'Navigation.Courses'; PageId = 'Page.Courses' },
+        @{ Name = 'Calendario'; NavigationId = 'Navigation.Calendar'; PageId = 'Page.Calendar' },
+        @{ Name = 'Studio Lab'; NavigationId = 'Navigation.StudyLab'; PageId = 'Page.StudyLab' },
+        @{ Name = 'Accademia'; NavigationId = 'Navigation.Academy'; PageId = 'Page.Academy' },
+        @{ Name = 'Progressi'; NavigationId = 'Navigation.Progress'; PageId = 'Page.Progress' },
+        @{ Name = 'Impostazioni'; NavigationId = 'Navigation.Settings'; PageId = 'Page.Settings' },
+        @{ Name = 'Oggi'; NavigationId = 'Navigation.Today'; PageId = 'Page.Dashboard' }
     )
 
     foreach ($check in $navigationChecks) {
@@ -143,14 +143,14 @@ public static class UniToStudyHubSmokeDesktop
             $automationRoot = [System.Windows.Automation.AutomationElement]::FromHandle($process.MainWindowHandle)
             $headingCondition = [System.Windows.Automation.PropertyCondition]::new(
                 [System.Windows.Automation.AutomationElement]::AutomationIdProperty,
-                $check.HeadingId)
+                $check.PageId)
             $heading = $automationRoot.FindFirst(
                 [System.Windows.Automation.TreeScope]::Descendants,
                 $headingCondition)
         } while ($null -eq $heading -and (Get-Date) -lt $navigationDeadline)
 
         if ($null -eq $heading -or $heading.Current.IsOffscreen) {
-            throw "Navigation to '$($check.Name)' did not display its expected page heading '$($check.HeadingId)'."
+            throw "Navigation to '$($check.Name)' did not display its expected page view '$($check.PageId)'."
         }
         Write-Host "Navigation smoke passed: $($check.Name)."
     }
