@@ -1,0 +1,138 @@
+<UserControl x:Class="UniToStudyHub.Views.SettingsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+        <StackPanel Margin="32,30,32,36">
+            <TextBlock Text="CONFIGURAZIONE" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource AccentBrush}"/>
+            <TextBlock Text="Impostazioni" Style="{StaticResource PageTitleStyle}" Margin="0,7,0,4"/>
+            <TextBlock Text="Gestisci integrazioni, dati locali e copie di sicurezza." Style="{StaticResource PageSubtitleStyle}" Margin="0,0,0,22"/>
+            <Border Style="{StaticResource CardBorderStyle}" MaxWidth="860" HorizontalAlignment="Left" Margin="0,0,0,14">
+                <StackPanel>
+                    <TextBlock Text="AI Study Director · Provider" Style="{StaticResource SectionTitleStyle}"/>
+                    <TextBlock Text="Scegli OpenAI, Gemini (cloud) oppure Ollama (locale). La scelta e il consenso vengono salvati sul dispositivo; la chiave OpenAI è protetta con Windows DPAPI. Le modifiche si applicano al prossimo avvio." FontSize="11" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,6,0,12"/>
+                    <TextBlock Text="Provider" Style="{StaticResource KpiLabelStyle}" Margin="0,0,0,5"/>
+                    <ComboBox x:Name="AiProviderBox" SelectedValuePath="Tag" SelectedValue="openai" MaxWidth="360" HorizontalAlignment="Left">
+                        <ComboBoxItem Content="OpenAI · Cloud" Tag="openai"/>
+                        <ComboBoxItem Content="Ollama · Locale" Tag="ollama"/>
+                        <ComboBoxItem Content="Gemini · Google AI" Tag="gemini"/>
+                    </ComboBox>
+                    <TextBlock Text="Modello" Style="{StaticResource KpiLabelStyle}" Margin="0,12,0,5"/>
+                    <TextBox x:Name="AiModelBox" Text="gpt-4.1-mini" MaxWidth="360" HorizontalAlignment="Left"/>
+                    <TextBlock Text="Chiave API OpenAI / Gemini (inserisci quella del provider selezionato; vuoto = mantieni quella salvata)" Style="{StaticResource KpiLabelStyle}" Margin="0,12,0,5"/>
+                    <PasswordBox x:Name="AiApiKeyBox" MaxWidth="520" HorizontalAlignment="Left" Padding="11,9"/>
+                    <CheckBox x:Name="AiConsentBox" Content="Autorizzo esplicitamente l'invio dei dati richiesti alle funzioni AI al provider selezionato" Margin="0,14,0,0" IsChecked="False"/>
+                    <WrapPanel Margin="0,14,0,0">
+                        <Button Content="Salva configurazione AI" Click="SaveAiSettings_Click" Margin="0,0,8,0"/>
+                        <Button Content="Revoca consenso AI" Click="RevokeAiConsent_Click" Style="{StaticResource QuietButtonStyle}"/>
+                    </WrapPanel>
+                    <TextBlock Text="Per Ollama: avvia il servizio locale e scarica il modello scelto. Per Gemini usa un modello disponibile nel tuo progetto Google AI Studio (es. gemini-2.5-flash)." FontSize="10" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,10,0,0"/>
+                    <TextBlock Text="{Binding Workspace.AiStatusMessage}" FontSize="10" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,8,0,0"/>
+                </StackPanel>
+            </Border>
+            <Border Style="{StaticResource CardBorderStyle}" MaxWidth="860" HorizontalAlignment="Left" Margin="0,0,0,14">
+                <StackPanel>
+                    <TextBlock Text="Profilo universitario" Style="{StaticResource SectionTitleStyle}"/>
+                    <TextBlock Text="Questi dati sono personali e organizzativi: non vengono presentati come informazioni ufficiali UniTo." FontSize="11" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,6,0,14"/>
+                    <TextBlock Text="Corso di laurea" Style="{StaticResource KpiLabelStyle}" Margin="0,0,0,5"/>
+                    <TextBox Text="{Binding Workspace.DegreeProgramNameInput, UpdateSourceTrigger=PropertyChanged}"/>
+                    <Grid Margin="0,10,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                        <StackPanel><TextBlock Text="Codice / classe" Style="{StaticResource KpiLabelStyle}" Margin="0,0,0,5"/><TextBox Text="{Binding Workspace.DegreeProgramCodeInput, UpdateSourceTrigger=PropertyChanged}"/></StackPanel>
+                        <StackPanel Grid.Column="1" Margin="10,0,0,0"><TextBlock Text="CFU totali previsti" Style="{StaticResource KpiLabelStyle}" Margin="0,0,0,5"/><TextBox Text="{Binding Workspace.DegreeTotalCfuInput, UpdateSourceTrigger=PropertyChanged}" ToolTip="Lascia vuoto se non vuoi configurare il totale"/></StackPanel>
+                    </Grid>
+                    <Grid Margin="0,10,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                        <StackPanel><TextBlock Text="Anno di iscrizione" Style="{StaticResource KpiLabelStyle}" Margin="0,0,0,5"/><TextBox Text="{Binding Workspace.EnrollmentYearInput, UpdateSourceTrigger=PropertyChanged}"/></StackPanel>
+                        <StackPanel Grid.Column="1" Margin="10,0,0,0"><TextBlock Text="Anno accademico corrente" Style="{StaticResource KpiLabelStyle}" Margin="0,0,0,5"/><TextBox Text="{Binding Workspace.CurrentAcademicYearInput, UpdateSourceTrigger=PropertyChanged}"/></StackPanel>
+                    </Grid>
+                    <Grid Margin="0,10,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                        <StackPanel><TextBlock Text="Obiettivo laurea" Style="{StaticResource KpiLabelStyle}" Margin="0,0,0,5"/><DatePicker SelectedDate="{Binding Workspace.GraduationTargetInput, UpdateSourceTrigger=PropertyChanged}"/></StackPanel>
+                        <StackPanel Grid.Column="1" Margin="10,0,0,0"><TextBlock Text="Ore di studio a settimana" Style="{StaticResource KpiLabelStyle}" Margin="0,0,0,5"/><TextBox Text="{Binding Workspace.WeeklyStudyHoursInput, UpdateSourceTrigger=PropertyChanged}"/></StackPanel>
+                    </Grid>
+                    <TextBlock Text="Limite giornaliero (minuti)" Style="{StaticResource KpiLabelStyle}" Margin="0,10,0,5"/>
+                    <TextBox Text="{Binding Workspace.MaxDailyStudyMinutesInput, UpdateSourceTrigger=PropertyChanged}" MaxWidth="220" HorizontalAlignment="Left"/>
+                    <TextBlock Text="Preferenze di studio" Style="{StaticResource KpiLabelStyle}" Margin="0,10,0,5"/>
+                    <TextBox Text="{Binding Workspace.StudyPreferencesInput, UpdateSourceTrigger=PropertyChanged}" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="64"/>
+                    <Button Content="Salva profilo" Command="{Binding Workspace.SaveAcademicProfileCommand}" HorizontalAlignment="Left" Margin="0,14,0,0"/>
+                    <TextBlock Text="{Binding Workspace.WorkspaceStatus}" FontSize="10" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,9,0,0"/>
+                </StackPanel>
+            </Border>
+            <Border Style="{StaticResource CardBorderStyle}" MaxWidth="860" HorizontalAlignment="Left" Margin="0,0,0,14">
+                <StackPanel>
+                    <ToggleButton Content="Moodle · Integrazione opzionale" IsChecked="{Binding IsMoodlePanelExpanded, Mode=TwoWay}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="12" FontWeight="SemiBold" ToolTip="Apri o chiudi la configurazione Moodle"/>
+                    <StackPanel Visibility="{Binding IsMoodlePanelExpanded, Converter={StaticResource BooleanToVisibilityConverter}}" Margin="12,12,12,6">
+                        <TextBlock Text="Moodle resta facoltativo. Puoi usare tutte le altre funzioni senza collegare l'account universitario." Style="{StaticResource PageSubtitleStyle}" Margin="0,0,0,14"/>
+                        <TextBlock Text="URL della piattaforma" Style="{StaticResource KpiLabelStyle}" Margin="0,0,0,5"/>
+                        <TextBox Text="{Binding MoodleUrlInput, UpdateSourceTrigger=PropertyChanged}" MaxWidth="600" HorizontalAlignment="Stretch"/>
+                        <TextBlock Text="Token Web Services" Style="{StaticResource KpiLabelStyle}" Margin="0,14,0,5"/>
+                        <PasswordBox x:Name="MoodleTokenBox" MaxWidth="600" HorizontalAlignment="Stretch" Padding="11,9" PasswordChanged="MoodleTokenBox_PasswordChanged"/>
+                        <WrapPanel Margin="0,16,0,0">
+                            <Button Content="Verifica e salva token" Click="ConnectMoodle_Click" Margin="0,0,8,0"/>
+                            <Button Content="Sincronizza Moodle" Style="{StaticResource SecondaryButtonStyle}" Command="{Binding SyncMoodleCommand}" Margin="0,0,8,0"/>
+                            <Button Content="Disconnetti" Style="{StaticResource QuietButtonStyle}" Click="DisconnectMoodle_Click" IsEnabled="{Binding IsMoodleConnected}"/>
+                        </WrapPanel>
+                        <Border Background="{DynamicResource SubtleBrush}" CornerRadius="8" Padding="12" Margin="0,16,0,0">
+                            <TextBlock Text="{Binding MoodleStatus}" FontSize="12" Foreground="{DynamicResource InkBrush}" TextWrapping="Wrap"/>
+                        </Border>
+                        <TextBlock Text="Materiali e discussioni importati" Style="{StaticResource KpiLabelStyle}" Margin="0,14,0,6"/>
+                        <ItemsControl ItemsSource="{Binding Announcements}">
+                            <ItemsControl.ItemTemplate><DataTemplate><Border BorderBrush="{DynamicResource SubtleBrush}" BorderThickness="0,0,0,1" Padding="7"><StackPanel><TextBlock Text="{Binding Title}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}" TextWrapping="Wrap"/><TextBlock Text="{Binding CourseName}" FontSize="9" Foreground="{DynamicResource AccentBrush}"/><TextBlock Text="{Binding Summary}" FontSize="10" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap"/></StackPanel></Border></DataTemplate></ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+            <Border Style="{StaticResource CardBorderStyle}" MaxWidth="860" HorizontalAlignment="Left">
+                <StackPanel>
+                    <TextBlock Text="Dati e backup" Style="{StaticResource SectionTitleStyle}"/>
+                    <TextBlock Text="Le copie sono locali e cifrate con AES-256-GCM. Il manifest include versione e checksum; la chiave è protetta con Windows DPAPI." FontSize="11" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,6,0,12"/>
+                    <TextBlock Text="{Binding Workspace.DatabaseProtectionDisplay}" FontSize="11" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,0,0,12"/>
+                    <TextBlock Text="Cartella backup" Style="{StaticResource KpiLabelStyle}"/>
+                    <TextBox Text="{Binding Workspace.BackupDirectory, Mode=OneWay}" IsReadOnly="True" Margin="0,5,0,10"/>
+                    <Button Content="Crea backup e verifica integrità" Command="{Binding Workspace.CreateBackupCommand}" HorizontalAlignment="Left"/>
+                    <TextBlock Text="Backup disponibili" Style="{StaticResource KpiLabelStyle}" Margin="0,16,0,6"/>
+                    <ListBox ItemsSource="{Binding Workspace.BackupItems}" SelectedItem="{Binding Workspace.SelectedBackup}" MinHeight="90" MaxHeight="220">
+                        <ListBox.ItemTemplate><DataTemplate><StackPanel Margin="5"><TextBlock Text="{Binding FilePath}" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}" TextWrapping="Wrap"/><TextBlock Text="{Binding CreatedAt, StringFormat={}{0:dd/MM/yyyy HH:mm}}" FontSize="10" Foreground="{DynamicResource MutedBrush}"/><TextBlock Text="{Binding SizeBytes, StringFormat={}{0:N0} byte}" FontSize="9" Foreground="{DynamicResource MutedBrush}"/><TextBlock Text="{Binding Sha256, StringFormat='SHA-256 · {0}'}" FontSize="8" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap"/><TextBlock Text="{Binding IntegrityVerified, StringFormat=Integrità verificata: {0}}" FontSize="9" Foreground="{DynamicResource MutedBrush}"/></StackPanel></DataTemplate></ListBox.ItemTemplate>
+                    </ListBox>
+                    <TextBlock Text="Non hai ancora creato backup locali." Visibility="{Binding Workspace.NoBackups, Converter={StaticResource BooleanToVisibilityConverter}}" FontSize="10" Foreground="{DynamicResource MutedBrush}" Margin="2,7,2,0"/>
+                    <WrapPanel Margin="0,9,0,0"><Button Content="Verifica backup selezionato" Command="{Binding Workspace.VerifyBackupCommand}" Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,8,0"/><Button Content="Ripristina backup selezionato" Click="RestoreBackup_Click" IsEnabled="{Binding Workspace.HasSelectedBackup}" Style="{StaticResource QuietButtonStyle}" Margin="0,0,8,0" ToolTip="Il backup viene verificato; prima della sostituzione viene creata una copia di sicurezza"/></WrapPanel>
+                    <TextBlock Text="{Binding Workspace.BackupStatus}" FontSize="11" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,12,0,0"/><TextBlock Text="{Binding Workspace.BackupManifestSummary}" FontSize="9" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,7,0,0"/>
+                    <TextBlock Text="Prima di ripristinare, chiudi le altre istanze dell'app. Il sistema crea una copia di sicurezza del database corrente, verifica la copia selezionata e poi ricarica i dati." FontSize="10" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,7,0,0"/>
+                </StackPanel>
+            </Border>
+            <Border Style="{StaticResource CardBorderStyle}" MaxWidth="860" HorizontalAlignment="Left" Margin="0,14,0,0">
+                <StackPanel>
+                    <TextBlock Text="Portabilità dei dati" Style="{StaticResource SectionTitleStyle}"/>
+                    <TextBlock Text="Esporta tutti i dati personali in JSON oppure importa un'esportazione UniTo StudyHub. L'importazione mostra prima un'anteprima e non modifica nulla finché non confermi." FontSize="11" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,6,0,12"/>
+                    <WrapPanel>
+                        <Button Content="Esporta tutti i dati (JSON)" Click="ExportAllData_Click" Margin="0,0,8,8"/>
+                        <Button Content="Importa dati (anteprima)" Click="ImportAllData_Click" Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,8,8"/>
+                    </WrapPanel>
+                    <TextBlock Text="Merge aggiunge solo record nuovi e conserva quelli locali in conflitto. Replace sostituisce i dati dopo aver creato un backup di sicurezza cifrato. Token Moodle e chiavi AI non vengono mai trasferiti." FontSize="10" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap"/>
+                </StackPanel>
+            </Border>
+            <Border Style="{StaticResource CardBorderStyle}" MaxWidth="860" HorizontalAlignment="Left" Margin="0,14,0,0">
+                <StackPanel>
+                    <TextBlock Text="Privacy e diagnostica" Style="{StaticResource SectionTitleStyle}"/>
+                    <TextBlock Text="Le operazioni sono locali. I reset richiedono conferma; puoi creare un backup prima di eliminare i dati selezionati." FontSize="11" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,6,0,12"/>
+                    <TextBlock Text="Reset selettivo" Style="{StaticResource KpiLabelStyle}" Margin="0,0,0,5"/>
+                    <ComboBox x:Name="PrivacyResetScopeBox" SelectedIndex="0" MaxWidth="420" HorizontalAlignment="Left">
+                        <ComboBoxItem Content="Studio Lab · sessioni, task, flashcard, errori"/>
+                        <ComboBoxItem Content="Calendario · eventi locali"/>
+                        <ComboBoxItem Content="Documenti · PDF e download Moodle gestiti"/>
+                        <ComboBoxItem Content="Connessione Moodle · token e riferimenti"/>
+                    </ComboBox>
+                    <CheckBox x:Name="PrivacySafetyBackupBox" Content="Crea un backup cifrato prima del reset" IsChecked="True" Margin="0,10,0,0"/>
+                    <Button Content="Esegui reset selettivo" Click="ResetPrivacy_Click" Style="{StaticResource QuietButtonStyle}" HorizontalAlignment="Left" Margin="0,10,0,0"/>
+                    <Button Content="Mostra inventario privacy" Click="ShowPrivacyInventory_Click" Style="{StaticResource SecondaryButtonStyle}" HorizontalAlignment="Left" Margin="0,10,0,0"/>
+                    <Border Height="1" Background="{DynamicResource BorderBrush}" Margin="0,16,0,14"/>
+                    <TextBlock Text="Pacchetto diagnostico facoltativo" Style="{StaticResource KpiLabelStyle}"/>
+                    <TextBlock Text="L'anteprima mostra quali log sono disponibili. Puoi scegliere se includerli; vengono redatti nuovamente. Database, documenti e credenziali sono esclusi e non viene effettuato alcun upload." FontSize="10" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,5,0,9"/>
+                    <Button Content="Esporta pacchetto diagnostico…" Click="ExportDiagnostics_Click" Style="{StaticResource SecondaryButtonStyle}" HorizontalAlignment="Left"/>
+                    <Border Height="1" Background="{DynamicResource BorderBrush}" Margin="0,16,0,14"/>
+                    <TextBlock Text="Cancellazione completa" Style="{StaticResource KpiLabelStyle}"/>
+                    <CheckBox x:Name="PrivacyDeleteBackupsBox" Content="Elimina anche i backup cifrati" IsChecked="False" Margin="0,8,0,0"/>
+                    <Button Content="Elimina tutti i dati e le credenziali…" Click="DeleteAllPrivacyData_Click" Style="{StaticResource QuietButtonStyle}" HorizontalAlignment="Left" Margin="0,10,0,0"/>
+                    <TextBlock Text="Questa operazione elimina corsi, voti, note, file gestiti, backup (se selezionato), token Moodle, chiavi AI e revoca il consenso AI." FontSize="10" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,7,0,0"/>
+                </StackPanel>
+            </Border>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>
