@@ -126,55 +126,84 @@ public partial class App : System.Windows.Application
     {
         base.OnStartup(e);
 
+        var startupStage = "theme synchronization";
         try
         {
             ConfigureThemeSynchronization();
 
-            // Keep every startup operation inside this boundary. In particular,
-            // path/ACL setup and DI registration can fail before database startup.
+            // Resolve and harden the data directory once. Passing its database
+            // path into the composition root avoids repeating filesystem/ACL
+            // setup during service registration.
+            startupStage = "data directory initialization";
             var dataDirectory = StudyHubDatabase.GetDataDirectory();
+            var databasePath = Path.Combine(dataDirectory, "unitracker.db");
             AppDiagnostics.Configure(Path.Combine(dataDirectory, "logs"));
             AppDiagnostics.Info("startup", "Application startup started.");
 
             var services = new ServiceCollection();
-            services.AddUniToStudyHubCore();
+
+            startupStage = "core service registration";
+            AppDiagnostics.Info("startup", "Registering core services.");
+            services.AddUniToStudyHubCore(databasePath);
+            AppDiagnostics.Info("startup", "Core services registered.");
+
+            startupStage = "view-model service registration";
             services.AddUniToStudyHubViewModels();
             services.AddSingleton<MainWindow>();
+            AppDiagnostics.Info("startup", "Presentation services registered.");
 
+            startupStage = "dependency container construction";
             _serviceProvider = services.BuildServiceProvider(validateScopes: true);
             AppDiagnostics.Info("startup", "Dependency container configured.");
+
+            startupStage = "startup service scope creation";
             await using var scope = _serviceProvider.CreateAsyncScope();
 
+            startupStage = "database factory resolution";
             var factory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<StudyHubDbContext>>();
+
+            startupStage = "database context creation";
             await using (var db = await factory.CreateDbContextAsync())
             {
+                startupStage = "preliminary migration history upgrade";
                 await StudyHubDatabase.UpgradePreliminaryMigrationHistoryAsync(db);
+
+                startupStage = "database migrations";
                 await db.Database.MigrateAsync();
             }
             AppDiagnostics.Info("startup", "Database migrations completed.");
 
+            startupStage = "legacy migration service resolution";
             var migrator = scope.ServiceProvider.GetRequiredService<LegacyJsonMigrator>();
+            startupStage = "legacy data migration";
             await migrator.MigrateAsync();
             AppDiagnostics.Info("startup", "Legacy data migration completed.");
 
+            startupStage = "main view-model resolution";
             var viewModel = _serviceProvider.GetRequiredService<MainViewModel>();
+            startupStage = "workspace initialization";
             await viewModel.InitializeAsync();
             AppDiagnostics.Info("startup", "Workspace initialized.");
 
+            startupStage = "main window construction";
             var window = _serviceProvider.GetRequiredService<MainWindow>();
             AppDiagnostics.Info("startup", "Main window constructed.");
+
+            startupStage = "main window display";
             MainWindow = window;
             window.Show();
             AppDiagnostics.Info("startup", "Main window shown successfully.");
         }
         catch (Exception ex)
         {
-            AppDiagnostics.Error("startup", "Application startup failed.", ex);
+            AppDiagnostics.Error("startup",
+                $"Application startup failed during stage '{startupStage}'.", ex);
             var logPath = AppDiagnostics.CurrentLogPath ??
                           Path.Combine(AppDiagnostics.Directory, "unitracker.log");
             MessageBox.Show(
-                "UniTo StudyHub non è riuscito ad avviarsi. I dati originali non sono stati eliminati.\n\n" +
-                $"Errore: {ex.GetType().Name}: {ex.Message}\n\n" +
+                "UniTo StudyHub non è riuscito ad avviarsi. I dati originali non sono stati eliminati.\\n\\n" +
+                $"Fase: {startupStage}\\n" +
+                $"Errore: {ex.GetType().Name}: {ex.Message}\\n\\n" +
                 $"Dettagli diagnostici (se il file è stato creato): {logPath}",
                 "Errore di avvio",
                 MessageBoxButton.OK,
