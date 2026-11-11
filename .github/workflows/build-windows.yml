@@ -36,4 +36,5 @@ jobs:
           path: |
             artifacts/UniToStudyHub-*-win-x64-portable.zip
             artifacts/UniToStudyHub-*-win-x64-portable.zip.sha256
+            artifacts/windows-navigation-smoke.png
           if-no-files-found: error
