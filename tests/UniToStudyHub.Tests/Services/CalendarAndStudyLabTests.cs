@@ -226,7 +226,9 @@ END:VCALENDAR
         var after = defaultEnd.AddDays(2).AddHours(9);
         var insideUtc = inside.ToUniversalTime();
         data.CalendarEvents.Add(IcsOccurrence("default-before", uid, before));
-        data.CalendarEvents.Add(IcsOccurrence("default-inside", uid, insideUtc));
+        var existingInside = IcsOccurrence("default-inside", uid, insideUtc);
+        existingInside.ExternalId = uid;
+        data.CalendarEvents.Add(existingInside);
         data.CalendarEvents.Add(IcsOccurrence("default-after", uid, after));
 
         var startText = insideUtc.ToString("yyyyMMdd'T'HHmmss'Z'", System.Globalization.CultureInfo.InvariantCulture);
@@ -236,8 +238,8 @@ BEGIN:VCALENDAR
 BEGIN:VEVENT
 UID:default-window-series
 SUMMARY:Evento nel periodo predefinito
-DTSTART:{{startText}}
-DTEND:{{endText}}
+DTSTART:{startText}
+DTEND:{endText}
 END:VEVENT
 END:VCALENDAR
 """;
