@@ -20,6 +20,16 @@ public sealed record IcsParseResult(
 /// </summary>
 public sealed class IcsCalendarParser
 {
+    internal static (DateTimeOffset From, DateTimeOffset To) ResolveWindow(
+        DateTimeOffset? windowStart,
+        DateTimeOffset? windowEnd)
+    {
+        var from = windowStart ?? new DateTimeOffset(DateTime.Today.AddYears(-1));
+        var to = windowEnd ?? from.AddYears(3);
+        if (to <= from) throw new ArgumentOutOfRangeException(nameof(windowEnd));
+        return (from, to);
+    }
+
     public IcsParseResult Parse(
         string content,
         DateTimeOffset? windowStart = null,
@@ -30,9 +40,7 @@ public sealed class IcsCalendarParser
             return new IcsParseResult(Array.Empty<CalendarEvent>(), new[] { "Il file ICS è vuoto." });
         if (maxEvents < 1) throw new ArgumentOutOfRangeException(nameof(maxEvents));
 
-        var from = windowStart ?? new DateTimeOffset(DateTime.Today.AddYears(-1));
-        var to = windowEnd ?? from.AddYears(3);
-        if (to <= from) throw new ArgumentOutOfRangeException(nameof(windowEnd));
+        var (from, to) = ResolveWindow(windowStart, windowEnd);
 
         var warnings = new List<string>();
         var events = new List<CalendarEvent>();
@@ -439,7 +447,8 @@ public sealed class IcsImportService
         if (content is null) throw new ArgumentNullException(nameof(content));
         if (content.Length > MaximumFileBytes)
             throw new InvalidDataException("Il contenuto ICS supera il limite di 10 MB.");
-        var parsed = new IcsCalendarParser().Parse(content, windowStart, windowEnd);
+        var (windowFrom, windowTo) = IcsCalendarParser.ResolveWindow(windowStart, windowEnd);
+        var parsed = new IcsCalendarParser().Parse(content, windowFrom, windowTo);
         var warnings = parsed.Warnings.ToList();
         var added = 0;
         var updated = 0;
@@ -501,7 +510,13 @@ public sealed class IcsImportService
                 .Where(x => string.Equals(BaseUid(x.ExternalId), uid, StringComparison.Ordinal))
                 .Select(x => x.StartsAt)
                 .ToHashSet();
-            foreach (var obsolete in existingForUid.Where(x => !incomingStarts.Contains(x.StartsAt)))
+            // Only reconcile the occurrence window represented by this import.
+            // Existing materialized occurrences before or after the selected range
+            // belong to other calendar views and must not be deleted by a partial import.
+            foreach (var obsolete in existingForUid.Where(x =>
+                         x.StartsAt < windowTo &&
+                         x.EndsAt > windowFrom &&
+                         !incomingStarts.Contains(x.StartsAt)))
             {
                 data.CalendarEvents.Remove(obsolete);
                 removed++;
