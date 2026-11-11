@@ -94,9 +94,16 @@ their assertions because the encrypted SQLite test database requires Windows
 DPAPI. They are not reported as passing. AI provider, Gemini, guidance,
 diagnostic-redaction and consent tests pass independently of that fixture.
 
-The full suite and Release build are run separately; Windows UI/runtime,
-real Gemini/OpenAI calls, DPAPI backup/restore and the portable PowerShell
-packaging script were not executed here.
+Full Release suite on this host: 292 tests, 255 passed, 37 failed. Every one of
+the 37 failures is the same Windows DPAPI `PlatformNotSupportedException`; no
+assertion failed elsewhere. Release build: 0 warnings, 0 errors. Gitleaks
+8.30.1 scanned 337 commits with no leaks; both NuGet dependency graphs reported
+no vulnerable packages under `EnableWindowsTargeting=true`.
+
+Windows UI/runtime, real Gemini/OpenAI calls, DPAPI backup/restore and the
+portable PowerShell packaging script were not executed here. No GitHub Actions
+run was triggered because no pull request was created and the pushed branch name
+`integration/phase4-non-ui` is not in the workflow push filters.
 
 ## Limitations
 
