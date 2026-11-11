@@ -8,7 +8,7 @@ using Wpf.Ui.Appearance;
 
 namespace UniToStudyHub;
 
-public partial class MainWindow : Window
+public partial class MainWindow : Wpf.Ui.Controls.FluentWindow
 {
     private readonly DispatcherTimer _focusRefreshTimer;
     private readonly AiCredentialStore _aiCredentials;
