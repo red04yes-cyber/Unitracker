@@ -201,9 +201,9 @@ public partial class App : System.Windows.Application
             var logPath = AppDiagnostics.CurrentLogPath ??
                           Path.Combine(AppDiagnostics.Directory, "unitracker.log");
             MessageBox.Show(
-                "UniTo StudyHub non è riuscito ad avviarsi. I dati originali non sono stati eliminati.\\n\\n" +
-                $"Fase: {startupStage}\\n" +
-                $"Errore: {ex.GetType().Name}: {ex.Message}\\n\\n" +
+                "UniTo StudyHub non è riuscito ad avviarsi. I dati originali non sono stati eliminati.\n\n" +
+                $"Fase: {startupStage}\n" +
+                $"Errore: {ex.GetType().Name}: {ex.Message}\n\n" +
                 $"Dettagli diagnostici (se il file è stato creato): {logPath}",
                 "Errore di avvio",
                 MessageBoxButton.OK,
