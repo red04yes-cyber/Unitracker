@@ -101,7 +101,7 @@ public sealed class StudyPlannerService
         var blocksByDay = new Dictionary<DateOnly, int>();
 
         var tasks = data.StudyTasks
-            .Where(x => x is not null && x.Status is StudyTaskStatus.Todo or StudyTaskStatus.InProgress)
+            .Where(x => x is not null && (x.Status is StudyTaskStatus.Todo or StudyTaskStatus.InProgress))
             .OrderBy(x => x.DueAt?.UtcDateTime ?? DateTime.MaxValue)
             .ThenByDescending(x => x.Priority)
             .ThenBy(x => x.CreatedAt)
