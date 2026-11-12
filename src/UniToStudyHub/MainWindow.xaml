@@ -180,7 +180,7 @@
                         </Grid.ColumnDefinitions>
                         <StackPanel>
                             <TextBlock Text="PANORAMICA" FontSize="10" FontWeight="Bold"
-                                       Foreground="{DynamicResource AccentBrush}" CharacterSpacing="150"/>
+                                       Foreground="{DynamicResource AccentBrush}"/>
                             <TextBlock Text="Buono studio." Style="{StaticResource PageTitleStyle}"
                                        FontSize="30" Margin="0,7,0,5"/>
                             <TextBlock Text="Tutto quello che conta per il tuo percorso universitario, in un colpo d’occhio."
