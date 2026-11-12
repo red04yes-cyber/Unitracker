@@ -306,7 +306,8 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
         get => _selectedProgressPeriod;
         set
         {
-            if (!Set(ref _selectedProgressPeriod, value)) return;
+            if (string.Equals(_selectedProgressPeriod, value, StringComparison.Ordinal)) return;
+            Set(ref _selectedProgressPeriod, value);
             RefreshProgress();
         }
     }
