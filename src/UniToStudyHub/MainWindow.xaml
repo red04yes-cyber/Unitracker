@@ -14,7 +14,7 @@
     <Window.Resources>
         <Style TargetType="{x:Type TabItem}">
             <Setter Property="Width" Value="220"/>
-            <Setter Property="Height" Value="52"/>
+            <Setter Property="Height" Value="58"/>
             <Setter Property="Margin" Value="0,3"/>
             <Setter Property="Padding" Value="0"/>
             <Setter Property="Foreground" Value="{DynamicResource SidebarMutedBrush}"/>
@@ -27,19 +27,30 @@
                     <ControlTemplate TargetType="{x:Type TabItem}">
                         <Border x:Name="TabSurface"
                                 Background="{TemplateBinding Background}"
-                                CornerRadius="9"
+                                CornerRadius="10"
                                 Padding="10,4">
-                            <ContentPresenter ContentSource="Header"
-                                              HorizontalAlignment="Stretch"
-                                              VerticalAlignment="Center"/>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="3"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <Border x:Name="ActiveIndicator" Grid.Column="0"
+                                        Background="{DynamicResource AccentBrush}"
+                                        CornerRadius="2" Opacity="0"/>
+                                <ContentPresenter Grid.Column="1" ContentSource="Header"
+                                                  Margin="9,0,0,0"
+                                                  HorizontalAlignment="Stretch"
+                                                  VerticalAlignment="Center"/>
+                            </Grid>
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsSelected" Value="True">
-                                <Setter TargetName="TabSurface" Property="Background" Value="{DynamicResource AccentFillBrush}"/>
-                                <Setter Property="Foreground" Value="White"/>
+                                <Setter TargetName="TabSurface" Property="Background" Value="{DynamicResource AccentSoftBrush}"/>
+                                <Setter TargetName="ActiveIndicator" Property="Opacity" Value="1"/>
+                                <Setter Property="Foreground" Value="{DynamicResource InkBrush}"/>
                             </Trigger>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="TabSurface" Property="Opacity" Value="0.86"/>
+                                <Setter TargetName="TabSurface" Property="Background" Value="{DynamicResource SubtleBrush}"/>
                             </Trigger>
                             <Trigger Property="IsEnabled" Value="False">
                                 <Setter TargetName="TabSurface" Property="Opacity" Value="0.55"/>
@@ -48,6 +59,45 @@
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
+        </Style>
+
+        <Style x:Key="CalendarTransitionSurfaceStyle" TargetType="{x:Type Border}"
+               BasedOn="{StaticResource CardBorderStyle}">
+            <Setter Property="RenderTransform">
+                <Setter.Value><TranslateTransform Y="0"/></Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding CalendarViewMode}" Value="Month">
+                    <DataTrigger.EnterActions>
+                        <BeginStoryboard>
+                            <Storyboard>
+                                <DoubleAnimation Storyboard.TargetProperty="Opacity" From="0.78" To="1" Duration="0:0:0.22"/>
+                                <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.Y)" From="7" To="0" Duration="0:0:0.24"/>
+                            </Storyboard>
+                        </BeginStoryboard>
+                    </DataTrigger.EnterActions>
+                </DataTrigger>
+                <DataTrigger Binding="{Binding CalendarViewMode}" Value="Week">
+                    <DataTrigger.EnterActions>
+                        <BeginStoryboard>
+                            <Storyboard>
+                                <DoubleAnimation Storyboard.TargetProperty="Opacity" From="0.78" To="1" Duration="0:0:0.22"/>
+                                <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.Y)" From="7" To="0" Duration="0:0:0.24"/>
+                            </Storyboard>
+                        </BeginStoryboard>
+                    </DataTrigger.EnterActions>
+                </DataTrigger>
+                <DataTrigger Binding="{Binding CalendarViewMode}" Value="Day">
+                    <DataTrigger.EnterActions>
+                        <BeginStoryboard>
+                            <Storyboard>
+                                <DoubleAnimation Storyboard.TargetProperty="Opacity" From="0.78" To="1" Duration="0:0:0.22"/>
+                                <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.Y)" From="7" To="0" Duration="0:0:0.24"/>
+                            </Storyboard>
+                        </BeginStoryboard>
+                    </DataTrigger.EnterActions>
+                </DataTrigger>
+            </Style.Triggers>
         </Style>
     </Window.Resources>
 
@@ -60,7 +110,7 @@
             <ControlTemplate TargetType="{x:Type TabControl}">
                 <Grid SnapsToDevicePixels="True">
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="244"/>
+                        <ColumnDefinition Width="252"/>
                         <ColumnDefinition Width="*"/>
                     </Grid.ColumnDefinitions>
 
@@ -88,9 +138,12 @@
                                                    Margin="0,2,0,0"/>
                                     </StackPanel>
                                 </StackPanel>
-                                <TextBlock Text="IL TUO PERCORSO UNIVERSITARIO"
-                                           Foreground="{DynamicResource SidebarMutedBrush}" FontSize="9"
-                                           FontWeight="SemiBold" Margin="2,27,0,0"/>
+                                <Border Background="{DynamicResource AccentSoftBrush}" CornerRadius="6"
+                                         Padding="8,5" HorizontalAlignment="Left" Margin="2,24,0,0">
+                                    <TextBlock Text="IL TUO PERCORSO UNIVERSITARIO"
+                                               Foreground="{DynamicResource AccentBrush}" FontSize="8"
+                                               FontWeight="Bold"/>
+                                </Border>
                             </StackPanel>
 
                             <TabPanel x:Name="HeaderPanel"
@@ -101,12 +154,16 @@
 
                             <StackPanel Grid.Row="2" Margin="22,12,20,22">
                                 <Border Height="1" Background="{DynamicResource SidebarDividerBrush}" Margin="0,0,0,14"/>
-                                <TextBlock Text="Un passo alla volta."
-                                           Foreground="{DynamicResource SidebarMutedBrush}" FontSize="12"
-                                           FontWeight="SemiBold"/>
-                                <TextBlock Text="Il tuo spazio per imparare e crescere."
-                                           Foreground="{DynamicResource SidebarMutedBrush}" FontSize="10"
-                                           TextWrapping="Wrap" Margin="0,4,0,0"/>
+                                <Border Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource BorderBrush}"
+                                        BorderThickness="1" CornerRadius="10" Padding="11,10">
+                                    <StackPanel>
+                                        <TextBlock Text="Un passo alla volta." Foreground="{DynamicResource InkBrush}"
+                                                   FontSize="12" FontWeight="SemiBold"/>
+                                        <TextBlock Text="Il tuo spazio per imparare e crescere."
+                                                   Foreground="{DynamicResource SidebarMutedBrush}" FontSize="10"
+                                                   TextWrapping="Wrap" Margin="0,4,0,0"/>
+                                    </StackPanel>
+                                </Border>
                             </StackPanel>
                         </Grid>
                     </Border>
@@ -118,26 +175,31 @@
                         </Grid.RowDefinitions>
                         <Border Grid.Row="0" Background="{DynamicResource PanelBrush}"
                                 BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1"
-                                Padding="28,0">
+                                Padding="30,0">
                             <Grid VerticalAlignment="Center">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*"/>
                                     <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
                                 <StackPanel VerticalAlignment="Center">
-                                    <TextBlock Text="UNITO STUDYHUB" FontSize="9"
-                                               FontWeight="Bold" Foreground="{DynamicResource MutedBrush}"/>
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                        <Border Width="6" Height="6" CornerRadius="3"
+                                                Background="{DynamicResource AccentBrush}" Margin="0,0,8,0"/>
+                                        <TextBlock Text="UNITO STUDYHUB" FontSize="9"
+                                                   FontWeight="Bold" Foreground="{DynamicResource AccentBrush}"/>
+                                    </StackPanel>
                                     <TextBlock Text="Il tuo spazio personale" FontSize="13"
                                                FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}"
                                                Margin="0,3,0,0"/>
                                 </StackPanel>
                                 <StackPanel Grid.Column="1" Orientation="Horizontal"
                                             VerticalAlignment="Center">
-                                    <Border Background="{DynamicResource SubtleBrush}"
-                                            CornerRadius="7" Padding="10,7"
-                                            VerticalAlignment="Center">
+                                    <Border Background="{DynamicResource SubtleBrush}" BorderBrush="{DynamicResource BorderBrush}"
+                                            BorderThickness="1" CornerRadius="8" Padding="11,7"
+                                            VerticalAlignment="Center" MaxWidth="270">
                                         <TextBlock Text="{Binding MoodleStatus}" FontSize="10"
-                                                   Foreground="{DynamicResource MutedBrush}"/>
+                                                   Foreground="{DynamicResource MutedBrush}"
+                                                   TextTrimming="CharacterEllipsis"/>
                                     </Border>
                                     <Button Content="Impostazioni"
                                             Style="{StaticResource QuietButtonStyle}"
@@ -149,10 +211,30 @@
                         <Border Grid.Row="1" Background="{DynamicResource PageBrush}">
                             <ContentPresenter x:Name="PART_SelectedContentHost"
                                               ContentSource="SelectedContent"
-                                              SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}"/>
+                                              Opacity="1"
+                                              RenderTransformOrigin="0.5,0.5"
+                                              SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}">
+                                <ContentPresenter.RenderTransform>
+                                    <TranslateTransform Y="0"/>
+                                </ContentPresenter.RenderTransform>
+                            </ContentPresenter>
                         </Border>
                     </Grid>
                 </Grid>
+                <ControlTemplate.Triggers>
+                    <EventTrigger RoutedEvent="Selector.SelectionChanged">
+                        <BeginStoryboard HandoffBehavior="SnapshotAndReplace">
+                            <Storyboard>
+                                <DoubleAnimation Storyboard.TargetName="PART_SelectedContentHost"
+                                                 Storyboard.TargetProperty="Opacity"
+                                                 From="0" To="1" Duration="0:0:0.22"/>
+                                <DoubleAnimation Storyboard.TargetName="PART_SelectedContentHost"
+                                                 Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.Y)"
+                                                 From="9" To="0" Duration="0:0:0.26"/>
+                            </Storyboard>
+                        </BeginStoryboard>
+                    </EventTrigger>
+                </ControlTemplate.Triggers>
             </ControlTemplate>
         </TabControl.Template>
 
@@ -391,7 +473,7 @@
                     <TextBlock Text="Tieni insieme insegnamenti da preparare, esami conclusi e risultati registrati."
                                Style="{StaticResource PageSubtitleStyle}" Margin="0,0,0,22"/>
 
-                    <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,14">
+                    <Border Style="{StaticResource AnimatedCardStyle}" Margin="0,0,0,14">
                         <StackPanel>
                             <TextBlock Text="Aggiungi un insegnamento"
                                        Style="{StaticResource SectionTitleStyle}" Margin="0,0,0,12"/>
@@ -417,7 +499,7 @@
                         </StackPanel>
                     </Border>
 
-                    <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,14">
+                    <Border Style="{StaticResource AnimatedCardStyle}" Margin="0,0,0,14">
                         <Expander IsExpanded="False">
                             <Expander.Header>
                                 <TextBlock Text="Registra un tentativo d’esame" FontSize="13"
@@ -473,9 +555,9 @@
                             <ColumnDefinition Width="3*"/>
                         </Grid.ColumnDefinitions>
                         <TextBox Grid.Column="0" Text="{Binding CourseSearchText, UpdateSourceTrigger=PropertyChanged}"
-                                 ToolTip="Cerca per nome o codice" MinWidth="190"/>
-                        <StackPanel Grid.Column="1" Orientation="Horizontal"
-                                    HorizontalAlignment="Right" VerticalAlignment="Center">
+                                 ToolTip="Cerca per nome o codice" MinWidth="190"
+                                 AutomationProperties.Name="Cerca materie per nome o codice"/>
+                        <WrapPanel Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Center">
                             <RadioButton Content="{Binding ActiveCoursesCount, StringFormat='In corso ({0})'}"
                                          GroupName="CourseFilters" Tag="active"
                                          IsChecked="True" Checked="CourseFilter_Checked"
@@ -487,7 +569,7 @@
                             <RadioButton Content="Tutte" GroupName="CourseFilters" Tag="all"
                                          Checked="CourseFilter_Checked"
                                          Style="{StaticResource FilterRadioButtonStyle}"/>
-                        </StackPanel>
+                        </WrapPanel>
                     </Grid>
 
                     <ItemsControl ItemsSource="{Binding VisibleCourses}">
@@ -498,9 +580,9 @@
                         </ItemsControl.ItemsPanel>
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
-                                <Border Style="{StaticResource CardBorderStyle}"
-                                        Width="286" MinHeight="142" Margin="0,0,12,12"
-                                        Padding="17">
+                                <Border Style="{StaticResource AnimatedCardStyle}"
+                                        Width="286" MinHeight="154" Margin="0,0,12,12"
+                                        Padding="18">
                                     <StackPanel>
                                         <Grid>
                                             <Grid.ColumnDefinitions>
@@ -581,7 +663,7 @@
         <TextBlock Text="ORGANIZZAZIONE" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource AccentBrush}"/>
         <TextBlock Text="Calendario" Style="{StaticResource PageTitleStyle}" Margin="0,7,0,4"/>
         <TextBlock Text="Lezioni, esami, scadenze e sessioni di studio. Ogni evento conserva la propria provenienza." Style="{StaticResource PageSubtitleStyle}" Margin="0,0,0,22"/>
-        <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,16">
+        <Border Style="{StaticResource CalendarTransitionSurfaceStyle}" Margin="0,0,0,16">
             <StackPanel>
                 <Grid>
                     <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
@@ -613,7 +695,7 @@
                         <Style TargetType="{x:Type ListBoxItem}">
                             <Setter Property="Margin" Value="3"/><Setter Property="Padding" Value="0"/>
                             <Setter Property="HorizontalContentAlignment" Value="Stretch"/><Setter Property="VerticalContentAlignment" Value="Stretch"/>
-                            <Setter Property="Background" Value="White"/><Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/><Setter Property="BorderThickness" Value="1"/>
+                            <Setter Property="Background" Value="{DynamicResource PanelBrush}"/><Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/><Setter Property="BorderThickness" Value="1"/>
                             <Setter Property="Template"><Setter.Value>
                                 <ControlTemplate TargetType="{x:Type ListBoxItem}">
                                     <Border x:Name="DaySurface" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="8"><ContentPresenter/></Border>
@@ -628,7 +710,7 @@
                         </Style>
                     </ListBox.ItemContainerStyle>
                     <ListBox.ItemTemplate><DataTemplate>
-                        <Border Padding="8" MinHeight="67">
+                        <Border Style="{StaticResource AnimatedCardStyle}" Padding="8" MinHeight="67">
                             <StackPanel><Grid>
                                 <TextBlock Text="{Binding DayNumber}" FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}"/>
                                 <TextBlock Text="{Binding DayName}" FontSize="9" Foreground="{DynamicResource MutedBrush}" HorizontalAlignment="Right"/>
@@ -642,7 +724,7 @@
                     <ListBox.ItemsPanel><ItemsPanelTemplate><UniformGrid Rows="1" Columns="7"/></ItemsPanelTemplate></ListBox.ItemsPanel>
                     <ListBox.ItemContainerStyle><Style TargetType="{x:Type ListBoxItem}"><Setter Property="Margin" Value="3"/><Setter Property="Padding" Value="0"/><Setter Property="HorizontalContentAlignment" Value="Stretch"/></Style></ListBox.ItemContainerStyle>
                     <ListBox.ItemTemplate><DataTemplate>
-                        <Border Style="{StaticResource CardBorderStyle}" Padding="9" MinWidth="90">
+                        <Border Style="{StaticResource AnimatedCardStyle}" Padding="9" MinWidth="90">
                             <StackPanel>
                                 <TextBlock Text="{Binding Date, StringFormat='ddd d'}" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}"/>
                                 <TextBlock Text="{Binding EventSummary}" FontSize="9" Foreground="{DynamicResource MutedBrush}" Margin="0,2,0,7"/>
@@ -662,7 +744,7 @@
                 <TextBlock Text="{Binding CalendarAgendaTitle}" Visibility="{Binding IsDayCalendar, Converter={StaticResource BooleanToVisibilityConverter}}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource MutedBrush}" Margin="0,14,0,6"/>
                 <ListBox Visibility="{Binding IsDayCalendar, Converter={StaticResource BooleanToVisibilityConverter}}" ItemsSource="{Binding CalendarDayCells}" SelectedItem="{Binding SelectedCalendarDay}" Background="Transparent" BorderThickness="0">
                     <ListBox.ItemTemplate><DataTemplate>
-                        <Border Style="{StaticResource CardBorderStyle}" Padding="16">
+                        <Border Style="{StaticResource AnimatedCardStyle}" Padding="16">
                             <StackPanel>
                                 <TextBlock Text="{Binding Date, StringFormat='dddd d MMMM yyyy'}" FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}"/>
                                 <ItemsControl ItemsSource="{Binding Events}" Margin="0,8,0,0">
