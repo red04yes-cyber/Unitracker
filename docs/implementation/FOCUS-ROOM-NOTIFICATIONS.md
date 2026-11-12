@@ -38,6 +38,8 @@ Il centro non crea eventi o scadenze fittizi. Gli avvisi Pomodoro arretrati dura
 
 ## Verifiche
 
+La PR resta draft mentre vengono controllati i workflow e la compatibilità WPF.
+
 - Aggiunti test unitari per filtro delle scadenze, eventi annullati, attività completate e finestra temporale configurabile.
 - Build WPF, test completi e riproduzione audio devono essere verificati tramite CI Windows e test runtime su Windows dopo l'apertura della PR.
 - Non dichiarare il supporto audio offline: i file sono riprodotti da URL HTTPS esterni.
