@@ -1,4 +1,7 @@
+using System.ComponentModel;
 using System.IO;
+using System.Runtime.InteropServices;
+using Microsoft.Win32.SafeHandles;
 using System.Runtime.Versioning;
 using System.Security.AccessControl;
 using System.Security.Principal;
@@ -267,7 +270,7 @@ public static class LocalFileSecurity
             return true;
         }
         catch (Exception ex) when (ex is ArgumentException or IOException or UnauthorizedAccessException
-                                       or NotSupportedException or System.Security.SecurityException)
+                                       or NotSupportedException or System.Security.SecurityException or Win32Exception)
         {
             // An unverifiable path is never considered safe.
             return false;
@@ -276,9 +279,11 @@ public static class LocalFileSecurity
 
     private static bool IsReparsePoint(string path)
     {
-        // LinkTarget also detects dangling symbolic links, for which Exists()
-        // returns false. Check both file and directory entries because the
-        // target type is not known from an untrusted path.
+        // On Windows, File.Exists/Directory.Exists and even File.GetAttributes
+        // may report a dangling symlink as missing because they follow its
+        // target. Open the directory entry itself and query its reparse tag.
+        if (OperatingSystem.IsWindows() && IsWindowsReparsePoint(path)) return true;
+
         if (new FileInfo(path).LinkTarget is not null) return true;
         if (new DirectoryInfo(path).LinkTarget is not null) return true;
 
@@ -295,6 +300,49 @@ public static class LocalFileSecurity
             return false;
         }
     }
+
+    private static bool IsWindowsReparsePoint(string path)
+    {
+        const uint fileReadAttributes = 0x0080;
+        const uint shareReadWriteDelete = 0x00000007;
+        const uint openExisting = 3;
+        const uint openReparsePoint = 0x00200000;
+        const uint backupSemantics = 0x02000000;
+        const uint fsctlGetReparsePoint = 0x000900A8;
+        const int errorFileNotFound = 2;
+        const int errorPathNotFound = 3;
+        const int errorNotAReparsePoint = 4390;
+
+        using var handle = CreateFileW(path, fileReadAttributes, shareReadWriteDelete,
+            IntPtr.Zero, openExisting, openReparsePoint | backupSemantics, IntPtr.Zero);
+        if (handle.IsInvalid)
+        {
+            var error = Marshal.GetLastWin32Error();
+            if (error is errorFileNotFound or errorPathNotFound) return false;
+            throw new Win32Exception(error, "Unable to inspect filesystem entry.");
+        }
+
+        var buffer = new byte[16 * 1024];
+        if (DeviceIoControl(handle, fsctlGetReparsePoint, IntPtr.Zero, 0,
+                buffer, (uint)buffer.Length, out _, IntPtr.Zero))
+            return true;
+
+        var controlError = Marshal.GetLastWin32Error();
+        if (controlError == errorNotAReparsePoint) return false;
+        throw new Win32Exception(controlError, "Unable to inspect filesystem reparse data.");
+    }
+
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    private static extern SafeFileHandle CreateFileW(
+        string fileName, uint desiredAccess, uint shareMode, IntPtr securityAttributes,
+        uint creationDisposition, uint flagsAndAttributes, IntPtr templateFile);
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool DeviceIoControl(
+        SafeFileHandle device, uint controlCode, IntPtr inputBuffer, uint inputBufferSize,
+        [Out] byte[] outputBuffer, uint outputBufferSize, out uint bytesReturned,
+        IntPtr overlapped);
 
     [SupportedOSPlatform("windows")]
     private static void ApplyDirectoryAcl(string path)
