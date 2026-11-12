@@ -6,11 +6,9 @@
 # blobs). Report values are always redacted by the CI invocation (`--redact`),
 # so a finding never prints the secret itself.
 #
-# Trade-off: test fixtures and documentation examples are allowlisted by path
-# because they contain deliberately non-functional values such as
-# "api_key=segreta" and the constant "correct horse battery staple". A real
-# credential committed under `src/`, `.github/` or the repository root is still
-# reported.
+# Only exact deterministic dummy values are allowlisted, and matching is
+# limited to the matched text rather than any path. Every directory remains
+# scanned, including tests, documentation and examples.
 
 [extend]
 useDefault = true
@@ -29,20 +27,16 @@ regex = '''(?i)(?:dpapi|cryptprotectdata)[^\n]{0,40}["'][A-Za-z0-9+/]{80,}={0,2}
 keywords = ["dpapi", "cryptprotectdata"]
 
 [allowlist]
-description = "Documented non-secrets: deterministic test fixtures and documentation examples"
-paths = [
-  '''tests/.*''',
-  '''docs/.*''',
-  '''README\.md''',
-  '''TESTING\.md''',
-  '''AGENTS\.md''',
-  '''GEMINI\.md''',
-  '''\.gitleaks\.toml''',
-  '''\.github/workflows/security-scan\.yml''',
-]
+description = "Exact non-secret literals used by deterministic security tests"
+regexTarget = "match"
 regexes = [
-  '''api_key=segreta''',
-  '''\[REDACTED\]''',
-  '''(?:not-a-real-key|sk-test|correct horse battery staple)''',
-  '''(?:abcdef0123456789abcdef0123456789|0123456789abcdef0123456789abcdef)''',
+  '''(?i)api_key\s*=\s*segreta\b''',
+  '''(?i)api_key\s*=\s*sk-live-1234567890\b''',
+  '''(?i)password\s*=\s*hunter2\b''',
+  '''not-a-real-key''',
+  '''sk-test-0123456789abcdef''',
+  '''correct horse battery staple''',
+  '''eyJhbGciOiJIUzI1NiJ9\.payload\.signature''',
+  '''abcdef0123456789abcdef0123456789''',
+  '''0123456789abcdef0123456789abcdef''',
 ]
