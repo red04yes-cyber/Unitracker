@@ -879,7 +879,57 @@
                 <WrapPanel Margin="0,10,0,0">
                     <TextBlock Text="Preset rapidi:" VerticalAlignment="Center" Foreground="{DynamicResource MutedBrush}" Margin="0,0,10,0"/>
                     <ComboBox Width="165" ItemsSource="{Binding Workspace.FocusPresetOptions}" SelectedItem="{Binding Workspace.FocusPresetInput}" ToolTip="Durata della sessione"/>
+                    <Button Content="Prossimo focus" Command="{Binding Workspace.StartNextFocusCommand}"
+                            Style="{StaticResource SecondaryButtonStyle}" Margin="10,0,0,0"/>
                 </WrapPanel>
+                <Border Style="{StaticResource CardBorderStyle}" Margin="0,18,12,0">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="1.25*"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0" Margin="0,0,18,0">
+                            <TextBlock Text="FOCUS ROOM" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource AccentBrush}"/>
+                            <TextBlock Text="Lo-fi per concentrarti" FontSize="18" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}" Margin="0,5,0,3"/>
+                            <TextBlock x:Name="FocusMusicTrackLabel" Text="Scegli una traccia" FontSize="11"
+                                       Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,0,0,12"/>
+                            <WrapPanel>
+                                <Button Content="Pausa" Click="PauseFocusMusic_Click" Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,6,6"/>
+                                <Button Content="Riprendi" Click="ResumeFocusMusic_Click" Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,6,6"/>
+                                <Button Content="Stop" Click="StopFocusMusic_Click" Style="{StaticResource QuietButtonStyle}" Margin="0,0,6,6"/>
+                                <Button Content="Successiva" Click="NextFocusMusic_Click" Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,6,6"/>
+                            </WrapPanel>
+                            <TextBlock Text="Volume" FontSize="9" Foreground="{DynamicResource MutedBrush}" Margin="0,6,0,0"/>
+                            <Slider Minimum="0" Maximum="1" Value="0.42" Width="160" HorizontalAlignment="Left"
+                                    ValueChanged="FocusMusicVolume_ValueChanged"/>
+                            <TextBlock FontSize="9" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,8,0,0">
+                                <Run Text="Musica di "/><Hyperlink NavigateUri="https://opengameart.org/users/purrplecat" RequestNavigate="OpenExternalLink_Click">Purrple Cat</Hyperlink><Run Text=" · licenza CC BY 4.0."/>
+                            </TextBlock>
+                            <TextBlock FontSize="9" Foreground="{DynamicResource AccentBrush}" Margin="0,3,0,0">
+                                <Hyperlink NavigateUri="https://creativecommons.org/licenses/by/4.0/" RequestNavigate="OpenExternalLink_Click">Dettagli licenza Creative Commons</Hyperlink>
+                            </TextBlock>
+                        </StackPanel>
+                        <StackPanel x:Name="FocusMusicPlaylist" Grid.Column="1">
+                            <TextBlock Text="PLAYLIST · 100 BRANI LO-FI" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource MutedBrush}" Margin="0,0,0,7"/>
+                            <TextBlock Text="Seleziona una traccia per avviare la riproduzione. Scorri la raccolta per esplorare tutti gli album."
+                                       FontSize="9" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,0,0,8"/>
+                            <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" MaxHeight="360">
+                                <ItemsControl ItemsSource="{Binding RelativeSource={RelativeSource AncestorType={x:Type Window}}, Path=FocusMusicPlaylistItems}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Button Content="{Binding Title}" Tag="{Binding Url}" ToolTip="{Binding Album}"
+                                                    Click="PlayFocusTrack_Click" Style="{StaticResource SecondaryButtonStyle}"
+                                                    HorizontalContentAlignment="Left" Margin="0,0,0,5"/>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </ScrollViewer>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+                <MediaElement x:Name="FocusMusicPlayer" Width="1" Height="1" Opacity="0"
+                              LoadedBehavior="Manual" UnloadedBehavior="Stop" Volume="0.42"
+                              MediaEnded="FocusMusicPlayer_MediaEnded"/>
             </StackPanel></TabItem>
             <TabItem Header="Attività"><StackPanel>
                 <TextBlock Text="Organizza i prossimi passi e pianifica i blocchi nel calendario." Style="{StaticResource PageSubtitleStyle}" Margin="0,0,0,12"/>
@@ -1002,6 +1052,36 @@
             </Border>
         </Grid>
             </StackPanel></TabItem>
+            <TabItem Header="Avvisi">
+                <StackPanel Margin="8,0,8,10">
+                    <TextBlock Text="CENTRO NOTIFICHE" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource AccentBrush}" Margin="0,0,0,6"/>
+                    <TextBlock Text="Scadenze e appuntamenti delle prossime 24 ore, più gli avvisi delle sessioni Pomodoro."
+                               Style="{StaticResource PageSubtitleStyle}" TextWrapping="Wrap" Margin="0,0,0,8"/>
+                    <DockPanel Margin="0,0,0,12">
+                        <TextBlock Text="{Binding Workspace.Notifications.Count, StringFormat='Avvisi attivi · {0}'}"
+                                   FontSize="10" Foreground="{DynamicResource MutedBrush}" VerticalAlignment="Center"/>
+                        <Button Content="Segna tutti come letti" Command="{Binding Workspace.ClearNotificationsCommand}"
+                                Style="{StaticResource QuietButtonStyle}" DockPanel.Dock="Right"/>
+                    </DockPanel>
+                    <ItemsControl ItemsSource="{Binding Workspace.Notifications}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,8" Padding="14">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                        <StackPanel>
+                                            <TextBlock Text="{Binding Title}" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}" TextWrapping="Wrap"/>
+                                            <TextBlock Text="{Binding Detail}" FontSize="10" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,4,0,0"/>
+                                        </StackPanel>
+                                        <TextBlock Grid.Column="1" Text="{Binding Kind}" FontSize="9" Foreground="{DynamicResource AccentBrush}" Margin="12,0,0,0" VerticalAlignment="Center"/>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <TextBlock Text="Nessun avviso nelle prossime 24 ore." Visibility="{Binding Workspace.NoNotifications, Converter={StaticResource BooleanToVisibilityConverter}}" FontSize="11" Foreground="{DynamicResource MutedBrush}" Margin="2,8,2,0"/>
+                </StackPanel>
+            </TabItem>
         </TabControl>
         <TextBlock Text="{Binding Workspace.WorkspaceStatus}" FontSize="11" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="2,14,2,0"/></StackPanel>
 </ScrollViewer>
