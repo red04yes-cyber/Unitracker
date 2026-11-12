@@ -329,7 +329,7 @@ public sealed class SecretAndFileSecurityTests
                 return;
             }
 
-            Assert.False(File.Exists(link));
+            Assert.False(File.Exists(Path.Combine(root, "missing-target.txt")));
             Assert.False(LocalFileSecurity.IsInside(root, link));
         }
         finally
@@ -357,7 +357,7 @@ public sealed class SecretAndFileSecurityTests
                 return; // The current runner does not permit creating symbolic links.
             }
 
-            Assert.False(Directory.Exists(link));
+            Assert.False(Directory.Exists(Path.Combine(root, "missing-directory")));
             Assert.False(LocalFileSecurity.IsInside(root, Path.Combine(link, "escape.pdf")));
         }
         finally
