@@ -20,6 +20,8 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
     private readonly IStudyDataStore _store;
     private readonly AcademicProfileService _academicProfile;
     private readonly FocusSessionService _focus;
+    private readonly PomodoroService _pomodoro;
+    private readonly NotificationCenterService _notificationCenter;
     private readonly StudyTaskService _tasks;
     private readonly ActivityLedgerService _activityLedger;
     private readonly ErrorJournalService _errors;
@@ -37,6 +39,7 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
     private readonly ExamReadinessService _readiness;
     private readonly StudyDataExportService _exports;
     private readonly HashSet<string> _verifiedBackups = new(StringComparer.OrdinalIgnoreCase);
+    private readonly HashSet<string> _dismissedNotificationIds = new(StringComparer.Ordinal);
     private StudyData _data = new();
     private Course? _selectedCourse;
     private Course? _selectedFocusCourse;
@@ -130,6 +133,8 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
     public ObservableCollection<SyllabusTopicData> SyllabusTopics { get; } = new();
     public ObservableCollection<QuestionBankItemData> QuestionBankItems { get; } = new();
     public ObservableCollection<DailyProgressRow> DailyProgressRows { get; } = new();
+    public ObservableCollection<StudyNotificationItem> Notifications { get; } = new();
+    public bool NoNotifications => Notifications.Count == 0;
     public ObservableCollection<Course> Courses => _data.Courses;
     public ObservableCollection<PdfDocumentData> PdfDocuments => _data.PdfDocuments;
 
@@ -279,10 +284,13 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
     public string FocusElapsedDisplay { get => _focusElapsedDisplay; private set => Set(ref _focusElapsedDisplay, value); }
     public string FocusStateDisplay { get => _focusStateDisplay; private set => Set(ref _focusStateDisplay, value); }
     public int FocusProgressPercent { get => _focusProgressPercent; private set => Set(ref _focusProgressPercent, value); }
-    public bool HasActiveFocusSession => _focus.GetActive(_data) is not null;
-    public bool CanPauseFocus => _focus.GetActive(_data)?.State == StudySessionState.Running;
-    public bool CanResumeFocus => _focus.GetActive(_data)?.State == StudySessionState.Paused;
-    public bool CanFinishFocus => HasActiveFocusSession;
+    public bool HasActiveFocusSession => _pomodoro.GetActive(_data) is not null || _focus.GetActive(_data) is not null;
+    public bool CanPauseFocus => _pomodoro.GetActive(_data)?.Status == PomodoroTimerStatus.Running ||
+        (_data.PomodoroTimer is null && _focus.GetActive(_data)?.State == StudySessionState.Running);
+    public bool CanResumeFocus => _pomodoro.GetActive(_data)?.Status == PomodoroTimerStatus.Paused ||
+        (_data.PomodoroTimer is null && _focus.GetActive(_data)?.State == StudySessionState.Paused);
+    public bool CanFinishFocus => _pomodoro.GetActive(_data)?.Status == PomodoroTimerStatus.Running ||
+        (_data.PomodoroTimer is null && _focus.GetActive(_data) is not null);
 
     public IReadOnlyList<int> TaskPriorityOptions { get; } = new[] { 1, 2, 3, 4, 5 };
     public string TaskTitleInput { get => _taskTitleInput; set => Set(ref _taskTitleInput, value); }
@@ -375,6 +383,8 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
     public AsyncRelayCommand ResumeFocusCommand { get; }
     public AsyncRelayCommand FinishFocusCommand { get; }
     public AsyncRelayCommand CancelFocusCommand { get; }
+    public AsyncRelayCommand StartNextFocusCommand { get; }
+    public AsyncRelayCommand ClearNotificationsCommand { get; }
     public AsyncRelayCommand AddTaskCommand { get; }
     public AsyncRelayCommand CompleteTaskCommand { get; }
     public AsyncRelayCommand RemoveTaskCommand { get; }
@@ -411,6 +421,8 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
         IStudyDataStore store,
         AcademicProfileService academicProfile,
         FocusSessionService focus,
+        PomodoroService pomodoro,
+        NotificationCenterService notificationCenter,
         StudyTaskService tasks,
         ActivityLedgerService activityLedger,
         ErrorJournalService errors,
@@ -431,6 +443,8 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
         _store = store;
         _academicProfile = academicProfile;
         _focus = focus;
+        _pomodoro = pomodoro;
+        _notificationCenter = notificationCenter;
         _tasks = tasks;
         _activityLedger = activityLedger;
         _errors = errors;
@@ -448,11 +462,13 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
         _readiness = readiness;
         _exports = exports;
 
-        StartFocusCommand = new AsyncRelayCommand(StartFocusAsync, () => !HasActiveFocusSession);
+        StartFocusCommand = new AsyncRelayCommand(StartFocusAsync, () => _pomodoro.GetActive(_data) is null && _focus.GetActive(_data) is null);
         PauseFocusCommand = new AsyncRelayCommand(() => ChangeFocusAsync("pause"), () => CanPauseFocus);
         ResumeFocusCommand = new AsyncRelayCommand(() => ChangeFocusAsync("resume"), () => CanResumeFocus);
         FinishFocusCommand = new AsyncRelayCommand(() => ChangeFocusAsync("finish"), () => CanFinishFocus);
-        CancelFocusCommand = new AsyncRelayCommand(() => ChangeFocusAsync("cancel"), () => CanFinishFocus);
+        CancelFocusCommand = new AsyncRelayCommand(() => ChangeFocusAsync("cancel"), () => _data.PomodoroTimer is not null || _focus.GetActive(_data) is not null);
+        StartNextFocusCommand = new AsyncRelayCommand(StartNextFocusAsync, () => _data.PomodoroTimer is { Status: PomodoroTimerStatus.Completed, Phase: not PomodoroPhase.Focus });
+        ClearNotificationsCommand = new AsyncRelayCommand(ClearNotificationsAsync);
         AddTaskCommand = new AsyncRelayCommand(AddTaskAsync);
         CompleteTaskCommand = new AsyncRelayCommand(CompleteTaskAsync, () => SelectedTask is not null);
         RemoveTaskCommand = new AsyncRelayCommand(RemoveTaskAsync, () => SelectedTask is not null);
@@ -503,25 +519,121 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
 
     public void RefreshFocusSnapshot()
     {
-        var active = _focus.GetActive(_data);
-        if (active is null)
+        var timer = _data.PomodoroTimer;
+        if (timer is null && _focus.GetActive(_data) is { } legacyActive)
+        {
+            var legacy = _focus.Snapshot(_data, legacyActive.Id);
+            FocusStateDisplay = legacy.IsExpired ? "Tempo previsto raggiunto" :
+                legacy.State == StudySessionState.Running ? "Focus in corso" : "Focus in pausa";
+            FocusRemainingDisplay = FormatClock(legacy.RemainingSeconds);
+            FocusElapsedDisplay = FormatClock(legacy.ElapsedSeconds);
+            FocusProgressPercent = legacyActive.PlannedMinutes <= 0 ? 0 :
+                Math.Clamp((int)Math.Round(legacy.ElapsedSeconds * 100d / (legacyActive.PlannedMinutes * 60d)), 0, 100);
+            RefreshBreakSnapshot();
+        }
+        else if (timer is null)
         {
             FocusStateDisplay = "Pronto";
             FocusRemainingDisplay = "—";
             FocusElapsedDisplay = "00:00";
             FocusProgressPercent = 0;
+            FocusBreakRemainingDisplay = FormatClock((_data.PomodoroSettings?.ShortBreakMinutes ?? 5) * 60);
+            FocusBreakStateDisplay = "Pausa prevista dopo il focus";
+            FocusBreakProgressPercent = 0;
         }
         else
         {
-            var snapshot = _focus.Snapshot(_data, active.Id);
-            FocusStateDisplay = snapshot.IsExpired ? "Tempo previsto raggiunto" : snapshot.State == StudySessionState.Running ? "In corso" : "In pausa";
+            var snapshot = _pomodoro.Snapshot(_data);
+            var duration = timer.Phase switch
+            {
+                PomodoroPhase.Focus => _data.PomodoroSettings.FocusMinutes,
+                PomodoroPhase.ShortBreak => _data.PomodoroSettings.ShortBreakMinutes,
+                PomodoroPhase.LongBreak => _data.PomodoroSettings.LongBreakMinutes,
+                _ => _data.PomodoroSettings.FocusMinutes
+            };
             FocusRemainingDisplay = FormatClock(snapshot.RemainingSeconds);
             FocusElapsedDisplay = FormatClock(snapshot.ElapsedSeconds);
-            FocusProgressPercent = active.PlannedMinutes <= 0 ? 0 :
-                Math.Clamp((int)Math.Round(snapshot.ElapsedSeconds * 100d / (active.PlannedMinutes * 60d)), 0, 100);
+            FocusProgressPercent = duration <= 0 ? 0 :
+                Math.Clamp((int)Math.Round(snapshot.ElapsedSeconds * 100d / (duration * 60d)), 0, 100);
+            FocusStateDisplay = timer.Status switch
+            {
+                PomodoroTimerStatus.Paused => timer.Phase == PomodoroPhase.Focus ? "Focus in pausa" : "Pausa in sospeso",
+                PomodoroTimerStatus.Completed => "Pausa completata · pronto per il prossimo focus",
+                _ when timer.Phase == PomodoroPhase.Focus => "Focus in corso",
+                _ when timer.Phase == PomodoroPhase.ShortBreak => "Pausa breve",
+                _ => "Pausa lunga"
+            };
+            var isBreak = timer.Phase is PomodoroPhase.ShortBreak or PomodoroPhase.LongBreak;
+            FocusBreakStateDisplay = isBreak
+                ? timer.Phase == PomodoroPhase.LongBreak ? "Pausa lunga in corso" : "Pausa breve in corso"
+                : $"Prossima pausa · {_data.PomodoroSettings.ShortBreakMinutes} min";
+            FocusBreakRemainingDisplay = isBreak ? FormatClock(snapshot.RemainingSeconds) :
+                timer.Status == PomodoroTimerStatus.Completed ? "00:00" :
+                FormatClock(_data.PomodoroSettings.ShortBreakMinutes * 60);
+            FocusBreakProgressPercent = isBreak ? FocusProgressPercent :
+                timer.Status == PomodoroTimerStatus.Completed ? 100 : 0;
         }
-        RefreshBreakSnapshot();
+        OnPropertyChanged(nameof(FocusBreakRemainingDisplay));
+        OnPropertyChanged(nameof(FocusBreakStateDisplay));
+        OnPropertyChanged(nameof(FocusBreakProgressPercent));
+        RefreshNotifications();
         NotifyFocusState();
+    }
+
+    public async Task RefreshFocusSnapshotAsync()
+    {
+        try
+        {
+            var observedAt = DateTimeOffset.Now;
+            var reconciled = _pomodoro.Reconcile(_data, observedAt);
+            if (reconciled.HasTransitions)
+            {
+                foreach (var transition in reconciled.Transitions.Where(x => x.At >= observedAt.AddSeconds(-3)))
+                {
+                    var title = transition.Phase == PomodoroPhase.Focus
+                        ? "Focus completato"
+                        : transition.Phase == PomodoroPhase.ShortBreak ? "Pausa breve terminata" : "Pausa lunga terminata";
+                    Notifications.Insert(0, new StudyNotificationItem(
+                        $"pomodoro:{transition.Phase}:{transition.At:O}", title,
+                        transition.Phase == PomodoroPhase.Focus
+                            ? "Hai completato un blocco di concentrazione. È iniziata la pausa."
+                            : "La pausa è terminata. Puoi avviare il prossimo focus quando sei pronto.",
+                        transition.At, "Pomodoro"));
+                }
+                await SaveAsync();
+            }
+            RefreshFocusSnapshot();
+        }
+        catch (Exception ex)
+        {
+            WorkspaceStatus = $"Aggiornamento timer non riuscito: {ex.Message}";
+        }
+    }
+
+    private Task ClearNotificationsAsync()
+    {
+        foreach (var notification in Notifications)
+            _dismissedNotificationIds.Add(notification.Id);
+        Notifications.Clear();
+        OnPropertyChanged(nameof(NoNotifications));
+        return Task.CompletedTask;
+    }
+
+    private void RefreshNotifications()
+    {
+        var retainedPomodoro = Notifications.Where(x => x.Kind == "Pomodoro");
+        var desired = retainedPomodoro
+            .Concat(_notificationCenter.GetUpcoming(_data))
+            .Where(x => !_dismissedNotificationIds.Contains(x.Id))
+            .OrderBy(x => x.OccursAt)
+            .ToArray();
+        if (!Notifications.SequenceEqual(desired))
+        {
+            Notifications.Clear();
+            foreach (var item in desired)
+                Notifications.Add(item);
+        }
+        OnPropertyChanged(nameof(NoNotifications));
     }
 
     private void RefreshBreakSnapshot()
@@ -660,8 +772,8 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
                 ? task.CourseId
                 : SelectedFocusCourse?.Id;
             var topic = string.IsNullOrWhiteSpace(FocusTopicInput) ? task?.Title ?? string.Empty : FocusTopicInput;
-            var session = _focus.Start(_data, courseId, topic, minutes);
-            _activityLedger.SyncFocusSession(_data, session, taskId: task?.Id);
+            _pomodoro.UpdateSettings(_data, minutes, _focusBreakMinutes, Math.Max(10, _focusBreakMinutes * 3), 4);
+            _pomodoro.Start(_data, courseId, topic, taskId: task?.Id);
             await SaveAsync();
             FocusTopicInput = string.Empty;
             RefreshSelectedTaskProgress();
@@ -672,24 +784,34 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
 
     private async Task ChangeFocusAsync(string action)
     {
-        var active = _focus.GetActive(_data);
-        if (active is null) return;
+        if (_data.PomodoroTimer is null && _focus.GetActive(_data) is { } legacyActive)
+        {
+            try
+            {
+                switch (action)
+                {
+                    case "pause": _focus.Pause(_data, legacyActive.Id); break;
+                    case "resume": _focus.Resume(_data, legacyActive.Id); break;
+                    case "finish": _focus.Finish(_data, legacyActive.Id); break;
+                    case "cancel": _focus.Cancel(_data, legacyActive.Id); break;
+                }
+                await SaveAsync();
+                RefreshFocusSnapshot();
+                RefreshProgress();
+                RefreshCollections();
+            }
+            catch (Exception ex) { WorkspaceStatus = $"Sessione non aggiornata: {ex.Message}"; }
+            return;
+        }
+        if (_data.PomodoroTimer is null) return;
         try
         {
             switch (action)
             {
-                case "pause": _focus.Pause(_data, active.Id); break;
-                case "resume": _focus.Resume(_data, active.Id); break;
-                case "finish":
-                    _focus.Finish(_data, active.Id);
-                    _breakEndsAt = DateTimeOffset.Now.AddMinutes(_focusBreakMinutes);
-                    _breakCompleted = false;
-                    break;
-                case "cancel":
-                    _focus.Cancel(_data, active.Id);
-                    _breakEndsAt = null;
-                    _breakCompleted = false;
-                    break;
+                case "pause": _pomodoro.Pause(_data); break;
+                case "resume": _pomodoro.Resume(_data); break;
+                case "finish": _pomodoro.CompletePhase(_data); break;
+                case "cancel": _pomodoro.Reset(_data); break;
             }
             _activityLedger.SyncFocusSession(_data, active);
             await SaveAsync();
@@ -699,6 +821,18 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
             RefreshCollections();
         }
         catch (Exception ex) { WorkspaceStatus = $"Sessione non aggiornata: {ex.Message}"; }
+    }
+
+    private async Task StartNextFocusAsync()
+    {
+        try
+        {
+            _pomodoro.StartNextFocus(_data);
+            await SaveAsync();
+            RefreshFocusSnapshot();
+            WorkspaceStatus = "Nuovo blocco di concentrazione avviato.";
+        }
+        catch (Exception ex) { WorkspaceStatus = $"Impossibile avviare il prossimo focus: {ex.Message}"; }
     }
 
     private async Task AddTaskAsync()
@@ -1453,6 +1587,7 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
         ResumeFocusCommand?.NotifyCanExecuteChanged();
         FinishFocusCommand?.NotifyCanExecuteChanged();
         CancelFocusCommand?.NotifyCanExecuteChanged();
+        StartNextFocusCommand?.NotifyCanExecuteChanged();
     }
 
     private void NotifyReviewCommands()
