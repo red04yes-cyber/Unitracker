@@ -146,10 +146,10 @@ preference values into StudyPlannerOptions before preview generation.
   work or the estimate changed after preview generation, the affected blocks
   are rejected and a replacement remains all-or-nothing. It also rejects a
   proposal whose aggregate minutes exceed the current remaining estimate.
-- Older previews with an empty TaskProgress collection retain the previous
-  estimate-based validation path for compatibility. A non-empty progress
-  collection must contain a snapshot for every task referenced by a block;
-  partial or duplicate snapshot sets are rejected rather than falling back.
+- Legacy previews with TaskProgress=null retain the previous estimate-based
+  validation path for compatibility. New previews always provide a progress
+  collection; it must contain a snapshot for every task referenced by a block.
+  Partial or duplicate snapshot sets are rejected rather than falling back.
 - Invalid persisted weekly/daily budgets are clamped to the supported limits
   for preview generation and explained in warnings. Availability is limited to
   64 windows per week and an applied preview to 3,620 blocks (181 days × 20
