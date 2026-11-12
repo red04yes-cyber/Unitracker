@@ -256,7 +256,8 @@ public sealed class StudyPlannerService
             unscheduled,
             warnings.Distinct(StringComparer.Ordinal).ToArray())
         {
-            TaskProgress = taskProgressRows
+            TaskProgress = taskProgressRows,
+            HasTaskProgressSnapshot = true
         };
     }
 
@@ -271,24 +272,24 @@ public sealed class StudyPlannerService
         ArgumentNullException.ThrowIfNull(preview.Options);
         ArgumentNullException.ThrowIfNull(preview.Blocks);
         ArgumentNullException.ThrowIfNull(preview.Warnings);
+        ArgumentNullException.ThrowIfNull(preview.TaskProgress);
+        if (!preview.HasTaskProgressSnapshot && preview.TaskProgress.Count > 0)
+            throw new ArgumentException("A legacy preview cannot contain unversioned task progress.", nameof(preview));
 
         var blocks = preview.Blocks.ToArray();
         if (blocks.Length > 3620)
             throw new ArgumentOutOfRangeException(nameof(preview), "A preview cannot contain more than 3,620 blocks.");
         var previewProgressByTask = new Dictionary<string, TaskProgressSnapshot>(StringComparer.Ordinal);
-        if (preview.TaskProgress is { } taskProgress)
+        foreach (var snapshot in preview.TaskProgress)
         {
-            foreach (var snapshot in taskProgress)
-            {
-                if (snapshot is null ||
-                    string.IsNullOrWhiteSpace(snapshot.TaskId) ||
-                    snapshot.EstimatedMinutes < 0 ||
-                    snapshot.RecordedSeconds < 0 ||
-                    snapshot.RemainingSeconds < 0 ||
-                    snapshot.ProgressPercent is < 0 or > 100 ||
-                    !previewProgressByTask.TryAdd(snapshot.TaskId, snapshot))
-                    throw new ArgumentException("The preview contains invalid or duplicate task progress.", nameof(preview));
-            }
+            if (snapshot is null ||
+                string.IsNullOrWhiteSpace(snapshot.TaskId) ||
+                snapshot.EstimatedMinutes < 0 ||
+                snapshot.RecordedSeconds < 0 ||
+                snapshot.RemainingSeconds < 0 ||
+                snapshot.ProgressPercent is < 0 or > 100 ||
+                !previewProgressByTask.TryAdd(snapshot.TaskId, snapshot))
+                throw new ArgumentException("The preview contains invalid or duplicate task progress.", nameof(preview));
         }
 
         var normalizedOptions = ValidateOptions(preview.Options);
@@ -371,7 +372,7 @@ public sealed class StudyPlannerService
                 continue;
             }
 
-            if (preview.TaskProgress is not null && !previewProgressByTask.ContainsKey(task.Id))
+            if (preview.HasTaskProgressSnapshot && !previewProgressByTask.ContainsKey(task.Id))
             {
                 skipped++;
                 warnings.Add($"L'anteprima non contiene il progresso aggiornato del task \"{task.Title}\"; rigenera il piano.");
@@ -387,7 +388,7 @@ public sealed class StudyPlannerService
                 continue;
             }
 
-            var allowedMinutes = preview.TaskProgress is not null
+            var allowedMinutes = preview.HasTaskProgressSnapshot
                 ? currentProgressByTask[task.Id].RemainingMinutes
                 : Math.Max(0, task.EstimatedMinutes);
             if (plannedMinutesByTask.GetValueOrDefault(task.Id) > allowedMinutes)
