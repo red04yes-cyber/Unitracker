@@ -1065,7 +1065,13 @@
                 <StackPanel Margin="8,0,8,10">
                     <TextBlock Text="CENTRO NOTIFICHE" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource AccentBrush}" Margin="0,0,0,6"/>
                     <TextBlock Text="Scadenze e appuntamenti delle prossime 24 ore, più gli avvisi delle sessioni Pomodoro."
-                               Style="{StaticResource PageSubtitleStyle}" TextWrapping="Wrap" Margin="0,0,0,12"/>
+                               Style="{StaticResource PageSubtitleStyle}" TextWrapping="Wrap" Margin="0,0,0,8"/>
+                    <DockPanel Margin="0,0,0,12">
+                        <TextBlock Text="{Binding Workspace.Notifications.Count, StringFormat='Avvisi attivi · {0}'}"
+                                   FontSize="10" Foreground="{DynamicResource MutedBrush}" VerticalAlignment="Center"/>
+                        <Button Content="Segna tutti come letti" Command="{Binding Workspace.ClearNotificationsCommand}"
+                                Style="{StaticResource QuietButtonStyle}" DockPanel.Dock="Right"/>
+                    </DockPanel>
                     <ItemsControl ItemsSource="{Binding Workspace.Notifications}">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
