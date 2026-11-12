@@ -221,6 +221,9 @@ public sealed class StudyPlannerService
                     else
                     {
                         free[index] = new TimeRange(nextStart, range.End);
+                        // Revisit the shortened range so one availability window
+                        // can hold several focus blocks separated by breaks.
+                        index--;
                     }
 
                     if (blocksByDay[day] >= normalized.MaxBlocksPerDay || dayRemaining <= 0 || weekRemaining <= 0)
