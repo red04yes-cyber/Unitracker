@@ -1,5 +1,4 @@
 using System.IO;
-using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
 using System.Security.AccessControl;
 using System.Security.Principal;
@@ -283,14 +282,6 @@ public static class LocalFileSecurity
         if (new FileInfo(path).LinkTarget is not null) return true;
         if (new DirectoryInfo(path).LinkTarget is not null) return true;
 
-        // File.Exists/Directory.Exists and the managed LinkTarget APIs may
-        // not identify a dangling Windows symlink. FindFirstFileW reports the
-        // reparse-point attributes of the directory entry itself, without
-        // following its target.
-        if (OperatingSystem.IsWindows() && !File.Exists(path) && !Directory.Exists(path) &&
-            TryGetWindowsReparsePoint(path) == true)
-            return true;
-
         try
         {
             return (File.GetAttributes(path) & FileAttributes.ReparsePoint) != 0;
@@ -304,80 +295,6 @@ public static class LocalFileSecurity
             return false;
         }
     }
-
-    [SupportedOSPlatform("windows")]
-    private static bool? TryGetWindowsReparsePoint(string path)
-    {
-        // Windows file names cannot contain wildcards. Treat them as invalid
-        // instead of allowing native enumeration to match an unrelated entry.
-        if (path.Contains('*') || path.Contains('?')) return true;
-
-        var fullPath = Path.GetFullPath(path);
-        var parent = Path.GetDirectoryName(fullPath);
-        var leaf = Path.GetFileName(fullPath);
-        if (string.IsNullOrWhiteSpace(parent) || string.IsNullOrWhiteSpace(leaf)) return null;
-
-        // Enumerating the parent returns WIN32_FIND_DATA for the directory
-        // entry itself. Looking up a dangling link by its full path may instead
-        // fail because some Windows APIs follow its missing target.
-        var searchPattern = Path.Combine(parent, "*");
-        if (searchPattern.Length >= 248 && !searchPattern.StartsWith(@"\\?\", StringComparison.Ordinal))
-        {
-            searchPattern = parent.StartsWith(@"\\", StringComparison.Ordinal)
-                ? @"\\?\UNC\" + parent[2..] + @"\*"
-                : @"\\?\" + searchPattern;
-        }
-
-        var handle = FindFirstFileW(searchPattern, out var data);
-        if (handle == new IntPtr(-1))
-            return Marshal.GetLastWin32Error() is 2 or 3 ? null : true;
-
-        try
-        {
-            do
-            {
-                if (string.Equals(data.FileName, leaf, StringComparison.OrdinalIgnoreCase))
-                    return (data.Attributes & FileAttributes.ReparsePoint) != 0;
-            }
-            while (FindNextFileW(handle, out data));
-
-            // ERROR_NO_MORE_FILES means the exact leaf was not present.
-            return Marshal.GetLastWin32Error() == 18 ? null : true;
-        }
-        finally
-        {
-            _ = FindClose(handle);
-        }
-    }
-
-    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
-    private struct WindowsFindData
-    {
-        public FileAttributes Attributes;
-        public uint CreationTimeLow;
-        public uint CreationTimeHigh;
-        public uint LastAccessTimeLow;
-        public uint LastAccessTimeHigh;
-        public uint LastWriteTimeLow;
-        public uint LastWriteTimeHigh;
-        public uint FileSizeHigh;
-        public uint FileSizeLow;
-        public uint Reserved0;
-        public uint Reserved1;
-        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 260)] public string? FileName;
-        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 14)] public string? AlternateFileName;
-    }
-
-    [DllImport("kernel32.dll", EntryPoint = "FindFirstFileW", CharSet = CharSet.Unicode, SetLastError = true)]
-    private static extern IntPtr FindFirstFileW(string fileName, out WindowsFindData findData);
-
-    [DllImport("kernel32.dll", EntryPoint = "FindNextFileW", CharSet = CharSet.Unicode, SetLastError = true)]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool FindNextFileW(IntPtr findHandle, out WindowsFindData findData);
-
-    [DllImport("kernel32.dll", SetLastError = true)]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool FindClose(IntPtr findHandle);
 
     [SupportedOSPlatform("windows")]
     private static void ApplyDirectoryAcl(string path)
