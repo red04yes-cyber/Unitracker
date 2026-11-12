@@ -44,6 +44,7 @@ public static class CompositionRoot
         services.AddSingleton<StudyTaskService>();
         services.AddSingleton<ActivityLedgerService>();
         services.AddSingleton<PomodoroService>();
+        services.AddSingleton<NotificationCenterService>();
         services.AddSingleton<StudyDataExportService>();
         services.AddSingleton<StudyPlannerService>();
         services.AddSingleton<StudyMissionService>();
