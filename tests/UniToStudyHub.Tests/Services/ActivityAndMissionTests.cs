@@ -327,4 +327,283 @@ public sealed class ActivityAndMissionTests
             TimeZoneId = "UTC"
         }, Start.AddHours(1)));
     }
+
+    [Fact]
+    public void FocusSessionSyncCanLinkAnOpenTaskAndKeepsTheLinkIdempotently()
+    {
+        var data = Data();
+        var task = new StudyTaskService().Add(data, new StudyTaskData
+        {
+            Id = "task-1",
+            CourseId = "analisi",
+            Title = "Esercizi sui limiti",
+            EstimatedMinutes = 30
+        });
+        var focus = new FocusSessionService();
+        var ledger = new ActivityLedgerService();
+        var session = focus.Start(data, null, task.Title, 25, Start);
+
+        var created = ledger.SyncFocusSession(data, session, Start.AddMinutes(5), task.Id);
+        var refreshed = ledger.SyncFocusSession(data, session, Start.AddMinutes(10));
+
+        Assert.Single(data.StudyActivities);
+        Assert.Equal(task.Id, created.TaskId);
+        Assert.Equal(task.Id, refreshed.TaskId);
+        Assert.Equal("analisi", session.CourseId);
+        Assert.Same(created, refreshed);
+        Assert.Single(data.ActivityRevisions);
+    }
+
+    [Fact]
+    public void TaskProgressUnionsOverlappingManualAndPausedTimerIntervals()
+    {
+        var data = Data();
+        var task = new StudyTaskService().Add(data, new StudyTaskData
+        {
+            Id = "task-1",
+            CourseId = "analisi",
+            Title = "Preparare gli esercizi",
+            EstimatedMinutes = 30
+        });
+        var focus = new FocusSessionService();
+        var ledger = new ActivityLedgerService();
+        var session = focus.Start(data, "analisi", task.Title, 30, Start);
+        focus.Pause(data, session.Id, Start.AddMinutes(10));
+        focus.Resume(data, session.Id, Start.AddMinutes(20));
+        focus.Finish(data, session.Id, "Completata", Start.AddMinutes(30));
+        ledger.SyncFocusSession(data, session, Start.AddMinutes(30), task.Id);
+        ledger.AddManual(data, new StudyActivityData
+        {
+            CourseId = "analisi",
+            TaskId = task.Id,
+            Type = StudyActivityType.Exercise,
+            Title = "Esercizi svolti fuori timer",
+            StartedAt = Start.AddMinutes(5),
+            EndedAt = Start.AddMinutes(15),
+            EffectiveSeconds = 600,
+            TimeZoneId = "UTC"
+        }, Start.AddHours(1));
+
+        var progress = ledger.GetTaskProgress(data, task.Id, Start.AddHours(1));
+
+        // 20 focus minutes plus a manual interval that adds only 5 unique minutes.
+        Assert.Equal(1500, progress.RecordedSeconds);
+        Assert.Equal(300, progress.RemainingSeconds);
+        Assert.Equal(5, progress.RemainingMinutes);
+        Assert.Equal(83, progress.ProgressPercent);
+        Assert.False(progress.IsOverEstimate);
+    }
+
+    [Fact]
+    public void CancelledTimerStillCreditsFocusThatWasActuallyRecorded()
+    {
+        var data = Data();
+        var task = new StudyTaskService().Add(data, new StudyTaskData
+        {
+            Id = "task-1",
+            CourseId = "analisi",
+            Title = "Ripasso interrotto",
+            EstimatedMinutes = 10
+        });
+        var focus = new FocusSessionService();
+        var ledger = new ActivityLedgerService();
+        var session = focus.Start(data, "analisi", task.Title, 10, Start);
+        focus.Cancel(data, session.Id, Start.AddMinutes(7));
+        ledger.SyncFocusSession(data, session, Start.AddMinutes(7), task.Id);
+
+        var progress = ledger.GetTaskProgress(data, task.Id, Start.AddMinutes(8));
+
+        Assert.Equal(420, progress.RecordedSeconds);
+        Assert.Equal(7, progress.RecordedMinutes);
+        Assert.Equal(70, progress.ProgressPercent);
+    }
+
+    [Fact]
+    public void TaskLinkRejectsMissingTasksAndCrossCourseAttribution()
+    {
+        var data = Data();
+        data.Courses.Add(new Course { Id = "fisica", Name = "Fisica", Cfu = 6 });
+        var task = new StudyTaskService().Add(data, new StudyTaskData
+        {
+            Id = "fisica-task",
+            CourseId = "fisica",
+            Title = "Esercizi di fisica",
+            EstimatedMinutes = 20
+        });
+        var session = new FocusSessionService().Start(data, "analisi", "Limiti", 25, Start);
+        var ledger = new ActivityLedgerService();
+
+        Assert.Throws<ArgumentException>(() => ledger.SyncFocusSession(data, session, Start, "missing-task"));
+        Assert.Throws<ArgumentException>(() => ledger.SyncFocusSession(data, session, Start, task.Id));
+        Assert.Empty(data.StudyActivities);
+    }
+
+    [Fact]
+    public void TaskRemovalKeepsHistoricalReferenceAndCancelsTheOpenTask()
+    {
+        var data = Data();
+        var task = new StudyTaskService().Add(data, new StudyTaskData
+        {
+            Id = "task-1",
+            CourseId = "analisi",
+            Title = "Ripassare",
+            EstimatedMinutes = 20
+        });
+        var session = new FocusSessionService().Start(data, "analisi", task.Title, 20, Start);
+        new ActivityLedgerService().SyncFocusSession(data, session, Start.AddMinutes(5), task.Id);
+
+        new StudyTaskService().Remove(data, task.Id, Start.AddMinutes(6));
+
+        Assert.Contains(task, data.StudyTasks);
+        Assert.Equal(StudyTaskStatus.Cancelled, task.Status);
+        Assert.Equal(task.Id, Assert.Single(data.StudyActivities).TaskId);
+        StudyDataEntityMapper.NormalizeAndValidate(data);
+    }
+
+    [Fact]
+    public void TaskProgressCapsTheBarAndReportsAnEstimateOverrun()
+    {
+        var data = Data();
+        var task = new StudyTaskService().Add(data, new StudyTaskData
+        {
+            Id = "task-1",
+            CourseId = "analisi",
+            Title = "Studio approfondito",
+            EstimatedMinutes = 5
+        });
+        var ledger = new ActivityLedgerService();
+        ledger.AddManual(data, new StudyActivityData
+        {
+            CourseId = "analisi",
+            TaskId = task.Id,
+            Type = StudyActivityType.Study,
+            Title = "Studio effettivo",
+            StartedAt = Start,
+            EndedAt = Start.AddMinutes(8),
+            EffectiveSeconds = 480,
+            TimeZoneId = "UTC"
+        }, Start.AddMinutes(9));
+
+        var progress = ledger.GetTaskProgress(data, task.Id, Start.AddMinutes(10));
+
+        Assert.Equal(480, progress.RecordedSeconds);
+        Assert.Equal(0, progress.RemainingSeconds);
+        Assert.Equal(100, progress.ProgressPercent);
+        Assert.True(progress.IsOverEstimate);
+    }
+
+    [Fact]
+    public void PomodoroStartCanLinkItsFocusSessionToAnOpenTask()
+    {
+        var data = Data();
+        var task = new StudyTaskService().Add(data, new StudyTaskData
+        {
+            Id = "task-1",
+            CourseId = "analisi",
+            Title = "Preparare gli integrali",
+            EstimatedMinutes = 45
+        });
+        var ledger = new ActivityLedgerService();
+        var pomodoro = new PomodoroService(new FocusSessionService(), ledger);
+
+        var timer = pomodoro.Start(data, "analisi", task.Title, Start, task.Id);
+
+        var activity = Assert.Single(data.StudyActivities);
+        Assert.Equal(timer.SessionId, activity.SessionId);
+        Assert.Equal(task.Id, activity.TaskId);
+        Assert.Equal("analisi", activity.CourseId);
+    }
+
+
+    [Fact]
+    public void PomodoroRejectsCrossCourseTaskBeforeCreatingAnySession()
+    {
+        var data = Data();
+        data.Courses.Add(new Course { Id = "fisica", Name = "Fisica", Cfu = 6 });
+        var task = new StudyTaskService().Add(data, new StudyTaskData
+        {
+            Id = "fisica-task",
+            CourseId = "fisica",
+            Title = "Esercizi di fisica",
+            EstimatedMinutes = 30
+        });
+        var pomodoro = new PomodoroService(new FocusSessionService(), new ActivityLedgerService());
+
+        Assert.Throws<ArgumentException>(() => pomodoro.Start(data, "analisi", task.Title, Start, task.Id));
+        Assert.Empty(data.StudySessions);
+        Assert.Null(data.PomodoroTimer);
+        Assert.Empty(data.StudyActivities);
+    }
+
+    [Fact]
+    public void TaskWithoutEstimateIsNotPresentedAsComplete()
+    {
+        var data = Data();
+        var task = new StudyTaskService().Add(data, new StudyTaskData
+        {
+            Id = "task-unestimated",
+            CourseId = "analisi",
+            Title = "Lettura libera",
+            EstimatedMinutes = 0
+        });
+        var ledger = new ActivityLedgerService();
+        ledger.AddManual(data, new StudyActivityData
+        {
+            CourseId = "analisi",
+            TaskId = task.Id,
+            Type = StudyActivityType.Reading,
+            Title = "Lettura",
+            StartedAt = Start,
+            EndedAt = Start.AddMinutes(5),
+            EffectiveSeconds = 300,
+            TimeZoneId = "UTC"
+        }, Start.AddMinutes(6));
+
+        var progress = ledger.GetTaskProgress(data, task.Id, Start.AddMinutes(7));
+
+        Assert.False(progress.HasEstimate);
+        Assert.Equal(300, progress.RecordedSeconds);
+        Assert.Equal(0, progress.ProgressPercent);
+        Assert.Equal(0, progress.RemainingSeconds);
+        Assert.False(progress.IsOverEstimate);
+    }
+
+    [Fact]
+    public void UnreferencedTaskCanStillBePhysicallyRemoved()
+    {
+        var data = Data();
+        var task = new StudyTaskService().Add(data, new StudyTaskData
+        {
+            Id = "task-unlinked",
+            CourseId = "analisi",
+            Title = "Attività senza storico",
+            EstimatedMinutes = 15
+        });
+
+        new StudyTaskService().Remove(data, task.Id, Start);
+
+        Assert.DoesNotContain(data.StudyTasks, x => x.Id == task.Id);
+    }
+
+
+    [Fact]
+    public void TimerActivityWithoutFocusSessionIsRejectedByPersistenceValidation()
+    {
+        var data = Data();
+        data.StudyActivities.Add(new StudyActivityData
+        {
+            Id = "orphan-timer",
+            Type = StudyActivityType.Study,
+            Title = "Timer senza sessione",
+            StartedAt = Start,
+            EndedAt = Start.AddMinutes(5),
+            TimeZoneId = "UTC",
+            EffectiveSeconds = 300,
+            Origin = StudyActivityOrigin.Timer,
+            Status = StudyActivityStatus.Completed
+        });
+
+        Assert.Throws<InvalidDataException>(() => StudyDataEntityMapper.NormalizeAndValidate(data));
+    }
+
 }

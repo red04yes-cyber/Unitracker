@@ -36,6 +36,13 @@ public sealed class ActivityAndMissionPersistenceTests
             }
         };
         data.StudyMissions.Add(mission);
+        data.StudyTasks.Add(new StudyTaskData
+        {
+            Id = "task-linked",
+            CourseId = "analisi",
+            Title = "Preparare gli esercizi",
+            EstimatedMinutes = 40
+        });
         data.StudySessions.Add(new StudySessionData
         {
             Id = "session-1",
@@ -59,6 +66,7 @@ public sealed class ActivityAndMissionPersistenceTests
         {
             Id = "activity-1",
             CourseId = "analisi",
+            TaskId = "task-linked",
             MissionId = "mission-1",
             Title = "Lettura",
             StartedAt = start,
@@ -93,6 +101,8 @@ public sealed class ActivityAndMissionPersistenceTests
         Assert.Equal(start, loadedSegment.StartedAt);
         Assert.Null(loadedSegment.EndedAt);
         Assert.Equal("mission-1", loaded.StudyActivities[0].MissionId);
+        Assert.Equal("task-linked", loaded.StudyActivities[0].TaskId);
+        Assert.Single(loaded.StudyTasks);
         Assert.Single(loaded.ActivityRevisions);
         Assert.Equal(ActivityRevisionAction.Created, loaded.ActivityRevisions[0].Action);
     }

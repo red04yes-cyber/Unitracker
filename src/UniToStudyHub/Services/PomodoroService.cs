@@ -63,17 +63,33 @@ public sealed class PomodoroService(FocusSessionService focus, ActivityLedgerSer
         StudyData data,
         string? courseId,
         string topic,
-        DateTimeOffset? now = null)
+        DateTimeOffset? now = null,
+        string? taskId = null)
     {
         ArgumentNullException.ThrowIfNull(data);
         var at = now ?? DateTimeOffset.Now;
         var active = GetActive(data);
         if (active is not null)
             throw new InvalidOperationException("A Pomodoro phase is already running or paused.");
-        CloseCompletedRun(data, at);
 
+        var resolvedCourseId = courseId;
+        if (!string.IsNullOrWhiteSpace(taskId))
+        {
+            var task = data.StudyTasks.FirstOrDefault(x => string.Equals(x.Id, taskId, StringComparison.Ordinal))
+                ?? throw new ArgumentException($"Study task '{taskId}' does not exist.", nameof(taskId));
+            if (task.Status is not (StudyTaskStatus.Todo or StudyTaskStatus.InProgress))
+                throw new InvalidOperationException("A Pomodoro session can only be linked to an open task.");
+            if (!string.IsNullOrWhiteSpace(task.CourseId) &&
+                !string.IsNullOrWhiteSpace(courseId) &&
+                !string.Equals(task.CourseId, courseId, StringComparison.Ordinal))
+                throw new ArgumentException("The Pomodoro session and linked task belong to different courses.", nameof(taskId));
+            if (string.IsNullOrWhiteSpace(resolvedCourseId))
+                resolvedCourseId = task.CourseId;
+        }
+
+        CloseCompletedRun(data, at);
         var settings = data.PomodoroSettings ??= new PomodoroSettingsData();
-        var session = focus.Start(data, courseId, topic, settings.FocusMinutes, at);
+        var session = focus.Start(data, resolvedCourseId, topic, settings.FocusMinutes, at);
         session.PlannedMinutes = settings.FocusMinutes;
         var duration = DurationSeconds(settings, PomodoroPhase.Focus);
         var timer = new PomodoroTimerData
@@ -89,7 +105,16 @@ public sealed class PomodoroService(FocusSessionService focus, ActivityLedgerSer
             UpdatedAt = at
         };
         data.PomodoroTimer = timer;
-        Sync(data, timer, at);
+        try
+        {
+            Sync(data, timer, at, taskId);
+        }
+        catch
+        {
+            data.PomodoroTimer = null;
+            data.StudySessions.Remove(session);
+            throw;
+        }
         return timer;
     }
 
@@ -353,12 +378,12 @@ public sealed class PomodoroService(FocusSessionService focus, ActivityLedgerSer
         data.PomodoroTimer = null;
     }
 
-    private void Sync(StudyData data, PomodoroTimerData timer, DateTimeOffset at)
+    private void Sync(StudyData data, PomodoroTimerData timer, DateTimeOffset at, string? taskId = null)
     {
         var session = data.StudySessions.FirstOrDefault(x =>
             string.Equals(x.Id, timer.SessionId, StringComparison.Ordinal));
         if (session is not null)
-            ledger.SyncFocusSession(data, session, at);
+            ledger.SyncFocusSession(data, session, at, taskId);
     }
 
     private static int ElapsedActive(PomodoroTimerData timer, int duration, DateTimeOffset at)
