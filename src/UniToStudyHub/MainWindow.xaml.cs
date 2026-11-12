@@ -40,7 +40,7 @@ public partial class MainWindow : Window
         SystemThemeWatcher.Watch(this, Wpf.Ui.Controls.WindowBackdropType.Mica);
         DataContext = viewModel;
         _focusRefreshTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
-        _focusRefreshTimer.Tick += (_, _) => viewModel.Workspace.RefreshFocusSnapshot();
+        _focusRefreshTimer.Tick += async (_, _) => await viewModel.Workspace.RefreshFocusSnapshotAsync();
         _focusRefreshTimer.Start();
         Closing += (_, _) =>
         {
@@ -48,6 +48,53 @@ public partial class MainWindow : Window
             SystemThemeWatcher.UnWatch(this);
         };
     }
+
+
+    private static readonly string[] FocusMusicTracks =
+    {
+        "https://opengameart.org/sites/default/files/01_squeaky_computer_chair_0.mp3",
+        "https://opengameart.org/sites/default/files/02_now_or_never_0.mp3",
+        "https://opengameart.org/sites/default/files/03_remembering_something_i_forgot_0.mp3",
+        "https://opengameart.org/sites/default/files/04_its_going_to_be_a_good_day_0.mp3",
+        "https://opengameart.org/sites/default/files/05_learning_to_love_myself_0.mp3",
+        "https://opengameart.org/sites/default/files/06_trying_something_new_1.mp3",
+        "https://opengameart.org/sites/default/files/07_the_last_day_i_saw_you_0.mp3",
+        "https://opengameart.org/sites/default/files/08_there_was_nothing_i_could_do_0.mp3"
+    };
+
+    private int _focusMusicIndex;
+
+    private void PlayFocusTrack_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { Tag: string url }) return;
+        var index = Array.IndexOf(FocusMusicTracks, url);
+        if (index >= 0) PlayFocusTrack(index);
+    }
+
+    private void PlayFocusTrack(int index)
+    {
+        if (FocusMusicTracks.Length == 0) return;
+        _focusMusicIndex = (index + FocusMusicTracks.Length) % FocusMusicTracks.Length;
+        try
+        {
+            FocusMusicPlayer.Stop();
+            FocusMusicPlayer.Source = new Uri(FocusMusicTracks[_focusMusicIndex], UriKind.Absolute);
+            FocusMusicPlayer.Play();
+            FocusMusicTrackLabel.Text = ((Button)FocusMusicPlaylist.Items[_focusMusicIndex]).Content?.ToString() ?? "Lo-fi";
+        }
+        catch (Exception ex)
+        {
+            FocusMusicTrackLabel.Text = $"Riproduzione non disponibile: {ex.Message}";
+        }
+    }
+
+    private void PauseFocusMusic_Click(object sender, RoutedEventArgs e) => FocusMusicPlayer.Pause();
+
+    private void StopFocusMusic_Click(object sender, RoutedEventArgs e) => FocusMusicPlayer.Stop();
+
+    private void NextFocusMusic_Click(object sender, RoutedEventArgs e) => PlayFocusTrack(_focusMusicIndex + 1);
+
+    private void FocusMusicPlayer_MediaEnded(object sender, RoutedEventArgs e) => PlayFocusTrack(_focusMusicIndex + 1);
 
     private void SaveAiSettings_Click(object sender, RoutedEventArgs e)
     {
