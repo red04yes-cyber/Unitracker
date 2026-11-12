@@ -912,8 +912,9 @@
                                 <Button Content="Stop" Click="StopFocusMusic_Click" Style="{StaticResource QuietButtonStyle}" Margin="0,0,6,6"/>
                                 <Button Content="Successiva" Click="NextFocusMusic_Click" Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,6,6"/>
                             </WrapPanel>
-                            <TextBlock Text="Musica di Purrple Cat · licenza CC BY 4.0. Attribuzione: Purrple Cat."
-                                       FontSize="9" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,8,0,0"/>
+                            <TextBlock FontSize="9" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,8,0,0">
+                                <Run Text="Musica di "/><Hyperlink NavigateUri="https://opengameart.org/users/purrplecat" RequestNavigate="OpenExternalLink_Click">Purrple Cat</Hyperlink><Run Text=" · licenza CC BY 4.0."/>
+                            </TextBlock>
                             <TextBlock FontSize="9" Foreground="{DynamicResource AccentBrush}" Margin="0,3,0,0">
                                 <Hyperlink NavigateUri="https://creativecommons.org/licenses/by/4.0/" RequestNavigate="OpenExternalLink_Click">Dettagli licenza Creative Commons</Hyperlink>
                             </TextBlock>
@@ -1077,7 +1078,7 @@
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
-                    <TextBlock Text="Nessun avviso nelle prossime 24 ore." FontSize="11" Foreground="{DynamicResource MutedBrush}" Margin="2,8,2,0"/>
+                    <TextBlock Text="Nessun avviso nelle prossime 24 ore." Visibility="{Binding Workspace.NoNotifications, Converter={StaticResource BooleanToVisibilityConverter}}" FontSize="11" Foreground="{DynamicResource MutedBrush}" Margin="2,8,2,0"/>
                 </StackPanel>
             </TabItem>
         </TabControl>
