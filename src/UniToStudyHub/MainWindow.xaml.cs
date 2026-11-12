@@ -70,7 +70,7 @@ public partial class MainWindow : Window
         "The Last Day I Saw You", "There Was Nothing I Could Do"
     };
 
-    private int _focusMusicIndex;
+    private int _focusMusicIndex = -1;
 
     private void PlayFocusTrack_Click(object sender, RoutedEventArgs e)
     {
@@ -97,6 +97,12 @@ public partial class MainWindow : Window
     }
 
     private void PauseFocusMusic_Click(object sender, RoutedEventArgs e) => FocusMusicPlayer.Pause();
+    private void ResumeFocusMusic_Click(object sender, RoutedEventArgs e) => FocusMusicPlayer.Play();
+
+    private void FocusMusicVolume_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        if (FocusMusicPlayer is not null) FocusMusicPlayer.Volume = Math.Clamp(e.NewValue, 0d, 1d);
+    }
 
     private void StopFocusMusic_Click(object sender, RoutedEventArgs e) => FocusMusicPlayer.Stop();
 
