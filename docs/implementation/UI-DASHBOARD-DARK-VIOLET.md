@@ -1,45 +1,60 @@
-# UI slice — dashboard dark violet
+# UI slice — dashboard, shell, materie e calendario dark violet
 
 ## Direzione approvata
 
 - Tema scuro come impostazione visiva predefinita.
 - Accento violetto/indaco.
-- Animazioni ricche ma brevi: ingresso delle card, feedback hover e micro-transizioni.
+- Animazioni ricche ma brevi: ingresso delle card, micro-scale hover e transizioni di navigazione/calendario.
 - WPF/MVVM invariati; nessuna dipendenza UI aggiunta.
 
 ## Modifiche
 
 ### Design system — `src/UniToStudyHub/App.xaml`
 
-- Passaggio del dizionario WPF-UI al tema Dark.
-- Aggiornamento delle risorse semantiche: pagina, superfici, sidebar, testo, bordi, accento, stati success/warning e AI.
-- Aggiunta di `AnimatedCardStyle`: fade-in all'ingresso e lieve scale-in su hover, con ritorno animato all'uscita.
-- I colori restano centralizzati in risorse condivise per evitare valori incoerenti nelle schermate.
+- Tema WPF-UI Dark e palette semantica violet/dark.
+- Stile condiviso `AnimatedCardStyle`: fade/scale-in leggero all'ingresso, scale hover e ritorno animato.
+- Pulsanti con micro-feedback hover e pressed.
+- Palette centralizzata per mantenere coerenza tra schermate.
 
-### Dashboard — `src/UniToStudyHub/MainWindow.xaml`
+### Shell, sidebar e topbar — `src/UniToStudyHub/MainWindow.xaml`
 
-- Nuova gerarchia: intestazione, hero, prossimo esame, KPI carriera e riepilogo recente.
-- Hero violetto scuro con elemento grafico decorativo, senza dati fittizi.
-- Card KPI basate esclusivamente sui binding già esistenti.
-- Etichetta esplicita che ricorda che le date generate sono indicative.
-- Azioni principali collegate alla navigazione esistente verso Materie.
-- Le altre sezioni e i relativi binding sono lasciati invariati in questa prima slice.
+- Sidebar più leggibile, con indicatore laterale violetto per la sezione attiva e superfici hover discrete.
+- Header con gerarchia tipografica più chiara e stato Moodle contenuto in una pill con troncamento del testo lungo.
+- Transizione breve di dissolvenza e scorrimento verticale quando cambia la sezione.
+- Ripristinato il focus visuale predefinito per la navigazione da tastiera; non viene più disabilitato sul TabItem.
+
+### Materie
+
+- Filtri disposti in un WrapPanel per adattarsi meglio a larghezze diverse.
+- Campo di ricerca con nome accessibile esplicito e tooltip descrittivo.
+- Card materia con ingresso animato e feedback hover, mantenendo nome, codice, CFU e stato esistenti.
+- Pannelli di aggiunta e registrazione tentativo integrati nello stesso linguaggio visivo.
+- Ricerca, filtri e conteggi continuano a usare i binding e gli handler già presenti.
+
+### Calendario
+
+- Transizione breve di fade/slide quando cambia la modalità mese, settimana o giorno.
+- Card dei giorni e delle viste settimanale/giornaliera con animazioni coerenti.
+- Corretto il fondo bianco hard-coded delle celle mensili, ora coerente con il tema scuro.
+- Rimangono invariati eventi, selezione, navigazione temporale, provenienza e stato di verifica.
+
+### Progressi e animazioni
+
+- KPI e pannelli di andamento usano lo stile animato condiviso.
+- Le barre di progresso continuano a rappresentare i valori reali già forniti dai ViewModel; nessun valore o grafico sintetico aggiunto.
+- Le animazioni sono brevi e decorative: non bloccano input né modificano la logica.
 
 ## Vincoli rispettati
 
-- Nessuna modifica a Domain, Application, servizi, modelli o persistenza.
-- Nessuna modifica a `MainWindow.xaml.cs` o ai ViewModel.
+- Intervento autorizzato dall'utente come eccezione UI/UX limitata alle aree richieste, nonostante i divieti UI presenti in `AGENTS.md` e nel brief tecnico.
+- Nessuna modifica a `MainWindow.xaml.cs`, ViewModel, Domain, Application, servizi, modelli o persistenza.
 - Nessuna dipendenza NuGet aggiunta.
-- Nessun dato demo o metrica inventata.
-- La PR storica #35 è chiusa e superseded; questa slice parte dalla linea canonica `main`, non riapre né sovrascrive quella branch.
+- Nessun dato demo, metrica inventata o binding applicativo nuovo.
+- La PR storica #35 è chiusa/superseded; questa slice resta sulla branch `ui/dashboard-dark-violet` e sulla PR #76.
 
 ## Verifiche
 
-- Controllati i binding della dashboard rispetto a `MainViewModel`.
-- Controllate le risorse colore e l'ordine di dichiarazione degli stili.
-- Controllato che la dashboard usi solo handler già esistenti.
-- Build WPF e verifica visuale su Windows ancora da eseguire in CI/runtime. Le animazioni e il tema vanno controllati su Windows prima del merge.
-
-## Prossima slice suggerita
-
-Estendere la stessa identità visiva alla shell (sidebar/topbar), quindi Materie e Calendario, mantenendo la compatibilità con i binding e con i flussi già implementati.
+- Controllati i binding esistenti per materie e calendario e mantenute le relative sorgenti.
+- Controllati i riferimenti alle risorse e agli handler già presenti.
+- Build WPF e test XAML da eseguire tramite CI Windows dopo questo aggiornamento.
+- La verifica visuale e l'interazione runtime su Windows restano necessarie: una build CI positiva non equivale a un test UX.
