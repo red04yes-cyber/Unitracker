@@ -924,15 +924,20 @@
                             </TextBlock>
                         </StackPanel>
                         <StackPanel x:Name="FocusMusicPlaylist" Grid.Column="1">
-                            <TextBlock Text="PLAYLIST · NOW OR NEVER" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource MutedBrush}" Margin="0,0,0,7"/>
-                            <Button Content="01  Squeaky Computer Chair" Tag="https://opengameart.org/sites/default/files/01_squeaky_computer_chair_0.mp3" Click="PlayFocusTrack_Click" Style="{StaticResource SecondaryButtonStyle}" HorizontalContentAlignment="Left" Margin="0,0,0,5"/>
-                            <Button Content="02  Now or Never" Tag="https://opengameart.org/sites/default/files/02_now_or_never_0.mp3" Click="PlayFocusTrack_Click" Style="{StaticResource SecondaryButtonStyle}" HorizontalContentAlignment="Left" Margin="0,0,0,5"/>
-                            <Button Content="03  Remembering Something I Forgot" Tag="https://opengameart.org/sites/default/files/03_remembering_something_i_forgot_0.mp3" Click="PlayFocusTrack_Click" Style="{StaticResource SecondaryButtonStyle}" HorizontalContentAlignment="Left" Margin="0,0,0,5"/>
-                            <Button Content="04  It's Going to Be a Good Day" Tag="https://opengameart.org/sites/default/files/04_its_going_to_be_a_good_day_0.mp3" Click="PlayFocusTrack_Click" Style="{StaticResource SecondaryButtonStyle}" HorizontalContentAlignment="Left" Margin="0,0,0,5"/>
-                            <Button Content="05  Learning to Love Myself" Tag="https://opengameart.org/sites/default/files/05_learning_to_love_myself_0.mp3" Click="PlayFocusTrack_Click" Style="{StaticResource SecondaryButtonStyle}" HorizontalContentAlignment="Left" Margin="0,0,0,5"/>
-                            <Button Content="06  Trying Something New" Tag="https://opengameart.org/sites/default/files/06_trying_something_new_1.mp3" Click="PlayFocusTrack_Click" Style="{StaticResource SecondaryButtonStyle}" HorizontalContentAlignment="Left" Margin="0,0,0,5"/>
-                            <Button Content="07  The Last Day I Saw You" Tag="https://opengameart.org/sites/default/files/07_the_last_day_i_saw_you_0.mp3" Click="PlayFocusTrack_Click" Style="{StaticResource SecondaryButtonStyle}" HorizontalContentAlignment="Left" Margin="0,0,0,5"/>
-                            <Button Content="08  There Was Nothing I Could Do" Tag="https://opengameart.org/sites/default/files/08_there_was_nothing_i_could_do_0.mp3" Click="PlayFocusTrack_Click" Style="{StaticResource SecondaryButtonStyle}" HorizontalContentAlignment="Left"/>
+                            <TextBlock Text="PLAYLIST · 100 BRANI LO-FI" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource MutedBrush}" Margin="0,0,0,7"/>
+                            <TextBlock Text="Seleziona una traccia per avviare la riproduzione. Scorri la raccolta per esplorare tutti gli album."
+                                       FontSize="9" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,0,0,8"/>
+                            <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" MaxHeight="360">
+                                <ItemsControl ItemsSource="{Binding RelativeSource={RelativeSource AncestorType={x:Type Window}}, Path=FocusMusicPlaylistItems}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Button Content="{Binding Title}" Tag="{Binding Url}" ToolTip="{Binding Album}"
+                                                    Click="PlayFocusTrack_Click" Style="{StaticResource SecondaryButtonStyle}"
+                                                    HorizontalContentAlignment="Left" Margin="0,0,0,5"/>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </ScrollViewer>
                         </StackPanel>
                     </Grid>
                 </Border>
