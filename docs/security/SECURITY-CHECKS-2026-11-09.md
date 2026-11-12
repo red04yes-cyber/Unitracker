@@ -70,11 +70,8 @@ Nessuna modifica AI, provider, chiamata a modelli, XAML, temi, navigazione, dipe
 
 ## Follow-up verification — 12 November 2026
 
-The first Windows PR run for this workstream exposed one regression-test failure: a dangling file symbolic link could be created successfully, but the FileInfo.LinkTarget/DirectoryInfo.LinkTarget checks did not identify it on the Windows runner. The remaining 301 tests passed; the failure was specifically IsInsideRejectsDanglingFileSymbolicLinks.
+The first Windows PR run reported a failure at line 332 of the dangling-file test. Inspection of the exact line showed that the test incorrectly asserted `File.Exists(link) == false`. On the Windows runner the dangling symbolic-link entry itself is reported as present, even though its target does not exist; the test therefore failed before reaching the `LocalFileSecurity.IsInside` assertion. The directory-link test made the analogous incorrect assumption with `Directory.Exists(link)`.
 
-LocalFileSecurity.IsReparsePoint now enumerates the link's parent directory with FindFirstFileW/FindNextFileW and compares the exact leaf name in WIN32_FIND_DATA. This reads FILE_ATTRIBUTE_REPARSE_POINT from the directory entry itself, without asking the filesystem to resolve a missing target. The helper rejects wildcard paths and treats unexpected Win32 enumeration errors as unsafe. Regression tests cover both dangling file and dangling directory symlinks. The corrected implementation is not considered verified until the new Windows CI run passes.
-
-The original Windows failure is documented here for traceability: https://github.com/red04yes-cyber/Unitracker/actions/runs/42706181354.
-
+The implementation remains based on `FileInfo.LinkTarget`, `DirectoryInfo.LinkTarget` and `File.GetAttributes`: the tests now assert that the target paths are absent, then independently assert that `IsInside` rejects the link. No native interop fallback is required. The corrected Windows test run is the verification gate.
 
 The separate loopback-default hardening previously proposed in PR #61 remains outside this change. PR #61 is closed without merge; main still constructs MoodleClient with allowLoopbackHttp=true. This is a separate residual configuration risk and is not represented as fixed by this PR.
