@@ -1,9 +1,15 @@
 # Provider AI supportati
 
+> **Nota integrazione Phase 4 non-UI:** i servizi e i contratti sono presenti
+> su questo branch, ma la schermata Impostazioni/AI non è stata modificata.
+> Il contratto per il successivo intervento UI è in
+> `docs/implementation/PHASE4-NON-UI-INTEGRATION.md`.
+
 UniToStudyHub supporta tre modalità:
 
 - **OpenAI cloud**: endpoint predefinito `https://api.openai.com/v1`, modello predefinito `gpt-4.1-mini`. Richiede una chiave API.
 - **Ollama locale**: endpoint predefinito `http://127.0.0.1:11434/v1`. Richiede Ollama avviato e un modello locale già scaricato; non richiede una chiave reale.
+- **Google Gemini**: endpoint ufficiale `https://generativelanguage.googleapis.com/v1beta`, con adapter `generateContent` e chiave dedicata.
 
 ## Configurazione
 
@@ -19,7 +25,8 @@ Le variabili d'ambiente restano disponibili per configurazioni di sviluppo e dep
 | `STUDYHUB_AI_CONSENT` | Deve essere `true` per autorizzare richieste AI |
 | `STUDYHUB_AI_MODEL` | Modello da usare; per Ollama è obbligatorio |
 | `STUDYHUB_AI_BASE_URL` | Override facoltativo dell'endpoint |
-| `STUDYHUB_OPENAI_API_KEY` | Chiave OpenAI, letta solo a runtime |\n| `STUDYHUB_GEMINI_API_KEY` | Chiave Google Gemini, letta solo a runtime |
+| `STUDYHUB_OPENAI_API_KEY` | Chiave OpenAI, letta solo a runtime |
+| `STUDYHUB_GEMINI_API_KEY` | Chiave Google Gemini, letta solo a runtime |
 
 Esempio OpenAI (PowerShell, solo per la sessione corrente):
 
