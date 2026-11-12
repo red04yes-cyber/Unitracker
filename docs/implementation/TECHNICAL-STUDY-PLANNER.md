@@ -147,7 +147,9 @@ preference values into StudyPlannerOptions before preview generation.
   are rejected and a replacement remains all-or-nothing. It also rejects a
   proposal whose aggregate minutes exceed the current remaining estimate.
 - Older previews with an empty TaskProgress collection retain the previous
-  estimate-based validation path for compatibility.
+  estimate-based validation path for compatibility. A non-empty progress
+  collection must contain a snapshot for every task referenced by a block;
+  partial or duplicate snapshot sets are rejected rather than falling back.
 - Invalid persisted weekly/daily budgets are clamped to the supported limits
   for preview generation and explained in warnings. Availability is limited to
   64 windows per week and an applied preview to 3,620 blocks (181 days × 20
@@ -183,6 +185,6 @@ Tests in StudyPlannerServiceTests cover:
 - clamping invalid persisted study budgets;
 - compatibility with previews created before task-progress snapshots.
 
-The progress-aware planning slice adds fourteen focused planner tests. GitHub
+The progress-aware planning slice adds fifteen focused planner tests. GitHub
 Actions must pass before this slice is considered verified; no local
 build/test result is claimed in this document.
