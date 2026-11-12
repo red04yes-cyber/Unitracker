@@ -14,7 +14,7 @@
         <SolidColorBrush x:Key="SidebarMutedBrush" Color="#AFC0D8"/>
         <SolidColorBrush x:Key="SidebarDividerBrush" Color="#35445B"/>
         <SolidColorBrush x:Key="InkBrush" Color="#17243B"/>
-        <SolidColorBrush x:Key="MutedBrush" Color="#718096"/>
+        <SolidColorBrush x:Key="MutedBrush" Color="#A49DB9"/>
         <SolidColorBrush x:Key="AccentBrush" Color="#3157D5"/>
         <SolidColorBrush x:Key="AccentFillBrush" Color="#3157D5"/>
         <SolidColorBrush x:Key="AccentSoftBrush" Color="#EAF0FF"/>
