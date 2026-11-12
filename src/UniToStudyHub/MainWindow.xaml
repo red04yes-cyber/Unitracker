@@ -1288,6 +1288,11 @@
                             <TextBlock Text="Questi dati sono salvati nel profilo accademico locale e possono essere aggiornati qui."
                                        FontSize="11" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,5,0,14"/>
                             <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*"/>
                                     <ColumnDefinition Width="*"/>
@@ -1396,7 +1401,7 @@
                             <TextBlock Text="Il mio piano di studi" Style="{StaticResource SectionTitleStyle}"/>
                             <TextBlock Text="Insegnamenti già presenti nel tuo archivio StudyHub."
                                        FontSize="11" Foreground="{DynamicResource MutedBrush}" Margin="0,5,0,12"/>
-                            <ItemsControl ItemsSource="{Binding Courses}">
+                            <ItemsControl ItemsSource="{Binding VisibleCourses}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
                                         <Border BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1" Padding="9,10">
