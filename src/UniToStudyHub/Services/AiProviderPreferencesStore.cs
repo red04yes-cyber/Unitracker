@@ -1,5 +1,7 @@
 using System.IO;
+using System.Text;
 using System.Text.Json;
+using UniToStudyHub.Security;
 
 namespace UniToStudyHub.Services;
 
@@ -15,7 +17,7 @@ public sealed class AiProviderPreferencesStore
     public AiProviderPreferencesStore(string dataDirectory)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(dataDirectory);
-        Directory.CreateDirectory(dataDirectory);
+        LocalFileSecurity.EnsurePrivateDirectory(dataDirectory);
         _path = Path.Combine(Path.GetFullPath(dataDirectory), "ai-provider-preferences.json");
     }
 
@@ -45,9 +47,7 @@ public sealed class AiProviderPreferencesStore
         lock (_gate)
         {
             var json = JsonSerializer.Serialize(preferences);
-            var temporary = _path + ".tmp";
-            File.WriteAllText(temporary, json);
-            File.Move(temporary, _path, overwrite: true);
+            LocalFileSecurity.WriteAllBytesAtomically(_path, new UTF8Encoding(false).GetBytes(json));
         }
     }
 }
