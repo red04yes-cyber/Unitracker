@@ -113,6 +113,7 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
     private string _weeklyStudyHoursInput = "20";
     private string _maxDailyStudyMinutesInput = "240";
     private ProgressSnapshot? _progressSnapshot;
+    private string _selectedProgressPeriod = "7 giorni";
 
     public event PropertyChangedEventHandler? PropertyChanged;
     public event Action<StudyData>? DataReloaded;
@@ -299,6 +300,35 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
         ? $"{plan.ScheduledBlockCount} blocchi · {plan.ScheduledMinutes} minuti · {plan.UnscheduledTasks.Count} task non pianificati"
         : "Nessuna anteprima disponibile.";
     public bool HasProgressData => _progressSnapshot is { } p && (p.FocusMinutes > 0 || p.CompletedSessions > 0 || p.CompletedTasks > 0 || p.DueFlashcards > 0 || p.OpenErrors > 0);
+    public IReadOnlyList<string> ProgressPeriodOptions { get; } = new[] { "7 giorni", "30 giorni", "90 giorni" };
+    public string SelectedProgressPeriod
+    {
+        get => _selectedProgressPeriod;
+        set
+        {
+            if (!Set(ref _selectedProgressPeriod, value)) return;
+            RefreshProgress();
+        }
+    }
+    public string DailyProgressTitle => $"Focus giornaliero · {SelectedProgressPeriod}";
+    public string AverageDailyFocusDisplay => HasProgressData && _progressSnapshot is { } p
+        ? $"{(int)Math.Round(p.FocusMinutes / (double)SelectedProgressDays)} min"
+        : "—";
+    public string ActiveStudyDaysDisplay => DailyProgressRows.Count > 0
+        ? $"{DailyProgressRows.Count(x => x.FocusMinutes > 0)} / {SelectedProgressDays}"
+        : "—";
+    public string AverageSessionDisplay => _progressSnapshot is { CompletedSessions: > 0 } p
+        ? $"{(int)Math.Round(p.FocusMinutes / (double)p.CompletedSessions)} min"
+        : "—";
+    public string BestFocusDayDisplay => DailyProgressRows.OrderByDescending(x => x.FocusMinutes).FirstOrDefault() is { FocusMinutes: > 0 } best
+        ? $"{best.DayLabel} · {best.FocusMinutes} min"
+        : "—";
+    private int SelectedProgressDays => SelectedProgressPeriod switch
+    {
+        "30 giorni" => 30,
+        "90 giorni" => 90,
+        _ => 7
+    };
     public string ProgressPeriodDisplay => _progressSnapshot is { } p
         ? $"{p.From:dd/MM} – {p.To:dd/MM/yyyy}"
         : "Ultimi sette giorni";
@@ -1276,8 +1306,8 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
     private void RefreshProgress()
     {
         var today = DateOnly.FromDateTime(DateTime.Today);
-        var monday = today.AddDays(-(((int)today.DayOfWeek + 6) % 7));
-        _progressSnapshot = _progress.Calculate(_data, monday, today);
+        var from = today.AddDays(-(SelectedProgressDays - 1));
+        _progressSnapshot = _progress.Calculate(_data, from, today);
         CourseProgressRows.Clear();
         var maxFocusMinutes = _progressSnapshot.Courses.Count == 0 ? 0 : _progressSnapshot.Courses.Max(x => x.FocusMinutes);
         foreach (var course in _progressSnapshot.Courses)
@@ -1285,9 +1315,10 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
             var percentage = maxFocusMinutes == 0 ? 0 : (int)Math.Round(course.FocusMinutes * 100d / maxFocusMinutes);
             CourseProgressRows.Add(new CourseProgressRow(course.CourseName, $"{course.FocusMinutes} min", percentage));
         }
+
         DailyProgressRows.Clear();
         var dailyTotals = new List<(DateTime Date, int Minutes)>();
-        for (var offset = 6; offset >= 0; offset--)
+        for (var offset = SelectedProgressDays - 1; offset >= 0; offset--)
         {
             var date = DateTime.Today.AddDays(-offset).Date;
             var seconds = _data.StudySessions
@@ -1301,6 +1332,7 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
                 total.Date.ToString("ddd dd/MM", CultureInfo.GetCultureInfo("it-IT")),
                 total.Minutes,
                 maxDaily == 0 ? 0 : (int)Math.Round(total.Minutes * 100d / maxDaily)));
+
         OnPropertyChanged(nameof(DailyProgressRows));
         OnPropertyChanged(nameof(CourseProgressRows));
         OnPropertyChanged(nameof(WeeklyGoalProgressPercent));
@@ -1314,6 +1346,11 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(OpenErrorsDisplay));
         OnPropertyChanged(nameof(FocusStreakDisplay));
         OnPropertyChanged(nameof(WeeklyGoalDisplay));
+        OnPropertyChanged(nameof(DailyProgressTitle));
+        OnPropertyChanged(nameof(AverageDailyFocusDisplay));
+        OnPropertyChanged(nameof(ActiveStudyDaysDisplay));
+        OnPropertyChanged(nameof(AverageSessionDisplay));
+        OnPropertyChanged(nameof(BestFocusDayDisplay));
     }
 
     public async Task ExportProgressAsync(string filePath, CancellationToken cancellationToken = default)
@@ -1323,7 +1360,7 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
         try
         {
             var today = DateOnly.FromDateTime(DateTime.Today);
-            var from = today.AddDays(-6);
+            var from = today.AddDays(-(SelectedProgressDays - 1));
             var bundle = _exports.Export(
                 _data,
                 new StudyExportRequest(from, today, TimeZoneInfo.Local.Id, IncludePrivateNotes: false),
