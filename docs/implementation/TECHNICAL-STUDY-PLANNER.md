@@ -123,6 +123,36 @@ preference values into StudyPlannerOptions before preview generation.
   The current XAML remains owned by the UI workstream; no visual layout change is
   included in this service-layer slice.
 
+## Progress-aware planning
+
+- StudyPlannerService.CreatePreview obtains task progress through
+  ActivityLedgerService.GetTaskProgressSnapshots, which scans recorded intervals
+  once for all open tasks. Planned minutes are based on each task's remaining
+  estimate, not its original estimate.
+- Remaining seconds are rounded up to whole minutes so a partial minute is not
+  silently omitted from the proposed workload.
+- Timer/manual overlaps are unioned by the ledger; soft-deleted and cancelled
+  manual activities do not reduce the estimate. Recorded focus segments from a
+  cancelled timer remain credited according to the ledger rules.
+- StudyPlanPreview.TaskProgress exposes the point-in-time snapshots used to
+  build the proposal. RecordedTaskMinutes and RemainingTaskMinutes provide
+  aggregate values for a preview summary; these are derived values, not stored
+  counters.
+- If an open task has already consumed its estimate, the preview does not
+  schedule another copy of the estimated work. It returns a zero-minute
+  unscheduled entry and a warning so the student can update the estimate or
+  complete the task.
+- Apply compares the preview snapshots with current task progress. If recorded
+  work or the estimate changed after preview generation, the affected blocks
+  are rejected and a replacement remains all-or-nothing. It also rejects a
+  proposal whose aggregate minutes exceed the current remaining estimate.
+- Older previews with an empty TaskProgress collection retain the previous
+  estimate-based validation path for compatibility.
+- Invalid persisted weekly/daily budgets are clamped to the supported limits
+  for preview generation and explained in warnings. Availability is limited to
+  64 windows per week and an applied preview to 3,620 blocks (181 days × 20
+  blocks/day) to bound malformed input processing.
+
 ## Validation
 
 Tests in StudyPlannerServiceTests cover:
@@ -142,8 +172,17 @@ Tests in StudyPlannerServiceTests cover:
 - actual focus time retained when a timer is cancelled;
 - task-history retention on removal, zero-estimate behavior and estimate overruns;
 - task-linked Pomodoro startup and rejection before partial session creation;
-- SQLite round-trip of the existing StudyActivities.TaskId field.
+- SQLite round-trip of the existing StudyActivities.TaskId field;
+- scheduling only the unrecorded remainder of a task;
+- rounding partial remaining minutes upward;
+- overlap union, task isolation, soft deletion and cancelled manual entries;
+- estimate exhaustion warnings for tasks that remain open;
+- stale-preview rejection after additional work is recorded;
+- rejection of blocks exceeding the remaining estimate;
+- malformed/excessive availability and oversized preview rejection;
+- clamping invalid persisted study budgets;
+- compatibility with previews created before task-progress snapshots.
 
-The task-progress slice adds eleven focused service test cases and extends
-the SQLite activity round-trip test. GitHub Actions must pass before this slice is
-considered verified. No local build/test result is claimed in this document.
+The progress-aware planning slice adds fourteen focused planner tests. GitHub
+Actions must pass before this slice is considered verified; no local
+build/test result is claimed in this document.
