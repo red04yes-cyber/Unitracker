@@ -5,29 +5,29 @@
     <Application.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
-                <ui:ThemesDictionary Theme="Light" />
+                <ui:ThemesDictionary Theme="Dark" />
                 <ui:ControlsDictionary />
             </ResourceDictionary.MergedDictionaries>
 
-        <SolidColorBrush x:Key="NavyBrush" Color="#17243B"/>
-        <SolidColorBrush x:Key="SidebarBrush" Color="#17243B"/>
-        <SolidColorBrush x:Key="SidebarMutedBrush" Color="#AFC0D8"/>
-        <SolidColorBrush x:Key="SidebarDividerBrush" Color="#35445B"/>
-        <SolidColorBrush x:Key="InkBrush" Color="#17243B"/>
+        <SolidColorBrush x:Key="NavyBrush" Color="#171522"/>
+        <SolidColorBrush x:Key="SidebarBrush" Color="#11101B"/>
+        <SolidColorBrush x:Key="SidebarMutedBrush" Color="#B7AECF"/>
+        <SolidColorBrush x:Key="SidebarDividerBrush" Color="#39334A"/>
+        <SolidColorBrush x:Key="InkBrush" Color="#F3F0FF"/>
         <SolidColorBrush x:Key="MutedBrush" Color="#A49DB9"/>
-        <SolidColorBrush x:Key="AccentBrush" Color="#3157D5"/>
-        <SolidColorBrush x:Key="AccentFillBrush" Color="#3157D5"/>
-        <SolidColorBrush x:Key="AccentSoftBrush" Color="#EAF0FF"/>
-        <SolidColorBrush x:Key="PanelBrush" Color="#FFFFFF"/>
-        <SolidColorBrush x:Key="PageBrush" Color="#F3F6FB"/>
-        <SolidColorBrush x:Key="BorderBrush" Color="#E4EAF2"/>
-        <SolidColorBrush x:Key="SubtleBrush" Color="#EEF2F8"/>
-        <SolidColorBrush x:Key="SuccessBrush" Color="#21865D"/>
-        <SolidColorBrush x:Key="SuccessSoftBrush" Color="#E8F5EE"/>
-        <SolidColorBrush x:Key="WarningBrush" Color="#C98224"/>
-        <SolidColorBrush x:Key="WarningSoftBrush" Color="#FFF4E5"/>
-        <SolidColorBrush x:Key="AiBrush" Color="#7654C8"/>
-        <SolidColorBrush x:Key="AiSoftBrush" Color="#F1EDFC"/>
+        <SolidColorBrush x:Key="AccentBrush" Color="#A78BFA"/>
+        <SolidColorBrush x:Key="AccentFillBrush" Color="#8B5CF6"/>
+        <SolidColorBrush x:Key="AccentSoftBrush" Color="#302442"/>
+        <SolidColorBrush x:Key="PanelBrush" Color="#211E2D"/>
+        <SolidColorBrush x:Key="PageBrush" Color="#15131D"/>
+        <SolidColorBrush x:Key="BorderBrush" Color="#393447"/>
+        <SolidColorBrush x:Key="SubtleBrush" Color="#2A2637"/>
+        <SolidColorBrush x:Key="SuccessBrush" Color="#5DD6A3"/>
+        <SolidColorBrush x:Key="SuccessSoftBrush" Color="#20382F"/>
+        <SolidColorBrush x:Key="WarningBrush" Color="#F2B866"/>
+        <SolidColorBrush x:Key="WarningSoftBrush" Color="#3C3023"/>
+        <SolidColorBrush x:Key="AiBrush" Color="#B69AFF"/>
+        <SolidColorBrush x:Key="AiSoftBrush" Color="#302542"/>
 
         <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
 
@@ -115,6 +115,38 @@
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="CornerRadius" Value="12"/>
             <Setter Property="Padding" Value="18"/>
+        </Style>
+
+        <Style x:Key="AnimatedCardStyle" TargetType="{x:Type Border}" BasedOn="{StaticResource CardBorderStyle}">
+            <Setter Property="RenderTransformOrigin" Value="0.5,0.5"/>
+            <Setter Property="RenderTransform">
+                <Setter.Value><ScaleTransform ScaleX="1" ScaleY="1"/></Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <EventTrigger RoutedEvent="FrameworkElement.Loaded">
+                    <BeginStoryboard>
+                        <Storyboard>
+                            <DoubleAnimation Storyboard.TargetProperty="Opacity" From="0" To="1" Duration="0:0:0.42"/>
+                        </Storyboard>
+                    </BeginStoryboard>
+                </EventTrigger>
+                <EventTrigger RoutedEvent="Mouse.MouseEnter">
+                    <BeginStoryboard>
+                        <Storyboard>
+                            <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleX)" To="1.025" Duration="0:0:0.16"/>
+                            <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleY)" To="1.025" Duration="0:0:0.16"/>
+                        </Storyboard>
+                    </BeginStoryboard>
+                </EventTrigger>
+                <EventTrigger RoutedEvent="Mouse.MouseLeave">
+                    <BeginStoryboard>
+                        <Storyboard>
+                            <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleX)" To="1" Duration="0:0:0.2"/>
+                            <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleY)" To="1" Duration="0:0:0.2"/>
+                        </Storyboard>
+                    </BeginStoryboard>
+                </EventTrigger>
+            </Style.Triggers>
         </Style>
 
         <Style x:Key="PageTitleStyle" TargetType="{x:Type TextBlock}">
