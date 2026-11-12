@@ -72,6 +72,6 @@ Nessuna modifica AI, provider, chiamata a modelli, XAML, temi, navigazione, dipe
 
 The first Windows PR run for this workstream exposed one regression-test failure: a dangling file symbolic link could be created successfully, but the FileInfo.LinkTarget/DirectoryInfo.LinkTarget checks did not identify it on the Windows runner. The remaining 301 tests passed; the failure was specifically IsInsideRejectsDanglingFileSymbolicLinks.
 
-LocalFileSecurity.IsReparsePoint now also calls File.ResolveLinkTarget and Directory.ResolveLinkTarget with returnFinalTarget=false before the attribute fallback. These APIs inspect the link entry even when its target is absent. The regression test remains enabled; the corrected implementation is not considered verified until the new Windows CI run passes.
+LocalFileSecurity.IsReparsePoint now uses the Windows FindFirstFileW entry metadata as a fallback when both File.Exists and Directory.Exists are false. FindFirstFileW returns WIN32_FIND_DATA for the link entry itself, including FILE_ATTRIBUTE_REPARSE_POINT, without following its target. The fallback treats unexpected Win32 errors as unsafe, and rejects wildcard characters rather than allowing FindFirstFileW to match a different entry. A second regression test covers a dangling directory symlink as well as the original dangling file symlink. The corrected implementation is not considered verified until the new Windows CI run passes.
 
 The original Windows failure is documented here for traceability: https://github.com/red04yes-cyber/Unitracker/actions/runs/42706181354.
