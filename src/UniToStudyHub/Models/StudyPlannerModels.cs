@@ -63,6 +63,17 @@ public sealed record StudyPlanPreview(
 {
     public int ScheduledMinutes => Blocks.Sum(x => x.PlannedMinutes);
     public int ScheduledBlockCount => Blocks.Count;
+
+    /// <summary>
+    /// Point-in-time progress for every open task considered by the preview.
+    /// This is derived from recorded activity and is not persisted as a second
+    /// source of truth.
+    /// </summary>
+    public IReadOnlyList<TaskProgressSnapshot> TaskProgress { get; init; } =
+        Array.Empty<TaskProgressSnapshot>();
+
+    public long RecordedTaskMinutes => TaskProgress.Sum(x => (long)x.RecordedMinutes);
+    public long RemainingTaskMinutes => TaskProgress.Sum(x => (long)x.RemainingMinutes);
 }
 
 public sealed record StudyPlanApplyResult(
