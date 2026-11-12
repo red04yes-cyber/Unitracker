@@ -285,12 +285,15 @@ public sealed class ActivityLedgerService
             .Where(x => !string.IsNullOrWhiteSpace(x))
             .Distinct(StringComparer.Ordinal)
             .ToArray();
+        var tasksById = data.StudyTasks
+            .Where(x => x is not null && !string.IsNullOrWhiteSpace(x.Id))
+            .GroupBy(x => x.Id, StringComparer.Ordinal)
+            .ToDictionary(group => group.Key, group => group.First(), StringComparer.Ordinal);
         var tasks = new Dictionary<string, StudyTaskData>(StringComparer.Ordinal);
         foreach (var id in requestedIds)
         {
-            var task = data.StudyTasks.FirstOrDefault(x =>
-                x is not null && string.Equals(x.Id, id, StringComparison.Ordinal))
-                ?? throw new ArgumentException($"Study task '{id}' does not exist.", nameof(taskIds));
+            if (!tasksById.TryGetValue(id, out var task))
+                throw new ArgumentException($"Study task '{id}' does not exist.", nameof(taskIds));
             tasks.Add(id, task);
         }
 
