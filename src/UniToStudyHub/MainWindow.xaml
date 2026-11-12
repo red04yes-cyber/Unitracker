@@ -143,6 +143,22 @@
                                                Foreground="{DynamicResource AccentBrush}" FontSize="8"
                                                FontWeight="Bold"/>
                                 </Border>
+                                <Button Click="NavigateToSettings_Click"
+                                        Style="{StaticResource QuietButtonStyle}"
+                                        Padding="0" Margin="2,16,0,0"
+                                        Width="48" Height="48"
+                                        HorizontalAlignment="Left"
+                                        ToolTip="Apri il mio profilo"
+                                        AutomationProperties.Name="Apri il mio profilo">
+                                    <Border Width="44" Height="44" CornerRadius="22"
+                                            Background="{DynamicResource AccentSoftBrush}"
+                                            BorderBrush="{DynamicResource AccentBrush}"
+                                            BorderThickness="1">
+                                        <TextBlock Text="&#xE77B;" FontFamily="Segoe MDL2 Assets"
+                                                   FontSize="25" Foreground="{DynamicResource AccentBrush}"
+                                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    </Border>
+                                </Button>
                             </StackPanel>
 
                             <TabPanel x:Name="HeaderPanel"
@@ -1187,11 +1203,259 @@
 </ScrollViewer>
         </TabItem>
 
+        <TabItem Visibility="Collapsed">
+            <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                <StackPanel Margin="34,30,34,40">
+                    <TextBlock Text="AREA PERSONALE" FontSize="10" FontWeight="Bold"
+                               Foreground="{DynamicResource AccentBrush}"/>
+                    <TextBlock Text="Il mio profilo" Style="{StaticResource PageTitleStyle}" FontSize="30" Margin="0,7,0,5"/>
+                    <TextBlock Text="La tua carriera, i tuoi obiettivi e le informazioni del tuo percorso universitario."
+                               Style="{StaticResource PageSubtitleStyle}" Margin="0,0,0,22"/>
+
+                    <Border Style="{StaticResource AnimatedCardStyle}" MaxWidth="1040"
+                            HorizontalAlignment="Left" Margin="0,0,0,14">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="86"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <Border Width="70" Height="70" CornerRadius="35"
+                                    Background="{DynamicResource AccentSoftBrush}"
+                                    BorderBrush="{DynamicResource AccentBrush}" BorderThickness="1"
+                                    VerticalAlignment="Center">
+                                <TextBlock Text="&#xE77B;" FontFamily="Segoe MDL2 Assets"
+                                           FontSize="38" Foreground="{DynamicResource AccentBrush}"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                <TextBlock Text="Profilo studente" FontSize="19" FontWeight="SemiBold"
+                                           Foreground="{DynamicResource InkBrush}"/>
+                                <TextBlock Text="Università degli Studi di Torino"
+                                           FontSize="12" Foreground="{DynamicResource MutedBrush}" Margin="0,4,0,0"/>
+                                <TextBlock Text="{Binding Workspace.DegreeProgramNameInput, TargetNullValue=Percorso di studi non configurato}"
+                                           FontSize="11" Foreground="{DynamicResource AccentBrush}" Margin="0,5,0,0"/>
+                            </StackPanel>
+                            <Border Grid.Column="2" Background="{DynamicResource AccentSoftBrush}"
+                                    CornerRadius="8" Padding="10,7" VerticalAlignment="Center">
+                                <TextBlock Text="{Binding Workspace.CurrentAcademicYearInput, TargetNullValue=Anno accademico da impostare}"
+                                           Foreground="{DynamicResource AccentBrush}" FontSize="10" FontWeight="SemiBold"/>
+                            </Border>
+                        </Grid>
+                    </Border>
+
+                    <TextBlock Text="LA TUA CARRIERA" FontSize="10" FontWeight="Bold"
+                               Foreground="{DynamicResource AccentBrush}" Margin="0,10,0,10"/>
+                    <UniformGrid Columns="4" Margin="0,0,0,14">
+                        <Border Style="{StaticResource AnimatedCardStyle}" Margin="0,0,8,0">
+                            <StackPanel>
+                                <TextBlock Text="CFU acquisiti" Style="{StaticResource KpiLabelStyle}"/>
+                                <TextBlock Text="{Binding AcquiredCreditsValue}" FontSize="25"
+                                           FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}" Margin="0,7,0,2"/>
+                                <TextBlock Text="Crediti registrati" FontSize="10" Foreground="{DynamicResource MutedBrush}"/>
+                            </StackPanel>
+                        </Border>
+                        <Border Style="{StaticResource AnimatedCardStyle}" Margin="0,0,8,0">
+                            <StackPanel>
+                                <TextBlock Text="Media ponderata" Style="{StaticResource KpiLabelStyle}"/>
+                                <TextBlock Text="{Binding AverageDisplay}" FontSize="25"
+                                           FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}" Margin="0,7,0,2"/>
+                                <TextBlock Text="Sui voti validi" FontSize="10" Foreground="{DynamicResource MutedBrush}"/>
+                            </StackPanel>
+                        </Border>
+                        <Border Style="{StaticResource AnimatedCardStyle}" Margin="0,0,8,0">
+                            <StackPanel>
+                                <TextBlock Text="Media aritmetica" Style="{StaticResource KpiLabelStyle}"/>
+                                <TextBlock Text="{Binding ArithmeticAverageDisplay}" FontSize="25"
+                                           FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}" Margin="0,7,0,2"/>
+                                <TextBlock Text="Media semplice" FontSize="10" Foreground="{DynamicResource MutedBrush}"/>
+                            </StackPanel>
+                        </Border>
+                        <Border Style="{StaticResource AnimatedCardStyle}">
+                            <StackPanel>
+                                <TextBlock Text="Insegnamenti" Style="{StaticResource KpiLabelStyle}"/>
+                                <TextBlock Text="{Binding AllCoursesCount}" FontSize="25"
+                                           FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}" Margin="0,7,0,2"/>
+                                <TextBlock Text="Nel tuo archivio" FontSize="10" Foreground="{DynamicResource MutedBrush}"/>
+                            </StackPanel>
+                        </Border>
+                    </UniformGrid>
+
+                    <Border Style="{StaticResource AnimatedCardStyle}" MaxWidth="1040"
+                            HorizontalAlignment="Left" Margin="0,0,0,14">
+                        <StackPanel>
+                            <TextBlock Text="Informazioni universitarie" Style="{StaticResource SectionTitleStyle}"/>
+                            <TextBlock Text="Questi dati sono salvati nel profilo accademico locale e possono essere aggiornati qui."
+                                       FontSize="11" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,5,0,14"/>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Margin="0,0,8,10">
+                                    <TextBlock Text="Corso di laurea" Style="{StaticResource KpiLabelStyle}" Margin="0,0,0,5"/>
+                                    <TextBox Text="{Binding Workspace.DegreeProgramNameInput, UpdateSourceTrigger=PropertyChanged}"/>
+                                </StackPanel>
+                                <StackPanel Grid.Column="1" Margin="8,0,0,10">
+                                    <TextBlock Text="Codice corso" Style="{StaticResource KpiLabelStyle}" Margin="0,0,0,5"/>
+                                    <TextBox Text="{Binding Workspace.DegreeProgramCodeInput, UpdateSourceTrigger=PropertyChanged}"/>
+                                </StackPanel>
+                                <StackPanel Grid.Row="1" Margin="0,0,8,10">
+                                    <TextBlock Text="Anno di iscrizione" Style="{StaticResource KpiLabelStyle}" Margin="0,0,0,5"/>
+                                    <TextBox Text="{Binding Workspace.EnrollmentYearInput, UpdateSourceTrigger=PropertyChanged}"/>
+                                </StackPanel>
+                                <StackPanel Grid.Row="1" Grid.Column="1" Margin="8,0,0,10">
+                                    <TextBlock Text="Anno accademico corrente" Style="{StaticResource KpiLabelStyle}" Margin="0,0,0,5"/>
+                                    <TextBox Text="{Binding Workspace.CurrentAcademicYearInput, UpdateSourceTrigger=PropertyChanged}"/>
+                                </StackPanel>
+                                <StackPanel Grid.Row="2" Margin="0,0,8,0">
+                                    <TextBlock Text="CFU previsti dal percorso" Style="{StaticResource KpiLabelStyle}" Margin="0,0,0,5"/>
+                                    <TextBox Text="{Binding Workspace.DegreeTotalCfuInput, UpdateSourceTrigger=PropertyChanged}"/>
+                                </StackPanel>
+                                <StackPanel Grid.Row="2" Grid.Column="1" Margin="8,0,0,0">
+                                    <TextBlock Text="Data obiettivo laurea" Style="{StaticResource KpiLabelStyle}" Margin="0,0,0,5"/>
+                                    <DatePicker SelectedDate="{Binding Workspace.GraduationTargetInput, UpdateSourceTrigger=PropertyChanged}"/>
+                                </StackPanel>
+                            </Grid>
+                            <Button Content="Salva informazioni universitarie"
+                                    Command="{Binding Workspace.SaveAcademicProfileCommand}"
+                                    HorizontalAlignment="Left" Margin="0,14,0,0"/>
+                            <TextBlock Text="{Binding Workspace.WorkspaceStatus}" FontSize="10"
+                                       Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,8,0,0"/>
+                        </StackPanel>
+                    </Border>
+
+                    <TextBlock Text="IL TUO STUDIO" FontSize="10" FontWeight="Bold"
+                               Foreground="{DynamicResource AccentBrush}" Margin="0,10,0,10"/>
+                    <UniformGrid Columns="4" Margin="0,0,0,14">
+                        <Border Style="{StaticResource AnimatedCardStyle}" Margin="0,0,8,0">
+                            <StackPanel>
+                                <TextBlock Text="Tempo di concentrazione" Style="{StaticResource KpiLabelStyle}"/>
+                                <TextBlock Text="{Binding Workspace.FocusMinutesDisplay}" FontSize="20"
+                                           FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}" Margin="0,7,0,0"/>
+                            </StackPanel>
+                        </Border>
+                        <Border Style="{StaticResource AnimatedCardStyle}" Margin="0,0,8,0">
+                            <StackPanel>
+                                <TextBlock Text="Sessioni completate" Style="{StaticResource KpiLabelStyle}"/>
+                                <TextBlock Text="{Binding Workspace.CompletedSessionsDisplay}" FontSize="20"
+                                           FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}" Margin="0,7,0,0"/>
+                            </StackPanel>
+                        </Border>
+                        <Border Style="{StaticResource AnimatedCardStyle}" Margin="0,0,8,0">
+                            <StackPanel>
+                                <TextBlock Text="Attività completate" Style="{StaticResource KpiLabelStyle}"/>
+                                <TextBlock Text="{Binding Workspace.CompletedTasksDisplay}" FontSize="20"
+                                           FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}" Margin="0,7,0,0"/>
+                            </StackPanel>
+                        </Border>
+                        <Border Style="{StaticResource AnimatedCardStyle}">
+                            <StackPanel>
+                                <TextBlock Text="Costanza" Style="{StaticResource KpiLabelStyle}"/>
+                                <TextBlock Text="{Binding Workspace.FocusStreakDisplay}" FontSize="20"
+                                           FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}" Margin="0,7,0,0"/>
+                            </StackPanel>
+                        </Border>
+                    </UniformGrid>
+
+                    <Border Style="{StaticResource AnimatedCardStyle}" MaxWidth="1040"
+                            HorizontalAlignment="Left" Margin="0,0,0,14">
+                        <StackPanel>
+                            <TextBlock Text="I miei obiettivi" Style="{StaticResource SectionTitleStyle}"/>
+                            <TextBlock Text="Obiettivo settimanale di studio" Style="{StaticResource KpiLabelStyle}" Margin="0,12,0,5"/>
+                            <TextBlock Text="{Binding Workspace.WeeklyGoalDisplay}" FontSize="14"
+                                       Foreground="{DynamicResource InkBrush}" FontWeight="SemiBold"/>
+                            <ProgressBar Height="8" Margin="0,9,0,12" Maximum="100"
+                                         Value="{Binding Workspace.WeeklyGoalProgressPercent}"/>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Margin="0,0,8,0">
+                                    <TextBlock Text="Ore di studio desiderate a settimana" Style="{StaticResource KpiLabelStyle}" Margin="0,0,0,5"/>
+                                    <TextBox Text="{Binding Workspace.WeeklyStudyHoursInput, UpdateSourceTrigger=PropertyChanged}"/>
+                                </StackPanel>
+                                <StackPanel Grid.Column="1" Margin="8,0,0,0">
+                                    <TextBlock Text="Limite giornaliero (minuti)" Style="{StaticResource KpiLabelStyle}" Margin="0,0,0,5"/>
+                                    <TextBox Text="{Binding Workspace.MaxDailyStudyMinutesInput, UpdateSourceTrigger=PropertyChanged}"/>
+                                </StackPanel>
+                            </Grid>
+                            <TextBlock Text="Il target di media e un obiettivo annuale di CFU non sono ancora gestiti dai dati applicativi: non vengono stimati o inventati."
+                                       FontSize="10" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,12,0,0"/>
+                            <Button Content="Salva obiettivi di studio"
+                                    Command="{Binding Workspace.SaveAcademicProfileCommand}"
+                                    Style="{StaticResource SecondaryButtonStyle}"
+                                    HorizontalAlignment="Left" Margin="0,12,0,0"/>
+                        </StackPanel>
+                    </Border>
+
+                    <Border Style="{StaticResource AnimatedCardStyle}" MaxWidth="1040"
+                            HorizontalAlignment="Left" Margin="0,0,0,14">
+                        <StackPanel>
+                            <TextBlock Text="Il mio piano di studi" Style="{StaticResource SectionTitleStyle}"/>
+                            <TextBlock Text="Insegnamenti già presenti nel tuo archivio StudyHub."
+                                       FontSize="11" Foreground="{DynamicResource MutedBrush}" Margin="0,5,0,12"/>
+                            <ItemsControl ItemsSource="{Binding Courses}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1" Padding="9,10">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
+                                                <StackPanel>
+                                                    <TextBlock Text="{Binding Name}" FontSize="12" FontWeight="SemiBold"
+                                                               Foreground="{DynamicResource InkBrush}"/>
+                                                    <TextBlock Text="{Binding Code}" FontSize="10"
+                                                               Foreground="{DynamicResource MutedBrush}" Margin="0,3,0,0"/>
+                                                </StackPanel>
+                                                <StackPanel Grid.Column="1" HorizontalAlignment="Right">
+                                                    <TextBlock Text="{Binding Cfu, StringFormat={}{0} CFU}" FontSize="11"
+                                                               Foreground="{DynamicResource AccentBrush}" FontWeight="SemiBold"/>
+                                                    <TextBlock Text="{Binding Status}" FontSize="9"
+                                                               Foreground="{DynamicResource MutedBrush}" HorizontalAlignment="Right"/>
+                                                </StackPanel>
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <TextBlock Text="Non hai ancora inserito insegnamenti." 
+                                       Visibility="{Binding NoVisibleCourses, Converter={StaticResource BooleanToVisibilityConverter}}"
+                                       FontSize="10" Foreground="{DynamicResource MutedBrush}" Margin="2,8,2,0"/>
+                            <TextBlock Text="La gestione degli insegnamenti preferiti non è ancora disponibile; qui sono mostrati i corsi già registrati."
+                                       FontSize="10" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,10,0,0"/>
+                        </StackPanel>
+                    </Border>
+
+                    <Border Style="{StaticResource AnimatedCardStyle}" MaxWidth="1040" HorizontalAlignment="Left">
+                        <StackPanel>
+                            <TextBlock Text="Privacy e sicurezza" Style="{StaticResource SectionTitleStyle}"/>
+                            <TextBlock Text="I tuoi dati restano sul dispositivo. Puoi esportarli o avviare la procedura di cancellazione completa."
+                                       FontSize="11" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,5,0,12"/>
+                            <WrapPanel>
+                                <Button Content="Esporta i miei dati (JSON)" Click="ExportAllData_Click" Margin="0,0,8,8"/>
+                                <Button Content="Elimina tutti i dati…" Click="DeleteAllPrivacyData_Click"
+                                        Style="{StaticResource QuietButtonStyle}" Margin="0,0,8,8"/>
+                            </WrapPanel>
+                            <CheckBox Content="Elimina anche i backup cifrati"
+                                      IsChecked="{Binding IsChecked, ElementName=PrivacyDeleteBackupsBox, Mode=TwoWay}"
+                                      Margin="0,4,0,0"/>
+                            <TextBlock Text="La cancellazione richiede una conferma esplicita e chiude l'app dopo l'operazione."
+                                       FontSize="10" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,8,0,0"/>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </ScrollViewer>
+        </TabItem>
+
         <TabItem>
             <TabItem.Header>
                 <StackPanel Orientation="Horizontal">
                     <Border Width="30" Height="30" CornerRadius="8" Background="{DynamicResource NavyBrush}">
-                        <TextBlock Text="07" Foreground="{DynamicResource SidebarMutedBrush}" FontSize="10"
+                        <TextBlock Text="08" Foreground="{DynamicResource SidebarMutedBrush}" FontSize="10"
                                    FontWeight="Bold" HorizontalAlignment="Center"
                                    VerticalAlignment="Center"/>
                     </Border>
