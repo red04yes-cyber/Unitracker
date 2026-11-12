@@ -16,7 +16,7 @@ Changing the selector recalculates the same persisted progress snapshot for the 
 - Focus streak and course-level focus distribution from the persisted progress snapshot.
 - Average focus minutes per calendar day (zero-study days are included in the denominator).
 - Active study days compared with the selected number of calendar days.
-- Average focus minutes per completed session.
+- Average focus minutes per recorded, non-cancelled session with recorded focus time.
 - Highest-focus day in the selected range.
 - Daily focus bars for every date in the selected range; the 30/90-day view is vertically scrollable.
 
