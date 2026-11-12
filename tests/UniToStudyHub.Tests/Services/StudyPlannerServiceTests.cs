@@ -900,4 +900,17 @@ public sealed class StudyPlannerServiceTests
         Assert.Contains(result.Warnings, x => x.Contains("non contiene il progresso aggiornato", StringComparison.Ordinal));
     }
 
+
+    [Fact]
+    public void PreviewRejectsDatesWithoutWeekBoundaryHeadroom()
+    {
+        var unsafeDate = DateOnly.MaxValue.AddDays(-6);
+
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            new StudyPlannerService().CreatePreview(
+                Data(),
+                Options(from: unsafeDate, to: unsafeDate),
+                Now));
+    }
+
 }
