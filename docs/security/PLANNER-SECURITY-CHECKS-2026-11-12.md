@@ -12,7 +12,7 @@ of unrelated Moodle, credential-vault, PDF, or AI-provider code.
 
 1. Planning end date must not precede the start date.
 2. Planning windows are limited to 181 calendar days.
-3. `DateOnly.MaxValue` is rejected where the next local day is required.
+3. The plan end leaves seven days of `DateOnly` headroom for weekly range and next-local-day calculations.
 4. Time-zone identifiers are resolved before wall-clock conversion.
 5. Weekly availability is capped at 64 windows.
 6. Null availability-window entries are rejected.
