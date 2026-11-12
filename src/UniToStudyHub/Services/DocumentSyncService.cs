@@ -37,13 +37,47 @@ public sealed class DocumentSyncService
         ArgumentNullException.ThrowIfNull(course);
         ArgumentNullException.ThrowIfNull(sections);
 
-        var documentsRoot = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "UniToStudyHub");
+        var documentsBase = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+        if (string.IsNullOrWhiteSpace(documentsBase))
+            throw new InvalidOperationException("La cartella Documenti dell'utente non è disponibile.");
+
+        documentsBase = Path.GetFullPath(documentsBase);
+        var documentsBaseInfo = new DirectoryInfo(documentsBase);
+        if (documentsBaseInfo.LinkTarget is not null ||
+            (Directory.Exists(documentsBase) &&
+             (File.GetAttributes(documentsBase) & FileAttributes.ReparsePoint) != 0))
+        {
+            // The user-selected Documents folder may legitimately be redirected
+            // (for example by OneDrive). Resolve that trusted boundary once,
+            // then reject links created inside the app-owned subtree.
+            var resolvedBase = documentsBaseInfo.ResolveLinkTarget(returnFinalTarget: true)
+                               ?? throw new InvalidDataException(
+                                   "La cartella Documenti reindirizzata non può essere risolta.");
+            documentsBase = Path.GetFullPath(resolvedBase.FullName);
+        }
+
+        var documentsRoot = Path.Combine(documentsBase, "UniToStudyHub");
         var moodleRoot = Path.Combine(documentsRoot, "Moodle");
         var root = Path.Combine(moodleRoot, SafeName(course.Name));
+
+        // Reject links at each application-owned boundary before applying ACLs
+        // or creating directories. A link must not redirect a Moodle download
+        // into an unrelated user folder.
+        if (!LocalFileSecurity.IsInside(documentsBase, documentsRoot))
+            throw new InvalidDataException("La cartella dati Moodle non è un percorso locale sicuro.");
         LocalFileSecurity.EnsurePrivateDirectory(documentsRoot);
+        if (!LocalFileSecurity.IsInside(documentsBase, documentsRoot) ||
+            !LocalFileSecurity.IsInside(documentsRoot, moodleRoot))
+            throw new InvalidDataException("La cartella Moodle contiene un collegamento non consentito.");
+
         LocalFileSecurity.EnsurePrivateDirectory(moodleRoot);
+        if (!LocalFileSecurity.IsInside(documentsRoot, moodleRoot) ||
+            !LocalFileSecurity.IsInside(moodleRoot, root))
+            throw new InvalidDataException("La cartella del corso contiene un collegamento non consentito.");
+
         LocalFileSecurity.EnsurePrivateDirectory(root);
+        if (!LocalFileSecurity.IsInside(moodleRoot, root))
+            throw new InvalidDataException("La cartella del corso non è contenuta nell'archivio Moodle.");
 
         var warnings = new List<string>();
         var downloaded = 0;
@@ -111,9 +145,9 @@ public sealed class DocumentSyncService
             }
             var destinationDirectory = Path.Combine(root, relative);
             var destination = Path.Combine(destinationDirectory, safeName);
-            if (!LocalFileSecurity.IsInside(root, destination))
+            if (!LocalFileSecurity.IsInside(moodleRoot, destination))
             {
-                warnings.Add($"Ignorato «{safeName}»: percorso non valido.");
+                warnings.Add($"Ignorato «{safeName}»: percorso esterno o collegamento non consentito.");
                 skipped++;
                 continue;
             }
@@ -136,8 +170,14 @@ public sealed class DocumentSyncService
 
             try
             {
+                if (!LocalFileSecurity.IsInside(moodleRoot, destinationDirectory))
+                    throw new InvalidDataException("La destinazione contiene un collegamento non consentito.");
+
                 LocalFileSecurity.EnsurePrivateDirectory(destinationDirectory);
-                await client.DownloadFileAsync(file.fileurl, destination, cancellationToken, root)
+                if (!LocalFileSecurity.IsInside(moodleRoot, destination))
+                    throw new InvalidDataException("La destinazione del download non è più sicura.");
+
+                await client.DownloadFileAsync(file.fileurl, destination, cancellationToken, moodleRoot)
                     .ConfigureAwait(false);
                 var info = new FileInfo(destination);
                 if (downloadedBytes + info.Length > maximumCourseBytes)
