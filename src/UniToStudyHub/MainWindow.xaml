@@ -909,9 +909,13 @@
                                        Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,0,0,12"/>
                             <WrapPanel>
                                 <Button Content="Pausa" Click="PauseFocusMusic_Click" Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,6,6"/>
+                                <Button Content="Riprendi" Click="ResumeFocusMusic_Click" Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,6,6"/>
                                 <Button Content="Stop" Click="StopFocusMusic_Click" Style="{StaticResource QuietButtonStyle}" Margin="0,0,6,6"/>
                                 <Button Content="Successiva" Click="NextFocusMusic_Click" Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,6,6"/>
                             </WrapPanel>
+                            <TextBlock Text="Volume" FontSize="9" Foreground="{DynamicResource MutedBrush}" Margin="0,6,0,0"/>
+                            <Slider Minimum="0" Maximum="1" Value="0.42" Width="160" HorizontalAlignment="Left"
+                                    ValueChanged="FocusMusicVolume_ValueChanged"/>
                             <TextBlock FontSize="9" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,8,0,0">
                                 <Run Text="Musica di "/><Hyperlink NavigateUri="https://opengameart.org/users/purrplecat" RequestNavigate="OpenExternalLink_Click">Purrple Cat</Hyperlink><Run Text=" · licenza CC BY 4.0."/>
                             </TextBlock>
