@@ -795,6 +795,7 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
                     case "finish": _focus.Finish(_data, legacyActive.Id); break;
                     case "cancel": _focus.Cancel(_data, legacyActive.Id); break;
                 }
+                _activityLedger.SyncFocusSession(_data, legacyActive);
                 await SaveAsync();
                 RefreshFocusSnapshot();
                 RefreshProgress();
@@ -813,7 +814,6 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
                 case "finish": _pomodoro.CompletePhase(_data); break;
                 case "cancel": _pomodoro.Reset(_data); break;
             }
-            _activityLedger.SyncFocusSession(_data, active);
             await SaveAsync();
             RefreshSelectedTaskProgress();
             RefreshFocusSnapshot();
