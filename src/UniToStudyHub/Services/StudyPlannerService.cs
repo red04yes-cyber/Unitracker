@@ -561,8 +561,8 @@ public sealed class StudyPlannerService
     {
         if (options.To < options.From)
             throw new ArgumentOutOfRangeException(nameof(options), "The plan end date must not precede its start date.");
-        if (options.To == DateOnly.MaxValue || options.To.DayNumber - options.From.DayNumber > 180)
-            throw new ArgumentOutOfRangeException(nameof(options), "A plan can cover at most 181 calendar days and cannot end at DateOnly.MaxValue.");
+        if (options.To > DateOnly.MaxValue.AddDays(-7) || options.To.DayNumber - options.From.DayNumber > 180)
+            throw new ArgumentOutOfRangeException(nameof(options), "A plan can cover at most 181 calendar days and must leave seven days of date headroom for week-boundary calculations.");
         if (options.PreferredBlockMinutes is < 15 or > 180)
             throw new ArgumentOutOfRangeException(nameof(options), "Preferred block length must be between 15 and 180 minutes.");
         if (options.MinimumBlockMinutes is < 5 or > 180)
