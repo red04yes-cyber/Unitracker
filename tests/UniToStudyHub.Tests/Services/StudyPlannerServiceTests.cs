@@ -736,7 +736,7 @@ public sealed class StudyPlannerServiceTests
     {
         var data = Data();
         AddTask(data, minutes: 60);
-        AddTaskActivity(data, "estimate-used", "task-1", Now.AddHours(-1), 3900);
+        AddTaskActivity(data, "estimate-used", "task-1", Now.AddSeconds(-3900), 3900);
 
         var preview = new StudyPlannerService().CreatePreview(data, Options(), Now);
 
