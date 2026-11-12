@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.Text;
+using System.Net.Http;
 using System.Text.Json;
 using UniToStudyHub.Models;
 using UniToStudyHub.Security;
@@ -182,6 +183,38 @@ public sealed class PrivacyAndMoodleSecurityTests
             () => service.VerifyAndStoreTokenAsync("https://user:pass@moodle.example.edu", Token));
         await Assert.ThrowsAsync<ArgumentException>(
             () => service.VerifyAndStoreTokenAsync("https://moodle.example.edu/webservice?token=x", Token));
+    }
+
+    [Fact]
+    public void MoodleClientRequiresExplicitLoopbackOptIn()
+    {
+        Assert.Throws<ArgumentException>(() =>
+            new MoodleClient("http://127.0.0.1:8080", Token));
+        Assert.Throws<ArgumentException>(() =>
+            new MoodleClient("https://127.0.0.1:8443", Token));
+
+        using var localDevelopmentClient = new MoodleClient(
+            "http://127.0.0.1:8080",
+            Token,
+            new HttpClientHandler(),
+            allowLoopbackHttp: true);
+
+        Assert.True(localDevelopmentClient.BaseUri.IsLoopback);
+    }
+
+    [Theory]
+    [InlineData("http://127.0.0.1:8080")]
+    [InlineData("https://127.0.0.1:8443")]
+    [InlineData("http://localhost:8080")]
+    public async Task MoodleApplicationServiceRejectsLoopbackBeforePersistingToken(string endpoint)
+    {
+        var tokens = new InMemoryMoodleTokenStore();
+        var service = new MoodleApplicationService(tokens);
+
+        await Assert.ThrowsAsync<ArgumentException>(
+            () => service.VerifyAndStoreTokenAsync(endpoint, Token));
+
+        Assert.False(tokens.HasToken);
     }
 
     [Fact]
