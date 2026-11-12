@@ -1,6 +1,8 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Threading;
+using System.Diagnostics;
+using System.Windows.Navigation;
 using Microsoft.Win32;
 using UniToStudyHub.Presentation.ViewModels;
 using UniToStudyHub.Services;
@@ -101,6 +103,13 @@ public partial class MainWindow : Window
     private void NextFocusMusic_Click(object sender, RoutedEventArgs e) => PlayFocusTrack(_focusMusicIndex + 1);
 
     private void FocusMusicPlayer_MediaEnded(object sender, RoutedEventArgs e) => PlayFocusTrack(_focusMusicIndex + 1);
+
+    private void OpenExternalLink_Click(object sender, RequestNavigateEventArgs e)
+    {
+        if (e.Uri.Scheme != Uri.UriSchemeHttps) return;
+        Process.Start(new ProcessStartInfo(e.Uri.AbsoluteUri) { UseShellExecute = true });
+        e.Handled = true;
+    }
 
     private void SaveAiSettings_Click(object sender, RoutedEventArgs e)
     {
