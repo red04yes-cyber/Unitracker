@@ -72,6 +72,9 @@ Nessuna modifica AI, provider, chiamata a modelli, XAML, temi, navigazione, dipe
 
 The first Windows PR run for this workstream exposed one regression-test failure: a dangling file symbolic link could be created successfully, but the FileInfo.LinkTarget/DirectoryInfo.LinkTarget checks did not identify it on the Windows runner. The remaining 301 tests passed; the failure was specifically IsInsideRejectsDanglingFileSymbolicLinks.
 
-LocalFileSecurity.IsReparsePoint now uses the Windows FindFirstFileW entry metadata as a fallback when both File.Exists and Directory.Exists are false. FindFirstFileW returns WIN32_FIND_DATA for the link entry itself, including FILE_ATTRIBUTE_REPARSE_POINT, without following its target. The fallback treats unexpected Win32 errors as unsafe, and rejects wildcard characters rather than allowing FindFirstFileW to match a different entry. A second regression test covers a dangling directory symlink as well as the original dangling file symlink. The corrected implementation is not considered verified until the new Windows CI run passes.
+LocalFileSecurity.IsReparsePoint now uses CreateFileW with FILE_FLAG_OPEN_REPARSE_POINT and FILE_FLAG_BACKUP_SEMANTICS to open the filesystem entry itself, then reads FILE_ATTRIBUTE_REPARSE_POINT through GetFileInformationByHandle. This avoids following a dangling file or directory link. The helper rejects wildcard paths and treats unexpected Win32 errors or failed attribute reads as unsafe. Regression tests cover both dangling file and dangling directory symlinks. The corrected implementation is not considered verified until the new Windows CI run passes.
 
 The original Windows failure is documented here for traceability: https://github.com/red04yes-cyber/Unitracker/actions/runs/42706181354.
+
+
+The separate loopback-default hardening previously proposed in PR #61 remains outside this change. PR #61 is closed without merge; main still constructs MoodleClient with allowLoopbackHttp=true. This is a separate residual configuration risk and is not represented as fixed by this PR.
