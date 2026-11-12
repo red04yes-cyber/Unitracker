@@ -369,6 +369,13 @@ public sealed class StudyPlannerService
                 continue;
             }
 
+            if (previewProgressByTask.Count > 0 && !previewProgressByTask.ContainsKey(task.Id))
+            {
+                skipped++;
+                warnings.Add($"L'anteprima non contiene il progresso aggiornato del task \"{task.Title}\"; rigenera il piano.");
+                continue;
+            }
+
             if (previewProgressByTask.TryGetValue(task.Id, out var expectedProgress) &&
                 (!currentProgressByTask.TryGetValue(task.Id, out var currentProgress) ||
                  currentProgress != expectedProgress))
