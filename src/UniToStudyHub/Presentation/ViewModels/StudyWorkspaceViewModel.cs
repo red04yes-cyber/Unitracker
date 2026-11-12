@@ -38,6 +38,7 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
     private readonly ExamReadinessService _readiness;
     private readonly StudyDataExportService _exports;
     private readonly HashSet<string> _verifiedBackups = new(StringComparer.OrdinalIgnoreCase);
+    private readonly HashSet<string> _dismissedNotificationIds = new(StringComparer.Ordinal);
     private StudyData _data = new();
     private Course? _selectedCourse;
     private Course? _selectedFocusCourse;
@@ -342,6 +343,7 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
     public AsyncRelayCommand FinishFocusCommand { get; }
     public AsyncRelayCommand CancelFocusCommand { get; }
     public AsyncRelayCommand StartNextFocusCommand { get; }
+    public AsyncRelayCommand ClearNotificationsCommand { get; }
     public AsyncRelayCommand AddTaskCommand { get; }
     public AsyncRelayCommand CompleteTaskCommand { get; }
     public AsyncRelayCommand RemoveTaskCommand { get; }
@@ -423,6 +425,7 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
         FinishFocusCommand = new AsyncRelayCommand(() => ChangeFocusAsync("finish"), () => CanFinishFocus);
         CancelFocusCommand = new AsyncRelayCommand(() => ChangeFocusAsync("cancel"), () => _data.PomodoroTimer is not null || _focus.GetActive(_data) is not null);
         StartNextFocusCommand = new AsyncRelayCommand(StartNextFocusAsync, () => _data.PomodoroTimer is { Status: PomodoroTimerStatus.Completed, Phase: not PomodoroPhase.Focus });
+        ClearNotificationsCommand = new AsyncRelayCommand(ClearNotificationsAsync);
         AddTaskCommand = new AsyncRelayCommand(AddTaskAsync);
         CompleteTaskCommand = new AsyncRelayCommand(CompleteTaskAsync, () => SelectedTask is not null);
         RemoveTaskCommand = new AsyncRelayCommand(RemoveTaskAsync, () => SelectedTask is not null);
@@ -564,11 +567,21 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
         }
     }
 
+    private Task ClearNotificationsAsync()
+    {
+        foreach (var notification in Notifications)
+            _dismissedNotificationIds.Add(notification.Id);
+        Notifications.Clear();
+        OnPropertyChanged(nameof(NoNotifications));
+        return Task.CompletedTask;
+    }
+
     private void RefreshNotifications()
     {
         var retainedPomodoro = Notifications.Where(x => x.Kind == "Pomodoro");
         var desired = retainedPomodoro
             .Concat(_notificationCenter.GetUpcoming(_data))
+            .Where(x => !_dismissedNotificationIds.Contains(x.Id))
             .OrderBy(x => x.OccursAt)
             .ToArray();
         if (!Notifications.SequenceEqual(desired))
