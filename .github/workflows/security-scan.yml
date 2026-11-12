@@ -24,10 +24,14 @@ jobs:
     timeout-minutes: 15
     steps:
       - name: Checkout the full history without persisted credentials
-        uses: actions/checkout@v4
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           fetch-depth: 0
           persist-credentials: false
+
+      - name: Verify immutable GitHub Action references
+        shell: bash
+        run: bash ./scripts/verify-github-actions-pinning.sh
 
       - name: Install gitleaks 8.30.1 with checksum verification
         shell: bash
@@ -62,12 +66,12 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           persist-credentials: false
 
       - name: Install .NET 10
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6
         with:
           dotnet-version: 10.0.x
 
@@ -78,4 +82,3 @@ jobs:
           dotnet restore src/UniToStudyHub/UniToStudyHub.csproj -p:EnableWindowsTargeting=true -warnaserror:NU1901,NU1902,NU1903,NU1904
           dotnet restore tests/UniToStudyHub.Tests/UniToStudyHub.Tests.csproj -p:EnableWindowsTargeting=true -warnaserror:NU1901,NU1902,NU1903,NU1904
           echo "NuGet audit completed with NU1901-NU1904 treated as errors for both dependency graphs."
-
