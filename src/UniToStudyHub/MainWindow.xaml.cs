@@ -52,30 +52,120 @@ public partial class MainWindow : Window
     }
 
 
-    private static readonly string[] FocusMusicTracks =
+    public sealed record FocusMusicTrack(string Title, string Url, string Album);
+
+    private static readonly FocusMusicTrack[] FocusMusicTracks =
     {
-        "https://opengameart.org/sites/default/files/01_squeaky_computer_chair_0.mp3",
-        "https://opengameart.org/sites/default/files/02_now_or_never_0.mp3",
-        "https://opengameart.org/sites/default/files/03_remembering_something_i_forgot_0.mp3",
-        "https://opengameart.org/sites/default/files/04_its_going_to_be_a_good_day_0.mp3",
-        "https://opengameart.org/sites/default/files/05_learning_to_love_myself_0.mp3",
-        "https://opengameart.org/sites/default/files/06_trying_something_new_1.mp3",
-        "https://opengameart.org/sites/default/files/07_the_last_day_i_saw_you_0.mp3",
-        "https://opengameart.org/sites/default/files/08_there_was_nothing_i_could_do_0.mp3"
+        new FocusMusicTrack("Fog Blanket","https://purrplecat-audio.pages.dev/audio/city-nights-3/01-fog-blanket.mp3","City Nights 3"),
+        new FocusMusicTrack("Downtown","https://purrplecat-audio.pages.dev/audio/city-nights-3/02-downtown.mp3","City Nights 3"),
+        new FocusMusicTrack("Window Seat","https://purrplecat-audio.pages.dev/audio/city-nights-3/03-window-seat.mp3","City Nights 3"),
+        new FocusMusicTrack("Corner Store","https://purrplecat-audio.pages.dev/audio/city-nights-3/04-corner-store.mp3","City Nights 3"),
+        new FocusMusicTrack("Skyscrapers","https://purrplecat-audio.pages.dev/audio/city-nights-3/05-skyscrapers.mp3","City Nights 3"),
+        new FocusMusicTrack("Cable Car","https://purrplecat-audio.pages.dev/audio/city-nights-3/06-cable-car.mp3","City Nights 3"),
+        new FocusMusicTrack("Insomnia","https://purrplecat-audio.pages.dev/audio/city-nights-3/07-insomnia.mp3","City Nights 3"),
+        new FocusMusicTrack("Half Awake","https://purrplecat-audio.pages.dev/audio/city-nights-3/08-half-awake.mp3","City Nights 3"),
+        new FocusMusicTrack("Cruisin'","https://purrplecat-audio.pages.dev/audio/city-nights-3/09-cruisin.mp3","City Nights 3"),
+        new FocusMusicTrack("Stray","https://purrplecat-audio.pages.dev/audio/city-nights-3/10-stray.mp3","City Nights 3"),
+        new FocusMusicTrack("Missing Pieces","https://purrplecat-audio.pages.dev/audio/city-nights-3/11-missing-pieces.mp3","City Nights 3"),
+        new FocusMusicTrack("3 A.M. Radio","https://purrplecat-audio.pages.dev/audio/city-nights-3/12-3-am-radio.mp3","City Nights 3"),
+        new FocusMusicTrack("Empty Sidewalks","https://purrplecat-audio.pages.dev/audio/city-nights-3/13-empty-sidewalks.mp3","City Nights 3"),
+        new FocusMusicTrack("Starry Night","https://purrplecat-audio.pages.dev/audio/city-nights-3/14-starry-night.mp3","City Nights 3"),
+        new FocusMusicTrack("Comfy","https://purrplecat-audio.pages.dev/audio/sleep-tight/01-comfy.mp3","Sleep Tight"),
+        new FocusMusicTrack("Everchanging","https://purrplecat-audio.pages.dev/audio/sleep-tight/02-everchanging.mp3","Sleep Tight"),
+        new FocusMusicTrack("Still of the Night","https://purrplecat-audio.pages.dev/audio/sleep-tight/03-still-of-the-night.mp3","Sleep Tight"),
+        new FocusMusicTrack("Fading","https://purrplecat-audio.pages.dev/audio/sleep-tight/04-fading.mp3","Sleep Tight"),
+        new FocusMusicTrack("Zzz...","https://purrplecat-audio.pages.dev/audio/sleep-tight/05-zzz.mp3","Sleep Tight"),
+        new FocusMusicTrack("Dream State","https://purrplecat-audio.pages.dev/audio/sleep-tight/06-dream-state.mp3","Sleep Tight"),
+        new FocusMusicTrack("Breathing Underwater","https://purrplecat-audio.pages.dev/audio/sleep-tight/07-breathing-underwater.mp3","Sleep Tight"),
+        new FocusMusicTrack("Night Light","https://purrplecat-audio.pages.dev/audio/sleep-tight/08-night-light.mp3","Sleep Tight"),
+        new FocusMusicTrack("Out of Place","https://purrplecat-audio.pages.dev/audio/sleep-tight/09-out-of-place.mp3","Sleep Tight"),
+        new FocusMusicTrack("Soft","https://purrplecat-audio.pages.dev/audio/sleep-tight/10-soft.mp3","Sleep Tight"),
+        new FocusMusicTrack("Weird Dream","https://purrplecat-audio.pages.dev/audio/sleep-tight/11-weird-dream.mp3","Sleep Tight"),
+        new FocusMusicTrack("Astral Projection","https://purrplecat-audio.pages.dev/audio/sleep-tight/12-astral-projection.mp3","Sleep Tight"),
+        new FocusMusicTrack("All Curled Up","https://purrplecat-audio.pages.dev/audio/sleep-tight/13-all-curled-up.mp3","Sleep Tight"),
+        new FocusMusicTrack("Weightless","https://purrplecat-audio.pages.dev/audio/sleep-tight/14-weightless.mp3","Sleep Tight"),
+        new FocusMusicTrack("Familiar Faces","https://purrplecat-audio.pages.dev/audio/sleep-tight/15-familiar-faces.mp3","Sleep Tight"),
+        new FocusMusicTrack("Awakenings","https://purrplecat-audio.pages.dev/audio/multiverse-2/01-awakenings.mp3","Multiverse 2"),
+        new FocusMusicTrack("Ethereal","https://purrplecat-audio.pages.dev/audio/multiverse-2/02-ethereal.mp3","Multiverse 2"),
+        new FocusMusicTrack("Transformation","https://purrplecat-audio.pages.dev/audio/multiverse-2/03-transformation.mp3","Multiverse 2"),
+        new FocusMusicTrack("Egress","https://purrplecat-audio.pages.dev/audio/multiverse-2/04-egress.mp3","Multiverse 2"),
+        new FocusMusicTrack("Refractions","https://purrplecat-audio.pages.dev/audio/multiverse-2/05-refractions.mp3","Multiverse 2"),
+        new FocusMusicTrack("Nexus","https://purrplecat-audio.pages.dev/audio/multiverse-2/06-nexus.mp3","Multiverse 2"),
+        new FocusMusicTrack("Rewind","https://purrplecat-audio.pages.dev/audio/multiverse-2/07-rewind.mp3","Multiverse 2"),
+        new FocusMusicTrack("Unreality","https://purrplecat-audio.pages.dev/audio/multiverse-2/08-unreality.mp3","Multiverse 2"),
+        new FocusMusicTrack("Upside Down","https://purrplecat-audio.pages.dev/audio/multiverse-2/09-upside-down.mp3","Multiverse 2"),
+        new FocusMusicTrack("In Between","https://purrplecat-audio.pages.dev/audio/multiverse-2/10-in-between.mp3","Multiverse 2"),
+        new FocusMusicTrack("Paradox","https://purrplecat-audio.pages.dev/audio/multiverse-2/11-paradox.mp3","Multiverse 2"),
+        new FocusMusicTrack("Convergence","https://purrplecat-audio.pages.dev/audio/multiverse-2/12-convergence.mp3","Multiverse 2"),
+        new FocusMusicTrack("Intertwined","https://purrplecat-audio.pages.dev/audio/multiverse-2/13-intertwined.mp3","Multiverse 2"),
+        new FocusMusicTrack("Creatures of the Night","https://purrplecat-audio.pages.dev/audio/cypress-manor/01-creatures-of-the-night.mp3","Cypress Manor"),
+        new FocusMusicTrack("The Murk","https://purrplecat-audio.pages.dev/audio/cypress-manor/02-the-murk.mp3","Cypress Manor"),
+        new FocusMusicTrack("Ghosties","https://purrplecat-audio.pages.dev/audio/cypress-manor/03-ghosties.mp3","Cypress Manor"),
+        new FocusMusicTrack("Don't Look Back","https://purrplecat-audio.pages.dev/audio/cypress-manor/04-dont-look-back.mp3","Cypress Manor"),
+        new FocusMusicTrack("Skeleton Dance","https://purrplecat-audio.pages.dev/audio/cypress-manor/05-skeleton-dance.mp3","Cypress Manor"),
+        new FocusMusicTrack("The Bells","https://purrplecat-audio.pages.dev/audio/cypress-manor/06-the-bells.mp3","Cypress Manor"),
+        new FocusMusicTrack("Eyes in the Dark","https://purrplecat-audio.pages.dev/audio/cypress-manor/07-eyes-in-the-dark.mp3","Cypress Manor"),
+        new FocusMusicTrack("Bayou Blues","https://purrplecat-audio.pages.dev/audio/cypress-manor/08-bayou-blues.mp3","Cypress Manor"),
+        new FocusMusicTrack("In the Walls","https://purrplecat-audio.pages.dev/audio/cypress-manor/09-in-the-walls.mp3","Cypress Manor"),
+        new FocusMusicTrack("Not Alone","https://purrplecat-audio.pages.dev/audio/cypress-manor/10-not-alone.mp3","Cypress Manor"),
+        new FocusMusicTrack("Nowhere to Hide","https://purrplecat-audio.pages.dev/audio/cypress-manor/11-nowhere-to-hide.mp3","Cypress Manor"),
+        new FocusMusicTrack("Strike of Midnight","https://purrplecat-audio.pages.dev/audio/cypress-manor/12-strike-of-midnight.mp3","Cypress Manor"),
+        new FocusMusicTrack("Uninvited","https://purrplecat-audio.pages.dev/audio/cypress-manor/13-uninvited.mp3","Cypress Manor"),
+        new FocusMusicTrack("The Dungeon","https://purrplecat-audio.pages.dev/audio/cypress-manor/14-the-dungeon.mp3","Cypress Manor"),
+        new FocusMusicTrack("Memories","https://purrplecat-audio.pages.dev/audio/memories/01-memories.mp3","Memories"),
+        new FocusMusicTrack("With You","https://purrplecat-audio.pages.dev/audio/memories/02-with-you.mp3","Memories"),
+        new FocusMusicTrack("Stay With Me","https://purrplecat-audio.pages.dev/audio/memories/03-stay-with-me.mp3","Memories"),
+        new FocusMusicTrack("Take Me to the Moon","https://purrplecat-audio.pages.dev/audio/memories/04-take-me-to-the-moon.mp3","Memories"),
+        new FocusMusicTrack("Dreaming of You","https://purrplecat-audio.pages.dev/audio/memories/05-dreaming-of-you.mp3","Memories"),
+        new FocusMusicTrack("Remember","https://purrplecat-audio.pages.dev/audio/memories/06-remember.mp3","Memories"),
+        new FocusMusicTrack("Frozen Flowers","https://purrplecat-audio.pages.dev/audio/ice-palace/01-frozen-flowers.mp3","Ice Palace"),
+        new FocusMusicTrack("Snow Pillow","https://purrplecat-audio.pages.dev/audio/ice-palace/02-snow-pillow.mp3","Ice Palace"),
+        new FocusMusicTrack("Icicles","https://purrplecat-audio.pages.dev/audio/ice-palace/03-icicles.mp3","Ice Palace"),
+        new FocusMusicTrack("Aurora","https://purrplecat-audio.pages.dev/audio/ice-palace/04-aurora.mp3","Ice Palace"),
+        new FocusMusicTrack("Peppermint Mocha","https://purrplecat-audio.pages.dev/audio/ice-palace/05-peppermint-mocha.mp3","Ice Palace"),
+        new FocusMusicTrack("The Toymaker","https://purrplecat-audio.pages.dev/audio/ice-palace/06-the-toymaker.mp3","Ice Palace"),
+        new FocusMusicTrack("Wonderland","https://purrplecat-audio.pages.dev/audio/ice-palace/07-wonderland.mp3","Ice Palace"),
+        new FocusMusicTrack("Chasing Snowflakes","https://purrplecat-audio.pages.dev/audio/ice-palace/08-chasing-snowflakes.mp3","Ice Palace"),
+        new FocusMusicTrack("Toasty","https://purrplecat-audio.pages.dev/audio/ice-palace/09-toasty.mp3","Ice Palace"),
+        new FocusMusicTrack("Ice Palace","https://purrplecat-audio.pages.dev/audio/ice-palace/10-ice-palace.mp3","Ice Palace"),
+        new FocusMusicTrack("Frosted Evergreen","https://purrplecat-audio.pages.dev/audio/ice-palace/11-frosted-evergreen.mp3","Ice Palace"),
+        new FocusMusicTrack("Gingerbread House","https://purrplecat-audio.pages.dev/audio/ice-palace/12-gingerbread-house.mp3","Ice Palace"),
+        new FocusMusicTrack("Come One, Come All","https://purrplecat-audio.pages.dev/audio/dino-land/01-come-one-come-all.mp3","Dino Land"),
+        new FocusMusicTrack("Goosebumps","https://purrplecat-audio.pages.dev/audio/dino-land/02-goosebumps.mp3","Dino Land"),
+        new FocusMusicTrack("Blood Moon","https://purrplecat-audio.pages.dev/audio/dino-land/03-blood-moon.mp3","Dino Land"),
+        new FocusMusicTrack("Phantom Waltz","https://purrplecat-audio.pages.dev/audio/dino-land/04-phantom-waltz.mp3","Dino Land"),
+        new FocusMusicTrack("Lost Souls","https://purrplecat-audio.pages.dev/audio/dino-land/05-lost-souls.mp3","Dino Land"),
+        new FocusMusicTrack("Step Right Up","https://purrplecat-audio.pages.dev/audio/dino-land/06-step-right-up.mp3","Dino Land"),
+        new FocusMusicTrack("Eerie Glow","https://purrplecat-audio.pages.dev/audio/dino-land/07-eerie-glow.mp3","Dino Land"),
+        new FocusMusicTrack("Labyrinth","https://purrplecat-audio.pages.dev/audio/dino-land/08-labyrinth.mp3","Dino Land"),
+        new FocusMusicTrack("Defunct","https://purrplecat-audio.pages.dev/audio/dino-land/09-defunct.mp3","Dino Land"),
+        new FocusMusicTrack("Lurking in the Shadows","https://purrplecat-audio.pages.dev/audio/dino-land/10-lurking-in-the-shadows.mp3","Dino Land"),
+        new FocusMusicTrack("Strange Fog","https://purrplecat-audio.pages.dev/audio/dino-land/11-strange-fog.mp3","Dino Land"),
+        new FocusMusicTrack("Nevermore","https://purrplecat-audio.pages.dev/audio/dino-land/12-nevermore.mp3","Dino Land"),
+        new FocusMusicTrack("Carousel","https://purrplecat-audio.pages.dev/audio/dino-land/13-carousel.mp3","Dino Land"),
+        new FocusMusicTrack("Siren's Song","https://purrplecat-audio.pages.dev/audio/eye-of-the-storm/01-sirens-song.mp3","Eye of the Storm"),
+        new FocusMusicTrack("Downpour","https://purrplecat-audio.pages.dev/audio/eye-of-the-storm/02-downpour.mp3","Eye of the Storm"),
+        new FocusMusicTrack("Maelstrom","https://purrplecat-audio.pages.dev/audio/eye-of-the-storm/03-maelstrom.mp3","Eye of the Storm"),
+        new FocusMusicTrack("Lighthouse","https://purrplecat-audio.pages.dev/audio/eye-of-the-storm/04-lighthouse.mp3","Eye of the Storm"),
+        new FocusMusicTrack("Thunderous Waves","https://purrplecat-audio.pages.dev/audio/eye-of-the-storm/05-thunderous-waves.mp3","Eye of the Storm"),
+        new FocusMusicTrack("Sunken Secrets","https://purrplecat-audio.pages.dev/audio/eye-of-the-storm/06-sunken-secrets.mp3","Eye of the Storm"),
+        new FocusMusicTrack("Ebb and Flow","https://purrplecat-audio.pages.dev/audio/eye-of-the-storm/07-ebb-and-flow.mp3","Eye of the Storm"),
+        new FocusMusicTrack("Eye of the Storm","https://purrplecat-audio.pages.dev/audio/eye-of-the-storm/08-eye-of-the-storm.mp3","Eye of the Storm"),
+        new FocusMusicTrack("Leviathan","https://purrplecat-audio.pages.dev/audio/eye-of-the-storm/09-leviathan.mp3","Eye of the Storm"),
+        new FocusMusicTrack("Shelter","https://purrplecat-audio.pages.dev/audio/eye-of-the-storm/10-shelter.mp3","Eye of the Storm"),
+        new FocusMusicTrack("Cave of Solace","https://purrplecat-audio.pages.dev/audio/eye-of-the-storm/11-cave-of-solace.mp3","Eye of the Storm"),
+        new FocusMusicTrack("Sea Foam","https://purrplecat-audio.pages.dev/audio/eye-of-the-storm/12-sea-foam.mp3","Eye of the Storm"),
+        new FocusMusicTrack("Undertow","https://purrplecat-audio.pages.dev/audio/eye-of-the-storm/13-undertow.mp3","Eye of the Storm")
     };
-    private static readonly string[] FocusMusicTitles =
-    {
-        "Squeaky Computer Chair", "Now or Never", "Remembering Something I Forgot",
-        "It's Going to Be a Good Day", "Learning to Love Myself", "Trying Something New",
-        "The Last Day I Saw You", "There Was Nothing I Could Do"
-    };
+
+    public IReadOnlyList<FocusMusicTrack> FocusMusicPlaylistItems => FocusMusicTracks;
 
     private int _focusMusicIndex = -1;
 
     private void PlayFocusTrack_Click(object sender, RoutedEventArgs e)
     {
         if (sender is not Button { Tag: string url }) return;
-        var index = Array.IndexOf(FocusMusicTracks, url);
+        var index = Array.FindIndex(FocusMusicTracks, track => track.Url == url);
         if (index >= 0) PlayFocusTrack(index);
     }
 
@@ -86,9 +176,9 @@ public partial class MainWindow : Window
         try
         {
             FocusMusicPlayer.Stop();
-            FocusMusicPlayer.Source = new Uri(FocusMusicTracks[_focusMusicIndex], UriKind.Absolute);
+            FocusMusicPlayer.Source = new Uri(FocusMusicTracks[_focusMusicIndex].Url, UriKind.Absolute);
             FocusMusicPlayer.Play();
-            FocusMusicTrackLabel.Text = FocusMusicTitles[_focusMusicIndex];
+            FocusMusicTrackLabel.Text = $"{FocusMusicTracks[_focusMusicIndex].Title} · {FocusMusicTracks[_focusMusicIndex].Album}";
         }
         catch (Exception ex)
         {
