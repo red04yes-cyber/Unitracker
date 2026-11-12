@@ -276,9 +276,9 @@ public sealed class StudyPlannerService
         if (!preview.HasTaskProgressSnapshot && preview.TaskProgress.Count > 0)
             throw new ArgumentException("A legacy preview cannot contain unversioned task progress.", nameof(preview));
 
-        var blocks = preview.Blocks.ToArray();
-        if (blocks.Length > 3620)
+        if (preview.Blocks.Count > 3620)
             throw new ArgumentOutOfRangeException(nameof(preview), "A preview cannot contain more than 3,620 blocks.");
+        var blocks = preview.Blocks.ToArray();
         var previewProgressByTask = new Dictionary<string, TaskProgressSnapshot>(StringComparer.Ordinal);
         foreach (var snapshot in preview.TaskProgress)
         {
