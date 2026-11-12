@@ -7,7 +7,7 @@ The Progress view now supports three rolling date windows:
 - 30 days
 - 90 days
 
-Changing the selector recalculates the same persisted progress snapshot for the selected inclusive date range. The XLSX export uses that same range.
+Changing the selector recalculates the same persisted progress snapshot for the selected inclusive date range. The XLSX export uses that same range. Each rolling window includes today and the preceding 6, 29, or 89 local calendar days.
 
 ## Metrics
 
