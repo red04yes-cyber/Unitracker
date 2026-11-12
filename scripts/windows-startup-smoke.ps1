@@ -53,6 +53,11 @@ try {
         throw "WPF app did not create a main window within 60 seconds."
     }
     if ($process.MainWindowTitle -ne 'UniTo StudyHub') {
+        $logPath = Join-Path $dataDirectory 'logs/unitracker.log'
+        if (Test-Path $logPath) {
+            Write-Host "Local startup diagnostics for unexpected window:"
+            Get-Content -LiteralPath $logPath -Tail 100 | ForEach-Object { Write-Host $_ }
+        }
         throw "Unexpected WPF main window title: '$($process.MainWindowTitle)'."
     }
 
