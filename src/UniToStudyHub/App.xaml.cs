@@ -164,6 +164,13 @@ public partial class App : System.Windows.Application
         }
         catch (Exception ex)
         {
+            // Preserve the sanitized exception chain in local diagnostics. WPF
+            // XamlParseException often wraps the actionable resource/control
+            // failure in InnerException, which is needed to debug startup.
+            for (var current = ex; current is not null; current = current.InnerException)
+            {
+                AppDiagnostics.Error("startup", $"Startup exception detail: {current.GetType().Name}: {current.Message}");
+            }
             AppDiagnostics.Error("startup", "Application startup failed.", ex);
             var logPath = AppDiagnostics.CurrentLogPath ??
                           Path.Combine(AppDiagnostics.Directory, "unitracker.log");
