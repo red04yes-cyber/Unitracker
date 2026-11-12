@@ -236,20 +236,6 @@
                         </Border>
                     </Grid>
                 </Grid>
-                <ControlTemplate.Triggers>
-                    <EventTrigger RoutedEvent="Selector.SelectionChanged">
-                        <BeginStoryboard HandoffBehavior="SnapshotAndReplace">
-                            <Storyboard>
-                                <DoubleAnimation Storyboard.TargetName="PART_SelectedContentHost"
-                                                 Storyboard.TargetProperty="Opacity"
-                                                 From="0" To="1" Duration="0:0:0.22"/>
-                                <DoubleAnimation Storyboard.TargetName="PART_SelectedContentHost"
-                                                 Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.Y)"
-                                                 From="9" To="0" Duration="0:0:0.26"/>
-                            </Storyboard>
-                        </BeginStoryboard>
-                    </EventTrigger>
-                </ControlTemplate.Triggers>
             </ControlTemplate>
         </TabControl.Template>
 
