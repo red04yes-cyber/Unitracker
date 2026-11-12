@@ -1,4 +1,5 @@
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
 using System.Security.AccessControl;
 using System.Security.Principal;
@@ -282,27 +283,13 @@ public static class LocalFileSecurity
         if (new FileInfo(path).LinkTarget is not null) return true;
         if (new DirectoryInfo(path).LinkTarget is not null) return true;
 
-        // On Windows, LinkTarget can be null for a dangling file symlink even
-        // though the directory entry still exists. ResolveLinkTarget inspects
-        // the link entry independently of whether its target exists. Try both
-        // file and directory forms because the target type is untrusted.
-        try
-        {
-            if (File.ResolveLinkTarget(path, returnFinalTarget: false) is not null) return true;
-        }
-        catch (IOException)
-        {
-            // The path may be missing or may be a directory link; try the other form.
-        }
-
-        try
-        {
-            if (Directory.ResolveLinkTarget(path, returnFinalTarget: false) is not null) return true;
-        }
-        catch (IOException)
-        {
-            // The path may be missing or may be a file link; attribute checks follow.
-        }
+        // File.Exists/Directory.Exists and the managed LinkTarget APIs may
+        // not identify a dangling Windows symlink. FindFirstFileW reports the
+        // reparse-point attributes of the directory entry itself, without
+        // following its target.
+        if (OperatingSystem.IsWindows() && !File.Exists(path) && !Directory.Exists(path) &&
+            TryGetWindowsReparsePoint(path) == true)
+            return true;
 
         try
         {
@@ -317,6 +304,63 @@ public static class LocalFileSecurity
             return false;
         }
     }
+
+    [SupportedOSPlatform("windows")]
+    private static bool? TryGetWindowsReparsePoint(string path)
+    {
+        // Windows file names cannot contain wildcards. Treat them as invalid
+        // instead of allowing FindFirstFileW to match an unrelated entry.
+        if (path.Contains('*') || path.Contains('?')) return true;
+
+        var fullPath = Path.GetFullPath(path);
+        var extendedPath = fullPath.StartsWith(@"\\?\", StringComparison.Ordinal)
+            ? fullPath
+            : fullPath.StartsWith(@"\\", StringComparison.Ordinal)
+                ? @"\\?\UNC\" + fullPath[2..]
+                : @"\\?\" + fullPath;
+
+        var handle = FindFirstFileW(extendedPath, out var data);
+        if (handle != new IntPtr(-1))
+        {
+            try
+            {
+                return (data.Attributes & FileAttributes.ReparsePoint) != 0;
+            }
+            finally
+            {
+                _ = FindClose(handle);
+            }
+        }
+
+        // A genuinely missing path is not a reparse point. Any other failure
+        // means the entry could not be inspected and must fail closed.
+        return Marshal.GetLastWin32Error() is 2 or 3 ? null : true;
+    }
+
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+    private struct WindowsFindData
+    {
+        public FileAttributes Attributes;
+        public uint CreationTimeLow;
+        public uint CreationTimeHigh;
+        public uint LastAccessTimeLow;
+        public uint LastAccessTimeHigh;
+        public uint LastWriteTimeLow;
+        public uint LastWriteTimeHigh;
+        public uint FileSizeHigh;
+        public uint FileSizeLow;
+        public uint Reserved0;
+        public uint Reserved1;
+        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 260)] public string? FileName;
+        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 14)] public string? AlternateFileName;
+    }
+
+    [DllImport("kernel32.dll", EntryPoint = "FindFirstFileW", CharSet = CharSet.Unicode, SetLastError = true)]
+    private static extern IntPtr FindFirstFileW(string fileName, out WindowsFindData findData);
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool FindClose(IntPtr findHandle);
 
     [SupportedOSPlatform("windows")]
     private static void ApplyDirectoryAcl(string path)
