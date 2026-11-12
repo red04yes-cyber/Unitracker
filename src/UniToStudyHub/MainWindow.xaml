@@ -1015,7 +1015,15 @@
     <StackPanel Margin="32,30,32,36">
         <TextBlock Text="IL TUO ANDAMENTO" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource AccentBrush}"/>
         <TextBlock Text="Progressi" Style="{StaticResource PageTitleStyle}" Margin="0,7,0,4"/>
-        <TextBlock Text="{Binding Workspace.ProgressPeriodDisplay, StringFormat='Periodo · {0}'}" Style="{StaticResource PageSubtitleStyle}" Margin="0,0,0,22"/>
+        <Grid Margin="0,0,0,18">
+            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+            <TextBlock Text="{Binding Workspace.ProgressPeriodDisplay, StringFormat='Periodo · {0}'}" Style="{StaticResource PageSubtitleStyle}" VerticalAlignment="Center"/>
+            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                <TextBlock Text="INTERVALLO" FontSize="9" FontWeight="Bold" Foreground="{DynamicResource MutedBrush}" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                <ComboBox Width="118" ItemsSource="{Binding Workspace.ProgressPeriodOptions}"
+                          SelectedItem="{Binding Workspace.SelectedProgressPeriod, UpdateSourceTrigger=PropertyChanged}"/>
+            </StackPanel>
+        </Grid>
         <UniformGrid Columns="3" Margin="0,0,0,12">
             <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,10,10"><StackPanel><TextBlock Text="TEMPO DI FOCUS" Style="{StaticResource KpiLabelStyle}"/><TextBlock Text="{Binding Workspace.FocusMinutesDisplay}" FontSize="24" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}" Margin="0,9,0,0"/></StackPanel></Border>
             <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,10,10"><StackPanel><TextBlock Text="SESSIONI COMPLETATE" Style="{StaticResource KpiLabelStyle}"/><TextBlock Text="{Binding Workspace.CompletedSessionsDisplay}" FontSize="24" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}" Margin="0,9,0,0"/></StackPanel></Border>
@@ -1023,6 +1031,12 @@
             <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,10,10"><StackPanel><TextBlock Text="FLASHCARD DOVUTE" Style="{StaticResource KpiLabelStyle}"/><TextBlock Text="{Binding Workspace.DueFlashcardsDisplay}" FontSize="24" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}" Margin="0,9,0,0"/></StackPanel></Border>
             <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,10,10"><StackPanel><TextBlock Text="ERRORI APERTI" Style="{StaticResource KpiLabelStyle}"/><TextBlock Text="{Binding Workspace.OpenErrorsDisplay}" FontSize="24" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}" Margin="0,9,0,0"/></StackPanel></Border>
             <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,10"><StackPanel><TextBlock Text="STREAK FOCUS" Style="{StaticResource KpiLabelStyle}"/><TextBlock Text="{Binding Workspace.FocusStreakDisplay}" FontSize="24" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}" Margin="0,9,0,0"/></StackPanel></Border>
+        </UniformGrid>
+        <UniformGrid Columns="4" Margin="0,0,0,12">
+            <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,10,10"><StackPanel><TextBlock Text="MEDIA GIORNALIERA" Style="{StaticResource KpiLabelStyle}"/><TextBlock Text="{Binding Workspace.AverageDailyFocusDisplay}" FontSize="20" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}" Margin="0,8,0,0"/></StackPanel></Border>
+            <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,10,10"><StackPanel><TextBlock Text="GIORNI ATTIVI" Style="{StaticResource KpiLabelStyle}"/><TextBlock Text="{Binding Workspace.ActiveStudyDaysDisplay}" FontSize="20" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}" Margin="0,8,0,0"/></StackPanel></Border>
+            <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,10,10"><StackPanel><TextBlock Text="MEDIA PER SESSIONE" Style="{StaticResource KpiLabelStyle}"/><TextBlock Text="{Binding Workspace.AverageSessionDisplay}" FontSize="20" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}" Margin="0,8,0,0"/></StackPanel></Border>
+            <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,10"><StackPanel><TextBlock Text="GIORNO PIÙ INTENSO" Style="{StaticResource KpiLabelStyle}"/><TextBlock Text="{Binding Workspace.BestFocusDayDisplay}" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}" TextWrapping="Wrap" Margin="0,8,0,0"/></StackPanel></Border>
         </UniformGrid>
         <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="1.1*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
             <Border Grid.Column="0" Style="{StaticResource CardBorderStyle}" Margin="0,0,12,0"><StackPanel><TextBlock Text="Obiettivo settimanale" Style="{StaticResource SectionTitleStyle}"/><TextBlock Text="{Binding Workspace.WeeklyGoalDisplay}" FontSize="16" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}" Margin="0,10,0,0"/><ProgressBar Value="{Binding Workspace.WeeklyGoalProgressPercent, Mode=OneWay}" Maximum="100" Height="7" Margin="0,12,0,0"/><TextBlock Text="Il totale deriva dalle sessioni di focus salvate, non da stime o tempo trascorso con l'app aperta." FontSize="11" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,8,0,0"/></StackPanel></Border>
@@ -1036,11 +1050,12 @@
                                 <ProgressBar Value="{Binding FocusPercent}" Maximum="100" Height="5" Margin="0,5,0,0"/>
                             </StackPanel>
                         </DataTemplate></ItemsControl.ItemTemplate>
-                    </ItemsControl><TextBlock Text="Le statistiche sono calcolate sugli ultimi sette giorni (da lunedì a oggi). Le metriche vuote restano indicate come dati insufficienti." FontSize="10" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,12,0,0"/></StackPanel></Border>
+                    </ItemsControl><TextBlock Text="Le statistiche si basano sulle sessioni e sulle attività salvate nel periodo selezionato. I giorni senza sessioni sono conteggiati come zero; i dati mancanti non vengono stimati." FontSize="10" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,12,0,0"/></StackPanel></Border>
         </Grid>
         <Border Style="{StaticResource CardBorderStyle}" Margin="0,14,0,0">
             <StackPanel>
-                <TextBlock Text="Focus giornaliero · ultimi sette giorni" Style="{StaticResource SectionTitleStyle}"/>
+                <TextBlock Text="{Binding Workspace.DailyProgressTitle}" Style="{StaticResource SectionTitleStyle}"/>
+                <ScrollViewer MaxHeight="330" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                 <ItemsControl ItemsSource="{Binding Workspace.DailyProgressRows}">
                     <ItemsControl.ItemTemplate><DataTemplate>
                         <Grid Margin="0,8,0,0">
@@ -1051,7 +1066,8 @@
                         </Grid>
                     </DataTemplate></ItemsControl.ItemTemplate>
                 </ItemsControl>
-                <Button Content="Esporta report XLSX (ultimi 7 giorni)" Click="ExportProgress_Click" HorizontalAlignment="Left" Margin="0,14,0,0"/>
+                </ScrollViewer>
+                <Button Content="Esporta report XLSX (periodo selezionato)" Click="ExportProgress_Click" HorizontalAlignment="Left" Margin="0,14,0,0"/>
                 <TextBlock Text="{Binding Workspace.ExportStatus}" FontSize="10" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,7,0,0"/>
             </StackPanel>
         </Border>
