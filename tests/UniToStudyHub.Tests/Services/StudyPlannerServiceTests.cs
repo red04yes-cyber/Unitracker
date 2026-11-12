@@ -866,7 +866,8 @@ public sealed class StudyPlannerServiceTests
         var service = new StudyPlannerService();
         var preview = service.CreatePreview(data, Options(), Now) with
         {
-            TaskProgress = null
+            TaskProgress = Array.Empty<TaskProgressSnapshot>(),
+            HasTaskProgressSnapshot = false
         };
 
         var result = service.Apply(data, preview, Now);
