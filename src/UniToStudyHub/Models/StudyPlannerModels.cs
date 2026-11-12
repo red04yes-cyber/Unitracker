@@ -69,12 +69,17 @@ public sealed record StudyPlanPreview(
     /// This is derived from recorded activity and is not persisted as a second
     /// source of truth.
     /// </summary>
-    public IReadOnlyList<TaskProgressSnapshot>? TaskProgress { get; init; }
+    public IReadOnlyList<TaskProgressSnapshot> TaskProgress { get; init; } =
+        Array.Empty<TaskProgressSnapshot>();
 
-    public long RecordedTaskMinutes =>
-        (TaskProgress ?? Array.Empty<TaskProgressSnapshot>()).Sum(x => (long)x.RecordedMinutes);
-    public long RemainingTaskMinutes =>
-        (TaskProgress ?? Array.Empty<TaskProgressSnapshot>()).Sum(x => (long)x.RemainingMinutes);
+    /// <summary>
+    /// False only for previews created by older callers that predate task
+    /// progress snapshots. New planner previews always set this to true.
+    /// </summary>
+    public bool HasTaskProgressSnapshot { get; init; }
+
+    public long RecordedTaskMinutes => TaskProgress.Sum(x => (long)x.RecordedMinutes);
+    public long RemainingTaskMinutes => TaskProgress.Sum(x => (long)x.RemainingMinutes);
 }
 
 public sealed record StudyPlanApplyResult(
