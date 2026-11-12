@@ -153,8 +153,9 @@ preference values into StudyPlannerOptions before preview generation.
   sets are rejected rather than falling back.
 - Invalid persisted weekly/daily budgets are clamped to the supported limits
   for preview generation and explained in warnings. Availability is limited to
-  64 windows per week and an applied preview to 3,620 blocks (181 days × 20
-  blocks/day) to bound malformed input processing.
+  64 windows per week; the date range leaves seven days of headroom for week
+  boundary calculations; and an applied preview is limited to 3,620 blocks
+  (181 days × 20 blocks/day) to bound malformed input processing.
 
 ## Validation
 
@@ -182,10 +183,10 @@ Tests in StudyPlannerServiceTests cover:
 - estimate exhaustion warnings for tasks that remain open;
 - stale-preview rejection after additional work is recorded;
 - rejection of blocks exceeding the remaining estimate;
-- malformed/excessive availability and oversized preview rejection;
+- malformed/excessive availability, date-headroom and oversized preview rejection;
 - clamping invalid persisted study budgets;
 - compatibility with previews created before task-progress snapshots.
 
-The progress-aware planning slice adds fifteen focused planner tests. GitHub
+The progress-aware planning slice adds sixteen focused planner tests. GitHub
 Actions must pass before this slice is considered verified; no local
 build/test result is claimed in this document.
