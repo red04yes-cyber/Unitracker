@@ -538,10 +538,11 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
     {
         try
         {
-            var reconciled = _pomodoro.Reconcile(_data);
+            var observedAt = DateTimeOffset.Now;
+            var reconciled = _pomodoro.Reconcile(_data, observedAt);
             if (reconciled.HasTransitions)
             {
-                foreach (var transition in reconciled.Transitions)
+                foreach (var transition in reconciled.Transitions.Where(x => x.At >= observedAt.AddSeconds(-3)))
                 {
                     var title = transition.Phase == PomodoroPhase.Focus
                         ? "Focus completato"
