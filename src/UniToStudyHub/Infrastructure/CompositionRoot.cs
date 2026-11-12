@@ -58,21 +58,32 @@ public static class CompositionRoot
         services.AddSingleton<PdfImportService>();
         services.AddSingleton<PdfIntelligenceService>();
         services.AddSingleton<AiSettingsService>();
-        services.AddSingleton<IAiProvider, UnavailableAiProvider>();
-        services.AddSingleton<AiStudyService>();
+        services.AddSingleton(_ => new AiCredentialStore(dataDirectory));
+        services.AddSingleton(_ => new AiProviderPreferencesStore(dataDirectory));
+        services.AddSingleton<AiProviderFactory>();
+        services.AddSingleton(sp => sp.GetRequiredService<AiProviderFactory>().CreateFromEnvironment());
+        services.AddSingleton<IAiProvider>(sp => sp.GetRequiredService<AiProviderRuntime>().Provider);
+        services.AddSingleton<AiStudyService>(sp =>
+        {
+            var runtime = sp.GetRequiredService<AiProviderRuntime>();
+            return new AiStudyService(runtime.Provider, runtime.Settings);
+        });
         services.AddSingleton<StudyDirectorService>();
         services.AddSingleton(sp => new BackupService(
             sp.GetRequiredService<IDbContextFactory<StudyHubDbContext>>(),
             resolvedDatabasePath,
             Path.Combine(dataDirectory, "backups"),
             new DpapiBackupKeyProtector()));
-        services.AddSingleton(_ => new AiCredentialStore(dataDirectory));
         services.AddSingleton(sp => new PrivacyService(
             sp.GetRequiredService<IStudyDataStore>(),
             sp.GetRequiredService<IMoodleTokenStore>(),
             sp.GetRequiredService<AiCredentialStore>(),
             sp.GetRequiredService<BackupService>(),
-            dataDirectory));
+            dataDirectory,
+            aiPreferences: sp.GetRequiredService<AiProviderPreferencesStore>()));
+        services.AddSingleton(sp => new StudyDataImportService(
+            sp.GetRequiredService<IStudyDataStore>(),
+            sp.GetRequiredService<BackupService>()));
         return services;
     }
 }
