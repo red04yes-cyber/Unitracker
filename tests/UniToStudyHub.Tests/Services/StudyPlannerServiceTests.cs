@@ -875,4 +875,28 @@ public sealed class StudyPlannerServiceTests
         Assert.Single(data.CalendarEvents);
     }
 
+
+    [Fact]
+    public void ApplyRejectsBlocksMissingProgressRowsWhenUsingTheNewPreviewContract()
+    {
+        var data = Data();
+        AddTask(data, "task-1", 50);
+        AddTask(data, "task-2", 50);
+        var service = new StudyPlannerService();
+        var preview = service.CreatePreview(data, Options(), Now);
+        var incompleteProgress = preview.TaskProgress
+            .Where(x => x.TaskId == "task-1")
+            .ToArray();
+
+        var result = service.Apply(
+            data,
+            preview with { TaskProgress = incompleteProgress },
+            Now);
+
+        Assert.Equal(1, result.Added);
+        Assert.Equal(1, result.Skipped);
+        Assert.Single(data.CalendarEvents);
+        Assert.Contains(result.Warnings, x => x.Contains("non contiene il progresso aggiornato", StringComparison.Ordinal));
+    }
+
 }
