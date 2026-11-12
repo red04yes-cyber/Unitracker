@@ -1163,7 +1163,7 @@
                                     <TextBlock Text="{Binding CourseName}" FontSize="11" Foreground="{DynamicResource InkBrush}" TextWrapping="Wrap"/>
                                     <TextBlock Grid.Column="1" Text="{Binding FocusMinutesDisplay}" FontSize="10" Foreground="{DynamicResource MutedBrush}"/>
                                 </Grid>
-                                <ProgressBar Value="{Binding FocusPercent}" Maximum="100" Height="5" Margin="0,5,0,0"/>
+                                <ProgressBar Value="{Binding FocusPercent, Mode=OneWay}" Maximum="100" Height="5" Margin="0,5,0,0"/>
                             </StackPanel>
                         </DataTemplate></ItemsControl.ItemTemplate>
                     </ItemsControl><TextBlock Text="Le statistiche sono calcolate sugli ultimi sette giorni (da lunedì a oggi). Le metriche vuote restano indicate come dati insufficienti." FontSize="10" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,12,0,0"/></StackPanel></Border>
@@ -1176,7 +1176,7 @@
                         <Grid Margin="0,8,0,0">
                             <Grid.ColumnDefinitions><ColumnDefinition Width="100"/><ColumnDefinition Width="*"/><ColumnDefinition Width="65"/></Grid.ColumnDefinitions>
                             <TextBlock Text="{Binding DayLabel}" FontSize="10" Foreground="{DynamicResource MutedBrush}" VerticalAlignment="Center"/>
-                            <ProgressBar Grid.Column="1" Value="{Binding FocusPercent}" Maximum="100" Height="7" VerticalAlignment="Center"/>
+                            <ProgressBar Grid.Column="1" Value="{Binding FocusPercent, Mode=OneWay}" Maximum="100" Height="7" VerticalAlignment="Center"/>
                             <TextBlock Grid.Column="2" Text="{Binding FocusMinutes, StringFormat={}{0} min}" FontSize="10" Foreground="{DynamicResource InkBrush}" HorizontalAlignment="Right" VerticalAlignment="Center"/>
                         </Grid>
                     </DataTemplate></ItemsControl.ItemTemplate>
