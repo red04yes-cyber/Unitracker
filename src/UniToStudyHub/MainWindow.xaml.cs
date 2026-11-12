@@ -61,6 +61,12 @@ public partial class MainWindow : Window
         "https://opengameart.org/sites/default/files/07_the_last_day_i_saw_you_0.mp3",
         "https://opengameart.org/sites/default/files/08_there_was_nothing_i_could_do_0.mp3"
     };
+    private static readonly string[] FocusMusicTitles =
+    {
+        "Squeaky Computer Chair", "Now or Never", "Remembering Something I Forgot",
+        "It's Going to Be a Good Day", "Learning to Love Myself", "Trying Something New",
+        "The Last Day I Saw You", "There Was Nothing I Could Do"
+    };
 
     private int _focusMusicIndex;
 
@@ -80,7 +86,7 @@ public partial class MainWindow : Window
             FocusMusicPlayer.Stop();
             FocusMusicPlayer.Source = new Uri(FocusMusicTracks[_focusMusicIndex], UriKind.Absolute);
             FocusMusicPlayer.Play();
-            FocusMusicTrackLabel.Text = ((Button)FocusMusicPlaylist.Items[_focusMusicIndex]).Content?.ToString() ?? "Lo-fi";
+            FocusMusicTrackLabel.Text = FocusMusicTitles[_focusMusicIndex];
         }
         catch (Exception ex)
         {
