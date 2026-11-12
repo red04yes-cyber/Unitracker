@@ -16,16 +16,24 @@ Non modifica la PR #76 e non effettua merge.
 
 ## Musica Focus Room
 
-Playlist iniziale: **Now or Never** di Purrple Cat (8 tracce MP3).
-La musica viene riprodotta in streaming da OpenGameArt; è necessaria una connessione Internet.
-La pagina dell'album indica la licenza **Creative Commons Attribution 4.0 International (CC BY 4.0)**. L'interfaccia mostra l'attribuzione a Purrple Cat e un collegamento alla licenza.
-Controlli: selezione traccia, pausa, ripresa, stop, traccia successiva e volume.
+Playlist estesa a **100 tracce MP3** di Purrple Cat, tratte da otto self-release:
+- City Nights 3 (14)
+- Sleep Tight (15)
+- Multiverse 2 (13)
+- Cypress Manor (14)
+- Memories (6)
+- Ice Palace (12)
+- Dino Land (13)
+- Eye of the Storm (13)
+
+La raccolta è riprodotta in streaming da `purrplecat-audio.pages.dev`; è necessaria una connessione Internet. I titoli e i file MP3 sono tratti dal catalogo delle self-release di Purrple Cat, dichiarate CC BY 4.0. L'interfaccia mantiene l'attribuzione all'autore e il collegamento alla licenza. La playlist è scrollabile e ogni riga avvia la traccia selezionata.
+Controlli: selezione traccia, pausa, ripresa, stop, traccia successiva (con passaggio automatico a fine brano) e volume.
 Le tracce non sono presentate come public domain: CC BY 4.0 consente il riutilizzo con attribuzione.
 
 Fonti:
-- Album e file MP3: https://opengameart.org/content/purrple-cat-now-or-never-lofi-album
+- Catalogo consultato per titoli e MP3: https://royaltymusicfree.com/
+- Profilo e catalogo dell'autore: https://purrplecat.itch.io/
 - Licenza: https://creativecommons.org/licenses/by/4.0/
-- Profilo autore: https://opengameart.org/users/purrplecat
 
 ## Centro notifiche
 
