@@ -1,7 +1,6 @@
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
-using Microsoft.Win32.SafeHandles;
 using System.Security.AccessControl;
 using System.Security.Principal;
 
@@ -310,39 +309,49 @@ public static class LocalFileSecurity
     private static bool? TryGetWindowsReparsePoint(string path)
     {
         // Windows file names cannot contain wildcards. Treat them as invalid
-        // instead of allowing native APIs to inspect an unrelated entry.
+        // instead of allowing native enumeration to match an unrelated entry.
         if (path.Contains('*') || path.Contains('?')) return true;
 
         var fullPath = Path.GetFullPath(path);
-        var extendedPath = fullPath.StartsWith(@"\\?\", StringComparison.Ordinal)
-            ? fullPath
-            : fullPath.StartsWith(@"\\", StringComparison.Ordinal)
-                ? @"\\?\UNC\" + fullPath[2..]
-                : @"\\?\" + fullPath;
+        var parent = Path.GetDirectoryName(fullPath);
+        var leaf = Path.GetFileName(fullPath);
+        if (string.IsNullOrWhiteSpace(parent) || string.IsNullOrWhiteSpace(leaf)) return null;
 
-        // OPEN_REPARSE_POINT opens the link itself rather than its target;
-        // BACKUP_SEMANTICS also permits opening directory links. This works
-        // for dangling links, unlike existence checks that follow the target.
-        using var handle = CreateFileW(
-            extendedPath,
-            desiredAccess: 0x80, // FILE_READ_ATTRIBUTES
-            shareMode: 0x1 | 0x2 | 0x4, // FILE_SHARE_READ | WRITE | DELETE
-            securityAttributes: IntPtr.Zero,
-            creationDisposition: 3, // OPEN_EXISTING
-            flagsAndAttributes: 0x02000000 | 0x00200000, // BACKUP_SEMANTICS | OPEN_REPARSE_POINT
-            templateFile: IntPtr.Zero);
+        // Enumerating the parent returns WIN32_FIND_DATA for the directory
+        // entry itself. Looking up a dangling link by its full path may instead
+        // fail because some Windows APIs follow its missing target.
+        var searchPattern = Path.Combine(parent, "*");
+        if (searchPattern.Length >= 248 && !searchPattern.StartsWith(@"\\?\", StringComparison.Ordinal))
+        {
+            searchPattern = parent.StartsWith(@"\\", StringComparison.Ordinal)
+                ? @"\\?\UNC\" + parent[2..] + @"\*"
+                : @"\\?\" + searchPattern;
+        }
 
-        if (handle.IsInvalid)
+        var handle = FindFirstFileW(searchPattern, out var data);
+        if (handle == new IntPtr(-1))
             return Marshal.GetLastWin32Error() is 2 or 3 ? null : true;
 
-        if (!GetFileInformationByHandle(handle, out var information))
-            return true;
+        try
+        {
+            do
+            {
+                if (string.Equals(data.FileName, leaf, StringComparison.OrdinalIgnoreCase))
+                    return (data.Attributes & FileAttributes.ReparsePoint) != 0;
+            }
+            while (FindNextFileW(handle, out data));
 
-        return (information.Attributes & FileAttributes.ReparsePoint) != 0;
+            // ERROR_NO_MORE_FILES means the exact leaf was not present.
+            return Marshal.GetLastWin32Error() == 18 ? null : true;
+        }
+        finally
+        {
+            _ = FindClose(handle);
+        }
     }
 
-    [StructLayout(LayoutKind.Sequential)]
-    private struct WindowsFileInformation
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+    private struct WindowsFindData
     {
         public FileAttributes Attributes;
         public uint CreationTimeLow;
@@ -351,29 +360,24 @@ public static class LocalFileSecurity
         public uint LastAccessTimeHigh;
         public uint LastWriteTimeLow;
         public uint LastWriteTimeHigh;
-        public uint VolumeSerialNumber;
         public uint FileSizeHigh;
         public uint FileSizeLow;
-        public uint NumberOfLinks;
-        public uint FileIndexHigh;
-        public uint FileIndexLow;
+        public uint Reserved0;
+        public uint Reserved1;
+        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 260)] public string? FileName;
+        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 14)] public string? AlternateFileName;
     }
 
-    [DllImport("kernel32.dll", EntryPoint = "CreateFileW", CharSet = CharSet.Unicode, SetLastError = true)]
-    private static extern SafeFileHandle CreateFileW(
-        string fileName,
-        uint desiredAccess,
-        uint shareMode,
-        IntPtr securityAttributes,
-        uint creationDisposition,
-        uint flagsAndAttributes,
-        IntPtr templateFile);
+    [DllImport("kernel32.dll", EntryPoint = "FindFirstFileW", CharSet = CharSet.Unicode, SetLastError = true)]
+    private static extern IntPtr FindFirstFileW(string fileName, out WindowsFindData findData);
+
+    [DllImport("kernel32.dll", EntryPoint = "FindNextFileW", CharSet = CharSet.Unicode, SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool FindNextFileW(IntPtr findHandle, out WindowsFindData findData);
 
     [DllImport("kernel32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool GetFileInformationByHandle(
-        SafeFileHandle handle,
-        out WindowsFileInformation information);
+    private static extern bool FindClose(IntPtr findHandle);
 
     [SupportedOSPlatform("windows")]
     private static void ApplyDirectoryAcl(string path)
