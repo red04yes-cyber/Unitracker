@@ -3,9 +3,9 @@ using UniToStudyHub.Security;
 namespace UniToStudyHub.Services;
 
 /// <summary>
-/// Selects either the OpenAI cloud endpoint or a local Ollama OpenAI-compatible
-/// endpoint. Configuration is read at startup; secrets are resolved from DPAPI
-/// or the process environment and never copied into settings.
+/// Selects OpenAI, Google Gemini or a local Ollama OpenAI-compatible endpoint.
+/// Configuration is read at startup; secrets are resolved from DPAPI or the
+/// process environment and never copied into settings.
 /// </summary>
 public sealed record AiProviderRuntime(IAiProvider Provider, AiSettings? Settings);
 
