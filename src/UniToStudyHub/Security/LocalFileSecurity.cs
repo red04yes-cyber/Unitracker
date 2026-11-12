@@ -222,18 +222,100 @@ public static class LocalFileSecurity
     }
 
     /// <summary>
-    /// True when <paramref name="candidate"/> resolves inside <paramref name="root"/>.
-    /// Used before writing or deleting a path derived from imported data.
+    /// Returns true only when <paramref name="candidate"/> is a descendant of
+    /// <paramref name="root"/> and no existing path component below the
+    /// boundary is a symbolic link, junction or other reparse point.
+    /// Failing closed prevents a lexically contained download or cleanup path
+    /// from escaping through a filesystem link.
     /// </summary>
     public static bool IsInside(string root, string candidate)
     {
         if (string.IsNullOrWhiteSpace(root) || string.IsNullOrWhiteSpace(candidate)) return false;
-        var fullRoot = Path.GetFullPath(root);
-        var fullCandidate = Path.GetFullPath(candidate);
-        var comparison = OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
-        var prefix = fullRoot.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
-                     + Path.DirectorySeparatorChar;
-        return fullCandidate.StartsWith(prefix, comparison);
+
+        try
+        {
+            var fullRoot = Path.GetFullPath(root);
+            var fullCandidate = Path.GetFullPath(candidate);
+            var comparison = OperatingSystem.IsWindows()
+                ? StringComparison.OrdinalIgnoreCase
+                : StringComparison.Ordinal;
+            var rootPrefix = Path.EndsInDirectorySeparator(fullRoot)
+                ? fullRoot
+                : fullRoot + Path.DirectorySeparatorChar;
+
+            // A child path must be strictly below the boundary, not the
+            // boundary itself or a similarly prefixed sibling.
+            if (!fullCandidate.StartsWith(rootPrefix, comparison)) return false;
+
+            var current = fullRoot;
+            if (IsReparsePoint(current)) return false;
+
+            var relative = Path.GetRelativePath(fullRoot, fullCandidate);
+            foreach (var segment in relative.Split(
+                         new[] { Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar },
+                         StringSplitOptions.RemoveEmptyEntries))
+            {
+                current = Path.Combine(current, segment);
+                if (IsReparsePoint(current)) return false;
+
+                // Once a component does not exist, no later component can
+                // currently redirect the path. The caller rechecks after
+                // creating destination directories.
+                if (!File.Exists(current) && !Directory.Exists(current)) break;
+            }
+
+            return true;
+        }
+        catch (Exception ex) when (ex is ArgumentException or IOException or UnauthorizedAccessException
+                                       or NotSupportedException or System.Security.SecurityException)
+        {
+            // An unverifiable path is never considered safe.
+            return false;
+        }
+    }
+
+    private static bool IsReparsePoint(string path)
+    {
+        // LinkTarget also detects dangling symbolic links, for which Exists()
+        // returns false. Check both file and directory entries because the
+        // target type is not known from an untrusted path.
+        if (new FileInfo(path).LinkTarget is not null) return true;
+        if (new DirectoryInfo(path).LinkTarget is not null) return true;
+
+        // On Windows, LinkTarget can be null for a dangling file symlink even
+        // though the directory entry still exists. ResolveLinkTarget inspects
+        // the link entry independently of whether its target exists. Try both
+        // file and directory forms because the target type is untrusted.
+        try
+        {
+            if (File.ResolveLinkTarget(path, returnFinalTarget: false) is not null) return true;
+        }
+        catch (IOException)
+        {
+            // The path may be missing or may be a directory link; try the other form.
+        }
+
+        try
+        {
+            if (Directory.ResolveLinkTarget(path, returnFinalTarget: false) is not null) return true;
+        }
+        catch (IOException)
+        {
+            // The path may be missing or may be a file link; attribute checks follow.
+        }
+
+        try
+        {
+            return (File.GetAttributes(path) & FileAttributes.ReparsePoint) != 0;
+        }
+        catch (FileNotFoundException)
+        {
+            return false;
+        }
+        catch (DirectoryNotFoundException)
+        {
+            return false;
+        }
     }
 
     [SupportedOSPlatform("windows")]
