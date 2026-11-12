@@ -21,6 +21,7 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
     private readonly AcademicProfileService _academicProfile;
     private readonly FocusSessionService _focus;
     private readonly PomodoroService _pomodoro;
+    private readonly NotificationCenterService _notificationCenter;
     private readonly StudyTaskService _tasks;
     private readonly ErrorJournalService _errors;
     private readonly DistractionService _distractions;
@@ -130,6 +131,7 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
     public ObservableCollection<QuestionBankItemData> QuestionBankItems { get; } = new();
     public ObservableCollection<DailyProgressRow> DailyProgressRows { get; } = new();
     public ObservableCollection<StudyNotificationItem> Notifications { get; } = new();
+    public bool NoNotifications => Notifications.Count == 0;
     public ObservableCollection<Course> Courses => _data.Courses;
     public ObservableCollection<PdfDocumentData> PdfDocuments => _data.PdfDocuments;
 
@@ -374,6 +376,7 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
         AcademicProfileService academicProfile,
         FocusSessionService focus,
         PomodoroService pomodoro,
+        NotificationCenterService notificationCenter,
         StudyTaskService tasks,
         ErrorJournalService errors,
         DistractionService distractions,
@@ -394,6 +397,7 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
         _academicProfile = academicProfile;
         _focus = focus;
         _pomodoro = pomodoro;
+        _notificationCenter = notificationCenter;
         _tasks = tasks;
         _errors = errors;
         _distractions = distractions;
@@ -547,26 +551,18 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
 
     private void RefreshNotifications()
     {
-        var now = DateTimeOffset.Now;
-        var reminders = new List<StudyNotificationItem>();
-        reminders.AddRange(_data.CalendarEvents
-            .Where(x => !x.IsCancelled && x.EndsAt >= now && x.StartsAt <= now.AddHours(24))
-            .Select(x => new StudyNotificationItem(
-                $"event:{x.Id}", x.Title,
-                $"Calendario · {x.StartsAt.ToLocalTime():dd/MM HH:mm} · {x.Verification}",
-                x.StartsAt, "Calendario")));
-        reminders.AddRange(_data.StudyTasks
-            .Where(x => (x.Status is StudyTaskStatus.Todo or StudyTaskStatus.InProgress) &&
-                        x.DueAt is not null && x.DueAt <= now.AddHours(24))
-            .Select(x => new StudyNotificationItem(
-                $"task:{x.Id}", x.Title,
-                x.DueAt < now ? $"Scaduta · {x.DueAt:dd/MM HH:mm}" : $"In scadenza · {x.DueAt:dd/MM HH:mm}",
-                x.DueAt!.Value, "Attività")));
-        var generated = reminders.OrderBy(x => x.OccursAt).ToList();
-        var retainedPomodoro = Notifications.Where(x => x.Kind == "Pomodoro").ToList();
-        Notifications.Clear();
-        foreach (var item in retainedPomodoro.Concat(generated).OrderBy(x => x.OccursAt))
-            Notifications.Add(item);
+        var retainedPomodoro = Notifications.Where(x => x.Kind == "Pomodoro");
+        var desired = retainedPomodoro
+            .Concat(_notificationCenter.GetUpcoming(_data))
+            .OrderBy(x => x.OccursAt)
+            .ToArray();
+        if (!Notifications.SequenceEqual(desired))
+        {
+            Notifications.Clear();
+            foreach (var item in desired)
+                Notifications.Add(item);
+        }
+        OnPropertyChanged(nameof(NoNotifications));
     }
 
     private void RefreshBreakSnapshot()
@@ -1479,4 +1475,3 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
 
 public sealed record DailyProgressRow(string DayLabel, int FocusMinutes, int FocusPercent);
 
-public sealed record StudyNotificationItem(string Id, string Title, string Detail, DateTimeOffset OccursAt, string Kind);
