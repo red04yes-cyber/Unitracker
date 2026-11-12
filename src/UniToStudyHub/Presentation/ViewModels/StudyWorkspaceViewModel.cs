@@ -113,6 +113,7 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
     private string _weeklyStudyHoursInput = "20";
     private string _maxDailyStudyMinutesInput = "240";
     private ProgressSnapshot? _progressSnapshot;
+    private ProgressSnapshot? _weeklyProgressSnapshot;
     private string _selectedProgressPeriod = "7 giorni";
 
     public event PropertyChangedEventHandler? PropertyChanged;
@@ -339,10 +340,10 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
     public string DueFlashcardsDisplay => HasProgressData && _progressSnapshot is { } p ? p.DueFlashcards.ToString(CultureInfo.CurrentCulture) : "Dati insufficienti";
     public string OpenErrorsDisplay => HasProgressData && _progressSnapshot is { } p ? p.OpenErrors.ToString(CultureInfo.CurrentCulture) : "Dati insufficienti";
     public string FocusStreakDisplay => _progressSnapshot is { } p ? $"{p.FocusStreakDays} giorni" : "—";
-    public string WeeklyGoalDisplay => _progressSnapshot is { WeeklyGoalConfigured: true } p
+    public string WeeklyGoalDisplay => _weeklyProgressSnapshot is { WeeklyGoalConfigured: true } p
         ? $"{p.FocusMinutes} / {p.WeeklyGoalMinutes} min"
         : "Obiettivo settimanale non configurato";
-    public int WeeklyGoalProgressPercent => _progressSnapshot is { WeeklyGoalConfigured: true } p
+    public int WeeklyGoalProgressPercent => _weeklyProgressSnapshot is { WeeklyGoalConfigured: true } p
         ? Math.Clamp((int)Math.Round(p.FocusMinutes * 100d / p.WeeklyGoalMinutes), 0, 100)
         : 0;
     public bool HasSelectedPdf => SelectedPdf is not null;
@@ -1309,6 +1310,8 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
         var today = DateOnly.FromDateTime(DateTime.Today);
         var from = today.AddDays(-(SelectedProgressDays - 1));
         _progressSnapshot = _progress.Calculate(_data, from, today);
+        var monday = today.AddDays(-(((int)today.DayOfWeek + 6) % 7));
+        _weeklyProgressSnapshot = _progress.Calculate(_data, monday, today);
         CourseProgressRows.Clear();
         var maxFocusMinutes = _progressSnapshot.Courses.Count == 0 ? 0 : _progressSnapshot.Courses.Max(x => x.FocusMinutes);
         foreach (var course in _progressSnapshot.Courses)
