@@ -170,151 +170,198 @@
                     </StackPanel>
                 </StackPanel>
             </TabItem.Header>
-
             <ScrollViewer VerticalScrollBarVisibility="Auto"
                           HorizontalScrollBarVisibility="Disabled">
-                <StackPanel Margin="32,30,32,36">
-                    <TextBlock Text="IL TUO WORKSPACE" FontSize="10"
-                               FontWeight="Bold" Foreground="{DynamicResource AccentBrush}"/>
-                    <TextBlock Text="Buono studio." Style="{StaticResource PageTitleStyle}"
-                               Margin="0,7,0,4"/>
-                    <TextBlock Text="La tua carriera e le priorità universitarie, in un unico posto."
-                               Style="{StaticResource PageSubtitleStyle}" Margin="0,0,0,22"/>
-
+                <StackPanel Margin="34,30,34,40">
                     <Grid Margin="0,0,0,22">
                         <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="1.55*"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel>
+                            <TextBlock Text="PANORAMICA" FontSize="10" FontWeight="Bold"
+                                       Foreground="{DynamicResource AccentBrush}" CharacterSpacing="150"/>
+                            <TextBlock Text="Buono studio." Style="{StaticResource PageTitleStyle}"
+                                       FontSize="30" Margin="0,7,0,5"/>
+                            <TextBlock Text="Tutto quello che conta per il tuo percorso universitario, in un colpo d’occhio."
+                                       Style="{StaticResource PageSubtitleStyle}"/>
+                        </StackPanel>
+                        <Button Grid.Column="1" Content="Apri le materie"
+                                VerticalAlignment="Center" Padding="16,11"
+                                Click="NavigateToSubjects_Click"/>
+                    </Grid>
+
+                    <Grid Margin="0,0,0,20">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="1.45*"/>
                             <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
-
-                        <Border Grid.Column="0" Background="{DynamicResource NavyBrush}"
-                                CornerRadius="14" Padding="24" Margin="0,0,12,0">
-                            <StackPanel>
-                                <TextBlock Text="IL TUO PROSSIMO PASSO"
-                                           Foreground="{DynamicResource SidebarMutedBrush}" FontSize="10"
-                                           FontWeight="Bold"/>
-                                <TextBlock Text="Costruiamo la tua giornata di studio."
-                                           Foreground="White" FontSize="22"
-                                           FontWeight="SemiBold" TextWrapping="Wrap"
-                                           Margin="0,9,0,7"/>
-                                <TextBlock Text="Il piano giornaliero e le sessioni di focus arriveranno con Studio Lab. Intanto puoi organizzare le materie e gli esami da preparare."
-                                           Foreground="{DynamicResource SidebarMutedBrush}" FontSize="12"
-                                           TextWrapping="Wrap" MaxWidth="620"/>
-                                <Button Content="Apri le materie"
-                                        Style="{StaticResource SecondaryButtonStyle}"
-                                        HorizontalAlignment="Left"
-                                        Margin="0,18,0,0"
-                                        Click="NavigateToSubjects_Click"/>
-                            </StackPanel>
+                        <Border Grid.Column="0" CornerRadius="18" Padding="28" Margin="0,0,12,0"
+                                Background="{DynamicResource NavyBrush}" ClipToBounds="True">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="170"/>
+                                </Grid.ColumnDefinitions>
+                                <StackPanel VerticalAlignment="Center" MaxWidth="560">
+                                    <Border Background="#3B2B59" CornerRadius="20" Padding="10,5"
+                                            HorizontalAlignment="Left" Margin="0,0,0,14">
+                                        <TextBlock Text="IL TUO SPAZIO UNIVERSITARIO" FontSize="9"
+                                                   FontWeight="Bold" Foreground="#D9CCFF"/>
+                                    </Border>
+                                    <TextBlock Text="Un passo alla volta.&#10;Il percorso è tuo."
+                                               FontSize="26" FontWeight="SemiBold" Foreground="White"
+                                               TextWrapping="Wrap" LineHeight="34"/>
+                                    <TextBlock Text="Monitora la carriera, tieni d’occhio il prossimo esame e organizza le prossime sessioni."
+                                               FontSize="12" Foreground="#C4BBD8" TextWrapping="Wrap"
+                                               Margin="0,12,0,0" MaxWidth="470"/>
+                                    <Button Content="Esplora il tuo piano"
+                                            Style="{StaticResource SecondaryButtonStyle}"
+                                            HorizontalAlignment="Left" Margin="0,20,0,0"
+                                            Click="NavigateToSubjects_Click"/>
+                                </StackPanel>
+                                <Grid Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Center"
+                                      Width="156" Height="156">
+                                    <Ellipse Width="148" Height="148" Fill="#5B3B88" Opacity="0.45"/>
+                                    <Ellipse Width="112" Height="112" Fill="#8B5CF6" Opacity="0.35"/>
+                                    <Ellipse Width="72" Height="72" Fill="#C4B5FD" Opacity="0.72"/>
+                                    <Ellipse Width="24" Height="24" Fill="#F5F0FF"/>
+                                </Grid>
+                            </Grid>
                         </Border>
 
-                        <Border Grid.Column="1" Style="{StaticResource CardBorderStyle}">
+                        <Border Grid.Column="1" Style="{StaticResource AnimatedCardStyle}" Padding="22">
                             <StackPanel>
-                                <TextBlock Text="PROSSIMO ESAME" Style="{StaticResource KpiLabelStyle}"/>
-                                <TextBlock Text="{Binding NextExamNameDisplay}"
-                                           FontSize="18" FontWeight="SemiBold"
-                                           Foreground="{DynamicResource InkBrush}"
-                                           TextWrapping="Wrap" Margin="0,12,0,5"/>
-                                <TextBlock Text="{Binding NextExamDateDisplay}"
-                                           FontSize="12" Foreground="{DynamicResource MutedBrush}"
-                                           TextWrapping="Wrap"/>
-                                <Border Background="{DynamicResource WarningSoftBrush}"
-                                        CornerRadius="7" Padding="9,7" Margin="0,18,0,0">
-                                    <TextBlock Text="Le date pianificate sono indicative, non appelli ufficiali."
-                                               FontSize="10" Foreground="{DynamicResource WarningBrush}"
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="PROSSIMO ESAME" Style="{StaticResource KpiLabelStyle}"
+                                               VerticalAlignment="Center"/>
+                                    <Border Grid.Column="1" Background="{DynamicResource WarningSoftBrush}"
+                                            CornerRadius="12" Padding="8,4">
+                                        <TextBlock Text="PIANIFICATO" FontSize="8" FontWeight="Bold"
+                                                   Foreground="{DynamicResource WarningBrush}"/>
+                                    </Border>
+                                </Grid>
+                                <TextBlock Text="{Binding NextExamNameDisplay}" FontSize="19"
+                                           FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}"
+                                           TextWrapping="Wrap" Margin="0,18,0,6"/>
+                                <TextBlock Text="{Binding NextExamDateDisplay}" FontSize="12"
+                                           Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap"/>
+                                <Border Background="{DynamicResource SubtleBrush}" CornerRadius="8"
+                                        Padding="10,8" Margin="0,18,0,0">
+                                    <TextBlock Text="Le date generate sono indicative: verifica sempre la fonte ufficiale."
+                                               FontSize="10" Foreground="{DynamicResource MutedBrush}"
                                                TextWrapping="Wrap"/>
                                 </Border>
                             </StackPanel>
                         </Border>
                     </Grid>
 
-                    <UniformGrid Columns="4" Margin="0,0,0,22">
-                        <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,10,0">
+                    <UniformGrid Columns="4" Margin="0,0,0,20">
+                        <Border Style="{StaticResource AnimatedCardStyle}" Margin="0,0,10,0">
                             <StackPanel>
                                 <TextBlock Text="CFU ACQUISITI" Style="{StaticResource KpiLabelStyle}"/>
-                                <TextBlock Text="{Binding AcquiredCreditsValue}"
-                                           FontSize="27" FontWeight="SemiBold"
-                                           Foreground="{DynamicResource InkBrush}" Margin="0,8,0,2"/>
-                                <TextBlock Text="Dagli esami registrati"
-                                           FontSize="10" Foreground="{DynamicResource MutedBrush}"/>
+                                <TextBlock Text="{Binding AcquiredCreditsValue}" FontSize="30"
+                                           FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}"
+                                           Margin="0,11,0,3"/>
+                                <TextBlock Text="Crediti registrati" FontSize="10"
+                                           Foreground="{DynamicResource MutedBrush}"/>
                             </StackPanel>
                         </Border>
-                        <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,10,0">
+                        <Border Style="{StaticResource AnimatedCardStyle}" Margin="0,0,10,0">
                             <StackPanel>
                                 <TextBlock Text="MEDIA PONDERATA" Style="{StaticResource KpiLabelStyle}"/>
-                                <TextBlock Text="{Binding AverageDisplay}"
-                                           FontSize="27" FontWeight="SemiBold"
-                                           Foreground="{DynamicResource InkBrush}" Margin="0,8,0,2"/>
-                                <TextBlock Text="In base ai CFU"
-                                           FontSize="10" Foreground="{DynamicResource MutedBrush}"/>
+                                <TextBlock Text="{Binding AverageDisplay}" FontSize="30"
+                                           FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}"
+                                           Margin="0,11,0,3"/>
+                                <TextBlock Text="Pesata sui CFU" FontSize="10"
+                                           Foreground="{DynamicResource MutedBrush}"/>
                             </StackPanel>
                         </Border>
-                        <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,10,0">
+                        <Border Style="{StaticResource AnimatedCardStyle}" Margin="0,0,10,0">
                             <StackPanel>
                                 <TextBlock Text="MEDIA ARITMETICA" Style="{StaticResource KpiLabelStyle}"/>
-                                <TextBlock Text="{Binding ArithmeticAverageDisplay}"
-                                           FontSize="27" FontWeight="SemiBold"
-                                           Foreground="{DynamicResource InkBrush}" Margin="0,8,0,2"/>
-                                <TextBlock Text="Ultimo voto per materia"
-                                           FontSize="10" Foreground="{DynamicResource MutedBrush}"/>
+                                <TextBlock Text="{Binding ArithmeticAverageDisplay}" FontSize="30"
+                                           FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}"
+                                           Margin="0,11,0,3"/>
+                                <TextBlock Text="Ultimo voto per materia" FontSize="10"
+                                           Foreground="{DynamicResource MutedBrush}"/>
                             </StackPanel>
                         </Border>
-                        <Border Style="{StaticResource CardBorderStyle}">
+                        <Border Style="{StaticResource AnimatedCardStyle}">
                             <StackPanel>
                                 <TextBlock Text="VOTO DI PARTENZA" Style="{StaticResource KpiLabelStyle}"/>
-                                <TextBlock Text="{Binding ProjectedBaseGradeValue}"
-                                           FontSize="19" FontWeight="SemiBold"
-                                           Foreground="{DynamicResource InkBrush}"
-                                           TextWrapping="Wrap" Margin="0,11,0,3"/>
-                                <TextBlock Text="Proiezione basata sulla carriera"
-                                           FontSize="10" Foreground="{DynamicResource MutedBrush}"/>
+                                <TextBlock Text="{Binding ProjectedBaseGradeValue}" FontSize="22"
+                                           FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}"
+                                           Margin="0,15,0,5" TextWrapping="Wrap"/>
+                                <TextBlock Text="Proiezione della carriera" FontSize="10"
+                                           Foreground="{DynamicResource MutedBrush}"/>
                             </StackPanel>
                         </Border>
                     </UniformGrid>
 
                     <Grid>
                         <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="1.25*"/>
+                            <ColumnDefinition Width="1.2*"/>
                             <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
-                        <Border Grid.Column="0" Style="{StaticResource CardBorderStyle}" Margin="0,0,12,0">
+                        <Border Grid.Column="0" Style="{StaticResource AnimatedCardStyle}"
+                                Margin="0,0,12,0" Padding="22">
                             <StackPanel>
-                                <TextBlock Text="Ultimo risultato registrato"
-                                           Style="{StaticResource SectionTitleStyle}"/>
-                                <TextBlock Text="{Binding LatestGradeDisplay}"
-                                           FontSize="13" Foreground="{DynamicResource InkBrush}"
-                                           TextWrapping="Wrap" Margin="0,11,0,0"/>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="Ultimo risultato" Style="{StaticResource SectionTitleStyle}"/>
+                                    <Border Grid.Column="1" Background="{DynamicResource AccentSoftBrush}"
+                                            CornerRadius="10" Padding="8,4">
+                                        <TextBlock Text="CARRIERA" FontSize="8" FontWeight="Bold"
+                                                   Foreground="{DynamicResource AccentBrush}"/>
+                                    </Border>
+                                </Grid>
+                                <TextBlock Text="{Binding LatestGradeDisplay}" FontSize="13"
+                                           Foreground="{DynamicResource InkBrush}" TextWrapping="Wrap"
+                                           Margin="0,18,0,0"/>
+                                <TextBlock Text="I risultati registrati aggiornano qui il riepilogo della tua carriera."
+                                           FontSize="10" Foreground="{DynamicResource MutedBrush}"
+                                           TextWrapping="Wrap" Margin="0,8,0,0"/>
                             </StackPanel>
                         </Border>
-                        <Border Grid.Column="1" Style="{StaticResource CardBorderStyle}">
+
+                        <Border Grid.Column="1" Style="{StaticResource AnimatedCardStyle}" Padding="22">
                             <StackPanel>
                                 <TextBlock Text="Le tue materie" Style="{StaticResource SectionTitleStyle}"/>
-                                <Grid Margin="0,12,0,0">
+                                <Grid Margin="0,18,0,0">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="*"/>
                                     </Grid.ColumnDefinitions>
-                                    <StackPanel Grid.Column="0">
-                                        <TextBlock Text="{Binding ActiveCoursesCount}"
-                                                   FontSize="23" FontWeight="SemiBold"
-                                                   Foreground="{DynamicResource AccentBrush}"/>
+                                    <StackPanel>
+                                        <TextBlock Text="{Binding ActiveCoursesCount}" FontSize="28"
+                                                   FontWeight="SemiBold" Foreground="{DynamicResource AccentBrush}"/>
                                         <TextBlock Text="In corso" FontSize="11"
                                                    Foreground="{DynamicResource MutedBrush}"/>
                                     </StackPanel>
                                     <StackPanel Grid.Column="1">
-                                        <TextBlock Text="{Binding ArchivedCoursesCount}"
-                                                   FontSize="23" FontWeight="SemiBold"
-                                                   Foreground="{DynamicResource SuccessBrush}"/>
+                                        <TextBlock Text="{Binding ArchivedCoursesCount}" FontSize="28"
+                                                   FontWeight="SemiBold" Foreground="{DynamicResource SuccessBrush}"/>
                                         <TextBlock Text="In archivio" FontSize="11"
                                                    Foreground="{DynamicResource MutedBrush}"/>
                                     </StackPanel>
                                 </Grid>
+                                <Button Content="Gestisci materie" Style="{StaticResource QuietButtonStyle}"
+                                        HorizontalAlignment="Left" Margin="-10,13,0,0"
+                                        Click="NavigateToSubjects_Click"/>
                             </StackPanel>
                         </Border>
                     </Grid>
 
                     <TextBlock Text="{Binding StatusMessage}" Foreground="{DynamicResource MutedBrush}"
-                               FontSize="11" TextWrapping="Wrap" Margin="2,16,2,0"/>
+                               FontSize="11" TextWrapping="Wrap" Margin="3,16,3,0"/>
                 </StackPanel>
             </ScrollViewer>
         </TabItem>
