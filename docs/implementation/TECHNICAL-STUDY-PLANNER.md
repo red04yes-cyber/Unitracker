@@ -178,6 +178,7 @@ Tests in StudyPlannerServiceTests cover:
 - task-linked Pomodoro startup and rejection before partial session creation;
 - SQLite round-trip of the existing StudyActivities.TaskId field;
 - scheduling only the unrecorded remainder of a task;
+- placing multiple focus blocks inside the same availability window with breaks;
 - rounding partial remaining minutes upward;
 - overlap union, task isolation, soft deletion and cancelled manual entries;
 - estimate exhaustion warnings for tasks that remain open;
@@ -187,6 +188,6 @@ Tests in StudyPlannerServiceTests cover:
 - clamping invalid persisted study budgets;
 - compatibility with previews created before task-progress snapshots.
 
-The progress-aware planning slice adds sixteen focused planner tests. GitHub
+The progress-aware planning slice adds seventeen focused planner tests. GitHub
 Actions must pass before this slice is considered verified; no local
 build/test result is claimed in this document.
