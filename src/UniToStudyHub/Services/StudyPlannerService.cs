@@ -26,9 +26,15 @@ public sealed class StudyPlannerService
         var now = generatedAt ?? DateTimeOffset.Now;
         var normalized = ValidateOptions(options);
         var zone = TimeZoneInfo.FindSystemTimeZoneById(normalized.TimeZoneId);
-        var weeklyBudget = normalized.WeeklyStudyMinutes ?? Math.Max(0, data.WeeklyStudyHours) * 60;
-        var dailyBudget = normalized.MaxDailyStudyMinutes ?? Math.Max(0, data.MaxDailyStudyMinutes);
+        var weeklyBudget = normalized.WeeklyStudyMinutes ??
+            (int)Math.Clamp((long)data.WeeklyStudyHours * 60L, 0L, 10080L);
+        var dailyBudget = normalized.MaxDailyStudyMinutes ?? Math.Clamp(data.MaxDailyStudyMinutes, 0, 1440);
         var warnings = new List<string>();
+
+        if (normalized.WeeklyStudyMinutes is null && (data.WeeklyStudyHours is < 0 or > 168))
+            warnings.Add("Le ore settimanali salvate erano fuori dal limite 0–168 e sono state limitate per questa anteprima.");
+        if (normalized.MaxDailyStudyMinutes is null && (data.MaxDailyStudyMinutes is < 0 or > 1440))
+            warnings.Add("Il limite giornaliero salvato era fuori dal limite 0–1440 e sono stati applicati i limiti supportati.");
 
         if (normalized.WeeklyAvailability.Count == 0)
             warnings.Add("Nessuna disponibilità settimanale configurata: il planner non inventa fasce orarie.");
@@ -38,7 +44,7 @@ public sealed class StudyPlannerService
             warnings.Add("Il limite giornaliero è zero: non è possibile pianificare blocchi di studio.");
 
         var commitments = data.CalendarEvents
-            .Where(x => !x.IsCancelled)
+            .Where(x => x is not null && !x.IsCancelled)
             .Where(x => !normalized.ReplaceExistingGeneratedBlocks || !IsUnchangedGeneratedPlannerBlock(x))
             .OrderBy(x => x.StartsAt)
             .ToList();
@@ -95,18 +101,37 @@ public sealed class StudyPlannerService
         var blocksByDay = new Dictionary<DateOnly, int>();
 
         var tasks = data.StudyTasks
-            .Where(x => x.Status is StudyTaskStatus.Todo or StudyTaskStatus.InProgress)
+            .Where(x => x is not null && x.Status is StudyTaskStatus.Todo or StudyTaskStatus.InProgress)
             .OrderBy(x => x.DueAt?.UtcDateTime ?? DateTime.MaxValue)
             .ThenByDescending(x => x.Priority)
             .ThenBy(x => x.CreatedAt)
             .ThenBy(x => x.Id, StringComparer.Ordinal)
             .ToList();
+        var taskProgressById = _ledger.GetTaskProgressSnapshots(
+            data,
+            tasks.Where(x => !string.IsNullOrWhiteSpace(x.Id)).Select(x => x.Id),
+            now);
+        var taskProgressRows = tasks
+            .Where(x => !string.IsNullOrWhiteSpace(x.Id) && taskProgressById.ContainsKey(x.Id))
+            .Select(x => taskProgressById[x.Id])
+            .ToArray();
 
         foreach (var task in tasks)
         {
+            if (string.IsNullOrWhiteSpace(task.Id))
+            {
+                unscheduled.Add(new StudyPlanUnscheduledTask(
+                    task.Id,
+                    task.Title,
+                    Math.Max(0, task.EstimatedMinutes),
+                    "Il task non ha un identificativo valido e non può essere collegato al calendario."));
+                continue;
+            }
+
+            var progress = taskProgressById[task.Id];
             if (string.IsNullOrWhiteSpace(task.Title))
             {
-                unscheduled.Add(new StudyPlanUnscheduledTask(task.Id, task.Title, task.EstimatedMinutes,
+                unscheduled.Add(new StudyPlanUnscheduledTask(task.Id, task.Title, progress.RemainingMinutes,
                     "Il task non ha un titolo valido."));
                 continue;
             }
@@ -117,12 +142,22 @@ public sealed class StudyPlannerService
                 continue;
             }
 
+            var remaining = progress.RemainingMinutes;
+            if (remaining == 0)
+            {
+                var reason = progress.IsOverEstimate
+                    ? "Il tempo registrato supera la stima, ma il task è ancora aperto: aggiorna la stima o completa il task."
+                    : "La stima è stata interamente registrata, ma il task è ancora aperto: completa il task o aggiorna la stima.";
+                unscheduled.Add(new StudyPlanUnscheduledTask(task.Id, task.Title, 0, reason));
+                warnings.Add(reason);
+                continue;
+            }
+
             if (task.DueAt is { } dueAt && dueAt < now)
                 warnings.Add($"Il task \"{task.Title}\" è già oltre la scadenza: i blocchi proposti sono recuperi, non rispettano la scadenza originale.");
 
-            var remaining = task.EstimatedMinutes;
             var courseName = data.Courses.FirstOrDefault(x =>
-                string.Equals(x.Id, task.CourseId, StringComparison.Ordinal))?.Name ?? string.Empty;
+                x is not null && string.Equals(x.Id, task.CourseId, StringComparison.Ordinal))?.Name ?? string.Empty;
 
             for (var day = normalized.From; day <= normalized.To && remaining > 0; day = day.AddDays(1))
             {
@@ -219,7 +254,10 @@ public sealed class StudyPlannerService
             normalized,
             blocks.OrderBy(x => x.StartsAt).ThenByDescending(x => x.Priority).ToArray(),
             unscheduled,
-            warnings.Distinct(StringComparer.Ordinal).ToArray());
+            warnings.Distinct(StringComparer.Ordinal).ToArray())
+        {
+            TaskProgress = taskProgressRows
+        };
     }
 
     /// <summary>
@@ -233,8 +271,24 @@ public sealed class StudyPlannerService
         ArgumentNullException.ThrowIfNull(preview.Options);
         ArgumentNullException.ThrowIfNull(preview.Blocks);
         ArgumentNullException.ThrowIfNull(preview.Warnings);
+        ArgumentNullException.ThrowIfNull(preview.TaskProgress);
 
         var blocks = preview.Blocks.ToArray();
+        if (blocks.Length > 3620)
+            throw new ArgumentOutOfRangeException(nameof(preview), "A preview cannot contain more than 3,620 blocks.");
+        var previewProgressByTask = new Dictionary<string, TaskProgressSnapshot>(StringComparer.Ordinal);
+        foreach (var snapshot in preview.TaskProgress)
+        {
+            if (snapshot is null ||
+                string.IsNullOrWhiteSpace(snapshot.TaskId) ||
+                snapshot.EstimatedMinutes < 0 ||
+                snapshot.RecordedSeconds < 0 ||
+                snapshot.RemainingSeconds < 0 ||
+                snapshot.ProgressPercent is < 0 or > 100 ||
+                !previewProgressByTask.TryAdd(snapshot.TaskId, snapshot))
+                throw new ArgumentException("The preview contains invalid or duplicate task progress.", nameof(preview));
+        }
+
         var normalizedOptions = ValidateOptions(preview.Options);
         if (preview.From != normalizedOptions.From ||
             preview.To != normalizedOptions.To ||
@@ -254,6 +308,16 @@ public sealed class StudyPlannerService
             ? FindUnchangedGeneratedBlocks(data, preview.From, preview.To, normalizedOptions.TimeZoneId)
             : Array.Empty<CalendarEvent>();
         var replaceableSet = new HashSet<CalendarEvent>(replaceableBlocks);
+        var existingTaskIds = data.StudyTasks
+            .Where(x => x is not null)
+            .Select(x => x.Id)
+            .ToHashSet(StringComparer.Ordinal);
+        var progressTaskIds = blocks
+            .Where(x => x is not null && !string.IsNullOrWhiteSpace(x.TaskId) && existingTaskIds.Contains(x.TaskId))
+            .Select(x => x.TaskId)
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+        var currentProgressByTask = _ledger.GetTaskProgressSnapshots(data, progressTaskIds, now);
 
         var plannedMinutesByTask = new Dictionary<string, long>(StringComparer.Ordinal);
         foreach (var candidate in blocks)
@@ -286,7 +350,7 @@ public sealed class StudyPlannerService
             }
 
             var task = data.StudyTasks.FirstOrDefault(x =>
-                string.Equals(x.Id, block.TaskId, StringComparison.Ordinal));
+                x is not null && string.Equals(x.Id, block.TaskId, StringComparison.Ordinal));
             if (task is null || task.Status is StudyTaskStatus.Completed or StudyTaskStatus.Cancelled)
             {
                 skipped++;
@@ -305,10 +369,22 @@ public sealed class StudyPlannerService
                 continue;
             }
 
-            if (plannedMinutesByTask.GetValueOrDefault(task.Id) > task.EstimatedMinutes)
+            if (previewProgressByTask.TryGetValue(task.Id, out var expectedProgress) &&
+                (!currentProgressByTask.TryGetValue(task.Id, out var currentProgress) ||
+                 currentProgress != expectedProgress))
             {
                 skipped++;
-                warnings.Add($"La stima del task \"{task.Title}\" è stata ridotta dopo l'anteprima; rigenera il piano.");
+                warnings.Add($"La stima del task \"{task.Title}\" o il tempo registrato è cambiato dopo l'anteprima; rigenera il piano.");
+                continue;
+            }
+
+            var allowedMinutes = previewProgressByTask.ContainsKey(task.Id)
+                ? currentProgressByTask[task.Id].RemainingMinutes
+                : Math.Max(0, task.EstimatedMinutes);
+            if (plannedMinutesByTask.GetValueOrDefault(task.Id) > allowedMinutes)
+            {
+                skipped++;
+                warnings.Add($"I blocchi proposti superano la stima residua del task \"{task.Title}\"; rigenera il piano.");
                 continue;
             }
 
@@ -329,6 +405,7 @@ public sealed class StudyPlannerService
             var externalId = BuildExternalId(block);
             if (stagedExternalIds.Contains(externalId) ||
                 data.CalendarEvents.Any(x =>
+                    x is not null &&
                     !replaceableSet.Contains(x) &&
                     string.Equals(x.ExternalId, externalId, StringComparison.Ordinal)))
             {
@@ -337,6 +414,7 @@ public sealed class StudyPlannerService
             }
 
             var overlapsExisting = data.CalendarEvents.Any(x =>
+                x is not null &&
                 !x.IsCancelled &&
                 !replaceableSet.Contains(x) &&
                 x.StartsAt < block.EndsAt &&
@@ -351,7 +429,7 @@ public sealed class StudyPlannerService
             }
 
             var courseName = data.Courses.FirstOrDefault(x =>
-                string.Equals(x.Id, task.CourseId, StringComparison.Ordinal))?.Name ?? string.Empty;
+                x is not null && string.Equals(x.Id, task.CourseId, StringComparison.Ordinal))?.Name ?? string.Empty;
             var item = new CalendarEvent
             {
                 Id = BuildEventId(externalId),
@@ -464,7 +542,7 @@ public sealed class StudyPlannerService
         var start = StartOfLocalDay(from, zone);
         var end = StartOfLocalDay(to.AddDays(1), zone);
         return data.CalendarEvents
-            .Where(IsUnchangedGeneratedPlannerBlock)
+            .Where(x => x is not null && IsUnchangedGeneratedPlannerBlock(x))
             .Where(x => x.StartsAt < end && x.EndsAt > start)
             .ToArray();
     }
@@ -491,9 +569,11 @@ public sealed class StudyPlannerService
         var zoneId = string.IsNullOrWhiteSpace(options.TimeZoneId) ? TimeZoneInfo.Local.Id : options.TimeZoneId.Trim();
         _ = TimeZoneInfo.FindSystemTimeZoneById(zoneId);
         var availability = options.WeeklyAvailability ?? Array.Empty<StudyAvailabilityWindow>();
+        if (availability.Count > 64)
+            throw new ArgumentOutOfRangeException(nameof(options), "A weekly schedule cannot contain more than 64 availability windows.");
         foreach (var window in availability)
         {
-            if (!Enum.IsDefined(window.Day) || window.End <= window.Start)
+            if (window is null || !Enum.IsDefined(window.Day) || window.End <= window.Start)
                 throw new ArgumentException("Availability windows must have a valid day and end after start.", nameof(options));
         }
 
@@ -617,11 +697,12 @@ public sealed class StudyPlannerService
          string.Equals(item.Category, CalendarEventCategory.Review, StringComparison.OrdinalIgnoreCase));
 
     private static bool IsGeneratedPlannerBlock(CalendarEvent item) =>
+        item is not null &&
         string.Equals(item.Source, CalendarEventSource.Planner, StringComparison.OrdinalIgnoreCase) &&
         item.ExternalId?.StartsWith(GeneratedExternalIdPrefix, StringComparison.Ordinal) == true;
 
     private static bool IsUnchangedGeneratedPlannerBlock(CalendarEvent item) =>
-        IsGeneratedPlannerBlock(item) && item.UpdatedAt <= item.CreatedAt;
+        item is not null && IsGeneratedPlannerBlock(item) && item.UpdatedAt <= item.CreatedAt;
 
     private static string BuildExternalId(StudyPlanBlock block) =>
         $"{GeneratedExternalIdPrefix}{block.TaskId}:{block.StartsAt.UtcDateTime.Ticks}";
