@@ -340,6 +340,34 @@ public sealed class SecretAndFileSecurityTests
     }
 
     [Fact]
+    public void IsInsideRejectsDanglingDirectorySymbolicLinks()
+    {
+        var root = NewDirectory();
+        var link = Path.Combine(root, "dangling-directory");
+        var linkCreated = false;
+        try
+        {
+            try
+            {
+                Directory.CreateSymbolicLink(link, Path.Combine(root, "missing-directory"));
+                linkCreated = true;
+            }
+            catch (Exception ex) when (ex is UnauthorizedAccessException or IOException or NotSupportedException)
+            {
+                return; // The current runner does not permit creating symbolic links.
+            }
+
+            Assert.False(Directory.Exists(link));
+            Assert.False(LocalFileSecurity.IsInside(root, Path.Combine(link, "escape.pdf")));
+        }
+        finally
+        {
+            if (linkCreated) Directory.Delete(link);
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
     public void DirectoriesAndFilesArePrivateOnUnix()
     {
         if (OperatingSystem.IsWindows()) return;
