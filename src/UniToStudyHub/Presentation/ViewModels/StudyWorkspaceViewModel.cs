@@ -319,9 +319,22 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
     public string ActiveStudyDaysDisplay => DailyProgressRows.Count > 0
         ? $"{DailyProgressRows.Count(x => x.FocusMinutes > 0)} / {SelectedProgressDays}"
         : "—";
-    public string AverageSessionDisplay => _progressSnapshot is { CompletedSessions: > 0 } p
-        ? $"{(int)Math.Round(p.FocusMinutes / (double)p.CompletedSessions)} min"
-        : "—";
+    public string AverageSessionDisplay
+    {
+        get
+        {
+            var from = DateTime.Today.AddDays(-(SelectedProgressDays - 1)).Date;
+            var sessions = _data.StudySessions
+                .Where(x => x.StartedAt.LocalDateTime.Date >= from &&
+                            x.StartedAt.LocalDateTime.Date <= DateTime.Today &&
+                            x.State != StudySessionState.Cancelled &&
+                            x.AccumulatedFocusSeconds > 0)
+                .ToList();
+            return sessions.Count == 0
+                ? "—"
+                : $"{(int)Math.Round(sessions.Sum(x => x.AccumulatedFocusSeconds) / 60d / sessions.Count)} min";
+        }
+    }
     public string BestFocusDayDisplay => DailyProgressRows.OrderByDescending(x => x.FocusMinutes).FirstOrDefault() is { FocusMinutes: > 0 } best
         ? $"{best.DayLabel} · {best.FocusMinutes} min"
         : "—";
