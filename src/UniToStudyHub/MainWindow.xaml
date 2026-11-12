@@ -893,7 +893,47 @@
                 <WrapPanel Margin="0,10,0,0">
                     <TextBlock Text="Preset rapidi:" VerticalAlignment="Center" Foreground="{DynamicResource MutedBrush}" Margin="0,0,10,0"/>
                     <ComboBox Width="165" ItemsSource="{Binding Workspace.FocusPresetOptions}" SelectedItem="{Binding Workspace.FocusPresetInput}" ToolTip="Durata della sessione"/>
+                    <Button Content="Prossimo focus" Command="{Binding Workspace.StartNextFocusCommand}"
+                            Style="{StaticResource SecondaryButtonStyle}" Margin="10,0,0,0"/>
                 </WrapPanel>
+                <Border Style="{StaticResource CardBorderStyle}" Margin="0,18,12,0">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="1.25*"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0" Margin="0,0,18,0">
+                            <TextBlock Text="FOCUS ROOM" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource AccentBrush}"/>
+                            <TextBlock Text="Lo-fi per concentrarti" FontSize="18" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}" Margin="0,5,0,3"/>
+                            <TextBlock x:Name="FocusMusicTrackLabel" Text="Scegli una traccia" FontSize="11"
+                                       Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,0,0,12"/>
+                            <WrapPanel>
+                                <Button Content="Pausa" Click="PauseFocusMusic_Click" Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,6,6"/>
+                                <Button Content="Stop" Click="StopFocusMusic_Click" Style="{StaticResource QuietButtonStyle}" Margin="0,0,6,6"/>
+                                <Button Content="Successiva" Click="NextFocusMusic_Click" Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,6,6"/>
+                            </WrapPanel>
+                            <TextBlock Text="Musica di Purrple Cat · licenza CC BY 4.0. Attribuzione: Purrple Cat."
+                                       FontSize="9" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,8,0,0"/>
+                            <TextBlock FontSize="9" Foreground="{DynamicResource AccentBrush}" Margin="0,3,0,0">
+                                <Hyperlink NavigateUri="https://creativecommons.org/licenses/by/4.0/" RequestNavigate="OpenExternalLink_Click">Dettagli licenza Creative Commons</Hyperlink>
+                            </TextBlock>
+                        </StackPanel>
+                        <StackPanel x:Name="FocusMusicPlaylist" Grid.Column="1">
+                            <TextBlock Text="PLAYLIST · NOW OR NEVER" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource MutedBrush}" Margin="0,0,0,7"/>
+                            <Button Content="01  Squeaky Computer Chair" Tag="https://opengameart.org/sites/default/files/01_squeaky_computer_chair_0.mp3" Click="PlayFocusTrack_Click" Style="{StaticResource SecondaryButtonStyle}" HorizontalContentAlignment="Left" Margin="0,0,0,5"/>
+                            <Button Content="02  Now or Never" Tag="https://opengameart.org/sites/default/files/02_now_or_never_0.mp3" Click="PlayFocusTrack_Click" Style="{StaticResource SecondaryButtonStyle}" HorizontalContentAlignment="Left" Margin="0,0,0,5"/>
+                            <Button Content="03  Remembering Something I Forgot" Tag="https://opengameart.org/sites/default/files/03_remembering_something_i_forgot_0.mp3" Click="PlayFocusTrack_Click" Style="{StaticResource SecondaryButtonStyle}" HorizontalContentAlignment="Left" Margin="0,0,0,5"/>
+                            <Button Content="04  It's Going to Be a Good Day" Tag="https://opengameart.org/sites/default/files/04_its_going_to_be_a_good_day_0.mp3" Click="PlayFocusTrack_Click" Style="{StaticResource SecondaryButtonStyle}" HorizontalContentAlignment="Left" Margin="0,0,0,5"/>
+                            <Button Content="05  Learning to Love Myself" Tag="https://opengameart.org/sites/default/files/05_learning_to_love_myself_0.mp3" Click="PlayFocusTrack_Click" Style="{StaticResource SecondaryButtonStyle}" HorizontalContentAlignment="Left" Margin="0,0,0,5"/>
+                            <Button Content="06  Trying Something New" Tag="https://opengameart.org/sites/default/files/06_trying_something_new_1.mp3" Click="PlayFocusTrack_Click" Style="{StaticResource SecondaryButtonStyle}" HorizontalContentAlignment="Left" Margin="0,0,0,5"/>
+                            <Button Content="07  The Last Day I Saw You" Tag="https://opengameart.org/sites/default/files/07_the_last_day_i_saw_you_0.mp3" Click="PlayFocusTrack_Click" Style="{StaticResource SecondaryButtonStyle}" HorizontalContentAlignment="Left" Margin="0,0,0,5"/>
+                            <Button Content="08  There Was Nothing I Could Do" Tag="https://opengameart.org/sites/default/files/08_there_was_nothing_i_could_do_0.mp3" Click="PlayFocusTrack_Click" Style="{StaticResource SecondaryButtonStyle}" HorizontalContentAlignment="Left"/>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+                <MediaElement x:Name="FocusMusicPlayer" Width="1" Height="1" Opacity="0"
+                              LoadedBehavior="Manual" UnloadedBehavior="Stop" Volume="0.42"
+                              MediaEnded="FocusMusicPlayer_MediaEnded"/>
             </StackPanel></TabItem>
             <TabItem Header="Attività"><StackPanel>
                 <TextBlock Text="Organizza i prossimi passi e pianifica i blocchi nel calendario." Style="{StaticResource PageSubtitleStyle}" Margin="0,0,0,12"/>
@@ -1016,6 +1056,30 @@
             </Border>
         </Grid>
             </StackPanel></TabItem>
+            <TabItem Header="Avvisi">
+                <StackPanel Margin="8,0,8,10">
+                    <TextBlock Text="CENTRO NOTIFICHE" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource AccentBrush}" Margin="0,0,0,6"/>
+                    <TextBlock Text="Scadenze e appuntamenti delle prossime 24 ore, più gli avvisi delle sessioni Pomodoro."
+                               Style="{StaticResource PageSubtitleStyle}" TextWrapping="Wrap" Margin="0,0,0,12"/>
+                    <ItemsControl ItemsSource="{Binding Workspace.Notifications}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,8" Padding="14">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                        <StackPanel>
+                                            <TextBlock Text="{Binding Title}" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}" TextWrapping="Wrap"/>
+                                            <TextBlock Text="{Binding Detail}" FontSize="10" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,4,0,0"/>
+                                        </StackPanel>
+                                        <TextBlock Grid.Column="1" Text="{Binding Kind}" FontSize="9" Foreground="{DynamicResource AccentBrush}" Margin="12,0,0,0" VerticalAlignment="Center"/>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <TextBlock Text="Nessun avviso nelle prossime 24 ore." FontSize="11" Foreground="{DynamicResource MutedBrush}" Margin="2,8,2,0"/>
+                </StackPanel>
+            </TabItem>
         </TabControl>
         <TextBlock Text="{Binding Workspace.WorkspaceStatus}" FontSize="11" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="2,14,2,0"/></StackPanel>
 </ScrollViewer>
