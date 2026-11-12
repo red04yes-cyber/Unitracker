@@ -670,6 +670,22 @@ public sealed class StudyPlannerServiceTests
         Assert.Equal(35, Assert.Single(preview.TaskProgress).RemainingMinutes);
     }
 
+
+    [Fact]
+    public void PreviewCanPlaceMultipleBlocksInsideOneAvailabilityWindow()
+    {
+        var data = Data();
+        AddTask(data, minutes: 120);
+
+        var preview = new StudyPlannerService().CreatePreview(data, Options(), Now);
+
+        Assert.Equal(120, preview.ScheduledMinutes);
+        Assert.Equal(new[] { 50, 50, 20 }, preview.Blocks.Select(x => x.PlannedMinutes));
+        Assert.Equal(3, preview.ScheduledBlockCount);
+        Assert.True(preview.Blocks[1].StartsAt >= preview.Blocks[0].EndsAt.AddMinutes(10));
+        Assert.True(preview.Blocks[2].StartsAt >= preview.Blocks[1].EndsAt.AddMinutes(10));
+    }
+
     [Fact]
     public void PreviewCountsOverlappingTaskActivitiesOnlyOnce()
     {
@@ -690,29 +706,29 @@ public sealed class StudyPlannerServiceTests
     public void PreviewDoesNotDeductTimeRecordedAgainstAnotherTask()
     {
         var data = Data();
-        AddTask(data, "task-1", 60);
+        AddTask(data, "task-1", 50);
         AddTask(data, "task-2", 60);
         AddTaskActivity(data, "task-2-study", "task-2", Now.AddMinutes(-30), 1800);
 
         var preview = new StudyPlannerService().CreatePreview(data, Options(), Now);
 
-        Assert.Equal(60, preview.TaskProgress.Single(x => x.TaskId == "task-1").RemainingMinutes);
+        Assert.Equal(50, preview.TaskProgress.Single(x => x.TaskId == "task-1").RemainingMinutes);
         Assert.Equal(30, preview.TaskProgress.Single(x => x.TaskId == "task-2").RemainingMinutes);
-        Assert.Equal(90, preview.ScheduledMinutes);
+        Assert.Equal(80, preview.ScheduledMinutes);
     }
 
     [Fact]
     public void PreviewIgnoresSoftDeletedTaskActivities()
     {
         var data = Data();
-        AddTask(data, minutes: 60);
+        AddTask(data, minutes: 50);
         AddTaskActivity(
             data, "deleted-study", "task-1", Now.AddMinutes(-30), 1800,
             deletedAt: Now.AddMinutes(-1));
 
         var preview = new StudyPlannerService().CreatePreview(data, Options(), Now);
 
-        Assert.Equal(60, preview.ScheduledMinutes);
+        Assert.Equal(50, preview.ScheduledMinutes);
         Assert.Equal(0, Assert.Single(preview.TaskProgress).RecordedSeconds);
     }
 
@@ -720,14 +736,14 @@ public sealed class StudyPlannerServiceTests
     public void PreviewIgnoresCancelledManualTaskActivities()
     {
         var data = Data();
-        AddTask(data, minutes: 60);
+        AddTask(data, minutes: 50);
         AddTaskActivity(
             data, "cancelled-manual", "task-1", Now.AddMinutes(-30), 1800,
             status: StudyActivityStatus.Cancelled);
 
         var preview = new StudyPlannerService().CreatePreview(data, Options(), Now);
 
-        Assert.Equal(60, preview.ScheduledMinutes);
+        Assert.Equal(50, preview.ScheduledMinutes);
         Assert.Equal(0, Assert.Single(preview.TaskProgress).RecordedSeconds);
     }
 
