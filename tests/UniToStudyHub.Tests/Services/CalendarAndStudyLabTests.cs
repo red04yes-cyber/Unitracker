@@ -251,9 +251,30 @@ END:VCALENDAR
     }
 
     [Fact]
+    public void IcsParserRejectsUtcDateTimesThatAlsoDeclareTzid()
+    {
+        const string ics = """
+BEGIN:VCALENDAR
+BEGIN:VEVENT
+UID:invalid-utc-tzid
+SUMMARY:Data ambigua
+DTSTART;TZID=Europe/Rome:20260322T090000Z
+END:VEVENT
+END:VCALENDAR
+""";
+        var from = new DateTimeOffset(2026, 3, 20, 0, 0, 0, TimeSpan.Zero);
+        var to = new DateTimeOffset(2026, 3, 25, 0, 0, 0, TimeSpan.Zero);
+
+        var result = new IcsCalendarParser().Parse(ics, from, to);
+
+        Assert.Empty(result.Events);
+        Assert.Contains(result.Warnings, warning => warning.Contains("non può specificare anche TZID", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public void IcsParserEnforcesInputLimitWhenUsedDirectly()
     {
-        var oversized = new string('X', IcsCalendarParser.MaximumContentCharacters + 1);
+        var oversized = new string(' ', IcsCalendarParser.MaximumContentCharacters + 1);
 
         Assert.Throws<InvalidDataException>(() => new IcsCalendarParser().Parse(oversized));
     }
