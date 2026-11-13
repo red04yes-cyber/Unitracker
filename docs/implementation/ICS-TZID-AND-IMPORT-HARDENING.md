@@ -64,7 +64,7 @@ in this slice.
 | 20 | Unsupported recurrence frequencies do not generate occurrences | Pass |
 | 21 | BYDAY values are mapped through a fixed weekday allowlist | Pass |
 | 22 | Malformed EXDATE values are ignored with a warning | Pass |
-| 23 | Unknown or invalid TZID values reject only the affected event | Pass |
+| 23 | Unknown/invalid TZID values and UTC DATE-TIME values that also declare TZID reject only the affected event | Pass |
 | 24 | Nonexistent initial TZID wall times are rejected | Hardened |
 | 25 | Nonexistent later TZID occurrences are skipped with a warning | Hardened |
 | 26 | Ambiguous TZID wall times resolve deterministically to the first occurrence | Hardened |
