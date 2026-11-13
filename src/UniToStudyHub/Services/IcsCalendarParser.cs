@@ -40,12 +40,13 @@ public sealed class IcsCalendarParser
         DateTimeOffset? windowEnd = null,
         int maxEvents = 1000)
     {
-        if (string.IsNullOrWhiteSpace(content))
-            return new IcsParseResult(Array.Empty<CalendarEvent>(), new[] { "Il file ICS è vuoto." });
+        ArgumentNullException.ThrowIfNull(content);
         if (content.Length > MaximumContentCharacters)
             throw new InvalidDataException("Il contenuto ICS supera il limite consentito di 10 MB.");
         if (maxEvents is < 1 or > MaximumEvents)
             throw new ArgumentOutOfRangeException(nameof(maxEvents), $"Il numero massimo di eventi deve essere compreso tra 1 e {MaximumEvents}.");
+        if (string.IsNullOrWhiteSpace(content))
+            return new IcsParseResult(Array.Empty<CalendarEvent>(), new[] { "Il file ICS è vuoto." });
 
         var (from, to) = ResolveWindow(windowStart, windowEnd);
         if (to <= from) throw new ArgumentOutOfRangeException(nameof(windowEnd));
@@ -359,6 +360,8 @@ public sealed class IcsCalendarParser
         }
 
         var utc = value.EndsWith('Z');
+        if (utc && !string.IsNullOrWhiteSpace(tzid))
+            throw new FormatException("Un valore UTC ICS non può specificare anche TZID.");
         var text = utc ? value[..^1] : value;
         var parsed = DateTime.ParseExact(text, "yyyyMMdd'T'HHmmss", CultureInfo.InvariantCulture);
         if (utc) return new DateTimeOffset(parsed, TimeSpan.Zero);
