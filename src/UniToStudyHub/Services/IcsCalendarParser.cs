@@ -495,6 +495,7 @@ public sealed record IcsImportResult(
 public sealed class IcsImportService
 {
     public const long MaximumFileBytes = 10 * 1024 * 1024;
+    private const int ReadBufferBytes = 81920;
 
     public async Task<IcsImportResult> ImportFileAsync(
         string path,
@@ -506,11 +507,46 @@ public sealed class IcsImportService
         ArgumentNullException.ThrowIfNull(data);
         if (string.IsNullOrWhiteSpace(path) || !File.Exists(path))
             throw new FileNotFoundException("File ICS non trovato.", path);
-        var info = new FileInfo(path);
-        if (info.Length == 0) throw new InvalidDataException("Il file ICS è vuoto.");
-        if (info.Length > MaximumFileBytes) throw new InvalidDataException("Il file ICS supera il limite di 10 MB.");
-        var content = await File.ReadAllTextAsync(path, cancellationToken);
+        var content = await ReadBoundedTextAsync(path, cancellationToken).ConfigureAwait(false);
         return ImportText(content, data, windowStart, windowEnd);
+    }
+
+    private static async Task<string> ReadBoundedTextAsync(string path, CancellationToken cancellationToken)
+    {
+        // Enforce the limit while reading the already-open file. A FileInfo.Length
+        // check followed by ReadAllTextAsync would leave a growth/replace race.
+        await using var input = new FileStream(
+            path,
+            FileMode.Open,
+            FileAccess.Read,
+            FileShare.Read,
+            ReadBufferBytes,
+            FileOptions.Asynchronous | FileOptions.SequentialScan);
+        using var output = new MemoryStream();
+        var buffer = new byte[ReadBufferBytes];
+        while (true)
+        {
+            var remaining = (int)Math.Min(buffer.Length, MaximumFileBytes - output.Length + 1);
+            var read = await input.ReadAsync(buffer.AsMemory(0, remaining), cancellationToken).ConfigureAwait(false);
+            if (read == 0) break;
+            if (output.Length + read > MaximumFileBytes)
+                throw new InvalidDataException("Il file ICS supera il limite di 10 MB.");
+            output.Write(buffer, 0, read);
+        }
+
+        if (output.Length == 0)
+            throw new InvalidDataException("Il file ICS è vuoto.");
+
+        try
+        {
+            var content = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: true)
+                .GetString(output.GetBuffer(), 0, (int)output.Length);
+            return content.TrimStart('\uFEFF');
+        }
+        catch (DecoderFallbackException ex)
+        {
+            throw new InvalidDataException("Il file ICS non è codificato in UTF-8 valido.", ex);
+        }
     }
 
     public IcsImportResult ImportText(
@@ -521,8 +557,8 @@ public sealed class IcsImportService
     {
         ArgumentNullException.ThrowIfNull(data);
         if (content is null) throw new ArgumentNullException(nameof(content));
-        if (content.Length > MaximumFileBytes)
-            throw new InvalidDataException("Il contenuto ICS supera il limite di 10 MB.");
+        if (content.Length > IcsCalendarParser.MaximumContentCharacters)
+            throw new InvalidDataException("Il contenuto ICS supera il limite consentito di 10 MB.");
         var (windowFrom, windowTo) = IcsCalendarParser.ResolveWindow(windowStart, windowEnd);
         var parsed = new IcsCalendarParser().Parse(content, windowFrom, windowTo);
         var warnings = parsed.Warnings.ToList();
