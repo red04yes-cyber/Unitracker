@@ -87,7 +87,7 @@ service, or UI change. No AI code or provider was changed.
 
 ## Regression tests
 
-Eleven new tests cover weekly and monthly DST transitions, BYDAY host-timezone
+Twelve new tests cover weekly and monthly DST transitions, BYDAY host-timezone
 independence, ambiguous and nonexistent local times, direct parser limits,
 oversized file reads, invalid UTF-8, and cancellation.
 
