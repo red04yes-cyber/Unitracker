@@ -272,6 +272,13 @@ END:VCALENDAR
     }
 
     [Fact]
+    public void IcsParserRejectsEventLimitAboveHardMaximum()
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            new IcsCalendarParser().Parse("BEGIN:VCALENDAR", maxEvents: IcsCalendarParser.MaximumEvents + 1));
+    }
+
+    [Fact]
     public void IcsParserEnforcesInputLimitWhenUsedDirectly()
     {
         var oversized = new string(' ', IcsCalendarParser.MaximumContentCharacters + 1);
