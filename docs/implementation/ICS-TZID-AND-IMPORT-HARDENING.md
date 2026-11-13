@@ -45,7 +45,7 @@ in this slice.
 | 1 | Empty or missing file path is rejected | Pass |
 | 2 | Missing selected file is rejected | Pass |
 | 3 | Empty file is rejected after opening the stream | Pass |
-| 4 | Actual bytes read cannot exceed 10 MiB | Hardened |
+| 4 | No more than 10 MiB are retained; the first excess byte rejects the import | Hardened |
 | 5 | The size limit is enforced on the opened stream, not only metadata | Hardened |
 | 6 | Concurrent writers are excluded by the read share mode on Windows | Hardened |
 | 7 | File reads remain asynchronous | Pass |
