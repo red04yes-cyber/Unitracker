@@ -13,6 +13,8 @@ namespace UniToStudyHub.Services;
 /// </summary>
 public sealed class LocalDataStore
 {
+    public const long MaximumFileBytes = 64L * 1024 * 1024;
+
     private readonly SemaphoreSlim _gate = new(1, 1);
     private readonly string _dataPath;
     private readonly JsonSerializerOptions _options = new()
@@ -34,10 +36,19 @@ public sealed class LocalDataStore
         try
         {
             if (!File.Exists(_dataPath)) return new StudyData();
-            await using var stream = File.OpenRead(_dataPath);
-            return await JsonSerializer.DeserializeAsync<StudyData>(stream, _options, cancellationToken)
+            await using var stream = new FileStream(_dataPath, FileMode.Open, FileAccess.Read, FileShare.Read,
+                81920, FileOptions.Asynchronous | FileOptions.SequentialScan);
+            var bytes = await BoundedFileReader.ReadAllBytesAsync(stream, MaximumFileBytes, cancellationToken)
+                .ConfigureAwait(false);
+            await using var payload = new MemoryStream(bytes, writable: false);
+            return await JsonSerializer.DeserializeAsync<StudyData>(payload, _options, cancellationToken)
                        .ConfigureAwait(false)
                    ?? new StudyData();
+        }
+        catch (InvalidDataException ex)
+        {
+            AppDiagnostics.Warning("legacy", "File JSON legacy oltre il limite; contenuto preservato.", ex);
+            return new StudyData();
         }
         catch (JsonException)
         {

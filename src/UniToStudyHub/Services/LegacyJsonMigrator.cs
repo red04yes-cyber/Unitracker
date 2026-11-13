@@ -66,7 +66,10 @@ public sealed class LegacyJsonMigrator
             try
             {
                 Directory.CreateDirectory(folder);
-                bytes = await File.ReadAllBytesAsync(_legacyPath, cancellationToken);
+                await using var source = new FileStream(_legacyPath, FileMode.Open, FileAccess.Read, FileShare.Read,
+                    81920, FileOptions.Asynchronous | FileOptions.SequentialScan);
+                bytes = await BoundedFileReader.ReadAllBytesAsync(source, MaximumFileBytes, cancellationToken)
+                    .ConfigureAwait(false);
             }
             catch (IOException ex)
             {

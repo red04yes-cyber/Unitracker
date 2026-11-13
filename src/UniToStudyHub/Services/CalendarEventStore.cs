@@ -14,6 +14,8 @@ namespace UniToStudyHub.Services;
 /// </summary>
 public sealed class CalendarEventStore
 {
+    public const long MaximumFileBytes = 16L * 1024 * 1024;
+
     private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };
     private readonly string _path;
 
@@ -29,10 +31,21 @@ public sealed class CalendarEventStore
         if (!File.Exists(_path)) return new List<CalendarEvent>();
         try
         {
-            await using var stream = File.OpenRead(_path);
-            return await JsonSerializer.DeserializeAsync<List<CalendarEvent>>(stream, JsonOptions, cancellationToken)
+            await using var stream = new FileStream(_path, FileMode.Open, FileAccess.Read, FileShare.Read,
+                81920, FileOptions.Asynchronous | FileOptions.SequentialScan);
+            var bytes = await BoundedFileReader.ReadAllBytesAsync(stream, MaximumFileBytes, cancellationToken)
+                .ConfigureAwait(false);
+            await using var payload = new MemoryStream(bytes, writable: false);
+            return await JsonSerializer.DeserializeAsync<List<CalendarEvent>>(payload, JsonOptions, cancellationToken)
                        .ConfigureAwait(false)
                    ?? new List<CalendarEvent>();
+        }
+        catch (InvalidDataException ex)
+        {
+            // Oversized legacy files are preserved for manual recovery; never
+            // rename or truncate a user's calendar merely because it is large.
+            AppDiagnostics.Warning("calendar", "File calendario legacy oltre il limite; contenuto preservato.", ex);
+            return new List<CalendarEvent>();
         }
         catch (JsonException)
         {

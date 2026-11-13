@@ -48,8 +48,10 @@ L'audit completo, l'esito della scansione dei segreti e i rischi residui sono in
   connection string costruita e `DescribeProtection`.
 - **SQLite non è cifrato**: `DatabaseProtectionStatus` lo dichiara e raccomanda
   BitLocker/EFS. Nessuna dipendenza aggiunta e nessuna affermazione falsa.
-- `CalendarEventStore`, `LocalDataStore` e `LegacyJsonMigrator` usano ACL,
-  scrittura atomica e limiti di dimensione.
+- `CalendarEventStore` rifiuta file calendario oltre 16 MB; `LocalDataStore`
+  e `LegacyJsonMigrator` applicano 64 MB. La lettura è bounded anche dopo
+  l'apertura del file, così la dimensione effettiva letta non può superare il
+  budget dichiarato.
 
 ## 4. Backup e ripristino
 
