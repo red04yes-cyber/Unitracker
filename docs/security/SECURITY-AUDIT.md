@@ -69,6 +69,7 @@ Se in futuro venisse trovata una credenziale reale:
 | F-12 | P2 | Mancavano export completo, cancellazione dati e retention | `PrivacyService`: inventario, export JSON completo, cancellazione di dati/credenziali/backup/file legacy/log, retention (10 backup, 90 giorni) | `Services/PrivacyService.cs` |
 | F-13 | P2 | Import senza limiti espliciti e campi importati non sanificati | Limiti di dimensione, sanitizzazione e messaggi di avviso; le note private restano escluse dagli export standard | `Services/IcsCalendarParser.cs`, `Services/StudyExports.cs` |
 | F-14 | P1 | Verifica, elenco e ripristino backup leggevano container/manifest senza un budget effettivo; l'elenco poteva seguire voci reparse e calcolare hash senza limite | Container `.utbk` limitati a 512 MiB di payload più overhead massimo, legacy `.db` a 512 MiB, manifest a 64 KiB; lettura/copia/hash bounded sullo stream aperto; elenco limitato a file interni non-reparse | `Services/BackupService.cs`, `Security/BackupCrypto.cs`, `Security/BoundedFileReader.cs` |
+| F-15 | P2 | Il buffer `byte[]` della chiave SQLCipher restava in memoria dopo la conversione esadecimale | Azzeramento in `finally` anche nel percorso valido; test di riuso della chiave e assenza di plaintext nell'envelope | `Infrastructure/Data/DatabaseKeyVault.cs`, `tests/UniToStudyHub.Tests/Security/SecretAndFileSecurityTests.cs` |
 
 ## Verificato senza modifiche
 
