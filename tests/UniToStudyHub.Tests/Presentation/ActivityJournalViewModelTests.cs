@@ -385,6 +385,22 @@ public sealed class ActivityJournalViewModelTests
         Assert.Same(viewModel.Entries.Single(), viewModel.SelectedEntry);
     }
 
+    [Fact]
+    public void InitializeRebindsSelectedCourseTopicAndTaskAfterWorkspaceReload()
+    {
+        var originalData = Data();
+        var viewModel = CreateViewModel(originalData, out _);
+        viewModel.SelectedSyllabusTopic = originalData.SyllabusTopics.Single();
+        viewModel.SelectedTask = originalData.StudyTasks.Single();
+        var reloadedData = Data();
+
+        viewModel.Initialize(reloadedData);
+
+        Assert.Same(reloadedData.Courses.Single(), viewModel.SelectedCourse);
+        Assert.Same(reloadedData.SyllabusTopics.Single(), viewModel.SelectedSyllabusTopic);
+        Assert.Same(reloadedData.StudyTasks.Single(), viewModel.SelectedTask);
+    }
+
     private sealed class MemoryStore(StudyData initial) : IStudyDataStore
     {
         public StudyData Data { get; private set; } = initial;
