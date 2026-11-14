@@ -606,15 +606,9 @@ public sealed class ActivityJournalViewModel : INotifyPropertyChanged
         var desired = _data.Courses
             .OrderBy(x => x.Name, StringComparer.CurrentCultureIgnoreCase)
             .ToList();
-        if (Courses.Count == desired.Count &&
-            Courses.Where((course, index) => !ReferenceEquals(course, desired[index])).Any())
-        {
-            // Rebind when the workspace replaces model instances with the same IDs.
-        }
-        else if (Courses.Count == desired.Count)
-        {
-            return;
-        }
+        var coursesChanged = Courses.Count != desired.Count ||
+                             Courses.Where((course, index) => !ReferenceEquals(course, desired[index])).Any();
+        if (!coursesChanged) return;
 
         var selectedId = SelectedCourse?.Id;
         Courses.Clear();
