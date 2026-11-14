@@ -18,7 +18,7 @@ La tabella `NotificationDismissals` conserva solo:
 - un digest SHA-256 (64 caratteri esadecimali) dell'identità sorgente e dell'istante UTC dell'occorrenza;
 - l'istante in cui l'utente l'ha segnata come letta.
 
-Titolo, dettaglio, note, URL, contenuti Moodle, token e altri dati personali non vengono copiati nella tabella. Il nuovo schema è additivo; le righe esistenti non vengono riscritte dalla migrazione. I record seguono il normale ciclo di backup/ripristino e cancellazione del database.
+Titolo, dettaglio, note, URL, contenuti Moodle e token non vengono salvati in chiaro nella tabella. Il digest è deterministico e pseudonimo, non una forma di anonimizzazione: la protezione a riposo continua a dipendere dalla cifratura SQLCipher/DPAPI già adottata dal database. Il nuovo schema è additivo; le righe esistenti non vengono riscritte dalla migrazione. I record seguono il normale ciclo di backup/ripristino e cancellazione del database.
 
 ## Architettura
 
