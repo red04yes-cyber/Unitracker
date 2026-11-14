@@ -14,7 +14,7 @@ namespace UniToStudyHub.Services;
 /// REST requests are POSTed (the token travels in the form body). The Moodle
 /// file-download endpoint is the protocol exception: its single GET carries
 /// <c>token=</c> in the query. Downloads are restricted to the same origin,
-/// redirects are never followed, responses are size-bounded and files are
+/// the default HTTP handler does not follow redirects, responses are size-bounded and files are
 /// written atomically. No method logs the token or the tokenised URL.
 /// The base URL is validated against <see cref="OutboundEndpointPolicy"/>.
 /// </summary>
