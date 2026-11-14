@@ -71,6 +71,12 @@ public sealed class LegacyJsonMigrator
                 bytes = await BoundedFileReader.ReadAllBytesAsync(source, MaximumFileBytes, cancellationToken)
                     .ConfigureAwait(false);
             }
+            catch (InvalidDataException ex)
+            {
+                throw new InvalidDataException(
+                    "The legacy data file exceeded its read limit or changed while being read. " +
+                    "It was preserved; nothing was imported.", ex);
+            }
             catch (IOException ex)
             {
                 throw new InvalidDataException(
