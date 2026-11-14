@@ -127,6 +127,23 @@ La UI deve mostrare la provenienza e non presentare gli eventi `Planner`/`Indica
 Per le viste usare `CalendarService.GetWeekRange`, `GetMonthRange` e `GetEventsInRange`; non creare un secondo
 store o una seconda lista di eventi.
 
+### Study planner progress-aware preview
+
+`StudyWorkspaceViewModel` espone `CurrentPlanPreview` e `PlanPreviewSummary`. Per la preview:
+- `CurrentPlanPreview.TaskProgress` contiene uno snapshot per ogni task aperto considerato dal planner.
+- `HasTaskProgressSnapshot` distingue le preview nuove dalle preview legacy; le preview nuove devono
+  avere una riga per ogni task referenziato dai blocchi.
+- `TaskProgressSnapshot` espone `EstimatedMinutes`, `RecordedSeconds`, `RemainingSeconds`,
+  `ProgressPercent`, `IsOverEstimate`, `HasEstimate`, `RecordedMinutes` e
+  `RemainingMinutes`.
+- `RecordedTaskMinutes` e `RemainingTaskMinutes` sono riepiloghi derivati della preview; non salvarli
+  come contatori separati.
+- Se `IsOverEstimate` è true, il task è ancora aperto ma il tempo registrato ha superato la stima:
+  mostrare un avviso e lasciare all'utente la scelta di aggiornare la stima o completare il task.
+- `ApplyStudyPlanCommand` rivalida il progresso prima di applicare. Se il tempo registrato cambia dopo la
+  preview, mostrare `Warnings` e richiedere una nuova anteprima; una sostituzione deve restare atomica.
+- I blocchi restano eventi indicativi `Planner` e non completano il task né creano attività nel ledger.
+
 ### Studio Lab
 
 Servizi disponibili (nessun ViewModel dedicato è stato aggiunto in questa slice):

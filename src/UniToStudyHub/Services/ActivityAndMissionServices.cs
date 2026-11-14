@@ -265,23 +265,71 @@ public sealed class ActivityLedgerService
         ArgumentNullException.ThrowIfNull(data);
         if (string.IsNullOrWhiteSpace(taskId))
             throw new ArgumentException("Task id is required.", nameof(taskId));
-        var task = data.StudyTasks.FirstOrDefault(x => string.Equals(x.Id, taskId, StringComparison.Ordinal))
-            ?? throw new ArgumentException($"Study task '{taskId}' does not exist.", nameof(taskId));
-        var recordedSeconds = UnionSeconds(GetRecordedIntervals(data, now ?? DateTimeOffset.Now)
-            .Where(x => string.Equals(x.Activity.TaskId, task.Id, StringComparison.Ordinal))
-            .Select(x => (x.Start, x.End)));
-        var estimatedSeconds = Math.Max(0, task.EstimatedMinutes) * 60;
-        var remainingSeconds = Math.Max(0, estimatedSeconds - recordedSeconds);
-        var progressPercent = estimatedSeconds == 0
-            ? 0
-            : Math.Clamp((int)Math.Round(recordedSeconds * 100d / estimatedSeconds), 0, 100);
-        return new TaskProgressSnapshot(
-            task.Id,
-            Math.Max(0, task.EstimatedMinutes),
-            recordedSeconds,
-            remainingSeconds,
-            progressPercent,
-            estimatedSeconds > 0 && recordedSeconds > estimatedSeconds);
+        return GetTaskProgressSnapshots(data, new[] { taskId }, now)[taskId];
+    }
+
+    /// <summary>
+    /// Calculates progress for several tasks from one ledger scan. The planner
+    /// uses this batch API so preview generation does not rescan every activity
+    /// once for each open task.
+    /// </summary>
+    public IReadOnlyDictionary<string, TaskProgressSnapshot> GetTaskProgressSnapshots(
+        StudyData data,
+        IEnumerable<string> taskIds,
+        DateTimeOffset? now = null)
+    {
+        ArgumentNullException.ThrowIfNull(data);
+        ArgumentNullException.ThrowIfNull(taskIds);
+
+        var requestedIds = taskIds
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+        var tasksById = data.StudyTasks
+            .Where(x => x is not null && !string.IsNullOrWhiteSpace(x.Id))
+            .GroupBy(x => x.Id, StringComparer.Ordinal)
+            .ToDictionary(group => group.Key, group => group.First(), StringComparer.Ordinal);
+        var tasks = new Dictionary<string, StudyTaskData>(StringComparer.Ordinal);
+        foreach (var id in requestedIds)
+        {
+            if (!tasksById.TryGetValue(id, out var task))
+                throw new ArgumentException($"Study task '{id}' does not exist.", nameof(taskIds));
+            tasks.Add(id, task);
+        }
+
+        if (tasks.Count == 0)
+            return new Dictionary<string, TaskProgressSnapshot>(StringComparer.Ordinal);
+
+        var requestedSet = tasks.Keys.ToHashSet(StringComparer.Ordinal);
+        var recordedByTask = GetRecordedIntervals(data, now ?? DateTimeOffset.Now)
+            .Where(x => requestedSet.Contains(x.Activity.TaskId))
+            .GroupBy(x => x.Activity.TaskId, StringComparer.Ordinal)
+            .ToDictionary(
+                group => group.Key,
+                group => UnionSeconds(group.Select(x => (x.Start, x.End))),
+                StringComparer.Ordinal);
+
+        var result = new Dictionary<string, TaskProgressSnapshot>(StringComparer.Ordinal);
+        foreach (var pair in tasks)
+        {
+            var estimatedMinutes = Math.Max(0, pair.Value.EstimatedMinutes);
+            var estimatedSeconds = (int)Math.Min(int.MaxValue, (long)estimatedMinutes * 60L);
+            var recordedSeconds = recordedByTask.GetValueOrDefault(pair.Key);
+            var remainingSeconds = Math.Max(0, estimatedSeconds - recordedSeconds);
+            var progressPercent = estimatedSeconds == 0
+                ? 0
+                : Math.Clamp((int)Math.Round(recordedSeconds * 100d / estimatedSeconds), 0, 100);
+
+            result.Add(pair.Key, new TaskProgressSnapshot(
+                pair.Key,
+                estimatedMinutes,
+                recordedSeconds,
+                remainingSeconds,
+                progressPercent,
+                estimatedSeconds > 0 && recordedSeconds > estimatedSeconds));
+        }
+
+        return result;
     }
 
     public IReadOnlyList<StudyActivityData> SyncFocusSessions(StudyData data, DateTimeOffset? now = null) =>
@@ -714,9 +762,12 @@ public sealed class ActivityLedgerService
         StudyData data,
         DateTimeOffset now)
     {
-        var sessions = data.StudySessions.ToDictionary(x => x.Id, StringComparer.Ordinal);
+        var sessions = data.StudySessions
+            .Where(x => x is not null)
+            .ToDictionary(x => x.Id, StringComparer.Ordinal);
         var intervals = new List<(DateTimeOffset Start, DateTimeOffset End, StudyActivityData Activity)>();
         foreach (var activity in data.StudyActivities.Where(x =>
+                     x is not null &&
                      !x.IsDeleted &&
                      (x.Status is StudyActivityStatus.Running or StudyActivityStatus.Completed ||
                       x.Status == StudyActivityStatus.Cancelled &&

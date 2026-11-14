@@ -70,6 +70,34 @@ public sealed class StudyPlannerServiceTests
         return task;
     }
 
+    private static StudyActivityData AddTaskActivity(
+        StudyData data,
+        string id,
+        string taskId,
+        DateTimeOffset startedAt,
+        int seconds,
+        StudyActivityStatus status = StudyActivityStatus.Completed,
+        DateTimeOffset? deletedAt = null)
+    {
+        var activity = new StudyActivityData
+        {
+            Id = id,
+            Type = StudyActivityType.Study,
+            Title = "Studio registrato",
+            CourseId = "analysis",
+            TaskId = taskId,
+            StartedAt = startedAt,
+            EndedAt = startedAt.AddSeconds(seconds),
+            EffectiveSeconds = seconds,
+            TimeZoneId = "Europe/Rome",
+            Origin = StudyActivityOrigin.Manual,
+            Status = status,
+            DeletedAt = deletedAt
+        };
+        data.StudyActivities.Add(activity);
+        return activity;
+    }
+
     [Fact]
     public void PreviewSplitsTasksAroundExistingCommitmentsWithoutMutatingData()
     {
@@ -610,6 +638,295 @@ public sealed class StudyPlannerServiceTests
         Assert.Equal(0, result.Added);
         Assert.Equal(1, result.Skipped);
         Assert.Empty(data.CalendarEvents);
+    }
+
+
+    [Fact]
+    public void PreviewSchedulesOnlyTheUnrecordedRemainderOfATask()
+    {
+        var data = Data();
+        AddTask(data, minutes: 90);
+        AddTaskActivity(data, "recorded-60", "task-1", Now.AddHours(-1), 3600);
+
+        var preview = new StudyPlannerService().CreatePreview(data, Options(), Now);
+
+        Assert.Equal(30, preview.ScheduledMinutes);
+        var progress = Assert.Single(preview.TaskProgress);
+        Assert.Equal(60, progress.RecordedMinutes);
+        Assert.Equal(30, progress.RemainingMinutes);
+        Assert.Equal(30L, preview.RemainingTaskMinutes);
+    }
+
+    [Fact]
+    public void PreviewRoundsPartialRemainingMinutesUp()
+    {
+        var data = Data();
+        AddTask(data, minutes: 60);
+        AddTaskActivity(data, "recorded-partial", "task-1", Now.AddSeconds(-1530), 1530);
+
+        var preview = new StudyPlannerService().CreatePreview(data, Options(), Now);
+
+        Assert.Equal(35, preview.ScheduledMinutes);
+        Assert.Equal(35, Assert.Single(preview.TaskProgress).RemainingMinutes);
+    }
+
+
+    [Fact]
+    public void PreviewCanPlaceMultipleBlocksInsideOneAvailabilityWindow()
+    {
+        var data = Data();
+        AddTask(data, minutes: 120);
+
+        var preview = new StudyPlannerService().CreatePreview(data, Options(), Now);
+
+        Assert.Equal(120, preview.ScheduledMinutes);
+        Assert.Equal(new[] { 50, 50, 20 }, preview.Blocks.Select(x => x.PlannedMinutes));
+        Assert.Equal(3, preview.ScheduledBlockCount);
+        Assert.True(preview.Blocks[1].StartsAt >= preview.Blocks[0].EndsAt.AddMinutes(10));
+        Assert.True(preview.Blocks[2].StartsAt >= preview.Blocks[1].EndsAt.AddMinutes(10));
+    }
+
+    [Fact]
+    public void PreviewCountsOverlappingTaskActivitiesOnlyOnce()
+    {
+        var data = Data();
+        AddTask(data, minutes: 120);
+        AddTaskActivity(data, "first-half", "task-1", Now.AddHours(-2), 1800);
+        AddTaskActivity(data, "overlapping-half", "task-1", Now.AddMinutes(-105), 1800);
+
+        var preview = new StudyPlannerService().CreatePreview(data, Options(), Now);
+
+        var progress = Assert.Single(preview.TaskProgress);
+        Assert.Equal(45, progress.RecordedMinutes);
+        Assert.Equal(75, progress.RemainingMinutes);
+        Assert.Equal(75, preview.ScheduledMinutes);
+    }
+
+    [Fact]
+    public void PreviewDoesNotDeductTimeRecordedAgainstAnotherTask()
+    {
+        var data = Data();
+        AddTask(data, "task-1", 50);
+        AddTask(data, "task-2", 60);
+        AddTaskActivity(data, "task-2-study", "task-2", Now.AddMinutes(-30), 1800);
+
+        var preview = new StudyPlannerService().CreatePreview(data, Options(), Now);
+
+        Assert.Equal(50, preview.TaskProgress.Single(x => x.TaskId == "task-1").RemainingMinutes);
+        Assert.Equal(30, preview.TaskProgress.Single(x => x.TaskId == "task-2").RemainingMinutes);
+        Assert.Equal(80, preview.ScheduledMinutes);
+    }
+
+    [Fact]
+    public void PreviewIgnoresSoftDeletedTaskActivities()
+    {
+        var data = Data();
+        AddTask(data, minutes: 50);
+        AddTaskActivity(
+            data, "deleted-study", "task-1", Now.AddMinutes(-30), 1800,
+            deletedAt: Now.AddMinutes(-1));
+
+        var preview = new StudyPlannerService().CreatePreview(data, Options(), Now);
+
+        Assert.Equal(50, preview.ScheduledMinutes);
+        Assert.Equal(0, Assert.Single(preview.TaskProgress).RecordedSeconds);
+    }
+
+    [Fact]
+    public void PreviewIgnoresCancelledManualTaskActivities()
+    {
+        var data = Data();
+        AddTask(data, minutes: 50);
+        AddTaskActivity(
+            data, "cancelled-manual", "task-1", Now.AddMinutes(-30), 1800,
+            status: StudyActivityStatus.Cancelled);
+
+        var preview = new StudyPlannerService().CreatePreview(data, Options(), Now);
+
+        Assert.Equal(50, preview.ScheduledMinutes);
+        Assert.Equal(0, Assert.Single(preview.TaskProgress).RecordedSeconds);
+    }
+
+    [Fact]
+    public void PreviewWarnsWhenRecordedWorkExhaustsAnOpenTaskEstimate()
+    {
+        var data = Data();
+        AddTask(data, minutes: 60);
+        AddTaskActivity(data, "estimate-used", "task-1", Now.AddSeconds(-3900), 3900);
+
+        var preview = new StudyPlannerService().CreatePreview(data, Options(), Now);
+
+        Assert.Empty(preview.Blocks);
+        Assert.Equal(0, Assert.Single(preview.UnscheduledTasks).RemainingMinutes);
+        Assert.Contains(preview.Warnings, x => x.Contains("supera la stima", StringComparison.Ordinal));
+        Assert.True(Assert.Single(preview.TaskProgress).IsOverEstimate);
+    }
+
+    [Fact]
+    public void PreviewExposesRecordedAndRemainingTaskTotalsIncludingUnestimatedTasks()
+    {
+        var data = Data();
+        AddTask(data, "estimated", 60);
+        AddTask(data, "unestimated", 0);
+        AddTaskActivity(data, "recorded-30", "estimated", Now.AddMinutes(-30), 1800);
+
+        var preview = new StudyPlannerService().CreatePreview(data, Options(), Now);
+
+        Assert.Equal(2, preview.TaskProgress.Count);
+        Assert.Equal(30L, preview.RecordedTaskMinutes);
+        Assert.Equal(30L, preview.RemainingTaskMinutes);
+        Assert.Contains(preview.UnscheduledTasks, x =>
+            x.TaskId == "unestimated" && x.Reason.Contains("Manca una stima", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void ApplyRejectsPreviewWhenTaskProgressChangesAfterGeneration()
+    {
+        var data = Data();
+        AddTask(data, minutes: 90);
+        var service = new StudyPlannerService();
+        var preview = service.CreatePreview(data, Options(), Now);
+        AddTaskActivity(data, "new-study", "task-1", Now.AddMinutes(-30), 1800);
+
+        var result = service.Apply(data, preview, Now.AddMinutes(1));
+
+        Assert.Equal(0, result.Added);
+        Assert.Equal(preview.Blocks.Count, result.Skipped);
+        Assert.Empty(data.CalendarEvents);
+        Assert.Contains(result.Warnings, x => x.Contains("tempo registrato è cambiato", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void ApplyRejectsBlocksThatExceedTheCurrentRemainingTaskEstimate()
+    {
+        var data = Data();
+        AddTask(data, minutes: 60);
+        AddTaskActivity(data, "already-studied", "task-1", Now.AddMinutes(-30), 1800);
+        var service = new StudyPlannerService();
+        var preview = service.CreatePreview(data, Options(), Now);
+        var block = Assert.Single(preview.Blocks);
+        var oversized = block with
+        {
+            PlannedMinutes = block.PlannedMinutes + 1,
+            EndsAt = block.EndsAt.AddMinutes(1)
+        };
+
+        var result = service.Apply(data, preview with { Blocks = new[] { oversized } }, Now);
+
+        Assert.Equal(0, result.Added);
+        Assert.Equal(1, result.Skipped);
+        Assert.Empty(data.CalendarEvents);
+        Assert.Contains(result.Warnings, x => x.Contains("stima residua", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void PreviewRejectsNullAvailabilityWindows()
+    {
+        var data = Data();
+        var options = Options(availability: new StudyAvailabilityWindow[] { null! });
+
+        Assert.Throws<ArgumentException>(() =>
+            new StudyPlannerService().CreatePreview(data, options, Now));
+    }
+
+    [Fact]
+    public void PreviewRejectsExcessiveAvailabilityWindowCounts()
+    {
+        var data = Data();
+        var windows = Enumerable.Repeat(
+            new StudyAvailabilityWindow(DayOfWeek.Thursday, new TimeOnly(9, 0), new TimeOnly(13, 0)),
+            65).ToArray();
+
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            new StudyPlannerService().CreatePreview(data, Options(availability: windows), Now));
+    }
+
+    [Fact]
+    public void PreviewClampsCorruptedPersistedStudyBudgetsAndExplainsTheLimit()
+    {
+        var data = Data();
+        data.WeeklyStudyHours = int.MaxValue;
+        data.MaxDailyStudyMinutes = int.MaxValue;
+        AddTask(data, minutes: 30);
+
+        var preview = new StudyPlannerService().CreatePreview(
+            data,
+            Options(weeklyMinutes: null, dailyMinutes: null),
+            Now);
+
+        Assert.Equal(10080, preview.WeeklyBudgetMinutes);
+        Assert.Equal(1440, preview.DailyBudgetMinutes);
+        Assert.Contains(preview.Warnings, x => x.Contains("ore settimanali salvate", StringComparison.Ordinal));
+        Assert.Contains(preview.Warnings, x => x.Contains("limite giornaliero salvato", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void ApplyRejectsPreviewWithMoreThanTheMaximumPossibleBlockCount()
+    {
+        var data = Data();
+        AddTask(data, minutes: 50);
+        var service = new StudyPlannerService();
+        var preview = service.CreatePreview(data, Options(), Now);
+        var block = Assert.Single(preview.Blocks);
+        var malformed = preview with { Blocks = Enumerable.Repeat(block, 3621).ToArray() };
+
+        Assert.Throws<ArgumentOutOfRangeException>(() => service.Apply(data, malformed, Now));
+        Assert.Empty(data.CalendarEvents);
+    }
+
+    [Fact]
+    public void ApplySupportsLegacyPreviewsWithoutTaskProgressSnapshots()
+    {
+        var data = Data();
+        AddTask(data, minutes: 50);
+        var service = new StudyPlannerService();
+        var preview = service.CreatePreview(data, Options(), Now) with
+        {
+            TaskProgress = Array.Empty<TaskProgressSnapshot>(),
+            HasTaskProgressSnapshot = false
+        };
+
+        var result = service.Apply(data, preview, Now);
+
+        Assert.Equal(1, result.Added);
+        Assert.Single(data.CalendarEvents);
+    }
+
+
+    [Fact]
+    public void ApplyRejectsBlocksMissingProgressRowsWhenUsingTheNewPreviewContract()
+    {
+        var data = Data();
+        AddTask(data, "task-1", 50);
+        AddTask(data, "task-2", 50);
+        var service = new StudyPlannerService();
+        var preview = service.CreatePreview(data, Options(), Now);
+        var incompleteProgress = preview.TaskProgress
+            .Where(x => x.TaskId == "task-1")
+            .ToArray();
+
+        var result = service.Apply(
+            data,
+            preview with { TaskProgress = incompleteProgress },
+            Now);
+
+        Assert.Equal(1, result.Added);
+        Assert.Equal(1, result.Skipped);
+        Assert.Single(data.CalendarEvents);
+        Assert.Contains(result.Warnings, x => x.Contains("non contiene il progresso aggiornato", StringComparison.Ordinal));
+    }
+
+
+    [Fact]
+    public void PreviewRejectsDatesWithoutWeekBoundaryHeadroom()
+    {
+        var unsafeDate = DateOnly.MaxValue.AddDays(-6);
+
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            new StudyPlannerService().CreatePreview(
+                Data(),
+                Options(from: unsafeDate, to: unsafeDate),
+                Now));
     }
 
 }
