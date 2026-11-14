@@ -50,6 +50,7 @@ I file Moodle non sono contenuti nel database SQLCipher: sono file separati nell
 ## Privacy, export e cancellazione
 
 - Nessuna telemetria, analytics o crash reporting remoto.
+- Il pacchetto diagnostico richiede consenso esplicito, include solo log redatti e limita ogni file a 512 KiB durante la lettura; file più grandi sono esclusi e non modificati.
 - Il token Moodle viene eliminato alla disconnessione; corsi, voti e storico accademico locale restano disponibili.
 - L'export completo include le note private ma non token o chiavi.
 - La funzione di cancellazione completa elimina record locali, credenziali, backup selezionati, file legacy, log e file Moodle scaricati. La chiave DPAPI del database viene conservata per mantenere apribile il database vuoto e poterlo riutilizzare.
