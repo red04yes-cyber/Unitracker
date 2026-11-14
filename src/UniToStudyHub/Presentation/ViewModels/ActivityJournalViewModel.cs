@@ -395,7 +395,10 @@ public sealed class ActivityJournalViewModel : INotifyPropertyChanged
             StatusMessage = IsPrivate
                 ? "Attività registrata. La nota è privata e viene esclusa dagli export standard; titolo e orari restano esportabili."
                 : "Attività registrata nel diario.";
-            Refresh();
+            if (SelectedDay.Date != EntryDateInput.Date)
+                SelectedDay = EntryDateInput.Date;
+            else
+                Refresh();
         }
         catch (Exception ex)
         {
