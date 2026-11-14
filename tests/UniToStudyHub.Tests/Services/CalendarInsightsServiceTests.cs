@@ -71,9 +71,10 @@ public sealed class CalendarInsightsServiceTests
         var start = new DateTimeOffset(2026, 11, 14, 8, 0, 0, TimeSpan.Zero);
         var first = Event("rome", new DateTimeOffset(2026, 11, 14, 10, 0, 0, TimeSpan.FromHours(2)),
             new DateTimeOffset(2026, 11, 14, 11, 0, 0, TimeSpan.FromHours(2)));
-        var second = Event("utc", start.AddHours(8), start.AddHours(9));
+        var second = Event("utc", start.AddMinutes(30), start.AddMinutes(90));
 
-        Assert.Empty(_service.FindConflicts(new[] { first, second }, start, start.AddDays(1)));
+        var conflict = Assert.Single(_service.FindConflicts(new[] { first, second }, start, start.AddDays(1)));
+        Assert.Equal(TimeSpan.FromMinutes(30), conflict.OverlapDuration);
     }
 
     [Fact]
@@ -208,7 +209,7 @@ public sealed class CalendarInsightsServiceTests
 
         Assert.Equal(3, result.Events.Count);
         Assert.Single(result.Conflicts);
-        Assert.Equal(2, result.UpcomingDeadlines.Count == 1 ? result.UpcomingDeadlines.Count : -1);
+        Assert.Single(result.UpcomingDeadlines);
         Assert.Equal("study-a", result.NextEvent?.Id);
         Assert.Single(result.Days);
         Assert.Equal(original, events.Select(item => (item.Id, item.StartsAt, item.EndsAt)).ToArray());
