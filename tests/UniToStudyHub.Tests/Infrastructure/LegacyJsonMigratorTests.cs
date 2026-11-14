@@ -10,6 +10,7 @@ using Xunit;
 
 namespace UniToStudyHub.Tests.Infrastructure;
 
+[Collection("AppDiagnostics")]
 public sealed class LegacyJsonMigratorTests
 {
     [Fact]
