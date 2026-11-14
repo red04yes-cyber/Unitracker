@@ -372,6 +372,19 @@ public sealed class ActivityJournalViewModelTests
         Assert.Equal("10 min", entry.DurationDisplay);
     }
 
+    [Fact]
+    public void RefreshKeepsSelectedEntryBoundToTheCurrentCollectionItem()
+    {
+        var data = Data();
+        AddActivity(data, StudyActivityType.Study, "Voce selezionata", 9, 0, 10, 0);
+        var viewModel = CreateViewModel(data, out _);
+        viewModel.SelectedEntry = Assert.Single(viewModel.Entries);
+
+        viewModel.Refresh();
+
+        Assert.Same(viewModel.Entries.Single(), viewModel.SelectedEntry);
+    }
+
     private sealed class MemoryStore(StudyData initial) : IStudyDataStore
     {
         public StudyData Data { get; private set; } = initial;
