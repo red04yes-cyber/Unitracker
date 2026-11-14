@@ -166,3 +166,13 @@ Windows resta il gate per il runtime.
 3. Rendere il dependency audit bloccante dopo la pulizia degli avvisi correnti.
 4. Collegare in UI le azioni privacy già esposte dal servizio, quando il
    proprietario UI lo pianifica.
+
+## Follow-up 2026-11-14 — bounded backup ingestion
+
+- `BackupService` accepts only `.utbk` containers and legacy `.db` backups. The encrypted container budget is 512 MiB of payload plus the maximum header/key/tag overhead; legacy SQLite files are capped at 512 MiB.
+- Sidecar manifests are limited to 64 KiB and are read from the opened stream with cancellation.
+- Encrypted container reads, legacy restore copies and SHA-256 scans enforce the byte budget while streaming, not only through a preliminary `FileInfo` check.
+- Backup listing rejects entries outside the private backup directory and reparse-point paths; over-limit or unreadable entries are left untouched and omitted.
+- AES-GCM decryption now passes ciphertext and associated-data spans directly from the container, avoiding duplicate large buffers. The plaintext still requires a bounded in-memory buffer; this remains a documented memory-pressure limit.
+- Added regression coverage for oversized `.utbk`/`.db` files, oversized manifests and seekable streams whose reported length becomes stale.
+- No UI, Moodle, AI provider, AI Study Director, database schema or package dependency was changed. The Windows CI result is recorded in the PR after completion.
