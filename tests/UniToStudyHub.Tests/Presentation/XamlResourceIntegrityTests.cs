@@ -14,9 +14,12 @@ public sealed class XamlResourceIntegrityTests
         @"\{(?:StaticResource|DynamicResource)\s+(?<key>[^}\s]+)",
         RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
-    private static readonly Regex EventHandlerReference = new(
-        @"\b(?:Click|ValueChanged|RequestNavigate|MediaEnded|Loaded|SelectionChanged|Checked|Unchecked|TextChanged|KeyDown|MouseDoubleClick|Drop|DragOver|Closing|Closed|SizeChanged)\s*=\s*""(?<name>[A-Za-z_][A-Za-z0-9_]*)""",
-        RegexOptions.Compiled | RegexOptions.CultureInvariant);
+    private static readonly HashSet<string> EventAttributes = new(StringComparer.Ordinal)
+    {
+        "Click", "ValueChanged", "RequestNavigate", "MediaEnded", "Loaded",
+        "SelectionChanged", "Checked", "Unchecked", "TextChanged", "KeyDown",
+        "MouseDoubleClick", "Drop", "DragOver", "Closing", "Closed", "SizeChanged"
+    };
 
     [Fact]
     public void ApplicationAndMainWindowXamlAreWellFormed()
@@ -64,8 +67,8 @@ public sealed class XamlResourceIntegrityTests
         var handlers = mainWindow.Root!
             .DescendantsAndSelf()
             .Attributes()
-            .SelectMany(attribute => EventHandlerReference.Matches(attribute.Value)
-                .Select(match => match.Groups["name"].Value))
+            .Where(attribute => EventAttributes.Contains(attribute.Name.LocalName))
+            .Select(attribute => attribute.Value)
             .Distinct(StringComparer.Ordinal)
             .ToArray();
 
