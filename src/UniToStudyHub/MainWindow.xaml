@@ -14,42 +14,80 @@
     <Window.Resources>
         <Style TargetType="{x:Type TabItem}">
             <Setter Property="Width" Value="220"/>
-            <Setter Property="Height" Value="58"/>
-            <Setter Property="Margin" Value="0,3"/>
+            <Setter Property="Height" Value="52"/>
+            <Setter Property="Margin" Value="0,2"/>
             <Setter Property="Padding" Value="0"/>
             <Setter Property="Foreground" Value="{DynamicResource SidebarMutedBrush}"/>
             <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
             <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
             <Setter Property="VerticalContentAlignment" Value="Center"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="{x:Type TabItem}">
-                        <Border x:Name="TabSurface"
-                                Background="{TemplateBinding Background}"
-                                CornerRadius="10"
-                                Padding="10,4">
-                            <Grid>
+                        <Grid>
+                            <Border x:Name="TabSurface" Background="{TemplateBinding Background}"
+                                    CornerRadius="12" Padding="10,4"/>
+                            <Border x:Name="HoverOverlay" Background="White" CornerRadius="12" Opacity="0"
+                                    IsHitTestVisible="False"/>
+                            <Border x:Name="SelectedOverlay" CornerRadius="12" Opacity="0" IsHitTestVisible="False"
+                                    BorderBrush="#40A78BFA" BorderThickness="1">
+                                <Border.Background>
+                                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                        <GradientStop Color="#3D8B5CF6" Offset="0"/>
+                                        <GradientStop Color="#128B5CF6" Offset="1"/>
+                                    </LinearGradientBrush>
+                                </Border.Background>
+                            </Border>
+                            <Grid Margin="10,4">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="3"/>
                                     <ColumnDefinition Width="*"/>
                                 </Grid.ColumnDefinitions>
-                                <Border x:Name="ActiveIndicator" Grid.Column="0"
-                                        Background="{DynamicResource AccentBrush}"
-                                        CornerRadius="2" Opacity="0"/>
-                                <ContentPresenter Grid.Column="1" ContentSource="Header"
-                                                  Margin="9,0,0,0"
-                                                  HorizontalAlignment="Stretch"
-                                                  VerticalAlignment="Center"/>
+                                <Border x:Name="ActiveIndicator" Grid.Column="0" Height="22"
+                                        Background="{StaticResource AccentGradientBrush}"
+                                        CornerRadius="2" Opacity="0" RenderTransformOrigin="0.5,0.5">
+                                    <Border.RenderTransform><ScaleTransform x:Name="IndicatorScale" ScaleY="0.3"/></Border.RenderTransform>
+                                    <Border.Effect>
+                                        <DropShadowEffect BlurRadius="10" ShadowDepth="0" Color="#8B5CF6" Opacity="0.9"/>
+                                    </Border.Effect>
+                                </Border>
+                                <ContentPresenter Grid.Column="1" ContentSource="Header" Margin="9,0,0,0"
+                                                  HorizontalAlignment="Stretch" VerticalAlignment="Center"/>
                             </Grid>
-                        </Border>
+                        </Grid>
                         <ControlTemplate.Triggers>
-                            <Trigger Property="IsSelected" Value="True">
-                                <Setter TargetName="TabSurface" Property="Background" Value="{DynamicResource AccentSoftBrush}"/>
-                                <Setter TargetName="ActiveIndicator" Property="Opacity" Value="1"/>
-                                <Setter Property="Foreground" Value="{DynamicResource InkBrush}"/>
-                            </Trigger>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="TabSurface" Property="Background" Value="{DynamicResource SubtleBrush}"/>
+                                <Trigger.EnterActions>
+                                    <BeginStoryboard><Storyboard>
+                                        <DoubleAnimation Storyboard.TargetName="HoverOverlay" Storyboard.TargetProperty="Opacity" To="0.06" Duration="0:0:0.15"/>
+                                    </Storyboard></BeginStoryboard>
+                                </Trigger.EnterActions>
+                                <Trigger.ExitActions>
+                                    <BeginStoryboard><Storyboard>
+                                        <DoubleAnimation Storyboard.TargetName="HoverOverlay" Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.25"/>
+                                    </Storyboard></BeginStoryboard>
+                                </Trigger.ExitActions>
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Trigger.EnterActions>
+                                    <BeginStoryboard><Storyboard>
+                                        <DoubleAnimation Storyboard.TargetName="SelectedOverlay" Storyboard.TargetProperty="Opacity" To="1" Duration="0:0:0.28"/>
+                                        <DoubleAnimation Storyboard.TargetName="ActiveIndicator" Storyboard.TargetProperty="Opacity" To="1" Duration="0:0:0.2"/>
+                                        <DoubleAnimation Storyboard.TargetName="IndicatorScale" Storyboard.TargetProperty="ScaleY" To="1" Duration="0:0:0.35">
+                                            <DoubleAnimation.EasingFunction><BackEase EasingMode="EaseOut" Amplitude="0.4"/></DoubleAnimation.EasingFunction>
+                                        </DoubleAnimation>
+                                    </Storyboard></BeginStoryboard>
+                                </Trigger.EnterActions>
+                                <Trigger.ExitActions>
+                                    <BeginStoryboard><Storyboard>
+                                        <DoubleAnimation Storyboard.TargetName="SelectedOverlay" Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.2"/>
+                                        <DoubleAnimation Storyboard.TargetName="ActiveIndicator" Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.15"/>
+                                        <DoubleAnimation Storyboard.TargetName="IndicatorScale" Storyboard.TargetProperty="ScaleY" To="0.3" Duration="0:0:0.2"/>
+                                    </Storyboard></BeginStoryboard>
+                                </Trigger.ExitActions>
+                                <Setter Property="Foreground" Value="{DynamicResource InkBrush}"/>
                             </Trigger>
                             <Trigger Property="IsEnabled" Value="False">
                                 <Setter TargetName="TabSurface" Property="Opacity" Value="0.55"/>
@@ -113,7 +151,8 @@
                         <ColumnDefinition Width="*"/>
                     </Grid.ColumnDefinitions>
 
-                    <Border Grid.Column="0" Background="{DynamicResource SidebarBrush}">
+                    <Border Grid.Column="0" Background="{StaticResource SidebarGradientBrush}"
+                            BorderBrush="{DynamicResource SidebarDividerBrush}" BorderThickness="0,0,1,0">
                         <Grid>
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto"/>
@@ -123,15 +162,16 @@
 
                             <StackPanel Grid.Row="0" Margin="22,24,18,16">
                                 <StackPanel Orientation="Horizontal">
-                                    <Border Width="40" Height="40" CornerRadius="11"
-                                            Background="{DynamicResource AccentFillBrush}" VerticalAlignment="Center">
+                                    <Border Width="40" Height="40" CornerRadius="12"
+                                            Background="{StaticResource AccentGradientBrush}" VerticalAlignment="Center"
+                                            Effect="{StaticResource AccentGlow}">
                                         <TextBlock Text="S" Foreground="White" FontSize="23"
                                                    FontWeight="Bold" HorizontalAlignment="Center"
                                                    VerticalAlignment="Center"/>
                                     </Border>
                                     <StackPanel Margin="11,1,0,0" VerticalAlignment="Center">
-                                        <TextBlock Text="StudyHub" Foreground="White"
-                                                   FontSize="18" FontWeight="SemiBold"/>
+                                        <TextBlock Text="StudyHub" Foreground="White" FontFamily="{StaticResource DisplayFont}"
+                                                   FontSize="19" FontWeight="SemiBold"/>
                                         <TextBlock Text="UNITO WORKSPACE" Foreground="{DynamicResource SidebarMutedBrush}"
                                                    FontSize="9" FontWeight="SemiBold"
                                                    Margin="0,2,0,0"/>
@@ -169,8 +209,8 @@
 
                             <StackPanel Grid.Row="2" Margin="22,12,20,22">
                                 <Border Height="1" Background="{DynamicResource SidebarDividerBrush}" Margin="0,0,0,14"/>
-                                <Border Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource BorderBrush}"
-                                        BorderThickness="1" CornerRadius="10" Padding="11,10">
+                                <Border Background="{DynamicResource AccentSoftBrush}" BorderBrush="{StaticResource GlassBorderBrush}"
+                                        BorderThickness="1" CornerRadius="14" Padding="13,12">
                                     <StackPanel>
                                         <TextBlock Text="Un passo alla volta." Foreground="{DynamicResource InkBrush}"
                                                    FontSize="12" FontWeight="SemiBold"/>
@@ -188,7 +228,7 @@
                             <RowDefinition Height="68"/>
                             <RowDefinition Height="*"/>
                         </Grid.RowDefinitions>
-                        <Border Grid.Row="0" Background="{DynamicResource PanelBrush}"
+                        <Border Grid.Row="0" Background="{DynamicResource PageBrush}"
                                 BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1"
                                 Padding="30,0">
                             <Grid VerticalAlignment="Center">
@@ -253,7 +293,7 @@
                     </StackPanel>
                 </StackPanel>
             </TabItem.Header>
-            <ScrollViewer VerticalScrollBarVisibility="Auto"
+            <ScrollViewer Style="{StaticResource PageEnterStyle}" VerticalScrollBarVisibility="Auto"
                           HorizontalScrollBarVisibility="Disabled">
                 <StackPanel Margin="34,30,34,40">
                     <Grid Margin="0,0,0,22">
@@ -464,7 +504,7 @@
                 </StackPanel>
             </TabItem.Header>
 
-            <ScrollViewer VerticalScrollBarVisibility="Auto"
+            <ScrollViewer Style="{StaticResource PageEnterStyle}" VerticalScrollBarVisibility="Auto"
                           HorizontalScrollBarVisibility="Disabled">
                 <StackPanel Margin="32,30,32,36">
                     <TextBlock Text="CARRIERA UNIVERSITARIA" FontSize="10"
@@ -659,7 +699,7 @@
                 </StackPanel>
             </TabItem.Header>
 
-            <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+            <ScrollViewer Style="{StaticResource PageEnterStyle}" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
     <StackPanel Margin="32,30,32,36">
         <TextBlock Text="ORGANIZZAZIONE" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource AccentBrush}"/>
         <TextBlock Text="Calendario" Style="{StaticResource PageTitleStyle}" Margin="0,7,0,4"/>
@@ -834,7 +874,7 @@
                     </StackPanel>
                 </StackPanel>
             </TabItem.Header>
-            <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+            <ScrollViewer Style="{StaticResource PageEnterStyle}" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
     <StackPanel Margin="32,30,32,36">
         <TextBlock Text="STUDIO E MEMORIA" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource AccentBrush}"/>
         <TextBlock Text="Studio Lab" Style="{StaticResource PageTitleStyle}" Margin="0,7,0,4"/>
@@ -845,9 +885,32 @@
                 <Style TargetType="{x:Type TabItem}">
                     <Setter Property="Width" Value="Auto"/>
                     <Setter Property="Height" Value="Auto"/>
-                    <Setter Property="Padding" Value="18,10"/>
+                    <Setter Property="Padding" Value="18,9"/>
                     <Setter Property="Margin" Value="0,0,8,12"/>
-                    <Setter Property="Foreground" Value="{DynamicResource InkBrush}"/>
+                    <Setter Property="Cursor" Value="Hand"/>
+                    <Setter Property="FontWeight" Value="SemiBold"/>
+                    <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+                    <Setter Property="Foreground" Value="{DynamicResource MutedBrush}"/>
+                    <Setter Property="Template">
+                        <Setter.Value>
+                            <ControlTemplate TargetType="{x:Type TabItem}">
+                                <Border x:Name="Pill" Background="Transparent" BorderBrush="{DynamicResource BorderBrush}"
+                                        BorderThickness="1" CornerRadius="18" Padding="{TemplateBinding Padding}">
+                                    <ContentPresenter ContentSource="Header" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+                                <ControlTemplate.Triggers>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter TargetName="Pill" Property="Background" Value="{StaticResource GlassHoverBrush}"/>
+                                    </Trigger>
+                                    <Trigger Property="IsSelected" Value="True">
+                                        <Setter TargetName="Pill" Property="Background" Value="{DynamicResource AccentSoftBrush}"/>
+                                        <Setter TargetName="Pill" Property="BorderBrush" Value="{DynamicResource AccentFillBrush}"/>
+                                        <Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
+                                    </Trigger>
+                                </ControlTemplate.Triggers>
+                            </ControlTemplate>
+                        </Setter.Value>
+                    </Setter>
                 </Style>
             </TabControl.Resources>
             <TabItem Header="Focus"><StackPanel>
@@ -1101,7 +1164,7 @@
                     </StackPanel>
                 </StackPanel>
             </TabItem.Header>
-            <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+            <ScrollViewer Style="{StaticResource PageEnterStyle}" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
     <StackPanel Margin="32,30,32,36">
         <TextBlock Text="MATERIALI DIDATTICI" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource AiBrush}"/>
         <TextBlock Text="Accademia" Style="{StaticResource PageTitleStyle}" Margin="0,7,0,4"/>
@@ -1221,7 +1284,7 @@
                 </StackPanel>
             </TabItem.Header>
 
-            <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+            <ScrollViewer Style="{StaticResource PageEnterStyle}" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
     <StackPanel Margin="32,30,32,36">
         <TextBlock Text="IL TUO ANDAMENTO" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource AccentBrush}"/>
         <TextBlock Text="Progressi" Style="{StaticResource PageTitleStyle}" Margin="0,7,0,4"/>
@@ -1286,7 +1349,7 @@
         </TabItem>
 
         <TabItem Visibility="Collapsed">
-            <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+            <ScrollViewer Style="{StaticResource PageEnterStyle}" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                 <StackPanel Margin="34,30,34,40">
                     <TextBlock Text="AREA PERSONALE" FontSize="10" FontWeight="Bold"
                                Foreground="{DynamicResource AccentBrush}"/>
@@ -1553,7 +1616,7 @@
                 </StackPanel>
             </TabItem.Header>
 
-            <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+            <ScrollViewer Style="{StaticResource PageEnterStyle}" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
     <StackPanel Margin="32,30,32,36">
         <TextBlock Text="CONFIGURAZIONE" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource AccentBrush}"/>
         <TextBlock Text="Impostazioni" Style="{StaticResource PageTitleStyle}" Margin="0,7,0,4"/>
