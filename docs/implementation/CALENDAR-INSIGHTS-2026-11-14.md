@@ -3,7 +3,7 @@
 ## Ambito
 
 La nuova `CalendarInsightsService` analizza la sorgente calendario già esistente (`StudyData.CalendarEvents`). Non crea
-un secondo archivio, non sposta eventi e non salva proposte: restituisce un risultato immutabile da usare nei binding
+un secondo archivio, non sposta eventi e non salva proposte: restituisce un risultato di sola lettura da usare nei binding
 WPF o in altri casi d'uso.
 
 Il servizio è registrato come singleton in `CompositionRoot`.
@@ -36,7 +36,7 @@ restituisce `CalendarRangeAnalysis` con:
 - I confronti avvengono sugli istanti `DateTimeOffset`, non confrontando l'ora locale testuale.
 - Gli eventi annullati o con intervallo non valido vengono ignorati.
 - Gli eventi all-day non occupano automaticamente tutto il tempo disponibile: per includerli nei conflitti, nel tempo occupato e nel calcolo degli slot liberi passare `includeAllDayEvents: true`. Restano comunque visibili nel conteggio degli eventi e nelle scadenze.
-- I riepiloghi sono calcolati nel fuso orario richiesto; una giornata può durare 23 o 25 ore nei cambi DST. Le date civili saltate da un cambio di fuso non generano tempo occupato fittizio.
+- I riepiloghi sono calcolati nel fuso orario richiesto e ritagliano il primo/ultimo giorno al periodo richiesto; una giornata intera può durare 23 o 25 ore nei cambi DST. Le date civili saltate da un cambio di fuso non generano tempo occupato fittizio.
 - Un range può contenere al massimo 10.000 eventi attivi; la ricerca conflitti si ferma con errore esplicito oltre 25.000 coppie; i riepiloghi giornalieri coprono al massimo 366 giorni; le scadenze restituite sono limitate a 100. Questi limiti impediscono che importazioni locali anomale causino una crescita incontrollata del lavoro.
 - Le finestre libere sono opportunità temporali, non raccomandazioni né prenotazioni. Il planner mantiene la propria logica di preview/apply e conferma.
 
