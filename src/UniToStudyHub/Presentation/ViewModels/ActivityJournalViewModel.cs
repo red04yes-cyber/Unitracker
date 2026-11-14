@@ -291,10 +291,8 @@ public sealed class ActivityJournalViewModel : INotifyPropertyChanged
         foreach (var course in data.Courses.OrderBy(x => x.Name, StringComparer.CurrentCultureIgnoreCase))
             Courses.Add(course);
 
-        if (SelectedCourse is null || !Courses.Any(x => x.Id == SelectedCourse.Id))
-            SelectedCourse = Courses.FirstOrDefault();
-        else
-            RefreshLinkedOptions();
+        var selectedCourseId = SelectedCourse?.Id;
+        SelectedCourse = Courses.FirstOrDefault(x => x.Id == selectedCourseId) ?? Courses.FirstOrDefault();
 
         EntryDateInput = SelectedDay;
         Refresh();
