@@ -41,6 +41,7 @@ public sealed class SqliteStudyDataStoreTests
         Assert.Contains("20261104000100_InitialCreate", migrations);
         Assert.Contains("20261104000200_AddCourseRelationships", migrations);
         Assert.Contains("20261104192749_AddAcademicKnowledgeModel", migrations);
+        Assert.Contains("20261114000100_AddNotificationDismissals", migrations);
     }
 
     [Fact]
@@ -64,6 +65,7 @@ public sealed class SqliteStudyDataStoreTests
         Assert.Contains("SyllabusTopics", tables);
         Assert.Contains("QuestionBankItems", tables);
         Assert.Contains("LegacyImports", tables);
+        Assert.Contains("NotificationDismissals", tables);
 
         var indexes = await database.QueryScalarsAsync(
             "SELECT name FROM sqlite_master WHERE type='index' AND name='IX_CareerExams_CourseId'");
@@ -88,6 +90,12 @@ public sealed class SqliteStudyDataStoreTests
         await using var database = await SqliteTestDatabase.CreateInMemoryAsync();
         var store = Store(database);
         var source = TestStudyData.CreateValid();
+        var dismissedAt = new DateTimeOffset(2026, 11, 14, 8, 30, 0, TimeSpan.Zero);
+        source.NotificationDismissals.Add(new NotificationDismissalData
+        {
+            Key = new string('A', 64),
+            DismissedAt = dismissedAt
+        });
 
         await store.SaveAsync(source);
         var loaded = await store.LoadAsync();
@@ -108,6 +116,9 @@ public sealed class SqliteStudyDataStoreTests
         Assert.Equal("Completed", loaded.CareerExams[0].Attempts[0].Status);
         Assert.Equal(28, loaded.CareerExams[0].Attempts[0].NumericGrade);
         Assert.NotNull(loaded.CareerExams[0].Attempts[0].RecordedAt);
+        Assert.Single(loaded.NotificationDismissals);
+        Assert.Equal(new string('A', 64), loaded.NotificationDismissals[0].Key);
+        Assert.Equal(dismissedAt, loaded.NotificationDismissals[0].DismissedAt);
     }
 
     [Fact]
@@ -115,7 +126,13 @@ public sealed class SqliteStudyDataStoreTests
     {
         await using var database = await SqliteTestDatabase.CreateInMemoryAsync();
         var store = Store(database);
-        await store.SaveAsync(TestStudyData.CreateValid());
+        var original = TestStudyData.CreateValid();
+        original.NotificationDismissals.Add(new NotificationDismissalData
+        {
+            Key = new string('B', 64),
+            DismissedAt = new DateTimeOffset(2026, 11, 13, 8, 0, 0, TimeSpan.Zero)
+        });
+        await store.SaveAsync(original);
 
         await using (var db = database.CreateContext())
         {
@@ -124,6 +141,11 @@ public sealed class SqliteStudyDataStoreTests
         }
 
         var modified = TestStudyData.CreateValid();
+        modified.NotificationDismissals.Add(new NotificationDismissalData
+        {
+            Key = new string('C', 64),
+            DismissedAt = new DateTimeOffset(2026, 11, 14, 8, 0, 0, TimeSpan.Zero)
+        });
         modified.Courses[0].Name = "Nome modificato";
 
         var ex = await Assert.ThrowsAsync<InvalidDataException>(() => store.SaveAsync(modified));
@@ -133,6 +155,48 @@ public sealed class SqliteStudyDataStoreTests
         Assert.Equal(2, loaded.Courses.Count);
         Assert.Contains(loaded.Courses, x => x.Name == "Analisi");
         Assert.DoesNotContain(loaded.Courses, x => x.Name == "Nome modificato");
+        Assert.Contains(loaded.NotificationDismissals, x => x.Key == new string('B', 64));
+        Assert.DoesNotContain(loaded.NotificationDismissals, x => x.Key == new string('C', 64));
+    }
+
+    [Fact]
+    public async Task SaveRejectsMalformedNotificationDismissalKeyBeforeDeletingExistingData()
+    {
+        await using var database = await SqliteTestDatabase.CreateInMemoryAsync();
+        var store = Store(database);
+        await store.SaveAsync(TestStudyData.CreateValid());
+
+        var invalid = TestStudyData.CreateValid();
+        invalid.NotificationDismissals.Add(new NotificationDismissalData
+        {
+            Key = "not-a-sha256-key",
+            DismissedAt = new DateTimeOffset(2026, 11, 14, 8, 0, 0, TimeSpan.Zero)
+        });
+
+        await Assert.ThrowsAsync<InvalidDataException>(() => store.SaveAsync(invalid));
+
+        var loaded = await store.LoadAsync();
+        Assert.Equal(2, loaded.Courses.Count);
+        Assert.Empty(loaded.NotificationDismissals);
+    }
+
+    [Fact]
+    public async Task SaveRejectsDuplicateNotificationDismissalKeysBeforeDeletingExistingData()
+    {
+        await using var database = await SqliteTestDatabase.CreateInMemoryAsync();
+        var store = Store(database);
+        await store.SaveAsync(TestStudyData.CreateValid());
+
+        var invalid = TestStudyData.CreateValid();
+        var timestamp = new DateTimeOffset(2026, 11, 14, 8, 0, 0, TimeSpan.Zero);
+        invalid.NotificationDismissals.Add(new NotificationDismissalData { Key = new string('D', 64), DismissedAt = timestamp });
+        invalid.NotificationDismissals.Add(new NotificationDismissalData { Key = new string('D', 64), DismissedAt = timestamp.AddMinutes(1) });
+
+        await Assert.ThrowsAsync<InvalidDataException>(() => store.SaveAsync(invalid));
+
+        var loaded = await store.LoadAsync();
+        Assert.Equal(2, loaded.Courses.Count);
+        Assert.Empty(loaded.NotificationDismissals);
     }
 
     [Fact]
@@ -191,6 +255,7 @@ public sealed class SqliteStudyDataStoreTests
             Assert.Equal(1, await db.CareerExams.CountAsync());
             Assert.Equal(1, await db.ExamAttempts.CountAsync());
             Assert.Equal("https://moodle.example.edu", (await db.ProfileSettings.SingleAsync()).MoodleBaseUrl);
+            Assert.Empty(await db.NotificationDismissals.ToListAsync());
         }
 
         var foreignKeys = await database.QueryScalarsAsync(
