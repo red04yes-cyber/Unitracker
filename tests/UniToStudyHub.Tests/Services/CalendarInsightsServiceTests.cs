@@ -261,7 +261,7 @@ public sealed class CalendarInsightsServiceTests
     {
         var start = new DateTimeOffset(2026, 11, 14, 8, 0, 0, TimeSpan.Zero);
         var events = Enumerable.Range(0, CalendarInsightsService.MaximumEventsPerRange + 1)
-            .Select(index => Event($"event-{index:D5}", start.AddMinutes(index), start.AddMinutes(index + 1)))
+            .Select(index => Event($"event-{index:D5}", start, start.AddMinutes(1)))
             .ToArray();
 
         Assert.Throws<InvalidOperationException>(() =>
