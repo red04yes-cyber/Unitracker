@@ -208,7 +208,12 @@ public sealed class BackupService
             var extension = Path.GetExtension(backupPath);
             if (extension.Equals(".db", StringComparison.OrdinalIgnoreCase))
             {
-                if (!await VerifySqliteFileAsync(backupPath, cancellationToken).ConfigureAwait(false))
+                LocalFileSecurity.EnsurePrivateDirectory(_verificationDirectory);
+                plaintextPath = Path.Combine(_verificationDirectory, $"verify-{Guid.NewGuid():N}.db");
+                await CopyFileBoundedAsync(backupPath, plaintextPath, MaximumPayloadBytes, cancellationToken)
+                    .ConfigureAwait(false);
+                LocalFileSecurity.TryRestrictFile(plaintextPath);
+                if (!await VerifySqliteFileAsync(plaintextPath, cancellationToken).ConfigureAwait(false))
                     return false;
                 var legacyManifest = await ReadManifestAsync(backupPath, cancellationToken).ConfigureAwait(false);
                 if (legacyManifest is null || string.IsNullOrWhiteSpace(legacyManifest.Sha256)) return true;
@@ -551,19 +556,26 @@ public sealed class BackupService
         await using var destination = new FileStream(destinationPath, FileMode.CreateNew, FileAccess.Write, FileShare.None,
             81920, FileOptions.Asynchronous | FileOptions.SequentialScan);
         var buffer = new byte[81920];
-        long total = 0;
-        while (true)
+        try
         {
-            var read = await source.ReadAsync(buffer.AsMemory(), cancellationToken).ConfigureAwait(false);
-            if (read == 0) break;
-            if (total > maximumBytes - read)
-                throw new InvalidDataException("La copia di sicurezza supera il limite di dimensione consentito.");
-            await destination.WriteAsync(buffer.AsMemory(0, read), cancellationToken).ConfigureAwait(false);
-            total += read;
+            long total = 0;
+            while (true)
+            {
+                var read = await source.ReadAsync(buffer.AsMemory(), cancellationToken).ConfigureAwait(false);
+                if (read == 0) break;
+                if (total > maximumBytes - read)
+                    throw new InvalidDataException("La copia di sicurezza supera il limite di dimensione consentito.");
+                await destination.WriteAsync(buffer.AsMemory(0, read), cancellationToken).ConfigureAwait(false);
+                total += read;
+            }
+            if (total == 0)
+                throw new InvalidDataException("La copia di sicurezza è vuota.");
+            await destination.FlushAsync(cancellationToken).ConfigureAwait(false);
         }
-        if (total == 0)
-            throw new InvalidDataException("La copia di sicurezza è vuota.");
-        await destination.FlushAsync(cancellationToken).ConfigureAwait(false);
+        finally
+        {
+            CryptographicOperations.ZeroMemory(buffer);
+        }
     }
 
     private static string ComputeSha256(string path, long maximumBytes)
@@ -572,16 +584,23 @@ public sealed class BackupService
             81920, FileOptions.SequentialScan);
         using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
         var buffer = new byte[81920];
-        long total = 0;
-        while (true)
+        try
         {
-            var read = stream.Read(buffer, 0, buffer.Length);
-            if (read == 0) break;
-            if (total > maximumBytes - read)
-                throw new InvalidDataException("La copia di sicurezza supera il limite di dimensione consentito.");
-            hash.AppendData(buffer, 0, read);
-            total += read;
+            long total = 0;
+            while (true)
+            {
+                var read = stream.Read(buffer, 0, buffer.Length);
+                if (read == 0) break;
+                if (total > maximumBytes - read)
+                    throw new InvalidDataException("La copia di sicurezza supera il limite di dimensione consentito.");
+                hash.AppendData(buffer, 0, read);
+                total += read;
+            }
+            return Convert.ToHexString(hash.GetHashAndReset());
         }
-        return Convert.ToHexString(hash.GetHashAndReset());
+        finally
+        {
+            CryptographicOperations.ZeroMemory(buffer);
+        }
     }
 }
