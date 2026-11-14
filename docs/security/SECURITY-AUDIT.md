@@ -73,7 +73,7 @@ Se in futuro venisse trovata una credenziale reale:
 
 ## Verificato senza modifiche
 
-- Il token Moodle viaggia nel corpo POST, mai in URL o query string.
+- Le chiamate REST Moodle usano POST con token nel corpo. Per il download file, l'endpoint Moodle richiede `token=` nella query del singolo GET: il client lo aggiunge solo a quella richiesta, non registra l'URL completo, disabilita i redirect e limita la destinazione alla stessa origine. La query resta un rischio residuo del protocollo e va mantenuta isolata.
 - Nessun contenuto scaricato viene eseguito: nel codice applicativo non ci sono
   `Process.Start`, `Assembly.Load`, hook di tastiera o enumerazione di finestre.
 - Gli export JSON/CSV/XLSX già neutralizzavano HTML e formule; ora è coperto da
