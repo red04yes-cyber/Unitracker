@@ -38,6 +38,7 @@ public static class CompositionRoot
         services.AddSingleton<ExamReadinessService>();
         services.AddSingleton<TimeBudgetService>();
         services.AddSingleton<CalendarApplicationService>();
+        services.AddSingleton<ExamPlanningService>();
         services.AddSingleton<CalendarEventStore>();
         services.AddSingleton<IcsImportService>();
         services.AddSingleton<FocusSessionService>();
