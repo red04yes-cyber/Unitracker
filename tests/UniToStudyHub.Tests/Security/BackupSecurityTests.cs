@@ -10,6 +10,7 @@ using Xunit;
 
 namespace UniToStudyHub.Tests.Security;
 
+[Collection("AppDiagnostics")]
 public sealed class BackupSecurityTests
 {
     private const string Password = "correct horse battery staple";
