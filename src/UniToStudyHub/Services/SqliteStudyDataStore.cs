@@ -50,6 +50,7 @@ public sealed class SqliteStudyDataStore(IDbContextFactory<StudyHubDbContext> co
             {
                 // Delete children before parents; the whole replacement is atomic.
                 await db.PomodoroCycles.ExecuteDeleteAsync(cancellationToken);
+                await db.NotificationDismissals.ExecuteDeleteAsync(cancellationToken);
                 await db.PomodoroTimers.ExecuteDeleteAsync(cancellationToken);
                 await db.PomodoroSettings.ExecuteDeleteAsync(cancellationToken);
                 await db.CalendarEvents.ExecuteDeleteAsync(cancellationToken);
