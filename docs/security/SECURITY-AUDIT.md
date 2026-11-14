@@ -65,7 +65,7 @@ Se in futuro venisse trovata una credenziale reale:
 | F-08 | P1 | Le eccezioni grezze potevano finire in UI e log con percorsi, URL o token | `SecurityRedaction` per log, eccezioni e messaggi utente; log locale ruotato e redatto; niente telemetria | `Security/SecurityRedaction.cs`, `Security/AppDiagnostics.cs`, `Presentation/ViewModels/MainViewModel.cs` |
 | F-09 | P1 | Non esisteva una disconnessione Moodle: il token restava utilizzabile dopo la rimozione dell'integrazione | `DisconnectAsync` cancella il segreto, `IsConnected` guida lo stato, ogni chiamata di rete richiede un token presente; `ClearLocalMoodleReferences` rimuove URL e riferimenti ai corsi senza toccare la carriera | `Services/MoodleApplicationService.cs` |
 | F-10 | P1 | JSON legacy e calendario importato senza ACL, scrittura atomica o limiti effettivi di lettura; campi non sanificati | Limite effettivo di 64 MB per JSON legacy e migrazione generale, 16 MB per il calendario JSON legacy e 10 MB per ICS; lettura bounded sullo stream aperto, backup prima della migrazione, sanitizzazione dei campi, scrittura atomica e ACL | `Security/BoundedFileReader.cs`, `Services/CalendarEventStore.cs`, `Services/LocalDataStore.cs`, `Services/LegacyJsonMigrator.cs`, `Services/IcsCalendarParser.cs` |
-| F-11 | P2 | SQLite non è cifrato a riposo | Nessuna dipendenza aggiunta: `DatabaseProtectionStatus` dichiara esplicitamente che il database non è cifrato e raccomanda BitLocker/EFS. Nessuna affermazione di cifratura nel README | `Infrastructure/Data/StudyHubDbContextFactory.cs` |
+| F-11 | P2 | Database SQLite non cifrato nella baseline audit del 5 novembre 2026 | Chiuso successivamente: SQLCipher v4 AES-256-CBC + HMAC-SHA512, chiave casuale DPAPI per utente Windows, conversione del vecchio SQLite con snapshot e `integrity_check` prima della sostituzione; test Windows dedicati | `Infrastructure/Data/StudyHubDbContextFactory.cs`, `Infrastructure/Data/DatabaseKeyVault.cs`, `tests/UniToStudyHub.Tests/Infrastructure/StudyHubDatabaseTests.cs` |
 | F-12 | P2 | Mancavano export completo, cancellazione dati e retention | `PrivacyService`: inventario, export JSON completo, cancellazione di dati/credenziali/backup/file legacy/log, retention (10 backup, 90 giorni) | `Services/PrivacyService.cs` |
 | F-13 | P2 | Import senza limiti espliciti e campi importati non sanificati | Limiti di dimensione, sanitizzazione e messaggi di avviso; le note private restano escluse dagli export standard | `Services/IcsCalendarParser.cs`, `Services/StudyExports.cs` |
 | F-14 | P1 | Verifica, elenco e ripristino backup leggevano container/manifest senza un budget effettivo; l'elenco poteva seguire voci reparse e calcolare hash senza limite | Container `.utbk` limitati a 512 MiB di payload più overhead massimo, legacy `.db` a 512 MiB, manifest a 64 KiB; lettura/copia/hash bounded sullo stream aperto; elenco limitato a file interni non-reparse | `Services/BackupService.cs`, `Security/BackupCrypto.cs`, `Security/BoundedFileReader.cs` |
@@ -85,9 +85,7 @@ Se in futuro venisse trovata una credenziale reale:
 
 ## Rischi residui e limitazioni
 
-- **SQLite non cifrato**: chi ha accesso al profilo Windows può leggere il file.
-  La raccomandazione è BitLocker/EFS; non è stata introdotta una dipendenza di
-  cifratura SQLite in questa slice.
+- **SQLCipher e DPAPI**: il database e i relativi journal/WAL sono cifrati; la chiave è legata all'account Windows. `DescribeProtection` verifica cifratura e ACL solo su Windows: su Linux lo stato resta non verificato. I file Moodle scaricati sono separati dal DB e dipendono da ACL e protezione del volume (BitLocker/EFS).
 - **DPAPI legato all'utente Windows**: il token e le chiavi AI non sono
   trasferibili ad altro account. I backup protetti da password sono trasferibili
   per scelta esplicita dell'utente.
