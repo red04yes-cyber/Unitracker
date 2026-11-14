@@ -101,9 +101,7 @@ Se in futuro venisse trovata una credenziale reale:
 - **Allowlist gitleaks**: `tests/` e `docs/` sono esclusi perché contengono
   fixture deliberatamente fittizie. Una credenziale reale committata in quei
   percorsi non verrebbe segnalata; la revisione manuale resta necessaria.
-- **Dependency audit report-only**: `dotnet list package --vulnerable` elenca le
-  vulnerabilità ma non fallisce la build; l'aggiornamento è una decisione dei
-  maintainer.
+- **Dependency audit**: `security-scan.yml` tratta NU1901–NU1904 come errori per i progetti applicativo e test; advisory fuori da questi livelli e rischi runtime non sono coperti da questo gate.
 - **Backup di grandi dimensioni**: il restore resta in memoria per AES-GCM e può richiedere memoria significativa; l'input è ora limitato a 512 MiB di payload, ma non è uno streaming restore.
 
 ## Segnalazione
