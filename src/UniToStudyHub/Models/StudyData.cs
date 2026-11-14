@@ -28,6 +28,7 @@ public sealed class StudyData
     public ObservableCollection<DistractionData> Distractions { get; set; } = new();
     public ObservableCollection<EnergyCheckInData> EnergyCheckIns { get; set; } = new();
     public ObservableCollection<PdfDocumentData> PdfDocuments { get; set; } = new();
+    public ObservableCollection<NotificationDismissalData> NotificationDismissals { get; set; } = new();
 
     public DateTime GraduationTarget { get; set; } = new(2027, 10, 1);
     public string MoodleBaseUrl { get; set; } = string.Empty;
@@ -43,6 +44,14 @@ public sealed class StudyData
     public string StudyPreferences { get; set; } = string.Empty;
     public int WeeklyStudyHours { get; set; } = 20;
     public int MaxDailyStudyMinutes { get; set; } = 240;
+}
+
+public sealed class NotificationDismissalData
+{
+    // SHA-256 of the notification source identity and occurrence instant.
+    // Notification text and personal content are deliberately not persisted.
+    public string Key { get; set; } = string.Empty;
+    public DateTimeOffset DismissedAt { get; set; }
 }
 
 public sealed class Course
