@@ -179,8 +179,7 @@ public sealed class BackupService
                                            or ArgumentException or System.Security.SecurityException)
             {
                 // A malformed, oversized or reparse-point entry is not a backup.
-                // Preserve it on disk; listing must never delete user files.
-                AppDiagnostics.Warning("backup", "Una copia locale non è stata elencata perché non è accessibile o supera i limiti.");
+                // Preserve it on disk and do not log attacker-controlled directory churn.
             }
         }
         return results.OrderByDescending(x => x.CreatedAt).ToList();
@@ -247,7 +246,12 @@ public sealed class BackupService
                 valid = false;
             return valid;
         }
-        catch (Exception ex) when (ex is InvalidDataException or IOException or UnauthorizedAccessException
+        catch (InvalidDataException)
+        {
+            // Invalid/oversized input is an expected verification result, not an operational failure.
+            return false;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException
                                        or CryptographicException or ArgumentException or System.Security.SecurityException)
         {
             AppDiagnostics.Warning("backup", "Verifica della copia non riuscita.", ex);
