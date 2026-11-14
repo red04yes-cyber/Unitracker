@@ -66,8 +66,7 @@ L'audit completo, l'esito della scansione dei segreti e i rischi residui sono in
 
 ## 5. Log e diagnostica
 
-- `AppDiagnostics`: log locale redatto, rotazione a 512 KB con 3 file, nessun
-  sink remoto, nessuna telemetria.
+- `AppDiagnostics`: log locale redatto, rotazione a 512 KB con 3 file, nessun sink remoto. `PrivacyService` rilegge i log per il bundle diagnostico con limite effettivo di 512 KiB per stream aperto e consenso esplicito.
 - `SecurityRedaction`: redazione di token, password, header `Authorization`,
   URL con token, email, percorsi utente e chiavi private; messaggi utente
   generici con dettaglio utile solo per gli errori di validazione.
