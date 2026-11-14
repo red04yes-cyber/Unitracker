@@ -156,7 +156,7 @@ Windows resta il gate per il runtime.
 - Scrubbing delle stringhe best-effort.
 - DNS rebinding fuori dal modello di minaccia.
 - Allowlist gitleaks su `tests/` e `docs/`.
-- Dependency audit report-only.
+- Dependency audit bloccante per NU1901–NU1904 in `security-scan.yml`; gli altri livelli/advisory e i rischi runtime restano fuori da questo gate.
 
 ## Prossima slice sicura
 
