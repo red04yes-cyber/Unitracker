@@ -131,6 +131,37 @@ public sealed class PrivacyResetAndDiagnosticsTests
     }
 
     [Fact]
+    public async Task DiagnosticBundleExcludesOversizedLogFiles()
+    {
+        var previousDirectory = AppDiagnostics.Directory;
+        var previousEnabled = AppDiagnostics.IsEnabled;
+        var logs = Path.Combine(Path.GetTempPath(), "unitracker-diagnostics-large-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            AppDiagnostics.Configure(logs);
+            AppDiagnostics.IsEnabled = false;
+            Directory.CreateDirectory(logs);
+            await File.WriteAllTextAsync(Path.Combine(logs, "unitracker-oversized.log"),
+                new string('x', PrivacyDefaults.MaximumDiagnosticLogBytes + 1));
+
+            var service = new PrivacyService(new InMemoryStudyDataStore());
+            Assert.Equal(0, service.PreviewDiagnosticBundle().AvailableLogFiles);
+
+            var bytes = await service.CreateDiagnosticBundleAsync(userConsent: true, includeLogs: true);
+            using var archive = new ZipArchive(new MemoryStream(bytes), ZipArchiveMode.Read);
+            var logEntry = Assert.Single(archive.Entries, x => x.FullName == "redacted-application.log");
+            using var reader = new StreamReader(logEntry.Open(), Encoding.UTF8);
+            Assert.Equal(string.Empty, await reader.ReadToEndAsync());
+        }
+        finally
+        {
+            AppDiagnostics.IsEnabled = previousEnabled;
+            AppDiagnostics.Configure(previousDirectory);
+            if (Directory.Exists(logs)) Directory.Delete(logs, recursive: true);
+        }
+    }
+
+    [Fact]
     public async Task CompleteDeletionRevokesPersistedAiConsent()
     {
         await using var database = await SqliteTestDatabase.CreateFileAsync();

@@ -55,6 +55,8 @@ public sealed class BackupService
     public const int LegacyFormatVersion = 1;
     public const string ContainerExtension = ".utbk";
     public const long MaximumPayloadBytes = 512L * 1024 * 1024;
+    public const long MaximumContainerBytes = MaximumPayloadBytes + BackupCrypto.MaximumContainerOverheadBytes;
+    public const int MaximumManifestBytes = 64 * 1024;
 
     private readonly IDbContextFactory<StudyHubDbContext> _factory;
     private readonly string _databasePath;
@@ -114,7 +116,10 @@ public sealed class BackupService
                 throw new InvalidDataException(
                     "The database is too large for an encrypted backup (limit 512 MB).");
 
-            payload = await File.ReadAllBytesAsync(staging, cancellationToken).ConfigureAwait(false);
+            await using var stagingStream = new FileStream(staging, FileMode.Open, FileAccess.Read, FileShare.Read,
+                81920, FileOptions.Asynchronous | FileOptions.SequentialScan);
+            payload = await BoundedFileReader.ReadAllBytesAsync(stagingStream, MaximumPayloadBytes, cancellationToken)
+                .ConfigureAwait(false);
             var payloadHash = Convert.ToHexString(SHA256.HashData(payload));
             var container = BackupCrypto.Encrypt(payload, password, _keyProtector);
             var containerHash = Convert.ToHexString(SHA256.HashData(container));
@@ -151,21 +156,31 @@ public sealed class BackupService
         var results = new List<BackupInfo>();
         foreach (var path in Directory.EnumerateFiles(_backupDirectory, "unitracker-*", SearchOption.TopDirectoryOnly))
         {
-            var extension = Path.GetExtension(path);
-            if (!extension.Equals(ContainerExtension, StringComparison.OrdinalIgnoreCase) &&
-                !extension.Equals(".db", StringComparison.OrdinalIgnoreCase)) continue;
-            var manifest = TryReadManifest(path);
-            var containerHash = ComputeSha256(path);
-            results.Add(new BackupInfo(
-                path,
-                manifest?.CreatedAt ?? new DateTimeOffset(File.GetLastWriteTimeUtc(path), TimeSpan.Zero),
-                new FileInfo(path).Length,
-                manifest?.Sha256 ?? containerHash,
-                false,
-                extension.Equals(ContainerExtension, StringComparison.OrdinalIgnoreCase),
-                manifest?.KeyProtection ?? "none",
-                manifest?.FormatVersion ?? LegacyFormatVersion,
-                containerHash));
+            var maximumBytes = GetMaximumBackupFileBytes(path);
+            if (maximumBytes == 0 || !LocalFileSecurity.IsInside(_backupDirectory, path)) continue;
+
+            try
+            {
+                var sizeBytes = GetFileLengthWithinLimit(path, maximumBytes);
+                var manifest = TryReadManifest(path);
+                var containerHash = ComputeSha256(path, maximumBytes);
+                results.Add(new BackupInfo(
+                    path,
+                    manifest?.CreatedAt ?? new DateTimeOffset(File.GetLastWriteTimeUtc(path), TimeSpan.Zero),
+                    sizeBytes,
+                    manifest?.Sha256 ?? containerHash,
+                    false,
+                    Path.GetExtension(path).Equals(ContainerExtension, StringComparison.OrdinalIgnoreCase),
+                    manifest?.KeyProtection ?? "none",
+                    manifest?.FormatVersion ?? LegacyFormatVersion,
+                    containerHash));
+            }
+            catch (Exception ex) when (ex is InvalidDataException or IOException or UnauthorizedAccessException
+                                           or ArgumentException or System.Security.SecurityException)
+            {
+                // A malformed, oversized or reparse-point entry is not a backup.
+                // Preserve it on disk and do not log attacker-controlled directory churn.
+            }
         }
         return results.OrderByDescending(x => x.CreatedAt).ToList();
     }
@@ -184,27 +199,36 @@ public sealed class BackupService
         CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(backupPath) || !File.Exists(backupPath)) return false;
-        var extension = Path.GetExtension(backupPath);
-        if (extension.Equals(".db", StringComparison.OrdinalIgnoreCase))
-        {
-            if (!await VerifySqliteFileAsync(backupPath, cancellationToken).ConfigureAwait(false)) return false;
-            var legacyManifest = await ReadManifestAsync(backupPath, cancellationToken).ConfigureAwait(false);
-            if (legacyManifest is null || string.IsNullOrWhiteSpace(legacyManifest.Sha256)) return true;
-            return string.Equals(legacyManifest.Sha256, ComputeSha256(backupPath),
-                StringComparison.OrdinalIgnoreCase);
-        }
-        if (!extension.Equals(ContainerExtension, StringComparison.OrdinalIgnoreCase)) return false;
+        var maximumBytes = GetMaximumBackupFileBytes(backupPath);
+        if (maximumBytes == 0) return false;
 
         string? plaintextPath = null;
         byte[] plaintext = Array.Empty<byte>();
         try
         {
+            GetFileLengthWithinLimit(backupPath, maximumBytes);
+            var extension = Path.GetExtension(backupPath);
+            if (extension.Equals(".db", StringComparison.OrdinalIgnoreCase))
+            {
+                LocalFileSecurity.EnsurePrivateDirectory(_verificationDirectory);
+                plaintextPath = Path.Combine(_verificationDirectory, $"verify-{Guid.NewGuid():N}.db");
+                await CopyFileBoundedAsync(backupPath, plaintextPath, MaximumPayloadBytes, cancellationToken)
+                    .ConfigureAwait(false);
+                LocalFileSecurity.TryRestrictFile(plaintextPath);
+                if (!await VerifySqliteFileAsync(plaintextPath, cancellationToken).ConfigureAwait(false))
+                    return false;
+                var legacyManifest = await ReadManifestAsync(backupPath, cancellationToken).ConfigureAwait(false);
+                if (legacyManifest is null || string.IsNullOrWhiteSpace(legacyManifest.Sha256)) return true;
+                return string.Equals(legacyManifest.Sha256, ComputeSha256(backupPath, maximumBytes),
+                    StringComparison.OrdinalIgnoreCase);
+            }
+
             var manifest = await ReadManifestAsync(backupPath, cancellationToken).ConfigureAwait(false);
             if (manifest is not null)
             {
                 if (manifest.FormatVersion > CurrentFormatVersion) return false;
                 if (!string.IsNullOrWhiteSpace(manifest.CiphertextSha256) &&
-                    !string.Equals(manifest.CiphertextSha256, ComputeSha256(backupPath),
+                    !string.Equals(manifest.CiphertextSha256, ComputeSha256(backupPath, maximumBytes),
                         StringComparison.OrdinalIgnoreCase)) return false;
             }
 
@@ -222,8 +246,13 @@ public sealed class BackupService
                 valid = false;
             return valid;
         }
-        catch (Exception ex) when (ex is InvalidDataException or IOException or UnauthorizedAccessException
-                                       or CryptographicException or ArgumentException)
+        catch (InvalidDataException)
+        {
+            // Invalid/oversized input is an expected verification result, not an operational failure.
+            return false;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException
+                                       or CryptographicException or ArgumentException or System.Security.SecurityException)
         {
             AppDiagnostics.Warning("backup", "Verifica della copia non riuscita.", ex);
             return false;
@@ -252,13 +281,18 @@ public sealed class BackupService
         if (!File.Exists(backupPath))
             throw new FileNotFoundException("The selected backup does not exist.", backupPath);
 
+        var maximumBytes = GetMaximumBackupFileBytes(backupPath);
+        if (maximumBytes == 0)
+            throw new InvalidDataException("Il formato della copia di sicurezza non è supportato.");
+        GetFileLengthWithinLimit(backupPath, maximumBytes);
+
         var manifest = await ReadManifestAsync(backupPath, cancellationToken).ConfigureAwait(false);
         if (manifest is not null && manifest.FormatVersion > CurrentFormatVersion)
             throw new InvalidDataException("The selected backup was created by a newer backup format.");
 
         var isContainer = Path.GetExtension(backupPath).Equals(ContainerExtension, StringComparison.OrdinalIgnoreCase);
         if (isContainer && manifest is not null && !string.IsNullOrWhiteSpace(manifest.CiphertextSha256) &&
-            !string.Equals(manifest.CiphertextSha256, ComputeSha256(backupPath), StringComparison.OrdinalIgnoreCase))
+            !string.Equals(manifest.CiphertextSha256, ComputeSha256(backupPath, maximumBytes), StringComparison.OrdinalIgnoreCase))
             throw new InvalidDataException("The selected backup does not match its checksum manifest.");
 
         var temporary = _databasePath + ".restore-" + Guid.NewGuid().ToString("N") + ".tmp";
@@ -276,7 +310,8 @@ public sealed class BackupService
             }
             else
             {
-                File.Copy(backupPath, temporary, overwrite: true);
+                await CopyFileBoundedAsync(backupPath, temporary, MaximumPayloadBytes, cancellationToken)
+                    .ConfigureAwait(false);
             }
             // Older v1 backups contain a plaintext SQLite file. Convert the
             // temporary restore candidate before it can replace the live DB.
@@ -360,14 +395,18 @@ public sealed class BackupService
         if (!File.Exists(path)) return null;
         try
         {
-            await using var stream = File.OpenRead(path);
-            var manifest = await JsonSerializer.DeserializeAsync<BackupManifest>(stream,
+            await using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read,
+                81920, FileOptions.Asynchronous | FileOptions.SequentialScan);
+            var bytes = await BoundedFileReader.ReadAllBytesAsync(stream, MaximumManifestBytes, cancellationToken)
+                .ConfigureAwait(false);
+            await using var payload = new MemoryStream(bytes, writable: false);
+            var manifest = await JsonSerializer.DeserializeAsync<BackupManifest>(payload,
                 cancellationToken: cancellationToken).ConfigureAwait(false);
             // ConfigureAwait(false) keeps the synchronous ListBackups() path safe
             // when it is called from the WPF UI thread.
             return manifest is null || manifest.FormatVersion <= 0 ? null : manifest;
         }
-        catch (Exception ex) when (ex is JsonException or NotSupportedException or IOException)
+        catch (Exception ex) when (ex is InvalidDataException or JsonException or NotSupportedException or IOException)
         {
             throw new InvalidDataException("The backup manifest is not valid JSON.", ex);
         }
@@ -390,7 +429,10 @@ public sealed class BackupService
         string? password,
         CancellationToken cancellationToken)
     {
-        var bytes = await File.ReadAllBytesAsync(backupPath, cancellationToken).ConfigureAwait(false);
+        await using var source = new FileStream(backupPath, FileMode.Open, FileAccess.Read, FileShare.Read,
+            81920, FileOptions.Asynchronous | FileOptions.SequentialScan);
+        var bytes = await BoundedFileReader.ReadAllBytesAsync(source, MaximumContainerBytes, cancellationToken)
+            .ConfigureAwait(false);
         try
         {
             if (!BackupCrypto.LooksLikeContainer(bytes))
@@ -490,9 +532,82 @@ public sealed class BackupService
             JsonSerializer.Serialize(manifest, new JsonSerializerOptions { WriteIndented = true }),
             cancellationToken);
 
-    private static string ComputeSha256(string path)
+    private static long GetMaximumBackupFileBytes(string path)
     {
-        using var stream = File.OpenRead(path);
-        return Convert.ToHexString(SHA256.HashData(stream));
+        var extension = Path.GetExtension(path);
+        if (extension.Equals(ContainerExtension, StringComparison.OrdinalIgnoreCase))
+            return MaximumContainerBytes;
+        if (extension.Equals(".db", StringComparison.OrdinalIgnoreCase))
+            return MaximumPayloadBytes;
+        return 0;
+    }
+
+    private static long GetFileLengthWithinLimit(string path, long maximumBytes)
+    {
+        using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read,
+            4096, FileOptions.SequentialScan);
+        var length = stream.Length;
+        if (length <= 0 || length > maximumBytes)
+            throw new InvalidDataException("La copia di sicurezza supera il limite di dimensione consentito.");
+        return length;
+    }
+
+    private static async Task CopyFileBoundedAsync(
+        string sourcePath,
+        string destinationPath,
+        long maximumBytes,
+        CancellationToken cancellationToken)
+    {
+        await using var source = new FileStream(sourcePath, FileMode.Open, FileAccess.Read, FileShare.Read,
+            81920, FileOptions.Asynchronous | FileOptions.SequentialScan);
+        await using var destination = new FileStream(destinationPath, FileMode.CreateNew, FileAccess.Write, FileShare.None,
+            81920, FileOptions.Asynchronous | FileOptions.SequentialScan);
+        var buffer = new byte[81920];
+        try
+        {
+            long total = 0;
+            while (true)
+            {
+                var read = await source.ReadAsync(buffer.AsMemory(), cancellationToken).ConfigureAwait(false);
+                if (read == 0) break;
+                if (total > maximumBytes - read)
+                    throw new InvalidDataException("La copia di sicurezza supera il limite di dimensione consentito.");
+                await destination.WriteAsync(buffer.AsMemory(0, read), cancellationToken).ConfigureAwait(false);
+                total += read;
+            }
+            if (total == 0)
+                throw new InvalidDataException("La copia di sicurezza è vuota.");
+            await destination.FlushAsync(cancellationToken).ConfigureAwait(false);
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(buffer);
+        }
+    }
+
+    private static string ComputeSha256(string path, long maximumBytes)
+    {
+        using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read,
+            81920, FileOptions.SequentialScan);
+        using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
+        var buffer = new byte[81920];
+        try
+        {
+            long total = 0;
+            while (true)
+            {
+                var read = stream.Read(buffer, 0, buffer.Length);
+                if (read == 0) break;
+                if (total > maximumBytes - read)
+                    throw new InvalidDataException("La copia di sicurezza supera il limite di dimensione consentito.");
+                hash.AppendData(buffer, 0, read);
+                total += read;
+            }
+            return Convert.ToHexString(hash.GetHashAndReset());
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(buffer);
+        }
     }
 }

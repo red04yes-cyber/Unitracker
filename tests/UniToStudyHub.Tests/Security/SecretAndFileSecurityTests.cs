@@ -1,4 +1,5 @@
 using System.Text;
+using UniToStudyHub.Infrastructure.Data;
 using UniToStudyHub.Security;
 using Xunit;
 
@@ -35,6 +36,24 @@ public sealed class SecretAndFileSecurityTests
             Assert.False(store.Exists("moodle-token"));
             Assert.Equal(SecretReadStatus.Missing, store.Read("moodle-token").Status);
             Assert.Null(store.Read("moodle-token").Value);
+        }
+        finally { Directory.Delete(directory, recursive: true); }
+    }
+
+    [Fact]
+    public void DatabaseKeyVaultReusesOnlyAProtectedRandomKey()
+    {
+        var directory = NewDirectory();
+        try
+        {
+            var vault = new DatabaseKeyVault(directory, new TestSecretProtector());
+            var first = vault.GetOrCreateKey();
+
+            Assert.Matches("^[A-F0-9]{64}$", first);
+            Assert.Equal(first, vault.GetOrCreateKey());
+
+            var envelope = File.ReadAllBytes(Path.Combine(directory, "secrets", "database-key.secret"));
+            Assert.DoesNotContain(first, Encoding.UTF8.GetString(envelope), StringComparison.OrdinalIgnoreCase);
         }
         finally { Directory.Delete(directory, recursive: true); }
     }

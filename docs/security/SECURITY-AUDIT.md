@@ -64,14 +64,17 @@ Se in futuro venisse trovata una credenziale reale:
 | F-07 | P1 | Import PDF con finestra TOCTOU tra hash e parsing, nessun limite di pagine o caratteri, errori del parser mostrati all'utente | Lettura singola bounded (25 MB) e hash sugli stessi byte; limiti 5000 pagine, 200 000 caratteri per pagina, 4 000 000 totali; nome file ridotto a foglia senza caratteri di controllo; errori generici | `Services/PdfServices.cs` |
 | F-08 | P1 | Le eccezioni grezze potevano finire in UI e log con percorsi, URL o token | `SecurityRedaction` per log, eccezioni e messaggi utente; log locale ruotato e redatto; niente telemetria | `Security/SecurityRedaction.cs`, `Security/AppDiagnostics.cs`, `Presentation/ViewModels/MainViewModel.cs` |
 | F-09 | P1 | Non esisteva una disconnessione Moodle: il token restava utilizzabile dopo la rimozione dell'integrazione | `DisconnectAsync` cancella il segreto, `IsConnected` guida lo stato, ogni chiamata di rete richiede un token presente; `ClearLocalMoodleReferences` rimuove URL e riferimenti ai corsi senza toccare la carriera | `Services/MoodleApplicationService.cs` |
-| F-10 | P1 | JSON legacy e calendario importato senza ACL, scrittura atomica o limiti di dimensione; campi non sanificati | Limite 64 MB per la migrazione legacy, 10 MB per l'ICS, backup prima della migrazione, sanitizzazione dei campi, scrittura atomica e ACL | `Services/LegacyJsonMigrator.cs`, `Services/IcsCalendarParser.cs` |
-| F-11 | P2 | SQLite non è cifrato a riposo | Nessuna dipendenza aggiunta: `DatabaseProtectionStatus` dichiara esplicitamente che il database non è cifrato e raccomanda BitLocker/EFS. Nessuna affermazione di cifratura nel README | `Infrastructure/Data/StudyHubDbContextFactory.cs` |
+| F-10 | P1 | JSON legacy e calendario importato senza ACL, scrittura atomica o limiti effettivi di lettura; campi non sanificati | Limite effettivo di 64 MB per JSON legacy e migrazione generale, 16 MB per il calendario JSON legacy e 10 MB per ICS; lettura bounded sullo stream aperto, backup prima della migrazione, sanitizzazione dei campi, scrittura atomica e ACL | `Security/BoundedFileReader.cs`, `Services/CalendarEventStore.cs`, `Services/LocalDataStore.cs`, `Services/LegacyJsonMigrator.cs`, `Services/IcsCalendarParser.cs` |
+| F-11 | P2 | Database SQLite non cifrato nella baseline audit del 5 novembre 2026 | Chiuso successivamente: SQLCipher v4 AES-256-CBC + HMAC-SHA512, chiave casuale DPAPI per utente Windows, conversione del vecchio SQLite con snapshot e `integrity_check` prima della sostituzione; test Windows dedicati | `Infrastructure/Data/StudyHubDbContextFactory.cs`, `Infrastructure/Data/DatabaseKeyVault.cs`, `tests/UniToStudyHub.Tests/Infrastructure/StudyHubDatabaseTests.cs` |
 | F-12 | P2 | Mancavano export completo, cancellazione dati e retention | `PrivacyService`: inventario, export JSON completo, cancellazione di dati/credenziali/backup/file legacy/log, retention (10 backup, 90 giorni) | `Services/PrivacyService.cs` |
 | F-13 | P2 | Import senza limiti espliciti e campi importati non sanificati | Limiti di dimensione, sanitizzazione e messaggi di avviso; le note private restano escluse dagli export standard | `Services/IcsCalendarParser.cs`, `Services/StudyExports.cs` |
+| F-14 | P1 | Verifica, elenco e ripristino backup leggevano container/manifest senza un budget effettivo; l'elenco poteva seguire voci reparse e calcolare hash senza limite | Container `.utbk` limitati a 512 MiB di payload più overhead massimo, legacy `.db` a 512 MiB, manifest a 64 KiB; lettura/copia/hash bounded sullo stream aperto; elenco limitato a file interni non-reparse | `Services/BackupService.cs`, `Security/BackupCrypto.cs`, `Security/BoundedFileReader.cs` |
+| F-15 | P2 | Il buffer `byte[]` della chiave SQLCipher restava in memoria dopo la conversione esadecimale | Azzeramento in `finally` anche nel percorso valido; test di riuso della chiave e assenza di plaintext nell'envelope | `Infrastructure/Data/DatabaseKeyVault.cs`, `tests/UniToStudyHub.Tests/Security/SecretAndFileSecurityTests.cs` |
+| F-16 | P2 | Il pacchetto diagnostico controllava la dimensione dei log prima di `ReadAllTextAsync`, senza limite sulla lettura effettiva | Lettura bounded a 512 KiB sullo stream aperto, cancellabile; buffer azzerato e file oltre soglia esclusi/preservati | `Services/PrivacyService.cs`, `Security/BoundedFileReader.cs`, `tests/UniToStudyHub.Tests/Security/PrivacyResetAndDiagnosticsTests.cs` |
 
 ## Verificato senza modifiche
 
-- Il token Moodle viaggia nel corpo POST, mai in URL o query string.
+- Le chiamate REST Moodle usano POST con token nel corpo. Per il download file, l'endpoint Moodle richiede `token=` nella query del singolo GET: il client lo aggiunge solo a quella richiesta, non registra l'URL completo, disabilita i redirect e limita la destinazione alla stessa origine. La query resta un rischio residuo del protocollo e va mantenuta isolata.
 - Nessun contenuto scaricato viene eseguito: nel codice applicativo non ci sono
   `Process.Start`, `Assembly.Load`, hook di tastiera o enumerazione di finestre.
 - Gli export JSON/CSV/XLSX già neutralizzavano HTML e formule; ora è coperto da
@@ -84,9 +87,7 @@ Se in futuro venisse trovata una credenziale reale:
 
 ## Rischi residui e limitazioni
 
-- **SQLite non cifrato**: chi ha accesso al profilo Windows può leggere il file.
-  La raccomandazione è BitLocker/EFS; non è stata introdotta una dipendenza di
-  cifratura SQLite in questa slice.
+- **SQLCipher e DPAPI**: il database e i relativi journal/WAL sono cifrati; la chiave è legata all'account Windows. `DescribeProtection` verifica cifratura e ACL solo su Windows: su Linux lo stato resta non verificato. I file Moodle scaricati sono separati dal DB e dipendono da ACL e protezione del volume (BitLocker/EFS).
 - **DPAPI legato all'utente Windows**: il token e le chiavi AI non sono
   trasferibili ad altro account. I backup protetti da password sono trasferibili
   per scelta esplicita dell'utente.
@@ -100,9 +101,8 @@ Se in futuro venisse trovata una credenziale reale:
 - **Allowlist gitleaks**: `tests/` e `docs/` sono esclusi perché contengono
   fixture deliberatamente fittizie. Una credenziale reale committata in quei
   percorsi non verrebbe segnalata; la revisione manuale resta necessaria.
-- **Dependency audit report-only**: `dotnet list package --vulnerable` elenca le
-  vulnerabilità ma non fallisce la build; l'aggiornamento è una decisione dei
-  maintainer.
+- **Dependency audit**: `security-scan.yml` tratta NU1901–NU1904 come errori per i progetti applicativo e test; advisory fuori da questi livelli e rischi runtime non sono coperti da questo gate.
+- **Backup di grandi dimensioni**: il restore resta in memoria per AES-GCM e può richiedere memoria significativa; l'input è ora limitato a 512 MiB di payload, ma non è uno streaming restore.
 
 ## Segnalazione
 

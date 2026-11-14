@@ -10,6 +10,7 @@ using Xunit;
 
 namespace UniToStudyHub.Tests.Infrastructure;
 
+[Collection("AppDiagnostics")]
 public sealed class LegacyJsonMigratorTests
 {
     [Fact]
@@ -140,6 +141,31 @@ public sealed class LegacyJsonMigratorTests
             await using var db = fixture.CreateContext();
             Assert.Empty(await db.ProfileSettings.ToListAsync());
             Assert.Empty(await db.Courses.ToListAsync());
+        }
+        finally { Directory.Delete(temp, recursive: true); }
+    }
+
+    [Fact]
+    public async Task OversizedLegacyFileIsRejectedAndOriginalIsPreserved()
+    {
+        await using var fixture = await DatabaseFixture.CreateAsync();
+        var temp = Path.Combine(Path.GetTempPath(), "UnitrackerTests", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(temp);
+        var path = Path.Combine(temp, "data.json");
+        try
+        {
+            using (var stream = new FileStream(path, FileMode.CreateNew, FileAccess.Write, FileShare.None))
+                stream.SetLength(LegacyJsonMigrator.MaximumFileBytes + 1);
+            var migrator = new LegacyJsonMigrator(fixture.Factory, path);
+
+            await Assert.ThrowsAsync<InvalidDataException>(() => migrator.MigrateAsync());
+
+            Assert.True(File.Exists(path));
+            Assert.Equal(LegacyJsonMigrator.MaximumFileBytes + 1, new FileInfo(path).Length);
+            Assert.Empty(Directory.GetFiles(temp, "data.pre-sqlite-*.json"));
+            await using var db = fixture.CreateContext();
+            Assert.Empty(await db.Courses.ToListAsync());
+            Assert.Empty(await db.LegacyImports.ToListAsync());
         }
         finally { Directory.Delete(temp, recursive: true); }
     }

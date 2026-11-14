@@ -11,12 +11,12 @@ namespace UniToStudyHub.Services;
 /// Minimal Moodle Web Services client for an instance the user is authorised to
 /// use.
 ///
-/// Requests are POSTed (the token travels in the form body, not the URL),
-/// redirects are never followed, the base URL is validated against
-/// <see cref="OutboundEndpointPolicy"/> and responses are size-bounded. File
-/// downloads are restricted to the same origin, written atomically and refused
-/// when the server answers with an HTML page instead of the requested file.
-/// No method logs the token or the tokenised URL.
+/// REST requests are POSTed (the token travels in the form body). The Moodle
+/// file-download endpoint is the protocol exception: its single GET carries
+/// <c>token=</c> in the query. Downloads are restricted to the same origin,
+/// the default HTTP handler does not follow redirects, responses are size-bounded and files are
+/// written atomically. No method logs the token or the tokenised URL.
+/// The base URL is validated against <see cref="OutboundEndpointPolicy"/>.
 /// </summary>
 public sealed class MoodleClient : IDisposable
 {

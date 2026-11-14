@@ -61,6 +61,8 @@ public static class BackupCrypto
     public const int DefaultIterations = 600_000;
     public const int MaximumIterations = 4_000_000;
     public const int MaximumWrappedKeyBytes = 4096;
+    public const int MaximumContainerOverheadBytes =
+        5 + 1 + 1 + 4 + SaltBytes + 4 + MaximumWrappedKeyBytes + NonceBytes + 4 + TagBytes;
     public const int MinimumPasswordLength = 12;
     public const int MaximumPasswordLength = 1024;
     public const long MaximumPayloadBytes = 8L * 1024 * 1024 * 1024;
@@ -134,11 +136,8 @@ public static class BackupCrypto
         var salt = container.AsSpan(11, SaltBytes).ToArray();
         var wrappedLength = (int)BinaryPrimitives.ReadUInt32BigEndian(container.AsSpan(27, 4));
         var wrappedKey = container.AsSpan(31, wrappedLength).ToArray();
-        var nonce = container.AsSpan(31 + wrappedLength, NonceBytes).ToArray();
-        var payloadOffset = 31 + wrappedLength + NonceBytes + 4;
-        var ciphertext = container.AsSpan(payloadOffset, info.PayloadLength).ToArray();
-        var tag = container.AsSpan(payloadOffset + info.PayloadLength, TagBytes).ToArray();
-        var associatedData = container.AsSpan(0, payloadOffset).ToArray();
+        var nonceOffset = 31 + wrappedLength;
+        var payloadOffset = nonceOffset + NonceBytes + 4;
 
         var key = Array.Empty<byte>();
         var plaintext = new byte[info.PayloadLength];
@@ -157,7 +156,15 @@ public static class BackupCrypto
                 throw new InvalidDataException("La chiave della copia di sicurezza non è valida.");
 
             using var aes = new AesGcm(key, TagBytes);
-            aes.Decrypt(nonce, ciphertext, tag, plaintext, associatedData);
+            // Use slices of the authenticated container directly. Copying the
+            // ciphertext and associated-data buffers would duplicate hundreds
+            // of MiB for a large, otherwise valid backup.
+            aes.Decrypt(
+                container.AsSpan(nonceOffset, NonceBytes),
+                container.AsSpan(payloadOffset, info.PayloadLength),
+                container.AsSpan(payloadOffset + info.PayloadLength, TagBytes),
+                plaintext,
+                container.AsSpan(0, payloadOffset));
             return plaintext;
         }
         catch (CryptographicException ex)
@@ -177,8 +184,6 @@ public static class BackupCrypto
             CryptographicOperations.ZeroMemory(key);
             CryptographicOperations.ZeroMemory(salt);
             CryptographicOperations.ZeroMemory(wrappedKey);
-            CryptographicOperations.ZeroMemory(ciphertext);
-            CryptographicOperations.ZeroMemory(associatedData);
         }
     }
 

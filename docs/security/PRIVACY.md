@@ -30,6 +30,7 @@ I backup sono contenitori AES-256-GCM autenticati. Il contenuto SQLite temporane
 - **Backup con password:** protegge il contenitore esterno con AES-256-GCM, ma il database interno resta cifrato con la chiave SQLCipher protetta da DPAPI. Il ripristino richiede lo stesso account Windows.
 - **Backup DPAPI:** può essere aperto solo dall'account Windows che lo ha creato.
 - La password non è recuperabile. Usa una password robusta e conservala in un gestore password.
+- In import/ripristino: `.utbk` è limitato a 512 MiB di payload più overhead del container, il backup legacy `.db` a 512 MiB e il manifest sidecar a 64 KiB. Letture, copie e hash applicano il limite sullo stream; file oltre soglia vengono rifiutati e lasciati intatti.
 
 ## Moodle
 
@@ -40,7 +41,7 @@ Moodle è facoltativo e viene contattato solo dopo che l'utente ha configurato U
 - sincronizza eventi di calendario e discussioni forum;
 - scarica gli allegati esposti nei contenuti dei moduli e nelle risposte delle API attività abilitate.
 
-Il token non viene inserito negli URL delle chiamate REST; le richieste API usano POST, i redirect non vengono seguiti e i download sono limitati alla stessa origine Moodle. I file vengono organizzati per corso/sezione/modulo in `Documenti\UniToStudyHub\Moodle\`. Sono bloccate estensioni eseguibili e macro; limiti attuali: 250 MB per file, 1 GB per corso e 1.000 file per corso. I file già scaricati vengono aggiornati quando Moodle espone una data di modifica più recente.
+Il token non viene inserito negli URL delle chiamate REST: le API usano POST con il token nel corpo. Per il download dei file Moodle richiede invece `token=` nella query del singolo GET; il client non registra l'URL completo, non segue redirect e limita il download alla stessa origine Moodle. Questo vincolo del protocollo resta un rischio residuo da non estendere ad altre richieste. I file vengono organizzati per corso/sezione/modulo in `Documenti\UniToStudyHub\Moodle\`. Sono bloccate estensioni eseguibili e macro; limiti attuali: 250 MB per file, 1 GB per corso e 1.000 file per corso. I file già scaricati vengono aggiornati quando Moodle espone una data di modifica più recente.
 
 **Limite importante:** Moodle non offre un'unica API universale per ogni plugin o attività. I dettagli e i dati personali sincronizzabili dipendono dalle funzioni abilitate dall'amministratore e dai permessi del token. Le attività sono comunque indicizzate quando compaiono nei moduli del corso; tentativi, voti o allegati non esposti dalle API autorizzate non possono essere estratti dall'app. Non vengono aggirati SSO, ruoli o controlli di accesso.
 
@@ -49,6 +50,7 @@ I file Moodle non sono contenuti nel database SQLCipher: sono file separati nell
 ## Privacy, export e cancellazione
 
 - Nessuna telemetria, analytics o crash reporting remoto.
+- Il pacchetto diagnostico richiede consenso esplicito, include solo log redatti e limita ogni file a 512 KiB durante la lettura; file più grandi sono esclusi e non modificati.
 - Il token Moodle viene eliminato alla disconnessione; corsi, voti e storico accademico locale restano disponibili.
 - L'export completo include le note private ma non token o chiavi.
 - La funzione di cancellazione completa elimina record locali, credenziali, backup selezionati, file legacy, log e file Moodle scaricati. La chiave DPAPI del database viene conservata per mantenere apribile il database vuoto e poterlo riutilizzare.

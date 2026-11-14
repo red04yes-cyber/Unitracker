@@ -10,6 +10,7 @@ using Xunit;
 
 namespace UniToStudyHub.Tests.Security;
 
+[Collection("AppDiagnostics")]
 public sealed class BackupSecurityTests
 {
     private const string Password = "correct horse battery staple";
@@ -223,6 +224,48 @@ public sealed class BackupSecurityTests
         await using var database = fixture.Database;
         var unavailable = new BackupService(database.Factory, fixture.Path, fixture.Backups);
         await Assert.ThrowsAsync<InvalidOperationException>(() => unavailable.CreateBackupAsync());
+    }
+
+    [Theory]
+    [InlineData(".utbk")]
+    [InlineData(".db")]
+    public async Task OversizedBackupFilesAreNotListedVerifiedOrRestored(string extension)
+    {
+        var fixture = await CreateAsync();
+        await using var database = fixture.Database;
+        var store = new SqliteStudyDataStore(database.Factory);
+        await store.SaveAsync(Data("Analisi"));
+        Directory.CreateDirectory(fixture.Backups);
+
+        var maximumBytes = extension.Equals(".db", StringComparison.OrdinalIgnoreCase)
+            ? BackupService.MaximumPayloadBytes
+            : BackupService.MaximumContainerBytes;
+        var oversized = Path.Combine(fixture.Backups,
+            "unitracker-20261114-000000-000-oversized" + extension);
+        await using (var stream = new FileStream(oversized, FileMode.CreateNew, FileAccess.Write, FileShare.None))
+            stream.SetLength(maximumBytes + 1);
+
+        Assert.DoesNotContain(fixture.Service.ListBackups(), backup => backup.FilePath == oversized);
+        Assert.False(await fixture.Service.VerifyBackupAsync(oversized, Password));
+        await Assert.ThrowsAsync<InvalidDataException>(() =>
+            fixture.Service.RestoreAsync(oversized, Password));
+
+        Assert.True(File.Exists(oversized));
+        Assert.Equal("Analisi", (await store.LoadAsync()).Courses[0].Name);
+    }
+
+    [Fact]
+    public async Task OversizedManifestIsRejectedBeforeDeserialization()
+    {
+        var fixture = await CreateAsync();
+        await using var database = fixture.Database;
+        Directory.CreateDirectory(fixture.Backups);
+        var backupPath = Path.Combine(fixture.Backups, "unitracker-manifest.utbk");
+        await File.WriteAllTextAsync(BackupService.ManifestPath(backupPath),
+            new string('x', BackupService.MaximumManifestBytes + 1));
+
+        await Assert.ThrowsAsync<InvalidDataException>(() =>
+            fixture.Service.ReadManifestAsync(backupPath));
     }
 
     [Fact]

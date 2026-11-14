@@ -46,10 +46,11 @@ L'audit completo, l'esito della scansione dei segreti e i rischi residui sono in
   controllo `IsInside`.
 - `StudyHubDbContextFactory`: directory privata, cleanup dei temporanei,
   connection string costruita e `DescribeProtection`.
-- **SQLite non è cifrato**: `DatabaseProtectionStatus` lo dichiara e raccomanda
-  BitLocker/EFS. Nessuna dipendenza aggiunta e nessuna affermazione falsa.
-- `CalendarEventStore`, `LocalDataStore` e `LegacyJsonMigrator` usano ACL,
-  scrittura atomica e limiti di dimensione.
+- **Database cifrato**: `StudyHubDbContextFactory` apre il file con SQLCipher v4 (`cipher=sqlcipher&legacy=4`), AES-256-CBC + HMAC-SHA512; `DatabaseKeyVault` genera una chiave casuale da 256 bit e ne conserva solo l'envelope DPAPI per l'account Windows corrente, azzerando il buffer decodificato dopo la conversione esadecimale. `EnsureEncryptedDatabase` converte il vecchio SQLite tramite snapshot, `PRAGMA rekey` e `integrity_check` prima della sostituzione. `DescribeProtection` verifica cifratura e ACL solo su Windows; i test runtime Windows sono `StudyHubDatabaseTests`.
+- `CalendarEventStore` rifiuta file calendario oltre 16 MB; `LocalDataStore`
+  e `LegacyJsonMigrator` applicano 64 MB. La lettura è bounded anche dopo
+  l'apertura del file, così la dimensione effettiva letta non può superare il
+  budget dichiarato.
 
 ## 4. Backup e ripristino
 
@@ -65,8 +66,7 @@ L'audit completo, l'esito della scansione dei segreti e i rischi residui sono in
 
 ## 5. Log e diagnostica
 
-- `AppDiagnostics`: log locale redatto, rotazione a 512 KB con 3 file, nessun
-  sink remoto, nessuna telemetria.
+- `AppDiagnostics`: log locale redatto, rotazione a 512 KB con 3 file, nessun sink remoto. `PrivacyService` rilegge i log per il bundle diagnostico con limite effettivo di 512 KiB per stream aperto e consenso esplicito.
 - `SecurityRedaction`: redazione di token, password, header `Authorization`,
   URL con token, email, percorsi utente e chiavi private; messaggi utente
   generici con dettaglio utile solo per gli errori di validazione.
@@ -79,8 +79,7 @@ L'audit completo, l'esito della scansione dei segreti e i rischi residui sono in
   carriera e voti.
 - Ogni chiamata di rete richiede un token presente: dopo la disconnessione non
   viene riutilizzata alcuna credenziale.
-- `MoodleClient`: endpoint policy, POST con token nel corpo, nessun redirect,
-  timeout, limiti di risposta, errori sanificati.
+- `MoodleClient`: endpoint policy, API REST POST con token nel corpo, nessun redirect, timeout, limiti di risposta ed errori sanificati. Il download Moodle usa `token=` nella query perché richiesto dall'endpoint file; è limitato a stessa origine, non viene loggato e non segue redirect.
 - `DocumentSyncService`: estensioni eseguibili bloccate, nomi ridotti a foglia,
   contenimento nella cartella del corso, `.part` atomico.
 
@@ -149,18 +148,26 @@ Windows resta il gate per il runtime.
 
 ## Limitazioni
 
-- SQLite non cifrato a riposo.
+- Verifica SQLCipher/ACL/DPAPI disponibile solo su Windows; i file Moodle sono separati dal database cifrato e dipendono dai permessi del volume.
 - DPAPI legato all'utente Windows.
 - Scrubbing delle stringhe best-effort.
 - DNS rebinding fuori dal modello di minaccia.
 - Allowlist gitleaks su `tests/` e `docs/`.
-- Dependency audit report-only.
+- Dependency audit bloccante per NU1901–NU1904 in `security-scan.yml`; gli altri livelli/advisory e i rischi runtime restano fuori da questo gate.
 
 ## Prossima slice sicura
 
-1. Valutare SQLCipher o cifratura a livello di volume con una decisione
-   documentata su licenza, manutenzione e migrazione.
-2. Aggiungere un test Windows end-to-end per ACL, DPAPI e ripristino da backup.
-3. Rendere il dependency audit bloccante dopo la pulizia degli avvisi correnti.
-4. Collegare in UI le azioni privacy già esposte dal servizio, quando il
-   proprietario UI lo pianifica.
+1. Eseguire/estendere i test Windows end-to-end per ACL, DPAPI, conversione da SQLite in chiaro e ripristino da backup.
+2. Verificare periodicamente le advisory NuGet oltre i livelli NU1901–NU1904 bloccati dalla CI.
+3. Riesaminare l'allowlist Gitleaks per mantenere le eccezioni limitate a fixture sintetiche.
+4. Collegare in UI le azioni privacy già esposte dal servizio, quando il proprietario UI lo pianifica.
+
+## Follow-up 2026-11-14 — bounded backup ingestion
+
+- `BackupService` accepts only `.utbk` containers and legacy `.db` backups. The encrypted container budget is 512 MiB of payload plus the maximum header/key/tag overhead; legacy SQLite files are capped at 512 MiB.
+- Sidecar manifests are limited to 64 KiB and are read from the opened stream with cancellation.
+- Encrypted container reads, legacy restore copies and SHA-256 scans enforce the byte budget while streaming, not only through a preliminary `FileInfo` check.
+- Backup listing rejects entries outside the private backup directory and reparse-point paths; over-limit or unreadable entries are left untouched and omitted.
+- AES-GCM decryption now passes ciphertext and associated-data spans directly from the container, avoiding duplicate large buffers. The plaintext still requires a bounded in-memory buffer; this remains a documented memory-pressure limit.
+- Added regression coverage for oversized `.utbk`/`.db` files, oversized manifests and seekable streams whose reported length becomes stale.
+- No UI, Moodle, AI provider, AI Study Director, database schema or package dependency was changed. The Windows CI result is recorded in the PR after completion.

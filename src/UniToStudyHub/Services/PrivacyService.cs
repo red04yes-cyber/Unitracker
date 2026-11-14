@@ -20,6 +20,7 @@ public static class PrivacyDefaults
 {
     public const bool TelemetryEnabled = false;
     public const int MaximumBackups = 10;
+    public const int MaximumDiagnosticLogBytes = 512 * 1024;
     public static readonly TimeSpan BackupRetention = TimeSpan.FromDays(90);
 }
 
@@ -265,9 +266,31 @@ public sealed class PrivacyService
                 foreach (var logPath in logs)
                 {
                     cancellationToken.ThrowIfCancellationRequested();
-                    var info = new FileInfo(logPath);
-                    if (info.Length > 512 * 1024 || combined.Length >= 2 * 1024 * 1024) continue;
-                    var content = await File.ReadAllTextAsync(logPath, cancellationToken).ConfigureAwait(false);
+                    if (combined.Length >= 2 * 1024 * 1024) continue;
+                    string content;
+                    try
+                    {
+                        await using var logStream = new FileStream(logPath, FileMode.Open, FileAccess.Read, FileShare.Read,
+                            81920, FileOptions.Asynchronous | FileOptions.SequentialScan);
+                        var bytes = await BoundedFileReader.ReadAllBytesAsync(
+                            logStream, PrivacyDefaults.MaximumDiagnosticLogBytes, cancellationToken).ConfigureAwait(false);
+                        try
+                        {
+                            content = Encoding.UTF8.GetString(bytes);
+                            if (content.Length > 0 && content[0] == '\uFEFF') content = content[1..];
+                        }
+                        finally
+                        {
+                            System.Security.Cryptography.CryptographicOperations.ZeroMemory(bytes);
+                        }
+                    }
+                    catch (Exception ex) when (ex is InvalidDataException or IOException
+                                                   or UnauthorizedAccessException or SecurityException)
+                    {
+                        AppDiagnostics.Warning("privacy", "Un log diagnostico è stato ignorato perché non accessibile o oltre il limite.", ex);
+                        continue;
+                    }
+
                     foreach (var line in content.Split(new[] { "\r\n", "\n" }, StringSplitOptions.RemoveEmptyEntries))
                     {
                         if (combined.Length >= 2 * 1024 * 1024) break;
@@ -361,7 +384,7 @@ public sealed class PrivacyService
             return Directory.EnumerateFiles(root, "unitracker*.log", SearchOption.TopDirectoryOnly)
                 .Where(logPath => LocalFileSecurity.IsInside(root, logPath))
                 .Where(logPath => (File.GetAttributes(logPath) & FileAttributes.ReparsePoint) == 0)
-                .Where(logPath => new FileInfo(logPath).Length <= 512 * 1024)
+                .Where(logPath => new FileInfo(logPath).Length <= PrivacyDefaults.MaximumDiagnosticLogBytes)
                 .OrderBy(logPath => logPath, StringComparer.OrdinalIgnoreCase)
                 .Take(3)
                 .ToArray();

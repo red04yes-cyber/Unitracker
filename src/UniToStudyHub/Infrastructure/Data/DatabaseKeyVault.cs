@@ -33,9 +33,15 @@ public sealed class DatabaseKeyVault
             try
             {
                 var key = Convert.FromBase64String(stored.Value!);
-                if (key.Length == 32) return Convert.ToHexString(key);
-                CryptographicOperations.ZeroMemory(key);
-                throw new CryptographicException("La chiave del database protetta non ha una dimensione valida.");
+                try
+                {
+                    if (key.Length == 32) return Convert.ToHexString(key);
+                    throw new CryptographicException("La chiave del database protetta non ha una dimensione valida.");
+                }
+                finally
+                {
+                    CryptographicOperations.ZeroMemory(key);
+                }
             }
             catch (FormatException ex)
             {
