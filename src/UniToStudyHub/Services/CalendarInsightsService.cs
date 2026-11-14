@@ -158,9 +158,16 @@ public sealed class CalendarInsightsService
     public CalendarEvent? GetNextEvent(IEnumerable<CalendarEvent> events, DateTimeOffset now)
     {
         ArgumentNullException.ThrowIfNull(events);
-        return events
+        var candidates = events
             .Where(item => item is not null && !item.IsCancelled &&
                            item.EndsAt > item.StartsAt && item.EndsAt > now)
+            .Take(MaximumEventsPerRange + 1)
+            .ToArray();
+        if (candidates.Length > MaximumEventsPerRange)
+            throw new InvalidOperationException(
+                $"L'elenco contiene più di {MaximumEventsPerRange} eventi attivi: restringi la ricerca.");
+
+        return candidates
             .OrderBy(item => item.StartsAt)
             .ThenBy(item => item.EndsAt)
             .ThenBy(item => item.Id, StringComparer.Ordinal)
