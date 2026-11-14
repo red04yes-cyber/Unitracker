@@ -74,58 +74,159 @@ public sealed class CalendarApplicationService
         CalendarService.GetEventsInRange(data.CalendarEvents, start, endExclusive, category, source);
 
     /// <summary>
-    /// Creates a clearly labelled planning event for a planned exam. The stable
-    /// external id prevents duplicate links on repeated invocations.
+    /// Creates or updates a clearly labelled planning event for an uncompleted
+    /// exam. Its stable external id makes repeated calls idempotent.
     /// </summary>
     public CalendarEvent? EnsureExamEvent(StudyData data, Exam exam, DateTimeOffset? now = null)
     {
         ArgumentNullException.ThrowIfNull(data);
         ArgumentNullException.ThrowIfNull(exam);
-        if (string.IsNullOrWhiteSpace(exam.Id) || exam.PlannedDate is null)
+        if (string.IsNullOrWhiteSpace(exam.Id) || exam.Completed || exam.PlannedDate is null)
             return null;
+
+        var at = now ?? DateTimeOffset.Now;
         var externalId = $"exam:{exam.Id}";
+        var date = exam.PlannedDate.Value.Date;
+        var localStart = date.AddHours(9);
+        var start = new DateTimeOffset(localStart, TimeZoneInfo.Local.GetUtcOffset(localStart));
+        var courseName = exam.CourseName?.Trim() ?? string.Empty;
+        var title = !string.IsNullOrWhiteSpace(exam.Name)
+            ? exam.Name.Trim()
+            : !string.IsNullOrWhiteSpace(courseName)
+                ? $"Esame: {courseName}"
+                : "Esame pianificato";
+        var courseId = string.IsNullOrWhiteSpace(exam.CourseId) ? null : exam.CourseId.Trim();
+        var session = string.IsNullOrWhiteSpace(exam.PlannedSession)
+            ? "sessione non specificata"
+            : exam.PlannedSession.Trim();
+        var notes = $"Data proposta dal pianificatore ({session}): non è un appello ufficiale.";
+        var timeZoneId = TimeZoneInfo.Local.Id;
+
         var existing = data.CalendarEvents.FirstOrDefault(x =>
             string.Equals(x.ExternalId, externalId, StringComparison.Ordinal) &&
             string.Equals(x.Source, CalendarEventSource.Planner, StringComparison.Ordinal));
         if (existing is not null)
         {
-            existing.IsCancelled = false;
+            var changed = false;
+            if (!string.Equals(existing.Title, title, StringComparison.Ordinal))
+            {
+                existing.Title = title;
+                changed = true;
+            }
+            if (!string.Equals(existing.Category, CalendarEventCategory.Exam, StringComparison.Ordinal))
+            {
+                existing.Category = CalendarEventCategory.Exam;
+                changed = true;
+            }
+            if (existing.StartsAt != start)
+            {
+                existing.StartsAt = start;
+                changed = true;
+            }
+            if (existing.EndsAt != start.AddHours(2))
+            {
+                existing.EndsAt = start.AddHours(2);
+                changed = true;
+            }
+            if (existing.IsAllDay)
+            {
+                existing.IsAllDay = false;
+                changed = true;
+            }
+            if (!string.Equals(existing.CourseId, courseId, StringComparison.Ordinal))
+            {
+                existing.CourseId = courseId;
+                changed = true;
+            }
+            if (!string.Equals(existing.CourseName, courseName, StringComparison.Ordinal))
+            {
+                existing.CourseName = courseName;
+                changed = true;
+            }
+            if (!string.Equals(existing.Source, CalendarEventSource.Planner, StringComparison.Ordinal))
+            {
+                existing.Source = CalendarEventSource.Planner;
+                changed = true;
+            }
+            if (!string.Equals(existing.Verification, CalendarEventVerification.Indicative, StringComparison.Ordinal))
+            {
+                existing.Verification = CalendarEventVerification.Indicative;
+                changed = true;
+            }
+            if (!string.Equals(existing.TimeZoneId, timeZoneId, StringComparison.Ordinal))
+            {
+                existing.TimeZoneId = timeZoneId;
+                changed = true;
+            }
+            if (!string.Equals(existing.Notes, notes, StringComparison.Ordinal))
+            {
+                existing.Notes = notes;
+                changed = true;
+            }
+            if (existing.IsCancelled)
+            {
+                existing.IsCancelled = false;
+                changed = true;
+            }
+            if (changed) existing.UpdatedAt = at;
+            CalendarService.Validate(existing);
             return existing;
         }
 
-        var date = exam.PlannedDate.Value.Date;
-        var start = new DateTimeOffset(date.AddHours(9), TimeZoneInfo.Local.GetUtcOffset(date.AddHours(9)));
         var item = new CalendarEvent
         {
             Id = DeterministicId("exam-event", exam.Id),
-            Title = string.IsNullOrWhiteSpace(exam.Name) ? $"Esame: {exam.CourseName}" : exam.Name,
+            Title = title,
             Category = CalendarEventCategory.Exam,
             StartsAt = start,
             EndsAt = start.AddHours(2),
-            CourseId = exam.CourseId,
-            CourseName = exam.CourseName,
+            CourseId = courseId,
+            CourseName = courseName,
             Source = CalendarEventSource.Planner,
             Verification = CalendarEventVerification.Indicative,
             ExternalId = externalId,
-            TimeZoneId = TimeZoneInfo.Local.Id,
-            Notes = "Data proposta dal pianificatore: non è un appello ufficiale.",
-            CreatedAt = now ?? DateTimeOffset.Now,
-            UpdatedAt = now ?? DateTimeOffset.Now
+            TimeZoneId = timeZoneId,
+            Notes = notes,
+            CreatedAt = at,
+            UpdatedAt = at
         };
         CalendarService.Validate(item);
         data.CalendarEvents.Add(item);
         return item;
     }
 
+    /// <summary>
+    /// Reconciles planner-owned exam events with the current planned exams.
+    /// Completed, unscheduled or removed exams are soft-cancelled; Moodle, ICS
+    /// and manual events are never changed by this operation.
+    /// </summary>
     public IReadOnlyList<CalendarEvent> LinkPlannedExams(StudyData data, DateTimeOffset? now = null)
     {
         ArgumentNullException.ThrowIfNull(data);
+        var at = now ?? DateTimeOffset.Now;
         var linked = new List<CalendarEvent>();
-        foreach (var exam in data.Exams.Where(x => !x.Completed && x.PlannedDate is not null))
+        var activeExamIds = new HashSet<string>(StringComparer.Ordinal);
+
+        foreach (var exam in data.Exams)
         {
-            var item = EnsureExamEvent(data, exam, now);
+            if (exam.Completed || exam.PlannedDate is null || string.IsNullOrWhiteSpace(exam.Id))
+                continue;
+
+            activeExamIds.Add(exam.Id);
+            var item = EnsureExamEvent(data, exam, at);
             if (item is not null) linked.Add(item);
         }
+
+        foreach (var item in data.CalendarEvents.Where(x =>
+                     string.Equals(x.Source, CalendarEventSource.Planner, StringComparison.Ordinal) &&
+                     x.ExternalId?.StartsWith("exam:", StringComparison.Ordinal) == true))
+        {
+            var examId = item.ExternalId!["exam:".Length..];
+            if (activeExamIds.Contains(examId) || item.IsCancelled) continue;
+            item.IsCancelled = true;
+            item.UpdatedAt = at;
+        }
+
         return linked;
     }
 
