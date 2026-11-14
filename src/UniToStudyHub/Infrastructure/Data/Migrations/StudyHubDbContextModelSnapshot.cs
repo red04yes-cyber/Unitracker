@@ -1481,6 +1481,20 @@ namespace UniToStudyHub.Infrastructure.Data.Migrations
                 {
                     b.Navigation("Segments");
                 });
+            modelBuilder.Entity("UniToStudyHub.Infrastructure.Data.Entities.NotificationDismissalEntity", b =>
+                {
+                    b.Property<string>("Key")
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTimeOffset>("DismissedAt")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Key");
+
+                    b.ToTable("NotificationDismissals", (string)null);
+                });
+
 #pragma warning restore 612, 618
         }
     }
