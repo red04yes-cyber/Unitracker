@@ -39,7 +39,6 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
     private readonly ExamReadinessService _readiness;
     private readonly StudyDataExportService _exports;
     private readonly HashSet<string> _verifiedBackups = new(StringComparer.OrdinalIgnoreCase);
-    private readonly HashSet<string> _dismissedNotificationIds = new(StringComparer.Ordinal);
     private StudyData _data = new();
     private Course? _selectedCourse;
     private Course? _selectedFocusCourse;
@@ -655,13 +654,30 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
         }
     }
 
-    private Task ClearNotificationsAsync()
+    private async Task ClearNotificationsAsync()
     {
-        foreach (var notification in Notifications)
-            _dismissedNotificationIds.Add(notification.Id);
-        Notifications.Clear();
-        OnPropertyChanged(nameof(NoNotifications));
-        return Task.CompletedTask;
+        var added = new List<NotificationDismissalData>();
+        foreach (var notification in Notifications.ToArray())
+        {
+            var previousCount = _data.NotificationDismissals.Count;
+            if (_notificationCenter.Dismiss(_data, notification))
+                added.Add(_data.NotificationDismissals[previousCount]);
+        }
+
+        try
+        {
+            if (added.Count > 0)
+                await _store.SaveAsync(_data);
+            Notifications.Clear();
+            OnPropertyChanged(nameof(NoNotifications));
+            WorkspaceStatus = "Avvisi segnati come letti.";
+        }
+        catch
+        {
+            foreach (var dismissal in added)
+                _data.NotificationDismissals.Remove(dismissal);
+            WorkspaceStatus = "Avvisi non aggiornati: il salvataggio locale non è riuscito.";
+        }
     }
 
     private void RefreshNotifications()
@@ -669,7 +685,7 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
         var retainedPomodoro = Notifications.Where(x => x.Kind == "Pomodoro");
         var desired = retainedPomodoro
             .Concat(_notificationCenter.GetUpcoming(_data))
-            .Where(x => !_dismissedNotificationIds.Contains(x.Id))
+            .Where(x => !_notificationCenter.IsDismissed(_data, x))
             .OrderBy(x => x.OccursAt)
             .ToArray();
         if (!Notifications.SequenceEqual(desired))
