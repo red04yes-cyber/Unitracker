@@ -68,6 +68,7 @@ Se in futuro venisse trovata una credenziale reale:
 | F-11 | P2 | SQLite non è cifrato a riposo | Nessuna dipendenza aggiunta: `DatabaseProtectionStatus` dichiara esplicitamente che il database non è cifrato e raccomanda BitLocker/EFS. Nessuna affermazione di cifratura nel README | `Infrastructure/Data/StudyHubDbContextFactory.cs` |
 | F-12 | P2 | Mancavano export completo, cancellazione dati e retention | `PrivacyService`: inventario, export JSON completo, cancellazione di dati/credenziali/backup/file legacy/log, retention (10 backup, 90 giorni) | `Services/PrivacyService.cs` |
 | F-13 | P2 | Import senza limiti espliciti e campi importati non sanificati | Limiti di dimensione, sanitizzazione e messaggi di avviso; le note private restano escluse dagli export standard | `Services/IcsCalendarParser.cs`, `Services/StudyExports.cs` |
+| F-14 | P1 | Verifica, elenco e ripristino backup leggevano container/manifest senza un budget effettivo; l'elenco poteva seguire voci reparse e calcolare hash senza limite | Container `.utbk` limitati a 512 MiB di payload più overhead massimo, legacy `.db` a 512 MiB, manifest a 64 KiB; lettura/copia/hash bounded sullo stream aperto; elenco limitato a file interni non-reparse | `Services/BackupService.cs`, `Security/BackupCrypto.cs`, `Security/BoundedFileReader.cs` |
 
 ## Verificato senza modifiche
 
@@ -103,6 +104,7 @@ Se in futuro venisse trovata una credenziale reale:
 - **Dependency audit report-only**: `dotnet list package --vulnerable` elenca le
   vulnerabilità ma non fallisce la build; l'aggiornamento è una decisione dei
   maintainer.
+- **Backup di grandi dimensioni**: il restore resta in memoria per AES-GCM e può richiedere memoria significativa; l'input è ora limitato a 512 MiB di payload, ma non è uno streaming restore.
 
 ## Segnalazione
 
