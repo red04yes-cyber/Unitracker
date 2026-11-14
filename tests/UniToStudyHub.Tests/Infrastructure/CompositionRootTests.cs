@@ -40,6 +40,7 @@ public sealed class CompositionRootTests
             var questions = provider.GetRequiredService<QuestionBankService>();
             var readiness = provider.GetRequiredService<ExamReadinessService>();
             var timeBudget = provider.GetRequiredService<TimeBudgetService>();
+            var calendarInsights = provider.GetRequiredService<CalendarInsightsService>();
             var backup = provider.GetRequiredService<BackupService>();
             var viewModel = provider.GetRequiredService<MainViewModel>();
 
@@ -53,6 +54,7 @@ public sealed class CompositionRootTests
             Assert.Same(questions, provider.GetRequiredService<QuestionBankService>());
             Assert.Same(readiness, provider.GetRequiredService<ExamReadinessService>());
             Assert.Same(timeBudget, provider.GetRequiredService<TimeBudgetService>());
+            Assert.Same(calendarInsights, provider.GetRequiredService<CalendarInsightsService>());
             Assert.Same(backup, provider.GetRequiredService<BackupService>());
             Assert.Same(viewModel, provider.GetRequiredService<MainViewModel>());
 
