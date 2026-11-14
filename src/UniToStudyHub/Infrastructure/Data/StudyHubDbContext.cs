@@ -33,6 +33,7 @@ public sealed class StudyHubDbContext(DbContextOptions<StudyHubDbContext> option
     public DbSet<PomodoroTimerEntity> PomodoroTimers => Set<PomodoroTimerEntity>();
     public DbSet<PomodoroCycleEntity> PomodoroCycles => Set<PomodoroCycleEntity>();
     public DbSet<LegacyImportEntity> LegacyImports => Set<LegacyImportEntity>();
+    public DbSet<NotificationDismissalEntity> NotificationDismissals => Set<NotificationDismissalEntity>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder) => ConfigureModel(modelBuilder);
 
@@ -360,6 +361,13 @@ public sealed class StudyHubDbContext(DbContextOptions<StudyHubDbContext> option
             b.ToTable("LegacyImports");
             b.HasKey(x => x.Key);
             b.Property(x => x.SourceHash).IsRequired();
+        });
+
+        modelBuilder.Entity<NotificationDismissalEntity>(b =>
+        {
+            b.ToTable("NotificationDismissals");
+            b.HasKey(x => x.Key);
+            b.Property(x => x.Key).HasMaxLength(64).IsRequired();
         });
     }
 }

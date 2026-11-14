@@ -46,6 +46,7 @@ public static class StudyDataEntityMapper
         data.Distractions ??= new ObservableCollection<DistractionData>();
         data.EnergyCheckIns ??= new ObservableCollection<EnergyCheckInData>();
         data.PdfDocuments ??= new ObservableCollection<PdfDocumentData>();
+        data.NotificationDismissals ??= new ObservableCollection<NotificationDismissalData>();
 
         EnsureNoNullItems(data.Courses, "course");
         EnsureNoNullItems(data.Grades, "grade");
@@ -68,6 +69,7 @@ public static class StudyDataEntityMapper
         EnsureNoNullItems(data.Distractions, "distraction");
         EnsureNoNullItems(data.EnergyCheckIns, "energy check-in");
         EnsureNoNullItems(data.PdfDocuments, "PDF document");
+        EnsureNoNullItems(data.NotificationDismissals, "notification dismissal");
 
         EnsureUniqueIds(data.Courses, x => x.Id, "course");
         EnsureUniqueIds(data.Grades, x => x.Id, "grade");
@@ -89,6 +91,14 @@ public static class StudyDataEntityMapper
         EnsureUniqueIds(data.Distractions, x => x.Id, "distraction");
         EnsureUniqueIds(data.EnergyCheckIns, x => x.Id, "energy check-in");
         EnsureUniqueIds(data.PdfDocuments, x => x.Id, "PDF document");
+        EnsureUniqueIds(data.NotificationDismissals, x => x.Key, "notification dismissal");
+        foreach (var dismissal in data.NotificationDismissals)
+        {
+            if (string.IsNullOrWhiteSpace(dismissal.Key) || dismissal.Key.Length != 64 || !dismissal.Key.All(Uri.IsHexDigit))
+                throw new InvalidDataException("A notification dismissal has an invalid key.");
+            if (dismissal.DismissedAt == default)
+                throw new InvalidDataException("A notification dismissal has no timestamp.");
+        }
 
         var courseIds = new HashSet<string>(data.Courses.Select(x => x.Id), StringComparer.Ordinal);
         foreach (var course in data.Courses)
@@ -879,6 +889,11 @@ public static class StudyDataEntityMapper
             CreatedAt = x.CreatedAt,
             UpdatedAt = x.UpdatedAt
         }));
+        db.NotificationDismissals.AddRange(data.NotificationDismissals.Select(x => new NotificationDismissalEntity
+        {
+            Key = x.Key,
+            DismissedAt = x.DismissedAt
+        }));
         db.PomodoroSettings.Add(new PomodoroSettingsEntity
         {
             Id = 1,
@@ -1241,6 +1256,12 @@ public static class StudyDataEntityMapper
                 RecurrenceRule = x.RecurrenceRule,
                 CreatedAt = x.CreatedAt,
                 UpdatedAt = x.UpdatedAt
+            });
+        foreach (var x in await db.NotificationDismissals.AsNoTracking().ToListAsync(cancellationToken))
+            result.NotificationDismissals.Add(new NotificationDismissalData
+            {
+                Key = x.Key,
+                DismissedAt = x.DismissedAt
             });
         var pomodoroSettings = await db.PomodoroSettings.AsNoTracking().FirstOrDefaultAsync(x => x.Id == 1, cancellationToken);
         result.PomodoroSettings = pomodoroSettings is null

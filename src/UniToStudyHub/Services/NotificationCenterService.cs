@@ -1,3 +1,5 @@
+using System.Security.Cryptography;
+using System.Text;
 using UniToStudyHub.Models;
 
 namespace UniToStudyHub.Services;
@@ -15,6 +17,49 @@ public sealed record StudyNotificationItem(
 /// </summary>
 public sealed class NotificationCenterService
 {
+    /// <summary>
+    /// Marks one reminder occurrence as read. The persisted key is a digest of
+    /// its source identity and UTC occurrence instant, not its title or detail.
+    /// </summary>
+    public bool Dismiss(StudyData data, StudyNotificationItem notification, DateTimeOffset? dismissedAt = null)
+    {
+        ArgumentNullException.ThrowIfNull(data);
+        ArgumentNullException.ThrowIfNull(notification);
+
+        var key = GetDismissalKey(notification);
+        if (data.NotificationDismissals.Any(x => string.Equals(x.Key, key, StringComparison.Ordinal)))
+            return false;
+
+        data.NotificationDismissals.Add(new NotificationDismissalData
+        {
+            Key = key,
+            DismissedAt = dismissedAt ?? DateTimeOffset.Now
+        });
+        return true;
+    }
+
+    public bool IsDismissed(StudyData data, StudyNotificationItem notification)
+    {
+        ArgumentNullException.ThrowIfNull(data);
+        ArgumentNullException.ThrowIfNull(notification);
+        var key = GetDismissalKey(notification);
+        return data.NotificationDismissals.Any(x => string.Equals(x.Key, key, StringComparison.Ordinal));
+    }
+
+    /// <summary>
+    /// Produces a stable, content-free key. Changing the scheduled instant
+    /// creates a new reminder occurrence that can be surfaced again.
+    /// </summary>
+    public static string GetDismissalKey(StudyNotificationItem notification)
+    {
+        ArgumentNullException.ThrowIfNull(notification);
+        var identity = string.Concat(
+            notification.Id,
+            "\n",
+            notification.OccursAt.UtcDateTime.Ticks.ToString(System.Globalization.CultureInfo.InvariantCulture));
+        return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(identity)));
+    }
+
     public IReadOnlyList<StudyNotificationItem> GetUpcoming(
         StudyData data,
         DateTimeOffset? now = null,
@@ -44,6 +89,6 @@ public sealed class NotificationCenterService
                 x.DueAt!.Value,
                 "Attività")));
 
-        return items.OrderBy(x => x.OccursAt).ToArray();
+        return items.Where(x => !IsDismissed(data, x)).OrderBy(x => x.OccursAt).ToArray();
     }
 }
