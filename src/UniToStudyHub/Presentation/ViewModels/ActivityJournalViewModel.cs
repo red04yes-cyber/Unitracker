@@ -591,6 +591,7 @@ public sealed class ActivityJournalViewModel : INotifyPropertyChanged
             })
             .ToList();
 
+        SelectedEntry = null;
         Entries.Clear();
         foreach (var entry in entries) Entries.Add(entry);
         SelectedEntry = Entries.FirstOrDefault(x => x.Activity.Id == selectedId);
@@ -605,8 +606,15 @@ public sealed class ActivityJournalViewModel : INotifyPropertyChanged
         var desired = _data.Courses
             .OrderBy(x => x.Name, StringComparer.CurrentCultureIgnoreCase)
             .ToList();
-        if (Courses.Select(x => x.Id).SequenceEqual(desired.Select(x => x.Id), StringComparer.Ordinal))
+        if (Courses.Count == desired.Count &&
+            Courses.Where((course, index) => !ReferenceEquals(course, desired[index])).Any())
+        {
+            // Rebind when the workspace replaces model instances with the same IDs.
+        }
+        else if (Courses.Count == desired.Count)
+        {
             return;
+        }
 
         var selectedId = SelectedCourse?.Id;
         Courses.Clear();
@@ -629,13 +637,19 @@ public sealed class ActivityJournalViewModel : INotifyPropertyChanged
                 string.IsNullOrWhiteSpace(courseId) || string.Equals(x.CourseId, courseId, StringComparison.Ordinal))
             .OrderBy(x => x.Title, StringComparer.CurrentCultureIgnoreCase)
             .ToList();
-        if (!SyllabusTopics.Select(x => x.Id).SequenceEqual(desiredTopics.Select(x => x.Id), StringComparer.Ordinal))
+        var topicsChanged = SyllabusTopics.Count != desiredTopics.Count ||
+                            SyllabusTopics.Where((topic, index) => !ReferenceEquals(topic, desiredTopics[index])).Any();
+        if (topicsChanged)
         {
             SyllabusTopics.Clear();
             foreach (var topic in desiredTopics) SyllabusTopics.Add(topic);
         }
-        if (SelectedSyllabusTopic is not null && !SyllabusTopics.Any(x => x.Id == SelectedSyllabusTopic.Id))
-            SelectedSyllabusTopic = null;
+        if (SelectedSyllabusTopic is not null)
+        {
+            var matchingTopic = SyllabusTopics.FirstOrDefault(x => x.Id == SelectedSyllabusTopic.Id);
+            if (!ReferenceEquals(matchingTopic, SelectedSyllabusTopic))
+                SelectedSyllabusTopic = matchingTopic;
+        }
 
         var desiredTasks = _data.StudyTasks.Where(x =>
                 (x.Status is StudyTaskStatus.Todo or StudyTaskStatus.InProgress) &&
@@ -644,13 +658,19 @@ public sealed class ActivityJournalViewModel : INotifyPropertyChanged
             .OrderBy(x => x.DueAt ?? DateTimeOffset.MaxValue)
             .ThenByDescending(x => x.Priority)
             .ToList();
-        if (!AvailableTasks.Select(x => x.Id).SequenceEqual(desiredTasks.Select(x => x.Id), StringComparer.Ordinal))
+        var tasksChanged = AvailableTasks.Count != desiredTasks.Count ||
+                           AvailableTasks.Where((task, index) => !ReferenceEquals(task, desiredTasks[index])).Any();
+        if (tasksChanged)
         {
             AvailableTasks.Clear();
             foreach (var task in desiredTasks) AvailableTasks.Add(task);
         }
-        if (SelectedTask is not null && !AvailableTasks.Any(x => x.Id == SelectedTask.Id))
-            SelectedTask = null;
+        if (SelectedTask is not null)
+        {
+            var matchingTask = AvailableTasks.FirstOrDefault(x => x.Id == SelectedTask.Id);
+            if (!ReferenceEquals(matchingTask, SelectedTask))
+                SelectedTask = matchingTask;
+        }
     }
 
     private static string TypeLabel(StudyActivityType type) => type switch
