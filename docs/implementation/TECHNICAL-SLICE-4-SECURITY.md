@@ -80,8 +80,7 @@ L'audit completo, l'esito della scansione dei segreti e i rischi residui sono in
   carriera e voti.
 - Ogni chiamata di rete richiede un token presente: dopo la disconnessione non
   viene riutilizzata alcuna credenziale.
-- `MoodleClient`: endpoint policy, POST con token nel corpo, nessun redirect,
-  timeout, limiti di risposta, errori sanificati.
+- `MoodleClient`: endpoint policy, API REST POST con token nel corpo, nessun redirect, timeout, limiti di risposta ed errori sanificati. Il download Moodle usa `token=` nella query perché richiesto dall'endpoint file; è limitato a stessa origine, non viene loggato e non segue redirect.
 - `DocumentSyncService`: estensioni eseguibili bloccate, nomi ridotti a foglia,
   contenimento nella cartella del corso, `.part` atomico.
 
