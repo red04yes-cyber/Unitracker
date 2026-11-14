@@ -46,7 +46,7 @@ L'audit completo, l'esito della scansione dei segreti e i rischi residui sono in
   controllo `IsInside`.
 - `StudyHubDbContextFactory`: directory privata, cleanup dei temporanei,
   connection string costruita e `DescribeProtection`.
-- **Database cifrato**: `StudyHubDbContextFactory` apre il file con SQLCipher v4 (`cipher=sqlcipher&legacy=4`), AES-256-CBC + HMAC-SHA512; `DatabaseKeyVault` genera una chiave casuale da 256 bit e ne conserva solo l'envelope DPAPI per l'account Windows corrente. `EnsureEncryptedDatabase` converte il vecchio SQLite tramite snapshot, `PRAGMA rekey` e `integrity_check` prima della sostituzione. `DescribeProtection` verifica cifratura e ACL solo su Windows; i test runtime Windows sono `StudyHubDatabaseTests`.
+- **Database cifrato**: `StudyHubDbContextFactory` apre il file con SQLCipher v4 (`cipher=sqlcipher&legacy=4`), AES-256-CBC + HMAC-SHA512; `DatabaseKeyVault` genera una chiave casuale da 256 bit e ne conserva solo l'envelope DPAPI per l'account Windows corrente, azzerando il buffer decodificato dopo la conversione esadecimale. `EnsureEncryptedDatabase` converte il vecchio SQLite tramite snapshot, `PRAGMA rekey` e `integrity_check` prima della sostituzione. `DescribeProtection` verifica cifratura e ACL solo su Windows; i test runtime Windows sono `StudyHubDatabaseTests`.
 - `CalendarEventStore` rifiuta file calendario oltre 16 MB; `LocalDataStore`
   e `LegacyJsonMigrator` applicano 64 MB. La lettura è bounded anche dopo
   l'apertura del file, così la dimensione effettiva letta non può superare il
