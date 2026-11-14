@@ -177,10 +177,10 @@ public sealed class CalendarInsightsService
             .Where(item => item is not null && !item.IsCancelled &&
                            item.EndsAt > item.StartsAt &&
                            item.StartsAt < endExclusive && item.EndsAt > start)
+            .Take(MaximumEventsPerRange + 1)
             .OrderBy(item => item.StartsAt)
             .ThenBy(item => item.EndsAt)
             .ThenBy(item => item.Id, StringComparer.Ordinal)
-            .Take(MaximumEventsPerRange + 1)
             .ToArray();
 
         if (result.Length > MaximumEventsPerRange)
