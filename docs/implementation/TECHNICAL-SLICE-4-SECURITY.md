@@ -46,8 +46,7 @@ L'audit completo, l'esito della scansione dei segreti e i rischi residui sono in
   controllo `IsInside`.
 - `StudyHubDbContextFactory`: directory privata, cleanup dei temporanei,
   connection string costruita e `DescribeProtection`.
-- **SQLite non è cifrato**: `DatabaseProtectionStatus` lo dichiara e raccomanda
-  BitLocker/EFS. Nessuna dipendenza aggiunta e nessuna affermazione falsa.
+- **Database cifrato**: `StudyHubDbContextFactory` apre il file con SQLCipher v4 (`cipher=sqlcipher&legacy=4`), AES-256-CBC + HMAC-SHA512; `DatabaseKeyVault` genera una chiave casuale da 256 bit e ne conserva solo l'envelope DPAPI per l'account Windows corrente. `EnsureEncryptedDatabase` converte il vecchio SQLite tramite snapshot, `PRAGMA rekey` e `integrity_check` prima della sostituzione. `DescribeProtection` verifica cifratura e ACL solo su Windows; i test runtime Windows sono `StudyHubDatabaseTests`.
 - `CalendarEventStore` rifiuta file calendario oltre 16 MB; `LocalDataStore`
   e `LegacyJsonMigrator` applicano 64 MB. La lettura è bounded anche dopo
   l'apertura del file, così la dimensione effettiva letta non può superare il
@@ -151,7 +150,7 @@ Windows resta il gate per il runtime.
 
 ## Limitazioni
 
-- SQLite non cifrato a riposo.
+- Verifica SQLCipher/ACL/DPAPI disponibile solo su Windows; i file Moodle sono separati dal database cifrato e dipendono dai permessi del volume.
 - DPAPI legato all'utente Windows.
 - Scrubbing delle stringhe best-effort.
 - DNS rebinding fuori dal modello di minaccia.
@@ -160,12 +159,10 @@ Windows resta il gate per il runtime.
 
 ## Prossima slice sicura
 
-1. Valutare SQLCipher o cifratura a livello di volume con una decisione
-   documentata su licenza, manutenzione e migrazione.
-2. Aggiungere un test Windows end-to-end per ACL, DPAPI e ripristino da backup.
-3. Rendere il dependency audit bloccante dopo la pulizia degli avvisi correnti.
-4. Collegare in UI le azioni privacy già esposte dal servizio, quando il
-   proprietario UI lo pianifica.
+1. Eseguire/estendere i test Windows end-to-end per ACL, DPAPI, conversione da SQLite in chiaro e ripristino da backup.
+2. Verificare periodicamente le advisory NuGet oltre i livelli NU1901–NU1904 bloccati dalla CI.
+3. Riesaminare l'allowlist Gitleaks per mantenere le eccezioni limitate a fixture sintetiche.
+4. Collegare in UI le azioni privacy già esposte dal servizio, quando il proprietario UI lo pianifica.
 
 ## Follow-up 2026-11-14 — bounded backup ingestion
 
