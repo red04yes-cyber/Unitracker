@@ -25,6 +25,8 @@ public sealed class MoodleClient : IDisposable
     public static readonly TimeSpan RequestTimeout = TimeSpan.FromSeconds(45);
     private const int CopyBufferBytes = 81920;
 
+    private static readonly UTF8Encoding StrictUtf8 = new(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: true);
+
     private readonly HttpClient _http;
     private readonly Uri _baseUri;
     private readonly string _token;
@@ -385,8 +387,14 @@ public sealed class MoodleClient : IDisposable
             { "moodlewsrestformat", "json" }
         };
 
+        using var request = new HttpRequestMessage(
+            HttpMethod.Post,
+            new Uri(_baseUri, "webservice/rest/server.php"))
+        {
+            Content = new FormUrlEncodedContent(form)
+        };
         using var response = await _http
-            .PostAsync(new Uri(_baseUri, "webservice/rest/server.php"), new FormUrlEncodedContent(form), ct)
+            .SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct)
             .ConfigureAwait(false);
         if (!response.IsSuccessStatusCode)
             throw new HttpRequestException($"Moodle ha risposto con lo stato {(int)response.StatusCode}.");
@@ -437,7 +445,14 @@ public sealed class MoodleClient : IDisposable
                 throw new InvalidDataException("La risposta del servizio supera il limite consentito.");
             buffer.Write(chunk, 0, read);
         }
-        return Encoding.UTF8.GetString(buffer.GetBuffer(), 0, (int)buffer.Length);
+        try
+        {
+            return StrictUtf8.GetString(buffer.GetBuffer(), 0, (int)buffer.Length);
+        }
+        catch (DecoderFallbackException ex)
+        {
+            throw new InvalidDataException("Risposta Moodle non valida: codifica UTF-8 non valida.", ex);
+        }
     }
 
     private Uri WithToken(Uri source)
