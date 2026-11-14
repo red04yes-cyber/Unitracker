@@ -312,11 +312,11 @@ public sealed class MoodleClientBoundaryTests
         Content = new StringContent(payload, Encoding.UTF8, "application/json")
     };
 
-    private static HttpResponseMessage JsonBytes(byte[] payload)
+    private static HttpContent JsonBytes(byte[] payload)
     {
         var content = new ByteArrayContent(payload);
         content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
-        return new HttpResponseMessage(HttpStatusCode.OK) { Content = content };
+        return content;
     }
 
     private static HttpContent JsonStream(Stream stream, string mediaType = "application/json")
