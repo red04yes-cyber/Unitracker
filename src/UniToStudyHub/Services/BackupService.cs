@@ -116,7 +116,10 @@ public sealed class BackupService
                 throw new InvalidDataException(
                     "The database is too large for an encrypted backup (limit 512 MB).");
 
-            payload = await File.ReadAllBytesAsync(staging, cancellationToken).ConfigureAwait(false);
+            await using var stagingStream = new FileStream(staging, FileMode.Open, FileAccess.Read, FileShare.Read,
+                81920, FileOptions.Asynchronous | FileOptions.SequentialScan);
+            payload = await BoundedFileReader.ReadAllBytesAsync(stagingStream, MaximumPayloadBytes, cancellationToken)
+                .ConfigureAwait(false);
             var payloadHash = Convert.ToHexString(SHA256.HashData(payload));
             var container = BackupCrypto.Encrypt(payload, password, _keyProtector);
             var containerHash = Convert.ToHexString(SHA256.HashData(container));
