@@ -401,6 +401,23 @@ public sealed class ActivityJournalViewModelTests
         Assert.Same(reloadedData.StudyTasks.Single(), viewModel.SelectedTask);
     }
 
+    [Fact]
+    public async Task QuickLogNavigatesToItsSelectedEntryDate()
+    {
+        var data = Data();
+        var viewModel = CreateViewModel(data, out _);
+        viewModel.EntryDateInput = Day.AddDays(1);
+        viewModel.TitleInput = "Studio del giorno successivo";
+        viewModel.StartTimeInput = "09:00";
+        viewModel.EndTimeInput = "10:00";
+
+        await viewModel.AddQuickLogAsync();
+
+        Assert.Equal(Day.AddDays(1), viewModel.SelectedDay);
+        Assert.Single(viewModel.Entries);
+        Assert.Equal("Studio del giorno successivo", viewModel.Entries[0].Title);
+    }
+
     private sealed class MemoryStore(StudyData initial) : IStudyDataStore
     {
         public StudyData Data { get; private set; } = initial;
