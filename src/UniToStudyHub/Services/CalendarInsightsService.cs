@@ -74,11 +74,11 @@ public sealed class CalendarInsightsService
 
         var zone = displayTimeZone ?? TimeZoneInfo.Local;
         var rangeEvents = GetRangeEvents(events, start, endExclusive);
-        var conflicts = FindConflicts(rangeEvents, start, endExclusive, includeAllDayEvents);
-        var freeWindows = GetFreeWindows(rangeEvents, start, endExclusive, minimumFreeWindow, zone,
+        var conflicts = FindConflictsInRange(rangeEvents, start, endExclusive, includeAllDayEvents);
+        var freeWindows = BuildFreeWindows(rangeEvents, start, endExclusive, minimumFreeWindow, zone,
             includeAllDayEvents);
         var days = BuildDailySummaries(rangeEvents, conflicts, start, endExclusive, zone, includeAllDayEvents);
-        var deadlines = GetUpcomingDeadlines(rangeEvents, start, endExclusive, upcomingDeadlineLimit);
+        var deadlines = SelectUpcomingDeadlines(rangeEvents, start, endExclusive, upcomingDeadlineLimit);
         var nextEvent = GetNextEvent(rangeEvents, now);
 
         return new CalendarRangeAnalysis(start, endExclusive, zone.Id, includeAllDayEvents,
@@ -93,7 +93,7 @@ public sealed class CalendarInsightsService
         bool includeAllDayEvents = false)
     {
         ValidateRange(start, endExclusive);
-        return FindConflicts(GetRangeEvents(events, start, endExclusive), start, endExclusive,
+        return FindConflictsInRange(GetRangeEvents(events, start, endExclusive), start, endExclusive,
             includeAllDayEvents);
     }
 
@@ -114,7 +114,7 @@ public sealed class CalendarInsightsService
         ValidateMinimumFreeWindow(minimumDuration);
         var zone = displayTimeZone ?? TimeZoneInfo.Local;
         var rangeEvents = GetRangeEvents(events, start, endExclusive);
-        return GetFreeWindows(rangeEvents, start, endExclusive, minimumDuration, zone, includeAllDayEvents);
+        return BuildFreeWindows(rangeEvents, start, endExclusive, minimumDuration, zone, includeAllDayEvents);
     }
 
     /// <summary>
@@ -132,7 +132,7 @@ public sealed class CalendarInsightsService
         ValidateRange(start, endExclusive);
         ArgumentNullException.ThrowIfNull(displayTimeZone);
         var rangeEvents = GetRangeEvents(events, start, endExclusive);
-        var conflicts = FindConflicts(rangeEvents, start, endExclusive, includeAllDayEvents);
+        var conflicts = FindConflictsInRange(rangeEvents, start, endExclusive, includeAllDayEvents);
         return BuildDailySummaries(rangeEvents, conflicts, start, endExclusive, displayTimeZone,
             includeAllDayEvents);
     }
@@ -147,7 +147,7 @@ public sealed class CalendarInsightsService
         ValidateRange(start, endExclusive);
         ValidateDeadlineLimit(limit);
         var rangeEvents = GetRangeEvents(events, start, endExclusive);
-        return GetUpcomingDeadlines(rangeEvents, start, endExclusive, limit);
+        return SelectUpcomingDeadlines(rangeEvents, start, endExclusive, limit);
     }
 
     /// <summary>
@@ -190,7 +190,7 @@ public sealed class CalendarInsightsService
         return result;
     }
 
-    private static IReadOnlyList<CalendarConflict> FindConflicts(
+    private static IReadOnlyList<CalendarConflict> FindConflictsInRange(
         IReadOnlyList<CalendarEvent> rangeEvents,
         DateTimeOffset start,
         DateTimeOffset endExclusive,
@@ -241,7 +241,7 @@ public sealed class CalendarInsightsService
             .ToArray();
     }
 
-    private static IReadOnlyList<CalendarFreeWindow> GetFreeWindows(
+    private static IReadOnlyList<CalendarFreeWindow> BuildFreeWindows(
         IReadOnlyList<CalendarEvent> rangeEvents,
         DateTimeOffset start,
         DateTimeOffset endExclusive,
@@ -342,7 +342,7 @@ public sealed class CalendarInsightsService
         return summaries;
     }
 
-    private static IReadOnlyList<CalendarEvent> GetUpcomingDeadlines(
+    private static IReadOnlyList<CalendarEvent> SelectUpcomingDeadlines(
         IReadOnlyList<CalendarEvent> rangeEvents,
         DateTimeOffset start,
         DateTimeOffset endExclusive,
