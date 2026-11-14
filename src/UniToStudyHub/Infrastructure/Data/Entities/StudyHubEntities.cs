@@ -404,3 +404,9 @@ public sealed class LegacyImportEntity
     public string SourceHash { get; set; } = string.Empty;
     public DateTimeOffset ImportedAt { get; set; }
 }
+
+public sealed class NotificationDismissalEntity
+{
+    public string Key { get; set; } = string.Empty;
+    public DateTimeOffset DismissedAt { get; set; }
+}
