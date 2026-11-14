@@ -88,7 +88,8 @@ public sealed class NotificationCenterServiceTests
 
         Assert.Single(notifications);
         Assert.Equal("task:soon", notifications[0].Id);
-    
+    }
+
     [Fact]
     public void DismissalKeyIsDeterministicAndDoesNotContainNotificationText()
     {
@@ -147,5 +148,4 @@ public sealed class NotificationCenterServiceTests
         var rescheduled = Assert.Single(service.GetUpcoming(data, now));
         Assert.Equal(now.AddHours(2), rescheduled.OccursAt);
     }
-}
 }
