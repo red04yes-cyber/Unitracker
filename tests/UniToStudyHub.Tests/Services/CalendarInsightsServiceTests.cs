@@ -244,6 +244,18 @@ public sealed class CalendarInsightsServiceTests
             _service.FindConflicts(events, start, start.AddHours(2)));
     }
 
+
+    [Fact]
+    public void GetNextEventRejectsExcessiveCandidateLists()
+    {
+        var now = new DateTimeOffset(2026, 11, 14, 8, 0, 0, TimeSpan.Zero);
+        var events = Enumerable.Range(0, CalendarInsightsService.MaximumEventsPerRange + 1)
+            .Select(index => Event($"event-{index:D5}", now.AddMinutes(index), now.AddMinutes(index + 1)))
+            .ToArray();
+
+        Assert.Throws<InvalidOperationException>(() => _service.GetNextEvent(events, now));
+    }
+
     [Fact]
     public void GetRangeAnalysisRejectsExcessiveEventCounts()
     {
