@@ -19,6 +19,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
     private readonly CareerApplicationService _career;
     private readonly CalendarEventStore _calendarStore = new();
     public StudyWorkspaceViewModel Workspace { get; }
+    public ActivityJournalViewModel ActivityJournal { get; }
     private StudyData _data = new();
     private Course? _selectedGradeCourse;
     private string _courseNameInput = string.Empty;
@@ -242,14 +243,16 @@ public sealed class MainViewModel : INotifyPropertyChanged
     public AsyncRelayCommand TodayCalendarCommand { get; }
     public AsyncRelayCommand NewCalendarEventCommand { get; }
 
-    public MainViewModel(IStudyDataStore store, MoodleApplicationService moodle, CareerCalculatorService calculator, CareerApplicationService career, StudyWorkspaceViewModel workspace)
+    public MainViewModel(IStudyDataStore store, MoodleApplicationService moodle, CareerCalculatorService calculator, CareerApplicationService career, ActivityLedgerService activityLedger, StudyWorkspaceViewModel workspace)
     {
         _store = store;
         _moodle = moodle;
         _calculator = calculator;
         _career = career;
         Workspace = workspace;
+        ActivityJournal = new ActivityJournalViewModel(store, activityLedger);
         Workspace.DataReloaded += OnWorkspaceDataReloaded;
+        Workspace.PropertyChanged += OnWorkspacePropertyChanged;
         AddCourseCommand = new AsyncRelayCommand(AddCourseAsync);
         AddGradeCommand = new AsyncRelayCommand(AddGradeAsync, () => SelectedGradeCourse is not null);
         PlanExamsCommand = new AsyncRelayCommand(PlanExamsAsync);
@@ -290,6 +293,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
         RefreshCareerSummary();
         RefreshExamSummary();
         Workspace.Initialize(_data);
+        ActivityJournal.Initialize(_data);
         RefreshCalendar();
     }
 
@@ -993,6 +997,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
     private void OnWorkspaceDataReloaded(StudyData data)
     {
         _data = data;
+        ActivityJournal.Initialize(data);
         RefreshCollections();
         RefreshVisibleCourses();
         RefreshCourseSummary();
@@ -1002,8 +1007,11 @@ public sealed class MainViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(AcquiredCreditsValue));
     }
 
-    private async Task SaveAsync(CancellationToken cancellationToken = default) =>
+    private async Task SaveAsync(CancellationToken cancellationToken = default)
+    {
         await _store.SaveAsync(_data, cancellationToken);
+        ActivityJournal.Refresh();
+    }
 
     private void RefreshCollections()
     {
@@ -1034,6 +1042,13 @@ public sealed class MainViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(AcquiredCreditsValue));
         OnPropertyChanged(nameof(ProjectedBaseGradeValue));
         OnPropertyChanged(nameof(LatestGradeDisplay));
+    }
+
+    private void OnWorkspacePropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName is nameof(StudyWorkspaceViewModel.FocusStateDisplay) or
+            nameof(StudyWorkspaceViewModel.WorkspaceStatus))
+            ActivityJournal.Refresh();
     }
 
     private void Set<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)

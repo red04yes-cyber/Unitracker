@@ -1344,6 +1344,251 @@
                 <TextBlock Text="{Binding Workspace.ExportStatus}" FontSize="10" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,7,0,0"/>
             </StackPanel>
         </Border>
+
+        <Border Style="{StaticResource AnimatedCardStyle}" Margin="0,16,0,0">
+            <StackPanel>
+                <Grid>
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                    <StackPanel>
+                        <TextBlock Text="Registro attività" Style="{StaticResource SectionTitleStyle}"/>
+                        <TextBlock Text="Diario reale delle sessioni e delle attività inserite manualmente, senza stimare il tempo non registrato."
+                                   Style="{StaticResource PageSubtitleStyle}" TextWrapping="Wrap" Margin="0,5,0,0"/>
+                    </StackPanel>
+                    <Button Grid.Column="1" Content="Aggiorna" Command="{Binding ActivityJournal.RefreshCommand}"
+                            Style="{StaticResource SecondaryButtonStyle}" VerticalAlignment="Center"
+                            ToolTip="Ricalcola il diario usando i dati attualmente salvati"/>
+                </Grid>
+
+                <Grid Margin="0,16,0,0">
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="150"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                    <StackPanel Margin="0,0,8,0">
+                        <TextBlock Text="GIORNO" Style="{StaticResource KpiLabelStyle}" Margin="0,0,0,5"/>
+                        <DatePicker SelectedDate="{Binding ActivityJournal.SelectedDay, Mode=TwoWay}" AutomationProperties.Name="Giorno del diario"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" Margin="0,0,8,0">
+                        <TextBlock Text="SLOT" Style="{StaticResource KpiLabelStyle}" Margin="0,0,0,5"/>
+                        <ComboBox ItemsSource="{Binding ActivityJournal.SlotSizeOptions}"
+                                  SelectedItem="{Binding ActivityJournal.SlotMinutes}" ToolTip="Granularità della timeline" AutomationProperties.Name="Granularità della timeline"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="2" Margin="0,0,8,0">
+                        <TextBlock Text="FILTRO ATTIVITÀ" Style="{StaticResource KpiLabelStyle}" Margin="0,0,0,5"/>
+                        <ComboBox ItemsSource="{Binding ActivityJournal.ActivityFilterOptions}"
+                                  DisplayMemberPath="Label" SelectedItem="{Binding ActivityJournal.SelectedActivityFilter}" AutomationProperties.Name="Filtra attività per tipologia"/>
+                    </StackPanel>
+                    <WrapPanel Grid.Column="3" VerticalAlignment="Bottom">
+                        <Button Content="‹" AutomationProperties.Name="Giorno precedente" Command="{Binding ActivityJournal.PreviousDayCommand}"
+                                Style="{StaticResource QuietButtonStyle}" Width="36" Margin="0,0,5,0" ToolTip="Giorno precedente"/>
+                        <Button Content="Oggi" Command="{Binding ActivityJournal.TodayCommand}"
+                                Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,5,0"/>
+                        <Button Content="›" AutomationProperties.Name="Giorno successivo" Command="{Binding ActivityJournal.NextDayCommand}"
+                                Style="{StaticResource QuietButtonStyle}" Width="36" ToolTip="Giorno successivo"/>
+                    </WrapPanel>
+                </Grid>
+                <TextBlock Text="{Binding ActivityJournal.SelectedDayLabel}" FontSize="12" FontWeight="SemiBold"
+                           Foreground="{DynamicResource InkBrush}" Margin="0,10,0,0"/>
+
+                <UniformGrid Columns="4" Margin="0,12,0,8">
+                    <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,8,8">
+                        <StackPanel><TextBlock Text="TEMPO REGISTRATO" Style="{StaticResource KpiLabelStyle}"/>
+                            <TextBlock Text="{Binding ActivityJournal.RecordedDisplay}" FontSize="20" FontWeight="SemiBold"
+                                       Foreground="{DynamicResource InkBrush}" Margin="0,7,0,0"/>
+                        </StackPanel>
+                    </Border>
+                    <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,8,8">
+                        <StackPanel><TextBlock Text="ATTIVITÀ" Style="{StaticResource KpiLabelStyle}"/>
+                            <TextBlock Text="{Binding ActivityJournal.ActivityCountDisplay}" FontSize="20" FontWeight="SemiBold"
+                                       Foreground="{DynamicResource InkBrush}" Margin="0,7,0,0"/>
+                        </StackPanel>
+                    </Border>
+                    <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,8,8">
+                        <StackPanel><TextBlock Text="TEMPO SOVRAPPOSTO" Style="{StaticResource KpiLabelStyle}"/>
+                            <TextBlock Text="{Binding ActivityJournal.OverlapDisplay}" FontSize="20" FontWeight="SemiBold"
+                                       Foreground="{DynamicResource InkBrush}" Margin="0,7,0,0"/>
+                        </StackPanel>
+                    </Border>
+                    <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,8">
+                        <StackPanel><TextBlock Text="SENZA REGISTRAZIONI" Style="{StaticResource KpiLabelStyle}"/>
+                            <TextBlock Text="{Binding ActivityJournal.UnregisteredDisplay}" FontSize="20" FontWeight="SemiBold"
+                                       Foreground="{DynamicResource InkBrush}" Margin="0,7,0,0"/>
+                        </StackPanel>
+                    </Border>
+                </UniformGrid>
+                <TextBlock Text="{Binding ActivityJournal.OverlapStatus}" FontSize="10"
+                           Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,0,0,12"/>
+
+                <TextBlock Text="Timeline della giornata" Style="{StaticResource SectionTitleStyle}" Margin="0,4,0,4"/>
+                <TextBlock Text="Ogni barra mostra il tempo effettivo registrato nello slot. Gli intervalli vuoti non significano necessariamente tempo libero."
+                           FontSize="10" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,0,0,8"/>
+                <ScrollViewer MaxHeight="320" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                    <ItemsControl ItemsSource="{Binding ActivityJournal.TimelineSlots}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Grid Margin="0,4,0,4">
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="90"/><ColumnDefinition Width="*"/><ColumnDefinition Width="58"/></Grid.ColumnDefinitions>
+                                    <TextBlock Text="{Binding TimeRange}" FontSize="10" Foreground="{DynamicResource MutedBrush}"
+                                               VerticalAlignment="Center"/>
+                                    <ProgressBar Grid.Column="1" Value="{Binding ProgressPercent}" Maximum="100" Height="8"
+                                                 VerticalAlignment="Center" Foreground="{DynamicResource AccentBrush}"
+                                                 Background="{DynamicResource SubtleBrush}" ToolTip="{Binding ToolTip}" AutomationProperties.Name="{Binding TimeRange}" AutomationProperties.HelpText="{Binding ToolTip}"/>
+                                    <TextBlock Grid.Column="2" Text="{Binding RecordedDisplay}" FontSize="10"
+                                               Foreground="{DynamicResource InkBrush}" HorizontalAlignment="Right"
+                                               VerticalAlignment="Center"/>
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+
+                <Grid Margin="0,16,0,0">
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                    <TextBlock Text="Heatmap oraria · ultimi 7 giorni" Style="{StaticResource SectionTitleStyle}"/>
+                    <TextBlock Grid.Column="1" Text="{Binding ActivityJournal.HeatmapRangeDisplay}" FontSize="10"
+                               Foreground="{DynamicResource MutedBrush}" VerticalAlignment="Center"/>
+                </Grid>
+                <ItemsControl ItemsSource="{Binding ActivityJournal.HeatmapDays}" Margin="0,8,0,0">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Grid Margin="0,4,0,4">
+                                <Grid.ColumnDefinitions><ColumnDefinition Width="82"/><ColumnDefinition Width="*"/><ColumnDefinition Width="58"/></Grid.ColumnDefinitions>
+                                <TextBlock Text="{Binding DayLabel}" FontSize="9" Foreground="{DynamicResource MutedBrush}"
+                                           VerticalAlignment="Center"/>
+                                <ItemsControl Grid.Column="1" ItemsSource="{Binding Cells}" ToolTip="Ogni cella rappresenta un'ora; il colore cresce con i secondi registrati.">
+                                    <ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Columns="24"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border Height="14" Margin="1" CornerRadius="2"
+                                                    Background="{DynamicResource AccentBrush}" Opacity="{Binding Intensity}"
+                                                    ToolTip="{Binding ToolTip}" AutomationProperties.Name="{Binding ToolTip}"/>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                                <TextBlock Grid.Column="2" Text="{Binding TotalDisplay}" FontSize="9"
+                                           Foreground="{DynamicResource InkBrush}" HorizontalAlignment="Right"
+                                           VerticalAlignment="Center"/>
+                            </Grid>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <Border Background="{DynamicResource SubtleBrush}" CornerRadius="10" Padding="14" Margin="0,16,0,0">
+                    <StackPanel>
+                        <TextBlock Text="Registra attività manuale" Style="{StaticResource SectionTitleStyle}"/>
+                        <TextBlock Text="Aggiungi lo studio svolto fuori dal timer. Puoi collegare materia, argomento e task; la nota è privata per impostazione predefinita."
+                                   FontSize="10" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,5,0,12"/>
+                        <Grid>
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                            <StackPanel Margin="0,0,8,0">
+                                <TextBlock Text="DATA" Style="{StaticResource KpiLabelStyle}" Margin="0,0,0,5"/>
+                                <DatePicker SelectedDate="{Binding ActivityJournal.EntryDateInput}" AutomationProperties.Name="Data attività"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="1" Margin="0,0,8,0">
+                                <TextBlock Text="TIPO" Style="{StaticResource KpiLabelStyle}" Margin="0,0,0,5"/>
+                                <ComboBox ItemsSource="{Binding ActivityJournal.QuickLogTypeOptions}" DisplayMemberPath="Label"
+                                          SelectedItem="{Binding ActivityJournal.SelectedQuickLogType}" AutomationProperties.Name="Tipo attività"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="2">
+                                <TextBlock Text="MATERIA" Style="{StaticResource KpiLabelStyle}" Margin="0,0,0,5"/>
+                                <ComboBox ItemsSource="{Binding ActivityJournal.Courses}" DisplayMemberPath="Name"
+                                          SelectedItem="{Binding ActivityJournal.SelectedCourse}" AutomationProperties.Name="Materia"/>
+                            </StackPanel>
+                        </Grid>
+                        <Grid Margin="0,10,0,0">
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="2*"/><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                            <StackPanel Margin="0,0,8,0">
+                                <TextBlock Text="DESCRIZIONE BREVE · ESPORTABILE" Style="{StaticResource KpiLabelStyle}" Margin="0,0,0,5"/>
+                                <TextBox Text="{Binding ActivityJournal.TitleInput, UpdateSourceTrigger=PropertyChanged}" MaxLength="400" AutomationProperties.Name="Descrizione breve esportabile"
+                                         ToolTip="Ad esempio: esercizi di analisi sui limiti"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="1" Margin="0,0,8,0">
+                                <TextBlock Text="INIZIO · HH:mm" Style="{StaticResource KpiLabelStyle}" Margin="0,0,0,5"/>
+                                <TextBox Text="{Binding ActivityJournal.StartTimeInput, UpdateSourceTrigger=PropertyChanged}" MaxLength="5" AutomationProperties.Name="Ora di inizio"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="2">
+                                <TextBlock Text="FINE · HH:mm" Style="{StaticResource KpiLabelStyle}" Margin="0,0,0,5"/>
+                                <TextBox Text="{Binding ActivityJournal.EndTimeInput, UpdateSourceTrigger=PropertyChanged}" MaxLength="5" AutomationProperties.Name="Ora di fine"/>
+                            </StackPanel>
+                        </Grid>
+                        <Grid Margin="0,10,0,0">
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                            <StackPanel Margin="0,0,8,0">
+                                <TextBlock Text="ARGOMENTO DEL SYLLABUS" Style="{StaticResource KpiLabelStyle}" Margin="0,0,0,5"/>
+                                <ComboBox ItemsSource="{Binding ActivityJournal.SyllabusTopics}" DisplayMemberPath="Title"
+                                          SelectedItem="{Binding ActivityJournal.SelectedSyllabusTopic}" AutomationProperties.Name="Argomento del syllabus"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="1">
+                                <TextBlock Text="TASK COLLEGATO" Style="{StaticResource KpiLabelStyle}" Margin="0,0,0,5"/>
+                                <ComboBox ItemsSource="{Binding ActivityJournal.AvailableTasks}" DisplayMemberPath="Title"
+                                          SelectedItem="{Binding ActivityJournal.SelectedTask}" AutomationProperties.Name="Task collegato"/>
+                            </StackPanel>
+                        </Grid>
+                        <TextBlock Text="NOTA PRIVATA FACOLTATIVA" Style="{StaticResource KpiLabelStyle}" Margin="0,10,0,5"/>
+                        <TextBox Text="{Binding ActivityJournal.NoteInput, UpdateSourceTrigger=PropertyChanged}" MaxLength="12000"
+                                 AcceptsReturn="True" TextWrapping="Wrap" MinHeight="58" VerticalScrollBarVisibility="Auto" AutomationProperties.Name="Nota privata facoltativa"/>
+                        <CheckBox Content="Nota privata · esclusa dagli export standard" IsChecked="{Binding ActivityJournal.IsPrivate}"
+                                  Margin="0,10,0,0" ToolTip="Puoi comunque consultare la voce nel diario locale." AutomationProperties.Name="Escludi la nota dagli export standard"/>
+                        <Button Content="Registra attività" Command="{Binding ActivityJournal.AddQuickLogCommand}"
+                                HorizontalAlignment="Left" Margin="0,12,0,0"/>
+                    </StackPanel>
+                </Border>
+
+                <Grid Margin="0,16,0,8">
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                    <TextBlock Text="Attività del giorno" Style="{StaticResource SectionTitleStyle}"/>
+                    <TextBlock Grid.Column="1" Text="Le voci manuali possono essere rimosse con un motivo; le sessioni timer restano collegate allo storico."
+                               FontSize="9" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" VerticalAlignment="Center"/>
+                </Grid>
+                <TextBlock Text="{Binding ActivityJournal.EmptyEntriesMessage}"
+                           Visibility="{Binding ActivityJournal.NoEntries, Converter={StaticResource BooleanToVisibilityConverter}}"
+                           FontSize="11" Foreground="{DynamicResource MutedBrush}" Margin="0,6,0,10"/>
+                <ListBox ItemsSource="{Binding ActivityJournal.Entries}" SelectedItem="{Binding ActivityJournal.SelectedEntry}"
+                         MinHeight="70" MaxHeight="260" BorderThickness="0" Background="Transparent">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <Border Background="{DynamicResource SubtleBrush}" CornerRadius="8" Padding="10" Margin="0,3,0,3">
+                                <Grid>
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                    <StackPanel>
+                                        <TextBlock Text="{Binding Title}" FontSize="11" FontWeight="SemiBold"
+                                                   Foreground="{DynamicResource InkBrush}" TextWrapping="Wrap"/>
+                                        <TextBlock Text="{Binding TypeDisplay}" FontSize="9" Foreground="{DynamicResource AccentBrush}" Margin="0,3,0,0"/>
+                                        <TextBlock Text="{Binding CourseDisplay}" FontSize="9" Foreground="{DynamicResource MutedBrush}"/>
+                                        <TextBlock Text="{Binding TimeRangeDisplay}" FontSize="9" Foreground="{DynamicResource MutedBrush}"/>
+                                        <TextBlock Text="{Binding DurationDisplay}" FontSize="9" Foreground="{DynamicResource InkBrush}"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="1" HorizontalAlignment="Right">
+                                        <TextBlock Text="{Binding OriginDisplay}" FontSize="9" Foreground="{DynamicResource MutedBrush}"/>
+                                        <TextBlock Text="{Binding PrivacyDisplay}" FontSize="9" Foreground="{DynamicResource MutedBrush}" Margin="0,3,0,0"/>
+                                        <TextBlock Text="Sovrapposta" FontSize="9" FontWeight="SemiBold"
+                                                   Foreground="{DynamicResource AccentBrush}">
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock">
+                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding HasOverlap}" Value="True">
+                                                            <Setter Property="Visibility" Value="Visible"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+                <Grid Margin="0,10,0,0">
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                    <TextBox Text="{Binding ActivityJournal.DeleteReasonInput, UpdateSourceTrigger=PropertyChanged}"
+                             MinWidth="260" MaxWidth="420" ToolTip="Motivo richiesto per la revisione" AutomationProperties.Name="Motivo della correzione"/>
+                    <Button Grid.Column="1" Content="Rimuovi voce manuale" Command="{Binding ActivityJournal.DeleteSelectedActivityCommand}"
+                            IsEnabled="{Binding ActivityJournal.CanDeleteSelectedEntry}" Style="{StaticResource QuietButtonStyle}"
+                            Margin="8,0,0,0"/>
+                </Grid>
+                <TextBlock Text="{Binding ActivityJournal.StatusMessage}" FontSize="10" Foreground="{DynamicResource MutedBrush}"
+                           TextWrapping="Wrap" Margin="0,9,0,0"/>
+            </StackPanel>
+        </Border>
     </StackPanel>
 </ScrollViewer>
         </TabItem>
