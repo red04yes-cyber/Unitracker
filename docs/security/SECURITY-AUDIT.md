@@ -70,6 +70,7 @@ Se in futuro venisse trovata una credenziale reale:
 | F-13 | P2 | Import senza limiti espliciti e campi importati non sanificati | Limiti di dimensione, sanitizzazione e messaggi di avviso; le note private restano escluse dagli export standard | `Services/IcsCalendarParser.cs`, `Services/StudyExports.cs` |
 | F-14 | P1 | Verifica, elenco e ripristino backup leggevano container/manifest senza un budget effettivo; l'elenco poteva seguire voci reparse e calcolare hash senza limite | Container `.utbk` limitati a 512 MiB di payload più overhead massimo, legacy `.db` a 512 MiB, manifest a 64 KiB; lettura/copia/hash bounded sullo stream aperto; elenco limitato a file interni non-reparse | `Services/BackupService.cs`, `Security/BackupCrypto.cs`, `Security/BoundedFileReader.cs` |
 | F-15 | P2 | Il buffer `byte[]` della chiave SQLCipher restava in memoria dopo la conversione esadecimale | Azzeramento in `finally` anche nel percorso valido; test di riuso della chiave e assenza di plaintext nell'envelope | `Infrastructure/Data/DatabaseKeyVault.cs`, `tests/UniToStudyHub.Tests/Security/SecretAndFileSecurityTests.cs` |
+| F-16 | P2 | Il pacchetto diagnostico controllava la dimensione dei log prima di `ReadAllTextAsync`, senza limite sulla lettura effettiva | Lettura bounded a 512 KiB sullo stream aperto, cancellabile; buffer azzerato e file oltre soglia esclusi/preservati | `Services/PrivacyService.cs`, `Security/BoundedFileReader.cs`, `tests/UniToStudyHub.Tests/Security/PrivacyResetAndDiagnosticsTests.cs` |
 
 ## Verificato senza modifiche
 
