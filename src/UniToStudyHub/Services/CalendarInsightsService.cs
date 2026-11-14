@@ -309,20 +309,26 @@ public sealed class CalendarInsightsService
             if (dayEnd <= dayStart)
                 continue; // A civil date skipped by a time-zone change has no elapsed duration.
 
+            var effectiveDayStart = dayStart < start ? start : dayStart;
+            var effectiveDayEnd = dayEnd > endExclusive ? endExclusive : dayEnd;
+            if (effectiveDayEnd <= effectiveDayStart)
+                continue;
+
             var dayEvents = rangeEvents
-                .Where(item => item.StartsAt < dayEnd && item.EndsAt > dayStart)
+                .Where(item => item.StartsAt < effectiveDayEnd && item.EndsAt > effectiveDayStart)
                 .ToArray();
             var dayBlocking = blockingEvents
-                .Where(item => item.StartsAt < dayEnd && item.EndsAt > dayStart)
+                .Where(item => item.StartsAt < effectiveDayEnd && item.EndsAt > effectiveDayStart)
                 .ToArray();
 
             var busyIntervals = MergeIntervals(dayBlocking.Select(item => new TimeRange(
-                item.StartsAt < dayStart ? dayStart : item.StartsAt,
-                item.EndsAt > dayEnd ? dayEnd : item.EndsAt)));
+                item.StartsAt < effectiveDayStart ? effectiveDayStart : item.StartsAt,
+                item.EndsAt > effectiveDayEnd ? effectiveDayEnd : item.EndsAt)));
             var busyDuration = busyIntervals.Aggregate(
                 TimeSpan.Zero, (total, interval) => total + (interval.End - interval.Start));
-            var dayDuration = dayEnd - dayStart;
-            var conflictCount = conflicts.Count(item => item.StartsAt < dayEnd && item.EndsAt > dayStart);
+            var dayDuration = effectiveDayEnd - effectiveDayStart;
+            var conflictCount = conflicts.Count(item =>
+                item.StartsAt < effectiveDayEnd && item.EndsAt > effectiveDayStart);
 
             summaries.Add(new CalendarDaySummary(
                 day,
