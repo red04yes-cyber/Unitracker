@@ -30,6 +30,7 @@ I backup sono contenitori AES-256-GCM autenticati. Il contenuto SQLite temporane
 - **Backup con password:** protegge il contenitore esterno con AES-256-GCM, ma il database interno resta cifrato con la chiave SQLCipher protetta da DPAPI. Il ripristino richiede lo stesso account Windows.
 - **Backup DPAPI:** può essere aperto solo dall'account Windows che lo ha creato.
 - La password non è recuperabile. Usa una password robusta e conservala in un gestore password.
+- In import/ripristino: `.utbk` è limitato a 512 MiB di payload più overhead del container, il backup legacy `.db` a 512 MiB e il manifest sidecar a 64 KiB. Letture, copie e hash applicano il limite sullo stream; file oltre soglia vengono rifiutati e lasciati intatti.
 
 ## Moodle
 
