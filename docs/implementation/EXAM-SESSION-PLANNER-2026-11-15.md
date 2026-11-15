@@ -49,7 +49,7 @@ indicative placeholders. They are not official UniTo appeal dates.
 ## Bounds and validation
 
 - 500 exams per preview.
-- 2,000 mandatory prerequisite edges.
+- 2,000 course rows and 2,000 prerequisite rows.
 - 64 blackout periods.
 - Planning horizon no longer than 10 years.
 - 1–60 CFU per session and per exam; 1–168 average study hours per week.
@@ -65,10 +65,10 @@ indicative placeholders. They are not official UniTo appeal dates.
 ### Input and resource boundaries
 
 1. Null `StudyData` is rejected.
-2. Null exam, course or prerequisite collections are rejected.
+2. Null exam, course or prerequisite collections are rejected; course lists above 2,000 rows are rejected.
 3. Null rows inside those collections are rejected before dereference.
-4. Exam collections above 500 rows are rejected.
-5. Mandatory prerequisite edges above 2,000 are rejected.
+4. An arbitrary exam enumerable is stopped at item 501, before unbounded materialization.
+5. Prerequisite collections above 2,000 rows are rejected before graph construction.
 6. Blackout collections above 64 rows are rejected.
 7. Planning horizons beyond 10 years are rejected.
 8. A past target is reported; the planner does not silently extend it.
