@@ -297,9 +297,11 @@ public sealed class ExamReadinessServiceTests
         var high = service.Calculate(highGradeData, "analisi", ReferenceDay);
 
         Assert.Equal(low.Score, high.Score);
-        Assert.Contains("18", low.OfficialResultContext, StringComparison.Ordinal);
-        Assert.Contains("30", high.OfficialResultContext, StringComparison.Ordinal);
-        Assert.Contains("escluso dal punteggio", low.OfficialResultContext, StringComparison.OrdinalIgnoreCase);
+        Assert.NotNull(low.OfficialResultContext);
+        Assert.NotNull(high.OfficialResultContext);
+        Assert.Contains("18", low.OfficialResultContext!, StringComparison.Ordinal);
+        Assert.Contains("30", high.OfficialResultContext!, StringComparison.Ordinal);
+        Assert.Contains("escluso dal punteggio", low.OfficialResultContext!, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
