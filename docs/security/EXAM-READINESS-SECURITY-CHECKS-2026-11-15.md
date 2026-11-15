@@ -73,4 +73,4 @@ Esito dei controlli source-level sul perimetro della modifica. “Superato” in
 
 ## Test aggiunti
 
-I casi dedicati coprono assenza dati, punteggio parziale, mappatura delle quattro valutazioni, isolamento per materia, flashcard sospese, finestra di 30 giorni, soglie minime, stati del diario errori, normalizzazione dei pesi, separazione dal voto ufficiale, enum corrotti, non-mutazione e input materia non valido.
+I 16 casi dedicati coprono assenza dati, punteggio parziale, mappatura delle quattro valutazioni, isolamento per materia, flashcard sospese, limiti della finestra di 30 giorni, soglie minime, stati del diario errori, inclusione di errori più vecchi rivisti di recente, normalizzazione dei pesi, separazione dal voto ufficiale, enum corrotti, non-mutazione e input materia non valido.
