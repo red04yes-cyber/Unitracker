@@ -18,7 +18,9 @@ indicative placeholders. They are not official UniTo appeal dates.
 - Every session has a hard CFU ceiling. An exam that cannot fit is reported as
   unscheduled instead of being placed into an overloaded session.
 - The estimated workload assigned to a session is checked against the user's
-  maximum average weekly hours available up to that session.
+  maximum average weekly hours. For a dependent exam, its available study window
+  starts after the latest scheduled mandatory prerequisite, not at the original
+  planning date.
 - User-supplied blackout periods exclude session anchors inside the inclusive
   date range.
 - The `StudyData` overload reads mandatory prerequisites and passed courses
@@ -111,8 +113,8 @@ slice and no security-specific code correction was necessary.
 `ExamPlannerTests` covers hard CFU capacity, weekly workload, passed and missing
 prerequisites, prerequisite order and cycles, blackout periods, past targets,
 side-effect-free previews, completed-exam preservation, alternatives, invalid
-budgets, oversized input, duplicate course assignments, invalid exam values
-and tampered/foreign assignments.
+budgets, oversized input, duplicate course assignments, invalid exam values,
+post-prerequisite workload windows and tampered/foreign assignments.
 
 The Windows build/test and security-scan workflows remain the final verification
 gate. A local .NET SDK build is not claimed unless it is actually run.
