@@ -204,25 +204,24 @@ public sealed class ExamReadinessService(CareerApplicationService career)
 
     private string? GetLatestOfficialResultContext(StudyData data, string courseId)
     {
-        var attempts = CareerDataProjection.ToDomainExams(data.CareerExams ?? new())
-            .FirstOrDefault(x => string.Equals(x.CourseId, courseId, StringComparison.Ordinal))
-            ?.Attempts
-            .Where(x => x.IsOfficialResult)
-            .ToList() ?? new();
-
-        var official = attempts
+        var official = _career.GetAttempts(data, courseId)
+            .Where(x => string.Equals(x.Status, AttemptStatus.Completed.ToString(), StringComparison.OrdinalIgnoreCase))
+            .Where(x => string.Equals(x.Outcome, ExamOutcome.Passed.ToString(), StringComparison.OrdinalIgnoreCase) ||
+                        string.Equals(x.Outcome, ExamOutcome.EligibilityPassed.ToString(), StringComparison.OrdinalIgnoreCase))
+            .Where(x => string.Equals(x.GradeDecision, GradeDecision.Accepted.ToString(), StringComparison.OrdinalIgnoreCase) ||
+                        string.Equals(x.GradeDecision, GradeDecision.NotApplicable.ToString(), StringComparison.OrdinalIgnoreCase))
             .OrderByDescending(x => x.RecordedAt)
             .ThenByDescending(x => x.AttemptedAt)
             .FirstOrDefault();
 
         if (official is null)
             return null;
-        if (official.Grade is not { } grade)
-            return "Ultimo esito ufficiale registrato (solo contesto, escluso dal punteggio).";
-        if (grade.IsPassFail)
+        if (official.IsPassFail)
             return "Idoneità ufficiale registrata (solo contesto, esclusa dal punteggio).";
+        if (official.NumericGrade is not int grade)
+            return "Ultimo esito ufficiale registrato (solo contesto, escluso dal punteggio).";
 
-        return $"Ultimo voto ufficiale: {grade.NumericValue}{(grade.IsHonors ? " e lode" : string.Empty)} " +
+        return $"Ultimo voto ufficiale: {grade}{(official.IsHonors ? " e lode" : string.Empty)} " +
                "(solo contesto, escluso dal punteggio).";
     }
 
