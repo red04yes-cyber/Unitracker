@@ -93,6 +93,8 @@ public static class ExamPlanner
         if (data.Exams is null || data.Courses is null || data.CoursePrerequisites is null)
             throw new InvalidDataException("I dati del pianificatore esami non sono inizializzati.");
 
+        if (data.Exams.Any(x => x is null) || data.Courses.Any(x => x is null))
+            throw new InvalidDataException("Gli esami o i corsi contengono una voce non valida.");
         if (data.CoursePrerequisites.Any(x => x is null))
             throw new InvalidDataException("L'elenco delle propedeuticità contiene una voce non valida.");
 
@@ -176,14 +178,24 @@ public static class ExamPlanner
         {
             if (exam is null)
                 throw new InvalidDataException("L'elenco degli esami contiene una voce nulla.");
-            if (string.IsNullOrWhiteSpace(exam.Id) || !byId.TryAdd(exam.Id, exam))
-                throw new InvalidDataException("Gli identificativi degli esami devono essere valorizzati e univoci.");
+            if (string.IsNullOrWhiteSpace(exam.Id)) continue;
+            if (!byId.TryAdd(exam.Id, exam))
+                throw new InvalidDataException("Gli identificativi degli esami devono essere univoci.");
         }
+
+        if (result.Assignments is null)
+            throw new InvalidOperationException("La preview non contiene un elenco di assegnazioni valido.");
 
         var assignments = new Dictionary<string, ExamSessionAssignment>(StringComparer.Ordinal);
         foreach (var assignment in result.Assignments)
         {
-            if (assignment is null || !byId.TryGetValue(assignment.ExamId, out var exam) || exam.Completed ||
+            if (assignment is null || string.IsNullOrWhiteSpace(assignment.ExamId) ||
+                !byId.TryGetValue(assignment.ExamId, out var exam) || exam.Completed ||
+                !string.Equals(assignment.CourseId, exam.CourseId, StringComparison.Ordinal) ||
+                assignment.Cfu != exam.Cfu ||
+                assignment.EstimatedStudyHours != exam.EstimatedStudyHours ||
+                string.IsNullOrWhiteSpace(assignment.SessionName) ||
+                assignment.SessionDate == default ||
                 !assignments.TryAdd(assignment.ExamId, assignment))
                 throw new InvalidOperationException("La preview contiene un'assegnazione non valida o duplicata.");
             if (assignment.SessionDate.Date < result.ReferenceDate.Date ||
@@ -193,7 +205,7 @@ public static class ExamPlanner
 
         foreach (var exam in exams.Where(x => !x.Completed))
         {
-            if (assignments.TryGetValue(exam.Id, out var assignment))
+            if (!string.IsNullOrWhiteSpace(exam.Id) && assignments.TryGetValue(exam.Id, out var assignment))
             {
                 exam.PlannedSession = assignment.SessionName;
                 exam.PlannedDate = assignment.SessionDate;
@@ -282,12 +294,18 @@ public static class ExamPlanner
         var candidates = new List<Exam>();
         foreach (var exam in input)
         {
+            if (string.IsNullOrWhiteSpace(exam.Id))
+            {
+                if (!exam.Completed)
+                    issues.Add(Issue(exam, "L'esame non ha un identificativo valido."));
+                continue;
+            }
             if (!allIds.Add(exam.Id))
                 throw new InvalidDataException($"L'identificativo esame '{exam.Id}' è duplicato.");
             if (exam.Completed) continue;
-            if (string.IsNullOrWhiteSpace(exam.Id) || string.IsNullOrWhiteSpace(exam.CourseId))
+            if (string.IsNullOrWhiteSpace(exam.CourseId))
             {
-                issues.Add(Issue(exam, "L'esame non ha un identificativo o un corso valido."));
+                issues.Add(Issue(exam, "L'esame non ha un corso valido."));
                 continue;
             }
             if (!courseIds.Add(exam.CourseId))
