@@ -332,6 +332,16 @@ public sealed class ExamReadinessServiceTests
                     GradeDecision = "NotApplicable",
                     NumericGrade = 30,
                     RecordedAt = At(-1)
+                },
+                new()
+                {
+                    AttemptedAt = At(-3),
+                    Status = "Completed",
+                    Outcome = "EligibilityPassed",
+                    GradeDecision = "NotApplicable",
+                    NumericGrade = 30,
+                    IsPassFail = false,
+                    RecordedAt = At(-2)
                 }
             }
         });
