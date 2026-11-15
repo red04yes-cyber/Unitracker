@@ -305,6 +305,44 @@ public sealed class ExamReadinessServiceTests
     }
 
     [Fact]
+    public void UnrecordedOrInconsistentAttemptIsNotPresentedAsAnOfficialResult()
+    {
+        var data = Data();
+        data.CareerExams.Add(new CareerExamData
+        {
+            CourseId = "analisi",
+            Name = "Analisi",
+            Cfu = 6,
+            Attempts = new ObservableCollection<ExamAttemptData>
+            {
+                new()
+                {
+                    AttemptedAt = At(-10),
+                    Status = "Completed",
+                    Outcome = "Passed",
+                    GradeDecision = "Accepted",
+                    NumericGrade = 30,
+                    RecordedAt = null
+                },
+                new()
+                {
+                    AttemptedAt = At(-2),
+                    Status = "Completed",
+                    Outcome = "Passed",
+                    GradeDecision = "NotApplicable",
+                    NumericGrade = 30,
+                    RecordedAt = At(-1)
+                }
+            }
+        });
+
+        var result = Service().Calculate(data, "analisi", ReferenceDay);
+
+        Assert.Null(result.OfficialResultContext);
+        Assert.Null(result.Score);
+    }
+
+    [Fact]
     public void InvalidPersistedEnumValuesAreIgnoredAsEvidence()
     {
         var data = Data();
