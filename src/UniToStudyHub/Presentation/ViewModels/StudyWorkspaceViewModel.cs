@@ -1443,9 +1443,14 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
         }
 
         var result = _readiness.Calculate(_data, SelectedCourse.Id);
-        var score = result.Score is null ? "non disponibile" : $"{result.Score:0.##}%";
+        var score = result.Score is null
+            ? "non disponibile"
+            : $"{result.Score:0.##}%{(result.IsComplete ? string.Empty : " (parziale)")}";
         var missing = result.MissingData.Count == 0 ? "Nessun dato mancante." : string.Join(" · ", result.MissingData);
-        ReadinessStatus = $"{SelectedCourse.Name}: {score} · {result.Coverage.CompletedTopics}/{result.Coverage.TotalTopics} argomenti · {missing}";
+        var official = string.IsNullOrWhiteSpace(result.OfficialResultContext)
+            ? string.Empty
+            : $" · {result.OfficialResultContext}";
+        ReadinessStatus = $"{SelectedCourse.Name}: {score} · {result.EvidenceSummary} · {result.Formula} · {missing}{official}";
     }
 
     private static IReadOnlyList<StudyAvailabilityWindow> ParseDailyAvailability(string input)
@@ -1533,6 +1538,7 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
             RefreshSelectedTaskProgress();
         if (SelectedDueFlashcard is null || !DueFlashcards.Any(x => x.Id == SelectedDueFlashcard.Id))
             SelectedDueFlashcard = DueFlashcards.FirstOrDefault();
+        RefreshReadiness();
     }
 
     private void RefreshSelectedTaskProgress()
