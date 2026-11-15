@@ -11,9 +11,9 @@ Il punteggio è un indicatore organizzativo locale, non una previsione del voto 
 |---|---:|---:|---|
 | Copertura syllabus | 50% | almeno 1 argomento | argomenti completati / argomenti registrati |
 | Richiamo flashcard | 35% | almeno 3 revisioni | media delle autovalutazioni negli ultimi 30 giorni: Again 0, Hard 50, Good 80, Easy 100 |
-| Revisione errori | 15% | almeno 3 errori | media dello stato degli errori creati negli ultimi 30 giorni: Open 0, Reviewing 50, Resolved 100 |
+| Revisione errori | 15% | almeno 3 errori | media dello stato degli errori aggiornati negli ultimi 30 giorni: Open 0, Reviewing 50, Resolved 100 |
 
-Le revisioni flashcard contano solo se riferite a flashcard attive della materia selezionata. Le voci del diario errori sono limitate alla stessa materia. Le date sono valutate come giorni di calendario registrati nell'offset del dato; la finestra comprende oggi e i 29 giorni precedenti, non date future.
+Le revisioni flashcard contano solo se riferite a flashcard attive della materia selezionata. Le voci del diario errori sono limitate alla stessa materia e alla data di ultimo aggiornamento/revisione; un errore più vecchio rivisto di recente conta come evidenza recente. Le date sono valutate come giorni di calendario registrati nell'offset del dato; la finestra comprende oggi e i 29 giorni precedenti, non date future.
 
 I componenti sotto la numerosità minima sono segnalati e **non** inseriti come zero: i pesi dei soli componenti disponibili vengono rinormalizzati. `IsComplete` è vero solo quando tutti e tre i componenti hanno dati sufficienti. Il voto ufficiale più recente, se presente, viene mostrato come contesto e non modifica il punteggio.
 
