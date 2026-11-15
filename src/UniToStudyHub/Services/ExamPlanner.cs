@@ -62,6 +62,7 @@ public sealed class ExamPlanningOptions
 public static class ExamPlanner
 {
     private const int MaximumExamCount = 500;
+    private const int MaximumCourseCount = 2_000;
     private const int MaximumPrerequisiteEdges = 2_000;
     private const int MaximumBlackoutPeriods = 64;
     private const int MaximumPlanningHorizonYears = 10;
@@ -92,6 +93,13 @@ public static class ExamPlanner
         ArgumentNullException.ThrowIfNull(data);
         if (data.Exams is null || data.Courses is null || data.CoursePrerequisites is null)
             throw new InvalidDataException("I dati del pianificatore esami non sono inizializzati.");
+        if (data.Exams.Count > MaximumExamCount)
+            throw new InvalidOperationException($"Il pianificatore supporta al massimo {MaximumExamCount} esami per volta.");
+        if (data.Courses.Count > MaximumCourseCount)
+            throw new InvalidOperationException($"Il pianificatore supporta al massimo {MaximumCourseCount} corsi per volta.");
+        if (data.CoursePrerequisites.Count > MaximumPrerequisiteEdges)
+            throw new InvalidOperationException(
+                $"Il numero di propedeuticità supera il limite di {MaximumPrerequisiteEdges}.");
 
         if (data.Exams.Any(x => x is null) || data.Courses.Any(x => x is null))
             throw new InvalidDataException("Gli esami o i corsi contengono una voce non valida.");
@@ -102,9 +110,6 @@ public static class ExamPlanner
             .Where(x => x.IsMandatory)
             .Select(x => (x.CourseId, x.PrerequisiteCourseId))
             .ToArray();
-        if (edges.Length > MaximumPrerequisiteEdges)
-            throw new InvalidOperationException(
-                $"Il numero di propedeuticità supera il limite di {MaximumPrerequisiteEdges}.");
 
         var completedCourseIds = data.Courses
             .Where(x => x.Completed || x.Status == CourseStatus.Passed)
@@ -172,6 +177,8 @@ public static class ExamPlanner
     {
         ArgumentNullException.ThrowIfNull(exams);
         ArgumentNullException.ThrowIfNull(result);
+        if (exams.Count > MaximumExamCount)
+            throw new InvalidOperationException($"Il pianificatore supporta al massimo {MaximumExamCount} esami per volta.");
 
         var byId = new Dictionary<string, Exam>(StringComparer.Ordinal);
         foreach (var exam in exams)
@@ -185,6 +192,8 @@ public static class ExamPlanner
 
         if (result.Assignments is null)
             throw new InvalidOperationException("La preview non contiene un elenco di assegnazioni valido.");
+        if (result.Assignments.Count > MaximumExamCount)
+            throw new InvalidOperationException("La preview contiene troppe assegnazioni.");
 
         var assignments = new Dictionary<string, ExamSessionAssignment>(StringComparer.Ordinal);
         foreach (var assignment in result.Assignments)
@@ -261,9 +270,13 @@ public static class ExamPlanner
         ArgumentNullException.ThrowIfNull(prerequisiteEdges);
         ArgumentNullException.ThrowIfNull(completedCourseIds);
 
-        var input = exams.ToArray();
-        if (input.Length > MaximumExamCount)
-            throw new InvalidOperationException($"Il pianificatore supporta al massimo {MaximumExamCount} esami per volta.");
+        var input = new List<Exam>(MaximumExamCount);
+        foreach (var exam in exams)
+        {
+            if (input.Count == MaximumExamCount)
+                throw new InvalidOperationException($"Il pianificatore supporta al massimo {MaximumExamCount} esami per volta.");
+            input.Add(exam);
+        }
         if (input.Any(x => x is null))
             throw new InvalidDataException("L'elenco degli esami contiene una voce nulla.");
 
