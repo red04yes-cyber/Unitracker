@@ -206,10 +206,12 @@ public sealed class ExamReadinessService(CareerApplicationService career)
     {
         var official = _career.GetAttempts(data, courseId)
             .Where(x => string.Equals(x.Status, AttemptStatus.Completed.ToString(), StringComparison.OrdinalIgnoreCase))
-            .Where(x => string.Equals(x.Outcome, ExamOutcome.Passed.ToString(), StringComparison.OrdinalIgnoreCase) ||
-                        string.Equals(x.Outcome, ExamOutcome.EligibilityPassed.ToString(), StringComparison.OrdinalIgnoreCase))
-            .Where(x => string.Equals(x.GradeDecision, GradeDecision.Accepted.ToString(), StringComparison.OrdinalIgnoreCase) ||
-                        string.Equals(x.GradeDecision, GradeDecision.NotApplicable.ToString(), StringComparison.OrdinalIgnoreCase))
+            .Where(x => x.RecordedAt is not null)
+            .Where(x =>
+                (string.Equals(x.Outcome, ExamOutcome.Passed.ToString(), StringComparison.OrdinalIgnoreCase) &&
+                 string.Equals(x.GradeDecision, GradeDecision.Accepted.ToString(), StringComparison.OrdinalIgnoreCase)) ||
+                (string.Equals(x.Outcome, ExamOutcome.EligibilityPassed.ToString(), StringComparison.OrdinalIgnoreCase) &&
+                 string.Equals(x.GradeDecision, GradeDecision.NotApplicable.ToString(), StringComparison.OrdinalIgnoreCase)))
             .OrderByDescending(x => x.RecordedAt)
             .ThenByDescending(x => x.AttemptedAt)
             .FirstOrDefault();
