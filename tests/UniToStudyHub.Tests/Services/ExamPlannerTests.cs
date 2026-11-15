@@ -267,6 +267,36 @@ public sealed class ExamPlannerTests
     }
 
     [Fact]
+    public void InfiniteExamEnumerableIsStoppedAtTheFirstItemOverTheLimit()
+    {
+        var enumerated = 0;
+
+        IEnumerable<Exam> Endless()
+        {
+            while (true)
+            {
+                enumerated++;
+                yield return MakeExam($"stream-{enumerated:D4}");
+            }
+        }
+
+        Assert.Throws<InvalidOperationException>(() =>
+            ExamPlanner.CreatePlan(Endless(), referenceDate: ReferenceDate));
+        Assert.Equal(501, enumerated);
+    }
+
+    [Fact]
+    public void StudyDataRejectsOversizedCourseCollectionsBeforeBuildingPrerequisiteIndexes()
+    {
+        var data = Data(MakeExam("a"));
+        for (var index = 0; index < 2_001; index++)
+            data.Courses.Add(new Course { Id = $"course-{index:D4}", Name = "Corso", Cfu = 6 });
+
+        Assert.Throws<InvalidOperationException>(() =>
+            ExamPlanner.CreatePlan(data, referenceDate: ReferenceDate));
+    }
+
+    [Fact]
     public void DuplicateCourseAssignmentsAreRejectedRatherThanDoubleCounted()
     {
         var first = MakeExam("first");
