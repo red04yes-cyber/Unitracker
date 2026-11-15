@@ -397,9 +397,10 @@ public static class ExamPlanner
                 continue;
             }
 
+            var studyStart = prerequisiteDate > today ? prerequisiteDate : today;
             var weeksBySession = eligible.ToDictionary(
                 load => load.Target.Name,
-                load => WeeksAvailable(today, load.Target.Date),
+                load => WeeksAvailable(studyStart, load.Target.Date),
                 StringComparer.Ordinal);
             var weeklyEligible = eligible.FirstOrDefault(load =>
                 (load.StudyHours + exam.EstimatedStudyHours) / (decimal)weeksBySession[load.Target.Name]
