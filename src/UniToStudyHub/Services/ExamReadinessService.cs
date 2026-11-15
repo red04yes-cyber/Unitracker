@@ -117,7 +117,7 @@ public sealed class ExamReadinessService(CareerApplicationService career)
             $"Media pesata dei soli dati disponibili: syllabus {SyllabusWeight:P0}, " +
             $"richiamo flashcard {FlashcardRecallWeight:P0}, revisione errori {ErrorReviewWeight:P0}. " +
             $"Finestra mobile di {EvidenceWindowDays} giorni; servono almeno " +
-            $"{MinimumFlashcardReviews} revisioni flashcard e {MinimumErrorEntries} errori registrati. " +
+            $"{MinimumFlashcardReviews} revisioni flashcard e {MinimumErrorEntries} voci del diario aggiornate. " +
             "I campioni insufficienti sono esclusi e segnalati; l'esito ufficiale è solo contesto.",
             coverage)
         {
@@ -196,7 +196,7 @@ public sealed class ExamReadinessService(CareerApplicationService career)
             hasEnoughData,
             hasEnoughData
                 ? $"{entries.Count} errori recenti; aperto 0, in revisione 50, risolto 100."
-                : "Servono almeno tre errori registrati di recente per valutare il loro stato di revisione.")
+                : "Servono almeno tre voci del diario aggiornate di recente per valutarne lo stato di revisione.")
         {
             SampleCount = entries.Count
         };
@@ -209,9 +209,13 @@ public sealed class ExamReadinessService(CareerApplicationService career)
             .Where(x => x.RecordedAt is not null)
             .Where(x =>
                 (string.Equals(x.Outcome, ExamOutcome.Passed.ToString(), StringComparison.OrdinalIgnoreCase) &&
-                 string.Equals(x.GradeDecision, GradeDecision.Accepted.ToString(), StringComparison.OrdinalIgnoreCase)) ||
+                 string.Equals(x.GradeDecision, GradeDecision.Accepted.ToString(), StringComparison.OrdinalIgnoreCase) &&
+                 !x.IsPassFail &&
+                 x.NumericGrade is not null) ||
                 (string.Equals(x.Outcome, ExamOutcome.EligibilityPassed.ToString(), StringComparison.OrdinalIgnoreCase) &&
-                 string.Equals(x.GradeDecision, GradeDecision.NotApplicable.ToString(), StringComparison.OrdinalIgnoreCase)))
+                 string.Equals(x.GradeDecision, GradeDecision.NotApplicable.ToString(), StringComparison.OrdinalIgnoreCase) &&
+                 x.IsPassFail &&
+                 x.NumericGrade is null))
             .OrderByDescending(x => x.RecordedAt)
             .ThenByDescending(x => x.AttemptedAt)
             .FirstOrDefault();
