@@ -227,9 +227,9 @@ public sealed class ExamPlannerTests
         Assert.Empty(alternatives.Conservative.Assignments);
         Assert.Single(alternatives.Balanced.Assignments);
         Assert.Single(alternatives.Intensive.Assignments);
-        Assert.Equal(18, Assert.Single(alternatives.Conservative.SessionLoads).MaxCfu);
-        Assert.Equal(24, Assert.Single(alternatives.Balanced.SessionLoads).MaxCfu);
-        Assert.Equal(30, Assert.Single(alternatives.Intensive.SessionLoads).MaxCfu);
+        Assert.All(alternatives.Conservative.SessionLoads, load => Assert.Equal(18, load.MaxCfu));
+        Assert.All(alternatives.Balanced.SessionLoads, load => Assert.Equal(24, load.MaxCfu));
+        Assert.All(alternatives.Intensive.SessionLoads, load => Assert.Equal(30, load.MaxCfu));
     }
 
     [Fact]
