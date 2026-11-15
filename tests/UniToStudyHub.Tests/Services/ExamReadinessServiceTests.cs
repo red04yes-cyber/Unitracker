@@ -24,7 +24,7 @@ public sealed class ExamReadinessServiceTests
         new(new CareerApplicationService(new CareerCalculatorService()));
 
     private static DateTimeOffset At(int daysFromReference, int hour = 12) =>
-        new(ReferenceDay.Year, ReferenceDay.Month, ReferenceDay.Day, hour, 0, 0, TimeSpan.FromHours(1))
+        new DateTimeOffset(ReferenceDay.Year, ReferenceDay.Month, ReferenceDay.Day, hour, 0, 0, TimeSpan.FromHours(1))
             .AddDays(daysFromReference);
 
     private static FlashcardData AddFlashcard(
