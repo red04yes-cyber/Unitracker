@@ -155,7 +155,7 @@ public sealed class CareerApplicationServiceTests
     }
 
     [Fact]
-    public void ReadinessMarksMissingDataAndComputesTransparentPartialScore()
+    public void ReadinessUsesStudyEvidenceAndKeepsOfficialGradeOutOfTheScore()
     {
         var data = Data();
         var career = new CareerApplicationService(new CareerCalculatorService());
@@ -163,18 +163,21 @@ public sealed class CareerApplicationServiceTests
         var topic = syllabus.Add(data, "analisi", "Limiti", estimatedMinutes: 120);
         syllabus.UpdateStatus(data, topic.Id, SyllabusTopicStatus.Completed);
         var readiness = new ExamReadinessService(career);
+        var referenceDay = new DateTime(2026, 2, 2);
 
-        var partial = readiness.Calculate(data, "analisi");
+        var partial = readiness.Calculate(data, "analisi", referenceDay);
         Assert.False(partial.IsComplete);
         Assert.Equal(100m, partial.Score);
-        Assert.Contains(partial.MissingData, x => x.Contains("Risultati", StringComparison.Ordinal));
+        Assert.Contains(partial.MissingData, x => x.Contains("Flashcard", StringComparison.Ordinal));
+        Assert.Contains(partial.MissingData, x => x.Contains("Diario errori", StringComparison.Ordinal));
 
         career.RecordResult(data, "analisi", ExamOutcome.Passed, GradeDecision.Accepted,
             28, false, false, AttemptDate, RecordedDate);
-        var complete = readiness.Calculate(data, "analisi");
+        var withOfficialGrade = readiness.Calculate(data, "analisi", referenceDay);
 
-        Assert.True(complete.IsComplete);
-        Assert.Equal(93.33m, complete.Score);
-        Assert.Equal(60m, complete.Components.Single(x => x.Key == "syllabus").Weight * 100m);
+        Assert.False(withOfficialGrade.IsComplete);
+        Assert.Equal(partial.Score, withOfficialGrade.Score);
+        Assert.Contains("28", withOfficialGrade.OfficialResultContext, StringComparison.Ordinal);
+        Assert.Equal(0.50m, withOfficialGrade.Components.Single(x => x.Key == "syllabus").Weight);
     }
 }
