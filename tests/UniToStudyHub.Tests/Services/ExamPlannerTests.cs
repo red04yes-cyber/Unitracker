@@ -289,6 +289,43 @@ public sealed class ExamPlannerTests
     }
 
     [Fact]
+    public void LegacyWpfEntryPointAppliesTheHardCapacityAndReturnsItsResult()
+    {
+        var exams = new List<Exam> { MakeExam("first", 6), MakeExam("second", 6) };
+
+        var result = ExamPlanner.AssignIndicativeSessions(
+            exams, ReferenceDate, maxCfuPerSession: 6, targetDate: new DateTime(2027, 1, 31));
+
+        Assert.Single(result.Assignments);
+        Assert.Equal(6, result.ScheduledCfu);
+        Assert.Equal(1, exams.Count(x => x.PlannedDate is not null));
+        Assert.Equal("Da pianificare", exams.Single(x => x.PlannedDate is null).PlannedSession);
+    }
+
+    [Fact]
+    public void StudyDataAssignmentOverloadAppliesPrerequisiteAwareDates()
+    {
+        var data = Data(MakeExam("prerequisite"), MakeExam("dependent"));
+        data.Courses.Add(new Course { Id = "prerequisite", Name = "Propedeutico", Cfu = 6 });
+        data.Courses.Add(new Course { Id = "dependent", Name = "Dipendente", Cfu = 6 });
+        data.CoursePrerequisites.Add(new CoursePrerequisiteData
+        {
+            CourseId = "dependent",
+            PrerequisiteCourseId = "prerequisite"
+        });
+
+        var result = ExamPlanner.AssignIndicativeSessions(data, new ExamPlanningOptions
+        {
+            TargetDate = new DateTime(2027, 6, 30),
+            MaxWeeklyStudyHours = 168
+        }, ReferenceDate);
+
+        Assert.Equal(2, result.Assignments.Count);
+        Assert.True(data.Exams.Single(x => x.CourseId == "prerequisite").PlannedDate <
+                    data.Exams.Single(x => x.CourseId == "dependent").PlannedDate);
+    }
+
+    [Fact]
     public void ApplyPlanRejectsAssignmentsForUnknownExams()
     {
         var result = new ExamPlanningResult(
