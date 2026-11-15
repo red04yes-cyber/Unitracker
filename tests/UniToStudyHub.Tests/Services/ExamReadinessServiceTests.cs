@@ -65,7 +65,8 @@ public sealed class ExamReadinessServiceTests
         string id,
         ErrorReviewStatus status,
         int daysFromReference = 0,
-        string courseId = "analisi")
+        string courseId = "analisi",
+        int? updatedDaysFromReference = null)
     {
         data.ErrorJournalEntries.Add(new ErrorJournalEntryData
         {
@@ -75,7 +76,7 @@ public sealed class ExamReadinessServiceTests
             CorrectAnswer = "Risposta corretta",
             Status = status,
             CreatedAt = At(daysFromReference),
-            UpdatedAt = At(daysFromReference)
+            UpdatedAt = At(updatedDaysFromReference ?? daysFromReference)
         });
     }
 
@@ -210,6 +211,22 @@ public sealed class ExamReadinessServiceTests
         Assert.Equal(2, component.SampleCount);
         Assert.Null(result.Score);
         Assert.Contains(result.MissingData, x => x.Contains("2/3", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void RecentlyReviewedOldErrorCountsAsCurrentEvidence()
+    {
+        var data = Data();
+        AddError(data, "old-reviewed", ErrorReviewStatus.Resolved, -60, updatedDaysFromReference: -1);
+        AddError(data, "recent-one", ErrorReviewStatus.Resolved, -2);
+        AddError(data, "recent-two", ErrorReviewStatus.Resolved);
+
+        var result = Service().Calculate(data, "analisi", ReferenceDay);
+        var component = result.Components.Single(x => x.Key == "error-review");
+
+        Assert.True(component.HasData);
+        Assert.Equal(3, component.SampleCount);
+        Assert.Equal(100m, component.Score);
     }
 
     [Fact]
