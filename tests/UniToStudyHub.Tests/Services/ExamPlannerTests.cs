@@ -154,6 +154,31 @@ public sealed class ExamPlannerTests
     }
 
     [Fact]
+    public void DependentExamWorkloadUsesOnlyTheTimeAfterItsPrerequisiteSession()
+    {
+        var data = Data(
+            MakeExam("prerequisite", cfu: 6, hours: 10),
+            MakeExam("dependent", cfu: 6, hours: 300));
+        data.Courses.Add(new Course { Id = "prerequisite", Name = "Propedeutico", Cfu = 6 });
+        data.Courses.Add(new Course { Id = "dependent", Name = "Dipendente", Cfu = 6 });
+        data.CoursePrerequisites.Add(new CoursePrerequisiteData
+        {
+            CourseId = "dependent",
+            PrerequisiteCourseId = "prerequisite"
+        });
+
+        var result = ExamPlanner.CreatePlan(data, new ExamPlanningOptions
+        {
+            TargetDate = new DateTime(2027, 6, 30),
+            MaxWeeklyStudyHours = 10
+        }, ReferenceDate);
+
+        Assert.Single(result.Assignments);
+        Assert.Equal("prerequisite", result.Assignments[0].CourseId);
+        Assert.Contains("ore settimanali", Assert.Single(result.UnscheduledExams).Reason, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void MissingUncompletedPrerequisiteProducesAnExplicitReason()
     {
         var data = Data(MakeExam("dependent"));
