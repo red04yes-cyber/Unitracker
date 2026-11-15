@@ -87,7 +87,7 @@ public sealed class ExamReadinessService(CareerApplicationService career)
             .Where(x => x is not null &&
                         string.Equals(x.CourseId, courseId, StringComparison.Ordinal) &&
                         Enum.IsDefined(x.Status) &&
-                        IsWithinWindow(x.CreatedAt, windowStart, referenceDay))
+                        IsWithinWindow(x.UpdatedAt, windowStart, referenceDay))
             .ToList();
 
         components.Add(CreateErrorComponent(errorEntries, missing));
@@ -105,7 +105,7 @@ public sealed class ExamReadinessService(CareerApplicationService career)
         var officialResult = GetLatestOfficialResultContext(data, courseId);
         var evidenceSummary =
             $"{coverage.TotalTopics} argomenti syllabus · {reviews.Count} revisioni flashcard · " +
-            $"{errorEntries.Count} errori registrati negli ultimi {EvidenceWindowDays} giorni";
+            $"{errorEntries.Count} errori aggiornati negli ultimi {EvidenceWindowDays} giorni";
 
         return new ExamReadinessResult(
             course.Id,
@@ -182,7 +182,7 @@ public sealed class ExamReadinessService(CareerApplicationService career)
         var hasEnoughData = entries.Count >= MinimumErrorEntries;
         if (!hasEnoughData)
             missing.Add(
-                $"Diario errori: {entries.Count}/{MinimumErrorEntries} voci registrate negli ultimi {EvidenceWindowDays} giorni.");
+                $"Diario errori: {entries.Count}/{MinimumErrorEntries} voci aggiornate negli ultimi {EvidenceWindowDays} giorni.");
 
         var score = hasEnoughData
             ? Math.Round(entries.Average(x => ErrorReviewScore(x.Status)), 2, MidpointRounding.AwayFromZero)
