@@ -29,7 +29,7 @@ Il riepilogo viene ricalcolato quando le collezioni del workspace vengono aggior
 
 ## Controlli di sicurezza e privacy
 
-Esito dei controlli source-level sul perimetro della modifica. “Superato” indica una proprietà verificata nel codice; non equivale a una correzione di vulnerabilità. I test automatizzati aggiunti sono in attesa della CI Windows/Linux del branch.
+Esito dei controlli source-level sul perimetro della modifica. “Superato” indica una proprietà verificata nel codice; non equivale a una correzione di vulnerabilità. La suite Windows CI ha eseguito tutti i 362 test senza errori; i 17 casi nuovi sono inclusi.
 
 | # | Area / rischio | Metodo ed evidenza | Esito |
 |---:|---|---|---|
@@ -62,14 +62,14 @@ Esito dei controlli source-level sul perimetro della modifica. “Superato” in
 | 27 | Dati mancanti trasformati in zero | I componenti insufficienti hanno `HasData=false` e vengono esclusi; test dedicato | Superato |
 | 28 | Pesi non normalizzati | Divisione per la somma dei soli pesi disponibili; test combinato e parziale | Superato |
 | 29 | Voto ufficiale confuso con readiness | Il voto è solo `OfficialResultContext`; test con voti differenti | Superato |
-| 30 | Mutazione involontaria dello storico | Il calcolo legge collezioni senza scrivere; test di non-mutazione aggiunto | Superato a livello sorgente; esecuzione test pendente |
+| 30 | Mutazione involontaria dello storico | Il calcolo legge collezioni senza scrivere; test di non-mutazione nella suite | Superato: 362/362 test passati in CI |
 
 ### Superficie non modificata / residui
 
 - Nessuna migration, tabella, export, backup, reset privacy o formato persistito modificato.
 - Nessun controllo di autenticazione, DPAPI o ACL era pertinente: il servizio non accede a credenziali o file.
 - Il richiamo è un'autovalutazione e il diario errori dipende dalla registrazione volontaria: i campioni non sono statisticamente rappresentativi e non devono essere interpretati come probabilità di superare l'esame.
-- La CI deve ancora confermare build e test sul commit finale; il container di sviluppo non è stato usato come sostituto della build Windows.
+- Verifica Windows CI sul commit codice `dd5d823fd665af9224900859ae4775ef89e6e778`: [Build, 362 test, publish, smoke test e ZIP](https://github.com/red04yes-cyber/Unitracker/actions/runs/43691138034); [audit NuGet, secret scan e pin immutabili](https://github.com/red04yes-cyber/Unitracker/actions/runs/43691138014). Il container di sviluppo non è stato usato come sostituto della build Windows.
 
 ## Test aggiunti
 
