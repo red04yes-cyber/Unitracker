@@ -177,7 +177,8 @@ public sealed class CareerApplicationServiceTests
 
         Assert.False(withOfficialGrade.IsComplete);
         Assert.Equal(partial.Score, withOfficialGrade.Score);
-        Assert.Contains("28", withOfficialGrade.OfficialResultContext, StringComparison.Ordinal);
+        Assert.NotNull(withOfficialGrade.OfficialResultContext);
+        Assert.Contains("28", withOfficialGrade.OfficialResultContext!, StringComparison.Ordinal);
         Assert.Equal(0.50m, withOfficialGrade.Components.Single(x => x.Key == "syllabus").Weight);
     }
 }
