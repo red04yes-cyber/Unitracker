@@ -82,10 +82,13 @@ public sealed class StudyDataImportService
         if (payload.IsEmpty || payload.Length > MaximumImportBytes)
             throw new InvalidDataException("Il file di importazione è vuoto o supera il limite di 64 MB.");
 
+        cancellationToken.ThrowIfCancellationRequested();
+
         StudyData imported;
         DateTimeOffset? generatedAt;
         try
         {
+            ValidateCollectionItemLimit(payload.Span, cancellationToken);
             using var document = JsonDocument.Parse(payload, new JsonDocumentOptions { MaxDepth = 64 });
             var root = document.RootElement;
             if (root.ValueKind != JsonValueKind.Object ||
@@ -168,6 +171,38 @@ public sealed class StudyDataImportService
             safetyBackupPath, DateTimeOffset.UtcNow);
     }
 
+    private static void ValidateCollectionItemLimit(
+        ReadOnlySpan<byte> payload,
+        CancellationToken cancellationToken)
+    {
+        var reader = new Utf8JsonReader(payload, new JsonReaderOptions { MaxDepth = 64 });
+        var arrayDepths = new Stack<int>();
+        var collectionItems = 0;
+        var tokenCount = 0;
+
+        while (reader.Read())
+        {
+            if ((++tokenCount & 0x3FF) == 0)
+                cancellationToken.ThrowIfCancellationRequested();
+
+            if (arrayDepths.Count > 0 &&
+                reader.CurrentDepth == arrayDepths.Peek() + 1 &&
+                reader.TokenType != JsonTokenType.EndArray &&
+                reader.TokenType != JsonTokenType.EndObject)
+            {
+                collectionItems++;
+                if (collectionItems > MaximumImportedRecords)
+                    throw new InvalidDataException(
+                        "Il file contiene più di 100.000 elementi nelle collezioni: importazione rifiutata.");
+            }
+
+            if (reader.TokenType == JsonTokenType.StartArray)
+                arrayDepths.Push(reader.CurrentDepth);
+            else if (reader.TokenType == JsonTokenType.EndArray && arrayDepths.Count > 0)
+                arrayDepths.Pop();
+        }
+    }
+
     private static StudyData Clone(StudyData data)
     {
         var bytes = JsonSerializer.SerializeToUtf8Bytes(data, JsonOptions);
@@ -200,10 +235,82 @@ public sealed class StudyDataImportService
         MergeById(result.Distractions, incoming.Distractions, x => x.Id);
         MergeById(result.EnergyCheckIns, incoming.EnergyCheckIns, x => x.Id);
         MergeById(result.PdfDocuments, incoming.PdfDocuments, x => x.Id);
+        MergeNestedRecords(result, incoming);
 
         // Local profile, timer, Moodle endpoint and Pomodoro preferences are
         // settings rather than imported study records; merge never overwrites them.
         return result;
+    }
+
+    private static void MergeNestedRecords(StudyData target, StudyData incoming)
+    {
+        var targetExams = target.CareerExams.ToDictionary(x => x.CourseId, StringComparer.Ordinal);
+        var attemptIds = target.CareerExams
+            .SelectMany(x => x.Attempts)
+            .Select(x => x.Id)
+            .ToHashSet(StringComparer.Ordinal);
+
+        foreach (var source in incoming.CareerExams)
+        {
+            if (!targetExams.TryGetValue(source.CourseId, out var destination))
+                continue;
+
+            destination.Attempts ??= new ObservableCollection<ExamAttemptData>();
+            foreach (var attempt in source.Attempts)
+            {
+                if (attemptIds.Add(attempt.Id))
+                    destination.Attempts.Add(attempt);
+            }
+        }
+
+        var targetSessions = target.StudySessions.ToDictionary(x => x.Id, StringComparer.Ordinal);
+        var segmentIds = target.StudySessions
+            .SelectMany(x => x.Segments)
+            .Select(x => x.Id)
+            .ToHashSet(StringComparer.Ordinal);
+
+        foreach (var source in incoming.StudySessions)
+        {
+            if (!targetSessions.TryGetValue(source.Id, out var destination))
+                continue;
+
+            destination.Segments ??= new ObservableCollection<StudySessionSegmentData>();
+            var changed = false;
+            foreach (var segment in source.Segments)
+            {
+                if (segmentIds.Add(segment.Id))
+                {
+                    destination.Segments.Add(segment);
+                    changed = true;
+                }
+            }
+
+            if (!changed)
+                continue;
+
+            var ordered = destination.Segments
+                .OrderBy(x => x.StartedAt)
+                .ThenBy(x => x.Id, StringComparer.Ordinal)
+                .ToList();
+            destination.Segments.Clear();
+            foreach (var segment in ordered)
+                destination.Segments.Add(segment);
+        }
+
+        var targetMissions = target.StudyMissions.ToDictionary(x => x.Id, StringComparer.Ordinal);
+        foreach (var source in incoming.StudyMissions)
+        {
+            if (!targetMissions.TryGetValue(source.Id, out var destination))
+                continue;
+
+            destination.Steps ??= new ObservableCollection<MissionStepData>();
+            var stepIds = destination.Steps.Select(x => x.Id).ToHashSet(StringComparer.Ordinal);
+            foreach (var step in source.Steps)
+            {
+                if (stepIds.Add(step.Id))
+                    destination.Steps.Add(step);
+            }
+        }
     }
 
     private static void MergeById<T>(
@@ -228,14 +335,17 @@ public sealed class StudyDataImportService
             ["Esami pianificati"] = data.Exams.Count,
             ["Avvisi"] = data.Announcements.Count,
             ["Carriera esami"] = data.CareerExams.Count,
+            ["Tentativi d'esame"] = data.CareerExams.Sum(x => x.Attempts.Count),
             ["Propedeuticità"] = data.CoursePrerequisites.Count,
             ["Argomenti syllabus"] = data.SyllabusTopics.Count,
             ["Domande"] = data.Questions.Count,
             ["Eventi calendario"] = data.CalendarEvents.Count,
             ["Sessioni studio"] = data.StudySessions.Count,
+            ["Segmenti sessione"] = data.StudySessions.Sum(x => x.Segments.Count),
             ["Attività"] = data.StudyActivities.Count,
             ["Task"] = data.StudyTasks.Count,
             ["Missioni"] = data.StudyMissions.Count,
+            ["Passi missione"] = data.StudyMissions.Sum(x => x.Steps.Count),
             ["Cicli Pomodoro"] = data.PomodoroCycles.Count,
             ["Revisioni"] = data.ActivityRevisions.Count,
             ["Errori"] = data.ErrorJournalEntries.Count,
@@ -271,6 +381,32 @@ public sealed class StudyDataImportService
         Add("Distrazioni", current.Distractions, incoming.Distractions, x => x.Id);
         Add("Check-in energia", current.EnergyCheckIns, incoming.EnergyCheckIns, x => x.Id);
         Add("Documenti PDF", current.PdfDocuments, incoming.PdfDocuments, x => x.Id);
+
+        var existingAttemptIds = current.CareerExams
+            .SelectMany(x => x.Attempts)
+            .Select(x => x.Id)
+            .ToHashSet(StringComparer.Ordinal);
+        result["Tentativi d'esame"] = incoming.CareerExams
+            .SelectMany(x => x.Attempts)
+            .Count(x => existingAttemptIds.Contains(x.Id));
+
+        var existingSegmentIds = current.StudySessions
+            .SelectMany(x => x.Segments)
+            .Select(x => x.Id)
+            .ToHashSet(StringComparer.Ordinal);
+        result["Segmenti sessione"] = incoming.StudySessions
+            .SelectMany(x => x.Segments)
+            .Count(x => existingSegmentIds.Contains(x.Id));
+
+        var existingMissionSteps = current.StudyMissions.ToDictionary(
+            x => x.Id,
+            x => x.Steps.Select(step => step.Id).ToHashSet(StringComparer.Ordinal),
+            StringComparer.Ordinal);
+        result["Passi missione"] = incoming.StudyMissions.Sum(mission =>
+            existingMissionSteps.TryGetValue(mission.Id, out var stepIds)
+                ? mission.Steps.Count(step => stepIds.Contains(step.Id))
+                : 0);
+
         return result;
 
         void Add<T>(string name, IEnumerable<T> oldItems, IEnumerable<T> newItems, Func<T, string> key)
