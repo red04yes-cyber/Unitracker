@@ -45,7 +45,7 @@ public sealed class StudyDataImportServiceTests
 
         Assert.Equal(2, preview.ItemCounts["Corsi"]);
         Assert.Equal(1, preview.DuplicateCounts["Corsi"]);
-        Assert.Contains(preview.Warnings, warning => warning.Contains("non sovrascriveranno", StringComparison.Ordinal));
+        Assert.Contains(preview.Warnings, warning => warning.Contains("restano locali", StringComparison.Ordinal));
         Assert.Equal("Locale", (await store.LoadAsync()).Courses.Single().Name);
     }
 
