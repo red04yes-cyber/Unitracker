@@ -302,6 +302,103 @@ public sealed class StudyDataImportServiceTests
         Assert.Equal(2, saved.StudyMissions.Single().Steps.Count);
     }
 
+
+    [Fact]
+    public async Task MergeSkipsNestedIdsAlreadyOwnedByAnotherParent()
+    {
+        await using var database = await SqliteTestDatabase.CreateFileAsync();
+        var store = new SqliteStudyDataStore(database.Factory);
+        var existing = Data(("course-1", "Corso uno"), ("course-2", "Corso due"));
+        existing.CareerExams.Add(new CareerExamData
+        {
+            Id = "career-1",
+            CourseId = "course-1",
+            Name = "Esame uno",
+            Cfu = 6,
+            Attempts = new ObservableCollection<ExamAttemptData>
+            {
+                new() { Id = "attempt-shared", AttemptedAt = Start }
+            }
+        });
+        existing.StudySessions.Add(new StudySessionData
+        {
+            Id = "session-1",
+            CourseId = "course-1",
+            PlannedMinutes = 25,
+            StartedAt = Start,
+            LastResumedAt = Start.AddMinutes(5),
+            EndedAt = Start.AddMinutes(5),
+            AccumulatedFocusSeconds = 300,
+            State = StudySessionState.Completed,
+            Segments = new ObservableCollection<StudySessionSegmentData>
+            {
+                new()
+                {
+                    Id = "segment-shared",
+                    Type = StudySessionSegmentType.Focus,
+                    StartedAt = Start,
+                    EndedAt = Start.AddMinutes(5)
+                }
+            }
+        });
+        await store.SaveAsync(existing);
+
+        var imported = Data(("course-1", "Corso uno importato"), ("course-2", "Corso due importato"));
+        imported.CareerExams.Add(new CareerExamData
+        {
+            Id = "career-2",
+            CourseId = "course-2",
+            Name = "Esame due",
+            Cfu = 6,
+            Attempts = new ObservableCollection<ExamAttemptData>
+            {
+                new() { Id = "attempt-shared", AttemptedAt = Start },
+                new() { Id = "attempt-new", AttemptedAt = Start.AddDays(1) }
+            }
+        });
+        imported.StudySessions.Add(new StudySessionData
+        {
+            Id = "session-2",
+            CourseId = "course-2",
+            PlannedMinutes = 25,
+            StartedAt = Start.AddHours(1),
+            LastResumedAt = Start.AddHours(1).AddMinutes(10),
+            EndedAt = Start.AddHours(1).AddMinutes(10),
+            AccumulatedFocusSeconds = 300,
+            State = StudySessionState.Completed,
+            Segments = new ObservableCollection<StudySessionSegmentData>
+            {
+                new()
+                {
+                    Id = "segment-shared",
+                    Type = StudySessionSegmentType.Focus,
+                    StartedAt = Start.AddHours(1),
+                    EndedAt = Start.AddHours(1).AddMinutes(5)
+                },
+                new()
+                {
+                    Id = "segment-new",
+                    Type = StudySessionSegmentType.Focus,
+                    StartedAt = Start.AddHours(1).AddMinutes(5),
+                    EndedAt = Start.AddHours(1).AddMinutes(10)
+                }
+            }
+        });
+
+        var service = new StudyDataImportService(store);
+        var preview = await service.PreviewAsync(Export(imported));
+        Assert.Equal(1, preview.DuplicateCounts["Tentativi d'esame"]);
+        Assert.Equal(1, preview.DuplicateCounts["Segmenti sessione"]);
+
+        await service.ApplyAsync(preview, StudyDataImportStrategy.Merge);
+
+        var saved = await store.LoadAsync();
+        var secondExam = Assert.Single(saved.CareerExams.Where(x => x.CourseId == "course-2"));
+        var secondSession = Assert.Single(saved.StudySessions.Where(x => x.Id == "session-2"));
+        Assert.Equal(new[] { "attempt-new" }, secondExam.Attempts.Select(x => x.Id).ToArray());
+        Assert.Equal(new[] { "segment-new" }, secondSession.Segments.Select(x => x.Id).ToArray());
+    }
+
     private static byte[] ExportWithNestedCollectionItems(int count)
     {
         using var stream = new MemoryStream();
