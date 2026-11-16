@@ -123,7 +123,7 @@ public sealed class StudyDataImportService
         var duplicates = CountDuplicates(existing, imported);
         var warnings = new List<string>();
         if (duplicates.Values.Sum() > 0)
-            warnings.Add("I record con identificativo già presente non sovrascriveranno i dati locali durante l'unione.");
+            warnings.Add("I campi dei record principali già presenti restano locali; nuovi tentativi, segmenti e passi collegati vengono aggiunti solo con identificativi distinti.");
         if (imported.PdfDocuments.Count > 0)
             warnings.Add("I riferimenti ai PDF vengono importati come metadati; i file fisici non vengono copiati.");
         if (!string.IsNullOrWhiteSpace(imported.MoodleBaseUrl))
