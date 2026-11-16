@@ -75,7 +75,7 @@ public sealed class StudyDataImportServiceTests
         Assert.Single(saved.Grades);
         Assert.Equal("Informatica", saved.DegreeProgramName);
         Assert.Equal("https://moodle.local.example", saved.MoodleBaseUrl);
-        Assert.Equal(3, result.AddedRecords);
+        Assert.Equal(4, result.AddedRecords);
         Assert.Null(result.SafetyBackupPath);
     }
 
@@ -443,5 +443,4 @@ public sealed class StudyDataImportServiceTests
         public Task SaveAsync(StudyData data, CancellationToken cancellationToken = default) =>
             Task.CompletedTask;
     }
-
 }
