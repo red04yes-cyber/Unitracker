@@ -395,8 +395,8 @@ public sealed class StudyDataImportServiceTests
         await service.ApplyAsync(preview, StudyDataImportStrategy.Merge);
 
         var saved = await store.LoadAsync();
-        var secondExam = Assert.Single(saved.CareerExams.Where(x => x.CourseId == "course-2"));
-        var secondSession = Assert.Single(saved.StudySessions.Where(x => x.Id == "session-2"));
+        var secondExam = Assert.Single(saved.CareerExams, x => x.CourseId == "course-2");
+        var secondSession = Assert.Single(saved.StudySessions, x => x.Id == "session-2");
         Assert.Equal(new[] { "attempt-new" }, secondExam.Attempts.Select(x => x.Id).ToArray());
         Assert.Equal(new[] { "segment-new" }, secondSession.Segments.Select(x => x.Id).ToArray());
     }
