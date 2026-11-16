@@ -11,6 +11,8 @@ namespace UniToStudyHub.Tests.Services;
 
 public sealed class StudyDataImportServiceTests
 {
+    private static readonly DateTimeOffset Start = new(2026, 11, 4, 9, 0, 0, TimeSpan.Zero);
+
     private static StudyData Data(params (string Id, string Name)[] courses)
     {
         var data = new StudyData
@@ -142,7 +144,8 @@ public sealed class StudyDataImportServiceTests
 
         var oversized = new byte[StudyDataImportService.MaximumImportBytes + 1];
         await Assert.ThrowsAsync<InvalidDataException>(() => service.PreviewAsync(oversized));
-    } 
+    }
+
     [Fact]
     public async Task PreviewRejectsExcessiveNestedCollectionItemsBeforeLoadingTheStore()
     {
@@ -301,7 +304,6 @@ public sealed class StudyDataImportServiceTests
         Assert.Equal(3, saved.StudySessions.Single().Segments.Count);
         Assert.Equal(2, saved.StudyMissions.Single().Steps.Count);
     }
-
 
     [Fact]
     public async Task MergeSkipsNestedIdsAlreadyOwnedByAnotherParent()
