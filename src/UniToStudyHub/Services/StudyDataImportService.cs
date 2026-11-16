@@ -217,16 +217,16 @@ public sealed class StudyDataImportService
         MergeById(result.Grades, incoming.Grades, x => x.Id);
         MergeById(result.Exams, incoming.Exams, x => x.Id);
         MergeById(result.Announcements, incoming.Announcements, x => x.Id);
-        MergeById(result.CareerExams, incoming.CareerExams, x => x.CourseId);
+        MergeCareerExams(result.CareerExams, incoming.CareerExams);
         MergeById(result.CoursePrerequisites, incoming.CoursePrerequisites,
             x => x.CourseId + "\u001f" + x.PrerequisiteCourseId);
         MergeById(result.SyllabusTopics, incoming.SyllabusTopics, x => x.Id);
         MergeById(result.Questions, incoming.Questions, x => x.Id);
         MergeById(result.CalendarEvents, incoming.CalendarEvents, x => x.Id);
-        MergeById(result.StudySessions, incoming.StudySessions, x => x.Id);
+        MergeStudySessions(result.StudySessions, incoming.StudySessions);
         MergeById(result.StudyTasks, incoming.StudyTasks, x => x.Id);
         MergeById(result.StudyActivities, incoming.StudyActivities, x => x.Id);
-        MergeById(result.StudyMissions, incoming.StudyMissions, x => x.Id);
+        MergeStudyMissions(result.StudyMissions, incoming.StudyMissions);
         MergeById(result.PomodoroCycles, incoming.PomodoroCycles, x => x.Id);
         MergeById(result.ActivityRevisions, incoming.ActivityRevisions, x => x.Id);
         MergeById(result.ErrorJournalEntries, incoming.ErrorJournalEntries, x => x.Id);
@@ -235,73 +235,104 @@ public sealed class StudyDataImportService
         MergeById(result.Distractions, incoming.Distractions, x => x.Id);
         MergeById(result.EnergyCheckIns, incoming.EnergyCheckIns, x => x.Id);
         MergeById(result.PdfDocuments, incoming.PdfDocuments, x => x.Id);
-        MergeNestedRecords(result, incoming);
 
         // Local profile, timer, Moodle endpoint and Pomodoro preferences are
         // settings rather than imported study records; merge never overwrites them.
         return result;
     }
 
-    private static void MergeNestedRecords(StudyData target, StudyData incoming)
+    private static void MergeCareerExams(
+        ObservableCollection<CareerExamData> target,
+        IEnumerable<CareerExamData> incoming)
     {
-        var targetExams = target.CareerExams.ToDictionary(x => x.CourseId, StringComparer.Ordinal);
-        var attemptIds = target.CareerExams
-            .SelectMany(x => x.Attempts)
+        var byCourseId = target.ToDictionary(x => x.CourseId, StringComparer.Ordinal);
+        var attemptIds = target.SelectMany(x => x.Attempts)
             .Select(x => x.Id)
             .ToHashSet(StringComparer.Ordinal);
 
-        foreach (var source in incoming.CareerExams)
+        foreach (var source in incoming)
         {
-            if (!targetExams.TryGetValue(source.CourseId, out var destination))
-                continue;
-
-            destination.Attempts ??= new ObservableCollection<ExamAttemptData>();
-            foreach (var attempt in source.Attempts)
+            if (byCourseId.TryGetValue(source.CourseId, out var destination))
             {
-                if (attemptIds.Add(attempt.Id))
-                    destination.Attempts.Add(attempt);
-            }
-        }
-
-        var targetSessions = target.StudySessions.ToDictionary(x => x.Id, StringComparer.Ordinal);
-        var segmentIds = target.StudySessions
-            .SelectMany(x => x.Segments)
-            .Select(x => x.Id)
-            .ToHashSet(StringComparer.Ordinal);
-
-        foreach (var source in incoming.StudySessions)
-        {
-            if (!targetSessions.TryGetValue(source.Id, out var destination))
-                continue;
-
-            destination.Segments ??= new ObservableCollection<StudySessionSegmentData>();
-            var changed = false;
-            foreach (var segment in source.Segments)
-            {
-                if (segmentIds.Add(segment.Id))
+                destination.Attempts ??= new ObservableCollection<ExamAttemptData>();
+                foreach (var attempt in source.Attempts)
                 {
-                    destination.Segments.Add(segment);
-                    changed = true;
+                    if (attemptIds.Add(attempt.Id))
+                        destination.Attempts.Add(attempt);
                 }
+                continue;
             }
 
-            if (!changed)
-                continue;
-
-            var ordered = destination.Segments
-                .OrderBy(x => x.StartedAt)
-                .ThenBy(x => x.Id, StringComparer.Ordinal)
-                .ToList();
-            destination.Segments.Clear();
-            foreach (var segment in ordered)
-                destination.Segments.Add(segment);
+            source.Attempts = new ObservableCollection<ExamAttemptData>(
+                source.Attempts.Where(attempt => attemptIds.Add(attempt.Id)));
+            target.Add(source);
+            byCourseId.Add(source.CourseId, source);
         }
+    }
 
-        var targetMissions = target.StudyMissions.ToDictionary(x => x.Id, StringComparer.Ordinal);
-        foreach (var source in incoming.StudyMissions)
+    private static void MergeStudySessions(
+        ObservableCollection<StudySessionData> target,
+        IEnumerable<StudySessionData> incoming)
+    {
+        var byId = target.ToDictionary(x => x.Id, StringComparer.Ordinal);
+        var segmentIds = target.SelectMany(x => x.Segments)
+            .Select(x => x.Id)
+            .ToHashSet(StringComparer.Ordinal);
+
+        foreach (var source in incoming)
         {
-            if (!targetMissions.TryGetValue(source.Id, out var destination))
+            if (byId.TryGetValue(source.Id, out var destination))
+            {
+                destination.Segments ??= new ObservableCollection<StudySessionSegmentData>();
+                var changed = false;
+                foreach (var segment in source.Segments)
+                {
+                    if (segmentIds.Add(segment.Id))
+                    {
+                        destination.Segments.Add(segment);
+                        changed = true;
+                    }
+                }
+
+                if (changed)
+                    SortSegments(destination.Segments);
                 continue;
+            }
+
+            source.Segments = new ObservableCollection<StudySessionSegmentData>(
+                source.Segments
+                    .Where(segment => segmentIds.Add(segment.Id))
+                    .OrderBy(segment => segment.StartedAt)
+                    .ThenBy(segment => segment.Id, StringComparer.Ordinal));
+            target.Add(source);
+            byId.Add(source.Id, source);
+        }
+    }
+
+    private static void SortSegments(ObservableCollection<StudySessionSegmentData> segments)
+    {
+        var ordered = segments
+            .OrderBy(x => x.StartedAt)
+            .ThenBy(x => x.Id, StringComparer.Ordinal)
+            .ToList();
+        segments.Clear();
+        foreach (var segment in ordered)
+            segments.Add(segment);
+    }
+
+    private static void MergeStudyMissions(
+        ObservableCollection<StudyMissionData> target,
+        IEnumerable<StudyMissionData> incoming)
+    {
+        var byId = target.ToDictionary(x => x.Id, StringComparer.Ordinal);
+        foreach (var source in incoming)
+        {
+            if (!byId.TryGetValue(source.Id, out var destination))
+            {
+                target.Add(source);
+                byId.Add(source.Id, source);
+                continue;
+            }
 
             destination.Steps ??= new ObservableCollection<MissionStepData>();
             var stepIds = destination.Steps.Select(x => x.Id).ToHashSet(StringComparer.Ordinal);
