@@ -25,6 +25,7 @@ Il file è limitato a 64 MB e il JSON a 64 livelli di profondità. Prima di crea
 - In caso di conflitto, i campi del record padre locale prevalgono e non vengono sovrascritti.
 - Per esami, sessioni e missioni già presenti, aggiunge in modo idempotente i nuovi tentativi, segmenti e passi con identificativi distinti.
 - I segmenti di sessione vengono riordinati cronologicamente dopo l'unione.
+- Un identificativo figlio già usato da un altro padre locale viene contato come duplicato e saltato, evitando di creare relazioni con ID globali in conflitto.
 - I conteggi dei duplicati includono anche gli identificativi dei record annidati.
 - Impostazioni profilo, URL Moodle e stato del timer locale restano quelli del dispositivo.
 - Le credenziali non vengono mai importate.
