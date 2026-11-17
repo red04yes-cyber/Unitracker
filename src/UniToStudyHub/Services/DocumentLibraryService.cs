@@ -405,7 +405,7 @@ public sealed class DocumentLibraryService
                 {
                     var hashResult = await ComputeChecksumAsync(filePath, remainingBudget, cancellationToken)
                         .ConfigureAwait(false);
-                    checksumBytesRead = hashResult.BytesRead + (hashResult.ExceededLimit ? 1 : 0);
+                    checksumBytesRead = hashResult.BytesRead;
                     if (hashResult.ExceededLimit)
                     {
                         checksumStatus = DocumentChecksumStatus.ScanBudgetReached;
@@ -470,22 +470,25 @@ public sealed class DocumentLibraryService
         var buffer = new byte[HashBufferSize];
         long bytesRead = 0;
 
-        while (true)
+        if (stream.Length > maximumBytes)
+            return new ChecksumResult(null, 0, true);
+
+        while (bytesRead < maximumBytes)
         {
             cancellationToken.ThrowIfCancellationRequested();
             var remaining = maximumBytes - bytesRead;
-            var requested = (int)Math.Min(buffer.Length, Math.Max(1, remaining + 1));
+            var requested = (int)Math.Min(buffer.Length, remaining);
             var count = await stream.ReadAsync(buffer.AsMemory(0, requested), cancellationToken)
                 .ConfigureAwait(false);
             if (count == 0)
                 break;
 
-            if (bytesRead + count > maximumBytes)
-                return new ChecksumResult(null, bytesRead, true);
-
             hash.AppendData(buffer, 0, count);
             bytesRead += count;
         }
+
+        if (stream.Length > bytesRead)
+            return new ChecksumResult(null, bytesRead, true);
 
         return new ChecksumResult(Convert.ToHexString(hash.GetHashAndReset()), bytesRead, false);
     }
@@ -528,7 +531,8 @@ public sealed class DocumentLibraryService
 
             return !IsReparsePoint(fullDirectory) && LocalFileSecurity.IsInside(fullRoot, fullDirectory);
         }
-        catch (Exception) when (IsExpectedPathFailure(root, directory))
+        catch (Exception ex) when (ex is ArgumentException or IOException or UnauthorizedAccessException
+                                   or NotSupportedException or System.Security.SecurityException)
         {
             return false;
         }
@@ -570,21 +574,6 @@ public sealed class DocumentLibraryService
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException
                                    or System.Security.SecurityException or ArgumentException
                                    or NotSupportedException)
-        {
-            return true;
-        }
-    }
-
-    private static bool IsExpectedPathFailure(params string[] paths)
-    {
-        try
-        {
-            foreach (var path in paths)
-                _ = Path.GetFullPath(path);
-            return false;
-        }
-        catch (Exception ex) when (ex is ArgumentException or IOException or UnauthorizedAccessException
-                                       or NotSupportedException or System.Security.SecurityException)
         {
             return true;
         }
