@@ -1,7 +1,9 @@
 using System.Collections.ObjectModel;
+using System.IO;
 using System.IO.Compression;
 using System.Text;
 using System.Text.Json;
+using System.Xml.Linq;
 using UniToStudyHub.Models;
 using UniToStudyHub.Services;
 using Xunit;
@@ -208,6 +210,146 @@ public sealed class ExportAndImportSafetyTests
         Assert.Contains("&lt;script&gt;", xml, StringComparison.Ordinal);
         Assert.DoesNotContain("<f>", xml, StringComparison.Ordinal);
         Assert.DoesNotContain("<script>", xml, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void CsvGuardsFormulaAfterUnicodeFormatCharacters()
+    {
+        var data = HostileData();
+        var activity = Assert.Single(data.StudyActivities);
+        activity.Note = "\uFEFF=HYPERLINK(\"https://example.invalid\",\"open\")";
+        activity.Tags = new ObservableCollection<string> { "\u200B+1+1" };
+
+        var csv = Encoding.UTF8.GetString(new StudyDataExportService()
+            .Export(data, Request, StudyExportFormat.Csv, Start.AddHours(1))
+            .Files.Single(file => file.FileName == "activities.csv").Content);
+
+        Assert.Contains("'\uFEFF=HYPERLINK", csv, StringComparison.Ordinal);
+        Assert.Contains("'\u200B+1+1", csv, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void XlsxRemovesIllegalXmlScalarsAndPreservesValidUnicode()
+    {
+        var data = HostileData();
+        var activity = Assert.Single(data.StudyActivities);
+        activity.Title = "Lezione\u0001 con emoji 😀 & <tag> \uD800";
+
+        var file = new StudyDataExportService()
+            .Export(data, Request, StudyExportFormat.Xlsx, Start.AddHours(1))
+            .Files.Single();
+        using var archive = new ZipArchive(new MemoryStream(file.Content), ZipArchiveMode.Read);
+        using var reader = new StreamReader(archive.GetEntry("xl/worksheets/sheet1.xml")!.Open());
+        var document = XDocument.Load(reader);
+        var textValues = document.Descendants()
+            .Where(element => element.Name.LocalName == "t")
+            .Select(element => element.Value)
+            .ToArray();
+
+        Assert.Contains("Lezione con emoji 😀 & <tag> \uFFFD", textValues);
+        Assert.DoesNotContain('\u0001', string.Concat(textValues));
+    }
+
+    [Fact]
+    public void XlsxAccepts32767UnicodeCharactersIncludingSupplementaryCharacters()
+    {
+        var data = HostileData();
+        Assert.Single(data.StudyActivities).Title = new string('x', 32_766) + "😀";
+
+        var file = new StudyDataExportService()
+            .Export(data, Request, StudyExportFormat.Xlsx, Start.AddHours(1))
+            .Files.Single();
+
+        Assert.NotEmpty(file.Content);
+    }
+
+    [Fact]
+    public void XlsxRejectsCellTextBeyondExcelCharacterLimit()
+    {
+        var data = HostileData();
+        Assert.Single(data.StudyActivities).Title = new string('x', 32_767) + "😀";
+
+        Assert.Throws<InvalidDataException>(() =>
+            new StudyDataExportService().Export(data, Request, StudyExportFormat.Xlsx, Start.AddHours(1)));
+    }
+
+    [Fact]
+    public void ExportRejectsNullRequestWithArgumentException()
+    {
+        Assert.Throws<ArgumentNullException>(() =>
+            new StudyDataExportService().Export(new StudyData(), null!, StudyExportFormat.Csv, Start.AddHours(1)));
+    }
+
+    [Fact]
+    public void ExportIncludesActivityAtTheEarlierOccurrenceOfAmbiguousMidnight()
+    {
+        var zone = FindTimeZone("America/Havana", "Cuba Standard Time");
+        var localMidnight = new DateTime(2020, 11, 1, 0, 0, 0, DateTimeKind.Unspecified);
+        Assert.True(zone.IsAmbiguousTime(localMidnight));
+        var earliestOffset = zone.GetAmbiguousTimeOffsets(localMidnight).Max();
+        var earliestMidnight = new DateTimeOffset(localMidnight, earliestOffset);
+        var data = new StudyData();
+        data.StudyActivities.Add(new StudyActivityData
+        {
+            Id = "activity-at-ambiguous-midnight",
+            Title = "Studio a mezzanotte",
+            StartedAt = earliestMidnight.AddMinutes(15),
+            EndedAt = earliestMidnight.AddMinutes(45),
+            TimeZoneId = zone.Id,
+            EffectiveSeconds = 1800
+        });
+
+        var csv = Encoding.UTF8.GetString(new StudyDataExportService()
+            .Export(data, new StudyExportRequest(new DateOnly(2020, 11, 1), new DateOnly(2020, 11, 1), zone.Id),
+                StudyExportFormat.Csv, earliestMidnight.AddHours(2))
+            .Files.Single(file => file.FileName == "activities.csv").Content);
+
+        Assert.Contains("activity-at-ambiguous-midnight", csv, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ExportStartsAtFirstValidMinuteWhenLocalMidnightIsSkipped()
+    {
+        var zone = FindTimeZone("America/Sao_Paulo", "E. South America Standard Time");
+        var localMidnight = new DateTime(2018, 11, 4, 0, 0, 0, DateTimeKind.Unspecified);
+        Assert.True(zone.IsInvalidTime(localMidnight));
+        var firstValid = localMidnight;
+        while (zone.IsInvalidTime(firstValid))
+            firstValid = firstValid.AddMinutes(1);
+
+        var firstInstant = new DateTimeOffset(firstValid, zone.GetUtcOffset(firstValid));
+        var data = new StudyData();
+        data.StudyActivities.Add(new StudyActivityData
+        {
+            Id = "activity-after-skipped-midnight",
+            Title = "Studio dopo il cambio ora",
+            StartedAt = firstInstant.AddMinutes(15),
+            EndedAt = firstInstant.AddMinutes(45),
+            TimeZoneId = zone.Id,
+            EffectiveSeconds = 1800
+        });
+
+        var csv = Encoding.UTF8.GetString(new StudyDataExportService()
+            .Export(data, new StudyExportRequest(new DateOnly(2018, 11, 4), new DateOnly(2018, 11, 4), zone.Id),
+                StudyExportFormat.Csv, firstInstant.AddHours(2))
+            .Files.Single(file => file.FileName == "activities.csv").Content);
+
+        Assert.Contains("activity-after-skipped-midnight", csv, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ExportRejectsMaximumDateBecauseExclusiveBoundaryWouldOverflow()
+    {
+        var request = new StudyExportRequest(DateOnly.MaxValue, DateOnly.MaxValue, "UTC");
+
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            new StudyDataExportService().Export(new StudyData(), request, StudyExportFormat.Csv, Start));
+    }
+
+    private static TimeZoneInfo FindTimeZone(string ianaId, string windowsId)
+    {
+        try { return TimeZoneInfo.FindSystemTimeZoneById(ianaId); }
+        catch (TimeZoneNotFoundException) { return TimeZoneInfo.FindSystemTimeZoneById(windowsId); }
     }
 
     [Fact]
