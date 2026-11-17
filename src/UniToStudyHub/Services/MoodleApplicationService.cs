@@ -114,6 +114,15 @@ public sealed class MoodleApplicationService
             .ConfigureAwait(false);
     }
 
+    /// <summary>
+    /// Lists locally downloaded Moodle files without requiring a connection or
+    /// reading credentials. The index is derived on demand from the private
+    /// documents folder and can be refreshed while offline.
+    /// </summary>
+    public Task<DocumentLibraryScanResult> GetDownloadedDocumentsAsync(
+        CancellationToken cancellationToken = default) =>
+        new DocumentLibraryService().ScanAsync(cancellationToken: cancellationToken);
+
     public async Task<IReadOnlyList<MoodleForumDiscussion>> GetForumDiscussionsAsync(
         string baseUrl,
         int forumId,
