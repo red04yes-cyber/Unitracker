@@ -83,7 +83,7 @@ public sealed class DocumentLibraryServiceTests
     }
 
     [Fact]
-    public async Task FilterStopsEnumeratingAtTheConfiguredInputLimit()
+    public void FilterStopsEnumeratingAtTheConfiguredInputLimit()
     {
         var yielded = 0;
         var template = new DocumentLibraryEntry(
