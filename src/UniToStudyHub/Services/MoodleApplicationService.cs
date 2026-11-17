@@ -120,8 +120,9 @@ public sealed class MoodleApplicationService
     /// documents folder and can be refreshed while offline.
     /// </summary>
     public Task<DocumentLibraryScanResult> GetDownloadedDocumentsAsync(
+        string? rootDirectory = null,
         CancellationToken cancellationToken = default) =>
-        new DocumentLibraryService().ScanAsync(cancellationToken: cancellationToken);
+        new DocumentLibraryService().ScanAsync(rootDirectory, cancellationToken);
 
     public async Task<IReadOnlyList<MoodleForumDiscussion>> GetForumDiscussionsAsync(
         string baseUrl,
