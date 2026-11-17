@@ -11,7 +11,7 @@ Questa slice corregge casi limite dell'esportazione CSV/XLSX già esistente. Non
 - Il confine iniziale di una data locale gestisce i fusi che saltano la mezzanotte (primo minuto locale valido) e quelli che la ripetono (offset massimo, quindi istante UTC più anticipato).
 - Il controllo formula CSV considera anche i caratteri Unicode della categoria Format come prefissi invisibili, oltre a whitespace e controlli.
 - Le stringhe XLSX vengono filtrate secondo i caratteri ammessi da XML 1.0. I caratteri di controllo vietati vengono rimossi; sequenze UTF-16 isolate sono convertite nel carattere sostitutivo durante l'enumerazione Unicode.
-- Prima di creare lo ZIP XLSX, ogni cella testuale viene verificata rispetto al limite Excel di 32.767 code point Unicode. Un valore oltre il limite produce un errore esplicito invece di un file che Excel potrebbe riparare o rifiutare.
+- Prima di creare lo ZIP XLSX, ogni cella testuale viene verificata rispetto al limite Excel di 32.767 unità di codice UTF-16. Un valore oltre il limite produce un errore esplicito invece di un file che Excel potrebbe riparare o rifiutare.
 
 ## Verifiche aggiunte
 
