@@ -1,6 +1,7 @@
 using System.Security.Cryptography;
 using System.Text;
 using UniToStudyHub.Services;
+using UniToStudyHub.Tests.Security;
 using Xunit;
 
 namespace UniToStudyHub.Tests.Services;
@@ -175,6 +176,28 @@ public sealed class DocumentLibraryServiceTests
             var forged = entry with { RelativePath = Path.Combine("..", "outside.txt") };
             Assert.False(DocumentLibraryService.TryGetSafePath(root, forged, out var rejected));
             Assert.Equal(string.Empty, rejected);
+        }
+        finally
+        {
+            DeleteRoot(root);
+        }
+    }
+
+    [Fact]
+    public async Task MoodleApplicationServiceListsLocalDocumentsWithoutAMoodleToken()
+    {
+        var root = CreateRoot();
+        var directory = Path.Combine(root, "Economia", "Materiali");
+        Directory.CreateDirectory(directory);
+        await File.WriteAllTextAsync(Path.Combine(directory, "programma.pdf"), "programma");
+        var service = new MoodleApplicationService(new InMemoryMoodleTokenStore());
+
+        try
+        {
+            var result = await service.GetDownloadedDocumentsAsync(root);
+
+            Assert.Single(result.Entries);
+            Assert.Equal("Economia", result.Entries[0].CourseName);
         }
         finally
         {
