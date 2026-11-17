@@ -331,11 +331,27 @@ public sealed class DocumentLibraryService
                 foreach (var child in Directory.EnumerateDirectories(directory, "*", SearchOption.TopDirectoryOnly))
                 {
                     cancellationToken.ThrowIfCancellationRequested();
-                    if (IsSafeDirectory(root, child))
-                        pending.Push((child, depth + 1));
-                    else
+                    if (!IsSafeDirectory(root, child))
+                    {
                         warnings.Add("Una sottocartella collegata o non verificabile è stata esclusa.");
+                        continue;
+                    }
+
+                    // Bound queued directories as well as visited directories:
+                    // a single folder with millions of children must not grow
+                    // the traversal stack without limit.
+                    if (directoriesVisited + pending.Count >= MaximumDirectoriesPerScan)
+                    {
+                        truncated = true;
+                        warnings.Add($"Indicizzazione interrotta al limite di {MaximumDirectoriesPerScan} cartelle.");
+                        break;
+                    }
+
+                    pending.Push((child, depth + 1));
                 }
+
+                if (truncated)
+                    break;
             }
             catch (OperationCanceledException)
             {
