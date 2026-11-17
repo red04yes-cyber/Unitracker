@@ -44,7 +44,7 @@ Revisione source-level di StudyDataExportService, dei test ExportAndImportSafety
 | 32 | Escape dei caratteri XML riservati | OK |
 | 33 | Rimozione dei code point vietati da XML 1.0 | Corretto |
 | 34 | Gestione di sequenze UTF-16 isolate | Corretto |
-| 35 | Limite Excel di 32.767 code point per cella | Corretto |
+| 35 | Limite Excel di 32.767 unità di codice UTF-16 per cellaa | Corretto |
 | 36 | Escape HTML predefinito del serializer JSON | OK |
 
 ## Correzioni effettive
