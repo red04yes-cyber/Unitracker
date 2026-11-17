@@ -406,47 +406,48 @@ public sealed class DocumentLibraryService
         var availability = DocumentFileAvailability.Available;
         long checksumBytesRead = 0;
 
+        var remainingBudget = MaximumChecksumBytesPerScan - checksumBytes;
         if (size > MaximumFileBytes)
         {
             checksumStatus = DocumentChecksumStatus.FileTooLarge;
         }
+        else if (size > remainingBudget)
+        {
+            checksumStatus = DocumentChecksumStatus.ScanBudgetReached;
+        }
         else
         {
-            var remainingBudget = MaximumChecksumBytesPerScan - checksumBytes;
-            if (size > remainingBudget)
+            var maximumBytesForFile = Math.Min(MaximumFileBytes, remainingBudget);
+            try
             {
-                checksumStatus = DocumentChecksumStatus.ScanBudgetReached;
-            }
-            else
-            {
-                try
+                var hashResult = await ComputeChecksumAsync(filePath, maximumBytesForFile, cancellationToken)
+                    .ConfigureAwait(false);
+                checksumBytesRead = hashResult.BytesRead;
+                if (hashResult.ExceededLimit)
                 {
-                    var hashResult = await ComputeChecksumAsync(filePath, remainingBudget, cancellationToken)
-                        .ConfigureAwait(false);
-                    checksumBytesRead = hashResult.BytesRead;
-                    if (hashResult.ExceededLimit)
-                    {
-                        checksumStatus = DocumentChecksumStatus.ScanBudgetReached;
-                    }
-                    else if (hashResult.Checksum is null)
-                    {
-                        checksumStatus = DocumentChecksumStatus.ReadFailed;
-                        availability = DocumentFileAvailability.Inaccessible;
-                    }
-                    else
-                    {
-                        checksum = hashResult.Checksum;
-                    }
+                    checksumStatus = maximumBytesForFile < MaximumFileBytes
+                        ? DocumentChecksumStatus.ScanBudgetReached
+                        : DocumentChecksumStatus.FileTooLarge;
                 }
-                catch (OperationCanceledException)
-                {
-                    throw;
-                }
-                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Security.SecurityException)
+                else if (hashResult.Checksum is null)
                 {
                     checksumStatus = DocumentChecksumStatus.ReadFailed;
                     availability = DocumentFileAvailability.Inaccessible;
                 }
+                else
+                {
+                    checksum = hashResult.Checksum;
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException
+                                       or System.Security.SecurityException)
+            {
+                checksumStatus = DocumentChecksumStatus.ReadFailed;
+                availability = DocumentFileAvailability.Inaccessible;
             }
         }
 
