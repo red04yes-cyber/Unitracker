@@ -252,6 +252,7 @@ public sealed class DocumentLibraryService
         pending.Push((root, 0));
 
         var directoriesVisited = 0;
+        var directoriesDiscovered = 1;
         var filesVisited = 0;
         long checksumBytes = 0;
         var truncated = false;
@@ -331,20 +332,21 @@ public sealed class DocumentLibraryService
                 foreach (var child in Directory.EnumerateDirectories(directory, "*", SearchOption.TopDirectoryOnly))
                 {
                     cancellationToken.ThrowIfCancellationRequested();
-                    if (!IsSafeDirectory(root, child))
-                    {
-                        warnings.Add("Una sottocartella collegata o non verificabile è stata esclusa.");
-                        continue;
-                    }
 
-                    // Bound queued directories as well as visited directories:
-                    // a single folder with millions of children must not grow
-                    // the traversal stack without limit.
-                    if (directoriesVisited + pending.Count >= MaximumDirectoriesPerScan)
+                    // Bound discovered entries too: a folder containing millions
+                    // of links must not force an unbounded metadata walk.
+                    if (directoriesDiscovered >= MaximumDirectoriesPerScan)
                     {
                         truncated = true;
                         warnings.Add($"Indicizzazione interrotta al limite di {MaximumDirectoriesPerScan} cartelle.");
                         break;
+                    }
+
+                    directoriesDiscovered++;
+                    if (!IsSafeDirectory(root, child))
+                    {
+                        warnings.Add("Una sottocartella collegata o non verificabile è stata esclusa.");
+                        continue;
                     }
 
                     pending.Push((child, depth + 1));
