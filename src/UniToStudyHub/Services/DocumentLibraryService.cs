@@ -103,6 +103,9 @@ public sealed class DocumentLibraryService
 
         foreach (var entry in entries.Take(MaximumFilterItems))
         {
+            if (entry is null)
+                continue;
+
             if (!string.IsNullOrWhiteSpace(query) &&
                 !Contains(entry.FileName, query) &&
                 !Contains(entry.CourseName, query) &&
@@ -152,6 +155,9 @@ public sealed class DocumentLibraryService
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(rootDirectory);
         ArgumentNullException.ThrowIfNull(entry);
+
+        if (!Directory.Exists(rootDirectory))
+            return entry with { Availability = DocumentFileAvailability.Missing };
 
         if (!TryResolveSafePath(rootDirectory, entry.RelativePath, out var fullPath))
             return entry with { Availability = DocumentFileAvailability.UnsafePath };
@@ -286,14 +292,24 @@ public sealed class DocumentLibraryService
                     if (!seenPaths.Add(Path.GetFullPath(filePath)))
                         continue;
 
-                    var entry = await CreateEntryAsync(root, filePath, checksumBytes, cancellationToken)
-                        .ConfigureAwait(false);
-                    if (entry is null)
-                        continue;
+                    try
+                    {
+                        var created = await CreateEntryAsync(root, filePath, checksumBytes, cancellationToken)
+                            .ConfigureAwait(false);
+                        if (created is null)
+                            continue;
 
-                    if (entry.ChecksumStatus == DocumentChecksumStatus.Computed)
-                        checksumBytes += entry.SizeBytes;
-                    entries.Add(entry);
+                        checksumBytes += created.ChecksumBytesRead;
+                        entries.Add(created.Entry);
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        throw;
+                    }
+                    catch (Exception) when (IsExpectedFileAccessFailure(filePath))
+                    {
+                        warnings.Add("Un file non è leggibile e non è stato indicizzato.");
+                    }
                 }
 
                 if (truncated)
@@ -339,7 +355,7 @@ public sealed class DocumentLibraryService
             ordered, directoriesVisited, filesVisited, truncated, warnings.Distinct().ToArray());
     }
 
-    private static async Task<DocumentLibraryEntry?> CreateEntryAsync(
+    private static async Task<CreatedEntry?> CreateEntryAsync(
         string root,
         string filePath,
         long checksumBytes,
@@ -368,6 +384,7 @@ public sealed class DocumentLibraryService
         string? checksum = null;
         var checksumStatus = DocumentChecksumStatus.Computed;
         var availability = DocumentFileAvailability.Available;
+        long checksumBytesRead = 0;
 
         if (size > MaximumFileBytes)
         {
@@ -386,6 +403,7 @@ public sealed class DocumentLibraryService
                 {
                     var hashResult = await ComputeChecksumAsync(filePath, remainingBudget, cancellationToken)
                         .ConfigureAwait(false);
+                    checksumBytesRead = hashResult.BytesRead + (hashResult.ExceededLimit ? 1 : 0);
                     if (hashResult.ExceededLimit)
                     {
                         checksumStatus = DocumentChecksumStatus.ScanBudgetReached;
@@ -420,17 +438,19 @@ public sealed class DocumentLibraryService
                 availability = DocumentFileAvailability.Missing;
         }
 
-        return new DocumentLibraryEntry(
-            courseName,
-            category,
-            info.Name,
-            info.Extension,
-            size,
-            modified,
-            relativePath,
-            checksum,
-            availability,
-            checksumStatus);
+        return new CreatedEntry(
+            new DocumentLibraryEntry(
+                courseName,
+                category,
+                info.Name,
+                info.Extension,
+                size,
+                modified,
+                relativePath,
+                checksum,
+                availability,
+                checksumStatus),
+            checksumBytesRead);
     }
 
     private static async Task<ChecksumResult> ComputeChecksumAsync(
@@ -492,8 +512,25 @@ public sealed class DocumentLibraryService
         }
     }
 
-    private static bool IsSafeDirectory(string root, string directory) =>
-        !IsReparsePoint(directory) && LocalFileSecurity.IsInside(root, directory);
+    private static bool IsSafeDirectory(string root, string directory)
+    {
+        try
+        {
+            var fullRoot = Path.GetFullPath(root);
+            var fullDirectory = Path.GetFullPath(directory);
+            var comparison = OperatingSystem.IsWindows()
+                ? StringComparison.OrdinalIgnoreCase
+                : StringComparison.Ordinal;
+            if (string.Equals(fullRoot, fullDirectory, comparison))
+                return !IsReparsePoint(fullDirectory);
+
+            return !IsReparsePoint(fullDirectory) && LocalFileSecurity.IsInside(fullRoot, fullDirectory);
+        }
+        catch (Exception) when (IsExpectedPathFailure(root, directory))
+        {
+            return false;
+        }
+    }
 
     private static bool IsSafeRelativePath(string? path)
     {
@@ -528,6 +565,34 @@ public sealed class DocumentLibraryService
         {
             return false;
         }
+        catch (Exception) when (IsExpectedPathFailure(path))
+        {
+            return true;
+        }
+    }
+
+    private static bool IsExpectedPathFailure(params string[] paths)
+    {
+        try
+        {
+            foreach (var path in paths)
+                _ = Path.GetFullPath(path);
+            return false;
+        }
+        catch (Exception ex) when (ex is ArgumentException or IOException or UnauthorizedAccessException
+                                       or NotSupportedException or System.Security.SecurityException)
+        {
+            return true;
+        }
+    }
+
+    private static bool IsExpectedFileAccessFailure(string path)
+    {
+        try
+        {
+            _ = File.GetAttributes(path);
+            return false;
+        }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Security.SecurityException)
         {
             return true;
@@ -549,5 +614,6 @@ public sealed class DocumentLibraryService
     private static DocumentLibraryScanResult EmptyResult() =>
         new(Array.Empty<DocumentLibraryEntry>(), 0, 0, false, Array.Empty<string>());
 
+    private sealed record CreatedEntry(DocumentLibraryEntry Entry, long ChecksumBytesRead);
     private sealed record ChecksumResult(string? Checksum, long BytesRead, bool ExceededLimit);
 }
