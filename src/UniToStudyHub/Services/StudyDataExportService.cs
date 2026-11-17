@@ -48,6 +48,7 @@ public sealed class StudyDataExportService
     private const string CsvContentType = "text/csv; charset=utf-8";
     private const string XlsxContentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
     private const string JsonContentType = "application/json; charset=utf-8";
+    private const int MaximumXlsxCellCharacters = 32_767;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -62,6 +63,7 @@ public sealed class StudyDataExportService
         DateTimeOffset? now = null)
     {
         ArgumentNullException.ThrowIfNull(data);
+        ArgumentNullException.ThrowIfNull(request);
         var generatedAt = now ?? DateTimeOffset.Now;
         var selection = Select(data, request, generatedAt);
         return format switch
@@ -81,6 +83,8 @@ public sealed class StudyDataExportService
             throw new ArgumentOutOfRangeException(nameof(request), "The end date must not precede the start date.");
         if (request.To.DayNumber - request.From.DayNumber > 3660)
             throw new ArgumentOutOfRangeException(nameof(request), "The export range is limited to 3661 days.");
+        if (request.To == DateOnly.MaxValue)
+            throw new ArgumentOutOfRangeException(nameof(request), "The export end date must leave room for the exclusive next-day boundary.");
         var zone = string.IsNullOrWhiteSpace(request.TimeZoneId)
             ? TimeZoneInfo.Local
             : ResolveTimeZone(request.TimeZoneId);
@@ -463,7 +467,9 @@ public sealed class StudyDataExportService
     {
         foreach (var character in text)
         {
-            if (char.IsWhiteSpace(character) || char.IsControl(character)) continue;
+            if (char.IsWhiteSpace(character) || char.IsControl(character) ||
+                char.GetUnicodeCategory(character) == UnicodeCategory.Format)
+                continue;
             return character is '=' or '+' or '-' or '@';
         }
         return false;
@@ -471,6 +477,7 @@ public sealed class StudyDataExportService
 
     private static byte[] XlsxBytes(IReadOnlyList<XlsxSheet> sheets)
     {
+        ValidateXlsxCellLengths(sheets);
         using var stream = new MemoryStream();
         using (var archive = new ZipArchive(stream, ZipArchiveMode.Create, leaveOpen: true))
         {
@@ -598,8 +605,38 @@ public sealed class StudyDataExportService
     private static string Styles() =>
         "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?><styleSheet xmlns=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\"><numFmts count=\"2\"><numFmt numFmtId=\"164\" formatCode=\"yyyy-mm-dd hh:mm\"/><numFmt numFmtId=\"165\" formatCode=\"[h]:mm:ss\"/></numFmts><fonts count=\"1\"><font><sz val=\"11\"/><name val=\"Calibri\"/></font></fonts><fills count=\"2\"><fill><patternFill patternType=\"none\"/></fill><fill><patternFill patternType=\"gray125\"/></fill></fills><borders count=\"1\"><border/></borders><cellStyleXfs count=\"1\"><xf numFmtId=\"0\" fontId=\"0\" fillId=\"0\" borderId=\"0\"/></cellStyleXfs><cellXfs count=\"3\"><xf numFmtId=\"0\" fontId=\"0\" fillId=\"0\" borderId=\"0\" xfId=\"0\"/><xf numFmtId=\"164\" fontId=\"0\" fillId=\"0\" borderId=\"0\" xfId=\"0\" applyNumberFormat=\"1\"/><xf numFmtId=\"165\" fontId=\"0\" fillId=\"0\" borderId=\"0\" xfId=\"0\" applyNumberFormat=\"1\"/></cellXfs></styleSheet>";
 
-    private static string Xml(string value) =>
-        System.Security.SecurityElement.Escape(value) ?? string.Empty;
+    private static void ValidateXlsxCellLengths(IReadOnlyList<XlsxSheet> sheets)
+    {
+        foreach (var sheet in sheets)
+        {
+            foreach (var text in sheet.Headers.Concat(sheet.Rows.SelectMany(row => row).OfType<string>()))
+            {
+                if (text.EnumerateRunes().Take(MaximumXlsxCellCharacters + 1).Count() >
+                    MaximumXlsxCellCharacters)
+                    throw new InvalidDataException(
+                        $"The XLSX format limits each cell to {MaximumXlsxCellCharacters:N0} Unicode characters.");
+            }
+        }
+    }
+
+    private static string Xml(string value)
+    {
+        // XML 1.0 forbids most C0 controls and isolated surrogate code units.
+        // EnumerateRunes replaces malformed UTF-16 with U+FFFD; filtering the
+        // scalar values here keeps every generated XLSX part well-formed.
+        var validXmlText = new StringBuilder(value.Length);
+        foreach (var rune in value.EnumerateRunes())
+        {
+            var scalar = rune.Value;
+            if (scalar is 0x9 or 0xA or 0xD ||
+                scalar is >= 0x20 and <= 0xD7FF ||
+                scalar is >= 0xE000 and <= 0xFFFD ||
+                scalar is >= 0x10000 and <= 0x10FFFF)
+                validXmlText.Append(rune.ToString());
+        }
+
+        return System.Security.SecurityElement.Escape(validXmlText.ToString()) ?? string.Empty;
+    }
 
     private static string? NoteForExport(StudyActivityData activity, StudyExportRequest request) =>
         request.IncludeNotes && (request.IncludePrivateNotes || !activity.IsPrivate)
@@ -636,8 +673,21 @@ public sealed class StudyDataExportService
 
     private static DateTimeOffset StartOfDay(DateOnly day, TimeZoneInfo zone)
     {
-        var local = day.ToDateTime(TimeOnly.MinValue);
-        var offset = zone.GetUtcOffset(local);
+        var local = DateTime.SpecifyKind(day.ToDateTime(TimeOnly.MinValue), DateTimeKind.Unspecified);
+        var nextDay = local.AddDays(1);
+
+        // Some zones move their clocks at midnight. If midnight is skipped,
+        // use the first valid local minute; if it is repeated, choose the
+        // larger offset so the range starts at the earliest corresponding instant.
+        while (local < nextDay && zone.IsInvalidTime(local))
+            local = local.AddMinutes(1);
+
+        if (zone.IsInvalidTime(local))
+            throw new InvalidTimeZoneException($"No valid local start-of-day instant exists for {day:yyyy-MM-dd} in '{zone.Id}'.");
+
+        var offset = zone.IsAmbiguousTime(local)
+            ? zone.GetAmbiguousTimeOffsets(local).Max()
+            : zone.GetUtcOffset(local);
         return new DateTimeOffset(local, offset);
     }
 
