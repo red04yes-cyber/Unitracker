@@ -306,7 +306,9 @@ public sealed class DocumentLibraryService
                     {
                         throw;
                     }
-                    catch (Exception) when (IsExpectedFileAccessFailure(filePath))
+                    catch (Exception ex) when (ex is IOException or UnauthorizedAccessException
+                                               or System.Security.SecurityException or ArgumentException
+                                               or NotSupportedException)
                     {
                         warnings.Add("Un file non è leggibile e non è stato indicizzato.");
                     }
@@ -565,7 +567,9 @@ public sealed class DocumentLibraryService
         {
             return false;
         }
-        catch (Exception) when (IsExpectedPathFailure(path))
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException
+                                   or System.Security.SecurityException or ArgumentException
+                                   or NotSupportedException)
         {
             return true;
         }
@@ -581,19 +585,6 @@ public sealed class DocumentLibraryService
         }
         catch (Exception ex) when (ex is ArgumentException or IOException or UnauthorizedAccessException
                                        or NotSupportedException or System.Security.SecurityException)
-        {
-            return true;
-        }
-    }
-
-    private static bool IsExpectedFileAccessFailure(string path)
-    {
-        try
-        {
-            _ = File.GetAttributes(path);
-            return false;
-        }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Security.SecurityException)
         {
             return true;
         }
