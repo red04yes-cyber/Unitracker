@@ -251,10 +251,10 @@ public sealed class ExportAndImportSafetyTests
     }
 
     [Fact]
-    public void XlsxAccepts32767UnicodeCharactersIncludingSupplementaryCharacters()
+    public void XlsxAccepts32767Utf16CodeUnitsIncludingSupplementaryCharacters()
     {
         var data = HostileData();
-        Assert.Single(data.StudyActivities).Title = new string('x', 32_766) + "😀";
+        Assert.Single(data.StudyActivities).Title = new string('x', 32_765) + "😀";
 
         var file = new StudyDataExportService()
             .Export(data, Request, StudyExportFormat.Xlsx, Start.AddHours(1))
@@ -267,7 +267,7 @@ public sealed class ExportAndImportSafetyTests
     public void XlsxRejectsCellTextBeyondExcelCharacterLimit()
     {
         var data = HostileData();
-        Assert.Single(data.StudyActivities).Title = new string('x', 32_767) + "😀";
+        Assert.Single(data.StudyActivities).Title = new string('x', 32_766) + "😀";
 
         Assert.Throws<InvalidDataException>(() =>
             new StudyDataExportService().Export(data, Request, StudyExportFormat.Xlsx, Start.AddHours(1)));
