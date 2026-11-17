@@ -611,8 +611,8 @@ public sealed class StudyDataExportService
         {
             foreach (var text in sheet.Headers.Concat(sheet.Rows.SelectMany(row => row).OfType<string>()))
             {
-                if (text.EnumerateRunes().Take(MaximumXlsxCellCharacters + 1).Count() >
-                    MaximumXlsxCellCharacters)
+                // Excel's limit is conservatively enforced in UTF-16 code units.
+                if (text.Length > MaximumXlsxCellCharacters)
                     throw new InvalidDataException(
                         $"The XLSX format limits each cell to {MaximumXlsxCellCharacters:N0} Unicode characters.");
             }
