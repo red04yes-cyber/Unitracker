@@ -131,13 +131,13 @@ public sealed class PomodoroService(FocusSessionService focus, ActivityLedgerSer
         var at = now ?? DateTimeOffset.Now;
         var duration = DurationSeconds(data.PomodoroSettings, timer.Phase);
         var elapsed = timer.Status == PomodoroTimerStatus.Completed
-            ? (timer.Phase == PomodoroPhase.Focus ? timer.ActiveSeconds : timer.ActiveSeconds)
+            ? Math.Clamp(timer.ActiveSeconds, 0, duration)
             : ElapsedActive(timer, duration, at);
         var remaining = timer.Status switch
         {
-            PomodoroTimerStatus.Paused => timer.RemainingSeconds,
+            PomodoroTimerStatus.Paused => Math.Clamp(timer.RemainingSeconds, 0, duration),
             PomodoroTimerStatus.Completed => 0,
-            _ => timer.PhaseEndsAt is { } ends ? Math.Max(0, (int)Math.Floor((ends - at).TotalSeconds)) : 0
+            _ => Math.Max(0, duration - elapsed)
         };
         return new PomodoroSnapshot(
             timer.Phase,
@@ -159,14 +159,23 @@ public sealed class PomodoroService(FocusSessionService focus, ActivityLedgerSer
         var at = now ?? DateTimeOffset.Now;
         if (timer.PhaseEndsAt is null || at >= timer.PhaseEndsAt)
             throw new InvalidOperationException("The phase has already elapsed; reconcile it before pausing.");
+        if (at < timer.PhaseStartedAt)
+            throw new ArgumentOutOfRangeException(nameof(now), "The clock moved before the current phase started.");
 
-        timer.ActiveSeconds = ElapsedActive(timer, DurationSeconds(data.PomodoroSettings, timer.Phase), at);
-        timer.RemainingSeconds = Math.Max(1, DurationSeconds(data.PomodoroSettings, timer.Phase) - timer.ActiveSeconds);
+        var duration = DurationSeconds(data.PomodoroSettings, timer.Phase);
+        var activeSeconds = ElapsedActive(timer, duration, at);
+        var remainingSeconds = Math.Max(1, duration - activeSeconds);
+
+        // Validate and transition the linked focus session before changing the
+        // timer. If the session rejects the transition, the timer stays intact.
+        if (timer.Phase == PomodoroPhase.Focus)
+            focus.Pause(data, timer.SessionId, at);
+
+        timer.ActiveSeconds = activeSeconds;
+        timer.RemainingSeconds = remainingSeconds;
         timer.PhaseEndsAt = null;
         timer.Status = PomodoroTimerStatus.Paused;
         timer.UpdatedAt = at;
-        if (timer.Phase == PomodoroPhase.Focus)
-            focus.Pause(data, timer.SessionId, at);
         Sync(data, timer, at);
         return timer;
     }
@@ -180,12 +189,19 @@ public sealed class PomodoroService(FocusSessionService focus, ActivityLedgerSer
         var at = now ?? DateTimeOffset.Now;
         if (timer.RemainingSeconds <= 0)
             throw new InvalidOperationException("A paused phase with no remaining time cannot be resumed.");
-        timer.Status = PomodoroTimerStatus.Running;
-        timer.PhaseStartedAt = at;
-        timer.PhaseEndsAt = at.AddSeconds(timer.RemainingSeconds);
-        timer.UpdatedAt = at;
+        if (at < timer.UpdatedAt)
+            throw new ArgumentOutOfRangeException(nameof(now), "The clock moved before the phase was paused.");
+
+        // Calculate the deadline and resume the linked focus first. Neither
+        // operation mutates the timer, so failures cannot leave split state.
+        var phaseEndsAt = at.AddSeconds(timer.RemainingSeconds);
         if (timer.Phase == PomodoroPhase.Focus)
             focus.Resume(data, timer.SessionId, at);
+
+        timer.Status = PomodoroTimerStatus.Running;
+        timer.PhaseStartedAt = at;
+        timer.PhaseEndsAt = phaseEndsAt;
+        timer.UpdatedAt = at;
         Sync(data, timer, at);
         return timer;
     }
@@ -388,10 +404,15 @@ public sealed class PomodoroService(FocusSessionService focus, ActivityLedgerSer
 
     private static int ElapsedActive(PomodoroTimerData timer, int duration, DateTimeOffset at)
     {
-        var elapsed = Math.Max(0, timer.ActiveSeconds);
+        long elapsed = Math.Max(0, timer.ActiveSeconds);
         if (timer.Status == PomodoroTimerStatus.Running)
-            elapsed += Math.Max(0, (int)Math.Floor((at - timer.PhaseStartedAt).TotalSeconds));
-        return Math.Min(duration, elapsed);
+        {
+            var intervalSeconds = (at - timer.PhaseStartedAt).TotalSeconds;
+            if (intervalSeconds > 0)
+                elapsed += (long)Math.Min(duration, Math.Floor(intervalSeconds));
+        }
+
+        return (int)Math.Clamp(elapsed, 0L, duration);
     }
 
     private static int DurationSeconds(PomodoroSettingsData settings, PomodoroPhase phase) =>
