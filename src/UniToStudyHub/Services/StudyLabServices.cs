@@ -483,7 +483,7 @@ public sealed class FlashcardService
         StudyData data,
         string courseId,
         DateTimeOffset? now = null) =>
-        GetReviewQueue(data, now, upcomingDays: 0, courseId).Due;
+        GetReviewQueue(data, now, upcomingDays: 0, courseId: courseId).Due;
 
     /// <summary>
     /// Returns a bounded, deterministic queue snapshot. Due cards include
