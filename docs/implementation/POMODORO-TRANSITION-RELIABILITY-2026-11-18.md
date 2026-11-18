@@ -18,7 +18,7 @@ Hardening circoscritto del servizio Pomodoro già registrato nel `CompositionRoo
 
 ## Verifica aggiunta
 
-`PomodoroServiceTests` aggiunge 15 casi:
+`PomodoroServiceTests` aggiunge 17 casi:
 - creazione e collegamento al task;
 - pausa, ripresa e ricostruzione del tempo;
 - rollback dello stato in caso di transizione Focus rifiutata;
