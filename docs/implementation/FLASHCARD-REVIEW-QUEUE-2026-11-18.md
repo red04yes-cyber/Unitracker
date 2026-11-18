@@ -38,7 +38,7 @@ silently returning an empty queue.
 - Ease factor is normalized to 2.5 when imported state is outside 1.3–2.8.
 - Interval arithmetic is performed in decimal and clamped before conversion.
 - Repetition and lapse counters saturate at `int.MaxValue`.
-- A review timestamp cannot precede creation or the previous review.
+- A review timestamp cannot precede the previous review.
 - The next due timestamp is computed before mutating the card. A date overflow
   therefore leaves the card and review history unchanged.
 - Flashcard topic references must exist and belong to the selected course.
