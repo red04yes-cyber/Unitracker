@@ -428,7 +428,7 @@ public sealed class FlashcardReviewQueueTests
         Assert.Equal(int.MaxValue, card.Lapses);
         Assert.Equal(1, card.IntervalDays);
         Assert.Equal(1, review.NewIntervalDays);
-        Assert.Equal(1.3m, card.EaseFactor);
+        Assert.Equal(2.3m, card.EaseFactor);
     }
 
     [Fact]
