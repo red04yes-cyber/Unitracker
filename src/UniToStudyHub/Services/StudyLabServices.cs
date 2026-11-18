@@ -576,8 +576,6 @@ public sealed class FlashcardService
         var at = now ?? DateTimeOffset.Now;
         if (card.LastReviewedAt is { } lastReviewed && at < lastReviewed)
             throw new ArgumentOutOfRangeException(nameof(now), "A review cannot precede the previous review.");
-        if (card.CreatedAt != default && at < card.CreatedAt)
-            throw new ArgumentOutOfRangeException(nameof(now), "A review cannot precede flashcard creation.");
 
         // Normalize potentially legacy/imported values before doing arithmetic.
         // All calculations and date arithmetic finish before any card field changes.
