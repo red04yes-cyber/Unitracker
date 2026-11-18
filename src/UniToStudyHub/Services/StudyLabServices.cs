@@ -360,39 +360,205 @@ public sealed class ErrorJournalService
         ?? throw new ArgumentException($"Error entry '{entryId}' does not exist.", nameof(entryId));
 }
 
+public sealed record FlashcardReviewQueue(
+    IReadOnlyList<FlashcardData> Due,
+    IReadOnlyList<FlashcardData> Upcoming,
+    int OverdueCount,
+    int SuspendedCount,
+    int UnscheduledCount,
+    int ActiveCount,
+    DateTimeOffset AsOf,
+    DateTimeOffset Through)
+{
+    public int DueCount => Due.Count;
+    public int UpcomingCount => Upcoming.Count;
+}
+
+/// <summary>
+/// Manages flashcards and a deterministic spaced-repetition queue. Scheduling
+/// is local and rule-based; open-ended answers and recall quality are never
+/// inferred by a remote provider.
+/// </summary>
 public sealed class FlashcardService
 {
-    public FlashcardData Add(StudyData data, FlashcardData card)
+    public const int MaximumIntervalDays = 3650;
+    public const int MaximumUpcomingDays = 90;
+    private const decimal DefaultEaseFactor = 2.5m;
+
+    public FlashcardData Add(StudyData data, FlashcardData card, DateTimeOffset? now = null)
     {
         ArgumentNullException.ThrowIfNull(data);
         ArgumentNullException.ThrowIfNull(card);
-        if (string.IsNullOrWhiteSpace(card.Id)) card.Id = Guid.NewGuid().ToString("N");
-        if (string.IsNullOrWhiteSpace(card.Front) || string.IsNullOrWhiteSpace(card.Back))
-            throw new ArgumentException("A flashcard needs a front and a back.", nameof(card));
-        if (!string.IsNullOrWhiteSpace(card.CourseId) &&
-            !data.Courses.Any(x => string.Equals(x.Id, card.CourseId, StringComparison.Ordinal)))
-            throw new ArgumentException("The flashcard course does not exist.", nameof(card));
+        if (string.IsNullOrWhiteSpace(card.Id))
+            card.Id = Guid.NewGuid().ToString("N");
+        ValidateContent(card);
+        NormalizeReferences(data, card);
         if (data.Flashcards.Any(x => string.Equals(x.Id, card.Id, StringComparison.Ordinal)))
             throw new ArgumentException($"Flashcard '{card.Id}' already exists.", nameof(card));
+
+        var at = now ?? DateTimeOffset.Now;
         card.Front = card.Front.Trim();
         card.Back = card.Back.Trim();
         card.Source = string.IsNullOrWhiteSpace(card.Source) ? "manual" : card.Source.Trim();
-        card.EaseFactor = card.EaseFactor is < 1.3m or > 2.8m ? 2.5m : card.EaseFactor;
-        card.IntervalDays = Math.Max(0, card.IntervalDays);
+        card.EaseFactor = NormalizeEaseFactor(card.EaseFactor);
+        card.IntervalDays = Math.Clamp(card.IntervalDays, 0, MaximumIntervalDays);
         card.Repetitions = Math.Max(0, card.Repetitions);
         card.Lapses = Math.Max(0, card.Lapses);
-        card.DueAt ??= DateTimeOffset.Now;
-        card.CreatedAt = card.CreatedAt == default ? DateTimeOffset.Now : card.CreatedAt;
-        card.UpdatedAt = DateTimeOffset.Now;
+        card.DueAt ??= at;
+        card.CreatedAt = card.CreatedAt == default ? at : card.CreatedAt;
+        card.UpdatedAt = at;
         data.Flashcards.Add(card);
         return card;
     }
 
-    public IReadOnlyList<FlashcardData> GetDue(StudyData data, DateTimeOffset? now = null) =>
-        data.Flashcards
-            .Where(x => !x.IsSuspended && x.DueAt is not null && x.DueAt <= (now ?? DateTimeOffset.Now))
-            .OrderBy(x => x.DueAt)
+    /// <summary>
+    /// Updates card content and course/topic attribution without replacing the
+    /// scheduling state or deleting its review history.
+    /// </summary>
+    public void Update(StudyData data, FlashcardData updated, DateTimeOffset? now = null)
+    {
+        ArgumentNullException.ThrowIfNull(data);
+        ArgumentNullException.ThrowIfNull(updated);
+        var existing = FindCard(data, updated.Id);
+        ValidateContent(updated);
+        NormalizeReferences(data, updated);
+
+        existing.CourseId = updated.CourseId;
+        existing.SyllabusTopicId = updated.SyllabusTopicId;
+        existing.Front = updated.Front.Trim();
+        existing.Back = updated.Back.Trim();
+        existing.Source = string.IsNullOrWhiteSpace(updated.Source) ? "manual" : updated.Source.Trim();
+        existing.UpdatedAt = now ?? DateTimeOffset.Now;
+    }
+
+    public void SetSuspended(
+        StudyData data,
+        string flashcardId,
+        bool isSuspended,
+        DateTimeOffset? now = null)
+    {
+        ArgumentNullException.ThrowIfNull(data);
+        var card = FindCard(data, flashcardId);
+        if (card.IsSuspended == isSuspended) return;
+
+        card.IsSuspended = isSuspended;
+        card.UpdatedAt = now ?? DateTimeOffset.Now;
+    }
+
+    /// <summary>
+    /// Resets the schedule and makes the card due immediately. Historical
+    /// reviews are intentionally retained for audit and progress reporting.
+    /// </summary>
+    public void ResetSchedule(StudyData data, string flashcardId, DateTimeOffset? now = null)
+    {
+        ArgumentNullException.ThrowIfNull(data);
+        var card = FindCard(data, flashcardId);
+        var at = now ?? DateTimeOffset.Now;
+
+        card.EaseFactor = DefaultEaseFactor;
+        card.IntervalDays = 0;
+        card.Repetitions = 0;
+        card.Lapses = 0;
+        card.DueAt = at;
+        card.LastReviewedAt = null;
+        card.UpdatedAt = at;
+    }
+
+    public IReadOnlyList<FlashcardData> GetForCourse(StudyData data, string courseId)
+    {
+        ArgumentNullException.ThrowIfNull(data);
+        var normalizedCourseId = ValidateCourseFilter(data, courseId);
+        return data.Flashcards
+            .Where(x => string.Equals(x.CourseId, normalizedCourseId, StringComparison.Ordinal))
+            .OrderBy(x => x.DueAt is null)
+            .ThenBy(x => x.DueAt)
+            .ThenBy(x => x.Id, StringComparer.Ordinal)
             .ToList();
+    }
+
+    public IReadOnlyList<FlashcardData> GetDue(StudyData data, DateTimeOffset? now = null) =>
+        GetReviewQueue(data, now, upcomingDays: 0).Due;
+
+    public IReadOnlyList<FlashcardData> GetDueForCourse(
+        StudyData data,
+        string courseId,
+        DateTimeOffset? now = null) =>
+        GetReviewQueue(data, now, upcomingDays: 0, courseId).Due;
+
+    /// <summary>
+    /// Returns a bounded, deterministic queue snapshot. Due cards include
+    /// overdue cards; Upcoming contains cards due after now and within the
+    /// requested horizon. OverdueCount is measured against the local calendar
+    /// day represented by the supplied DateTimeOffset.
+    /// </summary>
+    public FlashcardReviewQueue GetReviewQueue(
+        StudyData data,
+        DateTimeOffset? now = null,
+        int upcomingDays = 7,
+        string? courseId = null)
+    {
+        ArgumentNullException.ThrowIfNull(data);
+        if (upcomingDays is < 0 or > MaximumUpcomingDays)
+            throw new ArgumentOutOfRangeException(nameof(upcomingDays),
+                $"Upcoming horizon must be between 0 and {MaximumUpcomingDays} days.");
+
+        var normalizedCourseId = courseId is null
+            ? null
+            : ValidateCourseFilter(data, courseId);
+        var at = now ?? DateTimeOffset.Now;
+        var utcAt = at.ToUniversalTime();
+        DateTimeOffset through;
+        try
+        {
+            through = utcAt.AddDays(upcomingDays);
+        }
+        catch (ArgumentOutOfRangeException)
+        {
+            through = DateTimeOffset.MaxValue;
+        }
+
+        var filtered = data.Flashcards
+            .Where(x => normalizedCourseId is null ||
+                        string.Equals(x.CourseId, normalizedCourseId, StringComparison.Ordinal))
+            .ToList();
+        var active = filtered.Where(x => !x.IsSuspended).ToList();
+        var due = active
+            .Where(x => x.DueAt is not null && x.DueAt.Value <= at)
+            .OrderBy(x => x.DueAt)
+            .ThenBy(x => x.Id, StringComparer.Ordinal)
+            .ToList();
+        var upcoming = active
+            .Where(x => x.DueAt is not null && x.DueAt.Value > at && x.DueAt.Value <= through)
+            .OrderBy(x => x.DueAt)
+            .ThenBy(x => x.Id, StringComparer.Ordinal)
+            .ToList();
+
+        // Compare UTC ticks to the start of the user's local day without
+        // constructing a potentially unrepresentable DateTimeOffset at midnight.
+        var localDayStartUtcTicks = at.Date.Ticks - at.Offset.Ticks;
+        var overdueCount = due.Count(x => x.DueAt!.Value.UtcDateTime.Ticks < localDayStartUtcTicks);
+
+        return new FlashcardReviewQueue(
+            due,
+            upcoming,
+            overdueCount,
+            filtered.Count(x => x.IsSuspended),
+            active.Count(x => x.DueAt is null),
+            active.Count,
+            at,
+            through);
+    }
+
+    public IReadOnlyList<FlashcardReviewData> GetReviewHistory(StudyData data, string flashcardId)
+    {
+        ArgumentNullException.ThrowIfNull(data);
+        _ = FindCard(data, flashcardId);
+        return data.FlashcardReviews
+            .Where(x => string.Equals(x.FlashcardId, flashcardId, StringComparison.Ordinal))
+            .OrderBy(x => x.ReviewedAt)
+            .ThenBy(x => x.Id, StringComparer.Ordinal)
+            .ToList();
+    }
 
     public FlashcardReviewData Review(
         StudyData data,
@@ -400,50 +566,58 @@ public sealed class FlashcardService
         RecallRating rating,
         DateTimeOffset? now = null)
     {
-        var card = data.Flashcards.FirstOrDefault(x => string.Equals(x.Id, flashcardId, StringComparison.Ordinal))
-            ?? throw new ArgumentException($"Flashcard '{flashcardId}' does not exist.", nameof(flashcardId));
-        if (card.IsSuspended) throw new InvalidOperationException("A suspended flashcard cannot be reviewed.");
-        if (!Enum.IsDefined(rating)) throw new ArgumentOutOfRangeException(nameof(rating));
+        ArgumentNullException.ThrowIfNull(data);
+        var card = FindCard(data, flashcardId);
+        if (card.IsSuspended)
+            throw new InvalidOperationException("A suspended flashcard cannot be reviewed.");
+        if (!Enum.IsDefined(rating))
+            throw new ArgumentOutOfRangeException(nameof(rating));
 
         var at = now ?? DateTimeOffset.Now;
-        var previousInterval = card.IntervalDays;
-        var ease = card.EaseFactor;
+        if (card.LastReviewedAt is { } lastReviewed && at < lastReviewed)
+            throw new ArgumentOutOfRangeException(nameof(now), "A review cannot precede the previous review.");
+        if (card.CreatedAt != default && at < card.CreatedAt)
+            throw new ArgumentOutOfRangeException(nameof(now), "A review cannot precede flashcard creation.");
+
+        // Normalize potentially legacy/imported values before doing arithmetic.
+        // All calculations and date arithmetic finish before any card field changes.
+        var previousInterval = Math.Clamp(card.IntervalDays, 0, MaximumIntervalDays);
+        var ease = NormalizeEaseFactor(card.EaseFactor);
+        var repetitions = Math.Max(0, card.Repetitions);
+        var lapses = Math.Max(0, card.Lapses);
         int nextInterval;
+
         switch (rating)
         {
             case RecallRating.Again:
                 ease = Math.Max(1.3m, ease - 0.2m);
                 nextInterval = 1;
-                card.Repetitions = 0;
-                card.Lapses++;
+                repetitions = 0;
+                lapses = IncrementSaturated(lapses);
                 break;
             case RecallRating.Hard:
                 ease = Math.Max(1.3m, ease - 0.15m);
-                nextInterval = Math.Max(1, (int)Math.Round(Math.Max(1, previousInterval) * 1.2m));
-                card.Repetitions++;
+                nextInterval = CalculateInterval(Math.Max(1, previousInterval) * 1.2m);
+                repetitions = IncrementSaturated(repetitions);
                 break;
             case RecallRating.Easy:
                 ease = Math.Min(2.8m, ease + 0.15m);
                 nextInterval = previousInterval <= 0
                     ? 4
-                    : Math.Max(1, (int)Math.Round(previousInterval * ease * 1.3m));
-                card.Repetitions++;
+                    : CalculateInterval(previousInterval * ease * 1.3m);
+                repetitions = IncrementSaturated(repetitions);
                 break;
-            default:
+            default: // RecallRating.Good
                 nextInterval = previousInterval <= 0
                     ? 1
                     : previousInterval == 1
                         ? 6
-                        : Math.Max(1, (int)Math.Round(previousInterval * ease));
-                card.Repetitions++;
+                        : CalculateInterval(previousInterval * ease);
+                repetitions = IncrementSaturated(repetitions);
                 break;
         }
 
-        card.EaseFactor = ease;
-        card.IntervalDays = nextInterval;
-        card.DueAt = at.AddDays(nextInterval);
-        card.LastReviewedAt = at;
-        card.UpdatedAt = at;
+        var dueAt = at.AddDays(nextInterval);
         var review = new FlashcardReviewData
         {
             Id = Guid.NewGuid().ToString("N"),
@@ -454,9 +628,69 @@ public sealed class FlashcardService
             NewIntervalDays = nextInterval,
             EaseFactorAfter = ease
         };
+
         data.FlashcardReviews.Add(review);
+        card.EaseFactor = ease;
+        card.IntervalDays = nextInterval;
+        card.Repetitions = repetitions;
+        card.Lapses = lapses;
+        card.DueAt = dueAt;
+        card.LastReviewedAt = at;
+        card.UpdatedAt = at;
         return review;
     }
+
+    private static void ValidateContent(FlashcardData card)
+    {
+        if (string.IsNullOrWhiteSpace(card.Front) || string.IsNullOrWhiteSpace(card.Back))
+            throw new ArgumentException("A flashcard needs a front and a back.", nameof(card));
+    }
+
+    private static void NormalizeReferences(StudyData data, FlashcardData card)
+    {
+        card.CourseId = card.CourseId?.Trim() ?? string.Empty;
+        card.SyllabusTopicId = card.SyllabusTopicId?.Trim() ?? string.Empty;
+        if (!string.IsNullOrWhiteSpace(card.CourseId) &&
+            !data.Courses.Any(x => string.Equals(x.Id, card.CourseId, StringComparison.Ordinal)))
+            throw new ArgumentException("The flashcard course does not exist.", nameof(card));
+
+        if (!string.IsNullOrWhiteSpace(card.SyllabusTopicId))
+        {
+            if (string.IsNullOrWhiteSpace(card.CourseId) ||
+                !data.SyllabusTopics.Any(x =>
+                    string.Equals(x.Id, card.SyllabusTopicId, StringComparison.Ordinal) &&
+                    string.Equals(x.CourseId, card.CourseId, StringComparison.Ordinal)))
+                throw new ArgumentException("The syllabus topic must belong to the flashcard course.", nameof(card));
+        }
+    }
+
+    private static string ValidateCourseFilter(StudyData data, string courseId)
+    {
+        if (string.IsNullOrWhiteSpace(courseId))
+            throw new ArgumentException("A course id is required.", nameof(courseId));
+        var normalized = courseId.Trim();
+        if (!data.Courses.Any(x => string.Equals(x.Id, normalized, StringComparison.Ordinal)))
+            throw new ArgumentException($"Course '{normalized}' does not exist.", nameof(courseId));
+        return normalized;
+    }
+
+    private static FlashcardData FindCard(StudyData data, string flashcardId) =>
+        data.Flashcards.FirstOrDefault(x => string.Equals(x.Id, flashcardId, StringComparison.Ordinal))
+        ?? throw new ArgumentException($"Flashcard '{flashcardId}' does not exist.", nameof(flashcardId));
+
+    private static decimal NormalizeEaseFactor(decimal easeFactor) =>
+        easeFactor is < 1.3m or > 2.8m ? DefaultEaseFactor : easeFactor;
+
+    private static int CalculateInterval(decimal intervalDays)
+    {
+        if (intervalDays <= 1m) return 1;
+        if (intervalDays >= MaximumIntervalDays) return MaximumIntervalDays;
+        var rounded = decimal.Round(intervalDays, 0, MidpointRounding.AwayFromZero);
+        return (int)Math.Clamp(rounded, 1m, MaximumIntervalDays);
+    }
+
+    private static int IncrementSaturated(int value) =>
+        value >= int.MaxValue ? int.MaxValue : value + 1;
 }
 
 public sealed class DistractionService
