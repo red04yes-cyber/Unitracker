@@ -374,7 +374,7 @@ public sealed class FlashcardReviewQueueTests
         var second = service.Review(data, card.Id, RecallRating.Good, Now.AddDays(1));
 
         Assert.Equal(1, first.NewIntervalDays);
-        Assert.Equal(6, second.PreviousIntervalDays);
+        Assert.Equal(1, second.PreviousIntervalDays);
         Assert.Equal(6, second.NewIntervalDays);
         Assert.Equal(2, card.Repetitions);
         Assert.Equal(Now.AddDays(7), card.DueAt);
