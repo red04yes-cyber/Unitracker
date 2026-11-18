@@ -84,6 +84,36 @@ public sealed class PomodoroServiceTests
     }
 
     [Fact]
+    public void PauseRejectsAClockRollbackWithoutChangingTimerOrSession()
+    {
+        var data = Data();
+        var service = Service();
+        var timer = service.Start(data, "analysis", "Limiti", Start);
+
+        Assert.Throws<ArgumentOutOfRangeException>(() => service.Pause(data, Start.AddMinutes(-1)));
+
+        Assert.Equal(PomodoroTimerStatus.Running, timer.Status);
+        Assert.Equal(Start.AddMinutes(25), timer.PhaseEndsAt);
+        Assert.Equal(StudySessionState.Running, Assert.Single(data.StudySessions).State);
+    }
+
+    [Fact]
+    public void ResumeRejectsAClockRollbackWithoutChangingTimerOrSession()
+    {
+        var data = Data();
+        var service = Service();
+        var timer = service.Start(data, "analysis", "Limiti", Start);
+        service.Pause(data, Start.AddMinutes(10));
+
+        Assert.Throws<ArgumentOutOfRangeException>(() => service.Resume(data, Start.AddMinutes(9)));
+
+        Assert.Equal(PomodoroTimerStatus.Paused, timer.Status);
+        Assert.Null(timer.PhaseEndsAt);
+        Assert.Equal(900, timer.RemainingSeconds);
+        Assert.Equal(StudySessionState.Paused, Assert.Single(data.StudySessions).State);
+    }
+
+    [Fact]
     public void FailedFocusPauseDoesNotPartiallyMutateThePomodoroTimer()
     {
         var data = Data();
