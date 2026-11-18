@@ -52,8 +52,7 @@ separated from code changes; passing a check does not imply a vulnerability.
 4. **Date arithmetic occurred after some card fields had changed.** The due
    timestamp is now computed before mutations; a date overflow leaves the card
    and history unchanged.
-5. **Review time could move backwards.** A review earlier than creation or the
-   previous review is now rejected.
+5. **Review time could move backwards.** A review earlier than the previous review is now rejected.
 6. **The service had no queue or history query contract.** Bounded queue,
    course-scoped queries, suspension, schedule reset, content update and
    chronological history operations were added.
