@@ -354,19 +354,19 @@ public sealed class PrivacyService
 
     private static IReadOnlyList<string> GetSafeDiagnosticLogFiles()
     {
-        var root = Path.GetFullPath(AppDiagnostics.Directory);
-        if (!Directory.Exists(root)) return Array.Empty<string>();
         try
         {
-            return Directory.EnumerateFiles(root, "unitracker*.log", SearchOption.TopDirectoryOnly)
-                .Where(logPath => LocalFileSecurity.IsInside(root, logPath))
-                .Where(logPath => (File.GetAttributes(logPath) & FileAttributes.ReparsePoint) == 0)
+            // Use the same exact-name allowlist and reparse-point checks as the
+            // log writer/clear flow. This includes both retained rotations
+            // without broadening the archive to arbitrary similarly named files.
+            return AppDiagnostics.GetManagedLogFiles()
+                .Where(logPath => LocalFileSecurity.IsInside(AppDiagnostics.Directory, logPath))
                 .Where(logPath => new FileInfo(logPath).Length <= 512 * 1024)
-                .OrderBy(logPath => logPath, StringComparer.OrdinalIgnoreCase)
                 .Take(3)
                 .ToArray();
         }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or SecurityException)
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or SecurityException
+                                       or ArgumentException or NotSupportedException)
         {
             return Array.Empty<string>();
         }
