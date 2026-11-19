@@ -162,8 +162,6 @@ public sealed class PrivacyResetAndDiagnosticsTests
     [Fact]
     public async Task DiagnosticsDoNotWriteOrScrubThroughSymlinkedLogFile()
     {
-        if (!OperatingSystem.IsLinux()) return;
-
         var previousDirectory = AppDiagnostics.Directory;
         var previousEnabled = AppDiagnostics.IsEnabled;
         var root = Path.Combine(Path.GetTempPath(), "unitracker-log-link-" + Guid.NewGuid().ToString("N"));
@@ -229,8 +227,11 @@ public sealed class PrivacyResetAndDiagnosticsTests
         {
             AppDiagnostics.IsEnabled = previousEnabled;
             AppDiagnostics.Configure(previousDirectory);
-            if (Directory.Exists(linkedDirectory)) Directory.Delete(linkedDirectory);
-            else if (new DirectoryInfo(linkedDirectory).LinkTarget is not null) Directory.Delete(linkedDirectory);
+            if (new DirectoryInfo(linkedDirectory).LinkTarget is not null)
+            {
+                if (OperatingSystem.IsWindows()) Directory.Delete(linkedDirectory);
+                else File.Delete(linkedDirectory);
+            }
             if (Directory.Exists(externalDirectory)) Directory.Delete(externalDirectory, recursive: true);
             if (Directory.Exists(root)) Directory.Delete(root, recursive: true);
         }
