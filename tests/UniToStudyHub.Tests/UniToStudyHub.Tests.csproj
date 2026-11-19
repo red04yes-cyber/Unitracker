@@ -25,6 +25,7 @@
     <Compile Include="../../src/UniToStudyHub/Security/*.cs" Link="Linked/Security/%(Filename)%(Extension)" />
     <Compile Include="../../src/UniToStudyHub/Services/*.cs" Link="Linked/Services/%(Filename)%(Extension)" />
     <Compile Include="../../src/UniToStudyHub/Presentation/Commands/*.cs" Link="Linked/Presentation/Commands/%(Filename)%(Extension)" />
+    <Compile Include="../../src/UniToStudyHub/Presentation/Navigation/SidebarNavigationCatalog.cs" Link="Linked/Presentation/Navigation/SidebarNavigationCatalog.cs" />
     <Compile Include="../../src/UniToStudyHub/Presentation/ViewModels/MainViewModel.cs" Link="Linked/Presentation/ViewModels/MainViewModel.cs" />
     <Compile Include="../../src/UniToStudyHub/Presentation/ViewModels/StudyWorkspaceViewModel.cs" Link="Linked/Presentation/ViewModels/StudyWorkspaceViewModel.cs" />
     <Compile Include="../../src/UniToStudyHub/Presentation/ViewModels/CalendarDayCell.cs" Link="Linked/Presentation/ViewModels/CalendarDayCell.cs" />
@@ -37,6 +38,12 @@
     </EmbeddedResource>
     <EmbeddedResource Include="../../src/UniToStudyHub/MainWindow.xaml">
       <LogicalName>UniToStudyHub.Tests.Presentation.MainWindow.xaml</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="../../src/UniToStudyHub/Presentation/Controls/StudyHubSidebar.xaml">
+      <LogicalName>UniToStudyHub.Tests.Presentation.StudyHubSidebar.xaml</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="../../src/UniToStudyHub/Presentation/Controls/StudyHubSidebar.xaml.cs">
+      <LogicalName>UniToStudyHub.Tests.Presentation.StudyHubSidebar.xaml.cs</LogicalName>
     </EmbeddedResource>
     <EmbeddedResource Include="../../src/UniToStudyHub/MainWindow.xaml.cs">
       <LogicalName>UniToStudyHub.Tests.Presentation.MainWindow.xaml.cs</LogicalName>
