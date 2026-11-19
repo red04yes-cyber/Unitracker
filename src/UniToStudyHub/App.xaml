@@ -51,6 +51,15 @@
             <SolidColorBrush x:Key="GlassHoverBrush" Color="#14FFFFFF"/>
             <SolidColorBrush x:Key="FocusRingBrush" Color="#8B5CF6"/>
 
+            <!-- Segmented controls: blue selection stays independent from the AI accent. -->
+            <SolidColorBrush x:Key="SegmentedTrackBrush" Color="#171E2B"/>
+            <SolidColorBrush x:Key="SegmentedSelectedBrush" Color="#202D43"/>
+            <SolidColorBrush x:Key="SegmentedSelectedBorderBrush" Color="#344B70"/>
+            <SolidColorBrush x:Key="SegmentedAccentBrush" Color="#91B2FF"/>
+            <SolidColorBrush x:Key="SegmentedMutedBrush" Color="#A6B2C4"/>
+            <SolidColorBrush x:Key="SegmentedHoverBrush" Color="#252F40"/>
+            <SolidColorBrush x:Key="SegmentedBorderBrush" Color="#303B4E"/>
+
             <CornerRadius x:Key="RadiusSm">8</CornerRadius>
             <CornerRadius x:Key="RadiusMd">10</CornerRadius>
             <CornerRadius x:Key="RadiusLg">16</CornerRadius>
@@ -63,6 +72,8 @@
 
             <DropShadowEffect x:Key="SoftShadow" BlurRadius="24" ShadowDepth="6" Direction="270"
                               Color="#000000" Opacity="0.35"/>
+            <DropShadowEffect x:Key="SegmentedSelectedShadow" BlurRadius="7" ShadowDepth="1"
+                              Direction="270" Color="#101828" Opacity="0.10"/>
             <DropShadowEffect x:Key="AccentGlow" BlurRadius="22" ShadowDepth="0"
                               Color="#8B5CF6" Opacity="0.55"/>
 
@@ -167,43 +178,142 @@
                 <Setter Property="Padding" Value="11,7"/>
             </Style>
 
-            <!-- Filtri a pillola -->
-            <Style x:Key="FilterRadioButtonStyle" TargetType="{x:Type RadioButton}">
-                <Setter Property="Foreground" Value="{DynamicResource MutedBrush}"/>
+            <!-- Contenitore riusabile per gruppi segmentati. -->
+            <Style x:Key="SegmentedGroupBorderStyle" TargetType="{x:Type Border}">
+                <Setter Property="Background" Value="{DynamicResource SegmentedTrackBrush}"/>
+                <Setter Property="BorderBrush" Value="{DynamicResource SegmentedBorderBrush}"/>
+                <Setter Property="BorderThickness" Value="1"/>
+                <Setter Property="CornerRadius" Value="10"/>
+                <Setter Property="Padding" Value="3"/>
+                <Setter Property="MinHeight" Value="36"/>
+                <Setter Property="SnapsToDevicePixels" Value="True"/>
+            </Style>
+
+            <!-- Segmenti RadioButton: mantiene GroupName, Checked e binding già presenti. -->
+            <Style x:Key="SegmentedRadioButtonStyle" TargetType="{x:Type RadioButton}">
+                <Setter Property="Foreground" Value="{DynamicResource SegmentedMutedBrush}"/>
                 <Setter Property="Background" Value="Transparent"/>
-                <Setter Property="Padding" Value="14,8"/>
-                <Setter Property="Margin" Value="0,0,6,0"/>
+                <Setter Property="Padding" Value="12,6"/>
+                <Setter Property="Margin" Value="0,0,2,0"/>
+                <Setter Property="MinHeight" Value="30"/>
                 <Setter Property="Cursor" Value="Hand"/>
                 <Setter Property="FontSize" Value="12"/>
-                <Setter Property="FontWeight" Value="SemiBold"/>
+                <Setter Property="FontWeight" Value="Normal"/>
                 <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
                 <Setter Property="Template">
                     <Setter.Value>
                         <ControlTemplate TargetType="{x:Type RadioButton}">
-                            <Border x:Name="FilterSurface"
+                            <Border x:Name="SegmentSurface"
                                     Background="{TemplateBinding Background}"
-                                    BorderBrush="Transparent" BorderThickness="1"
-                                    CornerRadius="16"
-                                    Padding="{TemplateBinding Padding}">
-                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    BorderBrush="Transparent"
+                                    BorderThickness="1"
+                                    CornerRadius="8"
+                                    Padding="{TemplateBinding Padding}"
+                                    SnapsToDevicePixels="True">
+                                <ContentPresenter HorizontalAlignment="Center"
+                                                  VerticalAlignment="Center"
+                                                  RecognizesAccessKey="True"/>
                             </Border>
                             <ControlTemplate.Triggers>
                                 <Trigger Property="IsMouseOver" Value="True">
-                                    <Setter TargetName="FilterSurface" Property="Background" Value="{StaticResource GlassHoverBrush}"/>
+                                    <Setter TargetName="SegmentSurface" Property="Background"
+                                            Value="{DynamicResource SegmentedHoverBrush}"/>
                                 </Trigger>
                                 <Trigger Property="IsChecked" Value="True">
-                                    <Setter TargetName="FilterSurface" Property="Background" Value="{DynamicResource AccentSoftBrush}"/>
-                                    <Setter TargetName="FilterSurface" Property="BorderBrush" Value="{DynamicResource AccentFillBrush}"/>
-                                    <Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
+                                    <Setter TargetName="SegmentSurface" Property="Background"
+                                            Value="{DynamicResource SegmentedSelectedBrush}"/>
+                                    <Setter TargetName="SegmentSurface" Property="BorderBrush"
+                                            Value="{DynamicResource SegmentedSelectedBorderBrush}"/>
+                                    <Setter TargetName="SegmentSurface" Property="Effect"
+                                            Value="{StaticResource SegmentedSelectedShadow}"/>
+                                    <Setter Property="Foreground" Value="{DynamicResource SegmentedAccentBrush}"/>
+                                    <Setter Property="FontWeight" Value="SemiBold"/>
                                 </Trigger>
                                 <Trigger Property="IsKeyboardFocused" Value="True">
-                                    <Setter TargetName="FilterSurface" Property="BorderBrush" Value="{StaticResource FocusRingBrush}"/>
+                                    <Setter TargetName="SegmentSurface" Property="BorderBrush"
+                                            Value="{DynamicResource SegmentedAccentBrush}"/>
+                                </Trigger>
+                                <Trigger Property="IsEnabled" Value="False">
+                                    <Setter TargetName="SegmentSurface" Property="Opacity" Value="0.48"/>
                                 </Trigger>
                             </ControlTemplate.Triggers>
                         </ControlTemplate>
                     </Setter.Value>
                 </Setter>
             </Style>
+
+            <!-- Segmenti ListBox: selezione singola, navigabile con frecce e Invio/Spazio. -->
+            <Style x:Key="SegmentedListBoxStyle" TargetType="{x:Type ListBox}">
+                <Setter Property="Background" Value="Transparent"/>
+                <Setter Property="BorderThickness" Value="0"/>
+                <Setter Property="Padding" Value="0"/>
+                <Setter Property="Focusable" Value="True"/>
+                <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+                <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                <Setter Property="VerticalContentAlignment" Value="Stretch"/>
+                <Setter Property="SelectionMode" Value="Single"/>
+                <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled"/>
+                <Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Disabled"/>
+                <Setter Property="KeyboardNavigation.DirectionalNavigation" Value="Contained"/>
+            </Style>
+
+            <Style x:Key="SegmentedListBoxItemStyle" TargetType="{x:Type ListBoxItem}">
+                <Setter Property="Foreground" Value="{DynamicResource SegmentedMutedBrush}"/>
+                <Setter Property="Background" Value="Transparent"/>
+                <Setter Property="Padding" Value="12,6"/>
+                <Setter Property="Margin" Value="0,0,2,0"/>
+                <Setter Property="MinHeight" Value="30"/>
+                <Setter Property="Cursor" Value="Hand"/>
+                <Setter Property="FontSize" Value="12"/>
+                <Setter Property="FontWeight" Value="Normal"/>
+                <Setter Property="HorizontalContentAlignment" Value="Center"/>
+                <Setter Property="VerticalContentAlignment" Value="Center"/>
+                <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="{x:Type ListBoxItem}">
+                            <Border x:Name="SegmentSurface"
+                                    Background="{TemplateBinding Background}"
+                                    BorderBrush="Transparent"
+                                    BorderThickness="1"
+                                    CornerRadius="8"
+                                    Padding="{TemplateBinding Padding}"
+                                    SnapsToDevicePixels="True">
+                                <ContentPresenter HorizontalAlignment="Center"
+                                                  VerticalAlignment="Center"
+                                                  RecognizesAccessKey="True"/>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="SegmentSurface" Property="Background"
+                                            Value="{DynamicResource SegmentedHoverBrush}"/>
+                                </Trigger>
+                                <Trigger Property="IsSelected" Value="True">
+                                    <Setter TargetName="SegmentSurface" Property="Background"
+                                            Value="{DynamicResource SegmentedSelectedBrush}"/>
+                                    <Setter TargetName="SegmentSurface" Property="BorderBrush"
+                                            Value="{DynamicResource SegmentedSelectedBorderBrush}"/>
+                                    <Setter TargetName="SegmentSurface" Property="Effect"
+                                            Value="{StaticResource SegmentedSelectedShadow}"/>
+                                    <Setter Property="Foreground" Value="{DynamicResource SegmentedAccentBrush}"/>
+                                    <Setter Property="FontWeight" Value="SemiBold"/>
+                                </Trigger>
+                                <Trigger Property="IsKeyboardFocused" Value="True">
+                                    <Setter TargetName="SegmentSurface" Property="BorderBrush"
+                                            Value="{DynamicResource SegmentedAccentBrush}"/>
+                                </Trigger>
+                                <Trigger Property="IsEnabled" Value="False">
+                                    <Setter TargetName="SegmentSurface" Property="Opacity" Value="0.48"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <!-- Compatibilità con i riferimenti esistenti: ora è un filtro segmentato. -->
+            <Style x:Key="FilterRadioButtonStyle" TargetType="{x:Type RadioButton}"
+                   BasedOn="{StaticResource SegmentedRadioButtonStyle}"/>
 
             <!-- ============================================================
                  CARD
