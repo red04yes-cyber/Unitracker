@@ -325,7 +325,7 @@ public sealed class AcademicProfileService
         var hasActiveStudySession = studySessions.Any(x =>
             x.State is StudySessionState.Running or StudySessionState.Paused);
         var hasActivePomodoro = data.PomodoroTimer is { } timer &&
-            timer.Status is PomodoroTimerStatus.Running or PomodoroTimerStatus.Paused &&
+            (timer.Status is PomodoroTimerStatus.Running or PomodoroTimerStatus.Paused) &&
             sessionIds.Contains(timer.SessionId);
 
         var impact = new CourseRemovalImpact(
