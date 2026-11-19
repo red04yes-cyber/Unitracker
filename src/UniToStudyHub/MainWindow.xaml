@@ -108,7 +108,6 @@
 
             <Border Grid.Row="1" Background="{DynamicResource PageBrush}">
                 <ContentControl x:Name="PageContentHost"
-                                Content="{Binding SelectedContent, ElementName=MainTabs}"
                                 Focusable="False"
                                 KeyboardNavigation.TabNavigation="Continue"
                                 AutomationProperties.Name="Contenuto della pagina selezionata"/>
