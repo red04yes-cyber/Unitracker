@@ -95,8 +95,9 @@ public sealed class SidebarNavigationShellTests
         Assert.Equal("80", (string?)root.Attribute("MinWidth"));
         Assert.Null(root.Attribute("Width"));
 
-        var widthStyle = Assert.Single(root.Elements(presentation + "Style"));
-        Assert.Contains(widthStyle.Descendants(presentation + "Setter"),
+        var widthStyle = root.Element(presentation + "UserControl.Style")?.Element(presentation + "Style");
+        Assert.NotNull(widthStyle);
+        Assert.Contains(widthStyle!.Descendants(presentation + "Setter"),
             setter => (string?)setter.Attribute("Property") == "Width" &&
                       (string?)setter.Attribute("Value") == "236");
         Assert.Contains(widthStyle.Descendants(presentation + "Trigger"),
