@@ -78,6 +78,7 @@ public sealed class SidebarNavigationShellTests
             (string?)contentHost.Attribute("Content"));
         Assert.Equal("Collapsed", (string?)pageRegistry.Attribute("Visibility"));
         Assert.Equal("False", (string?)pageRegistry.Attribute("IsHitTestVisible"));
+        Assert.Empty(pageRegistry.Descendants(presentation + "ContentPresenter"));
         Assert.Equal("980", (string?)root.Attribute("MinWidth"));
         Assert.Equal("680", (string?)root.Attribute("MinHeight"));
         Assert.Empty(root.Descendants(presentation + "TabPanel"));
@@ -136,7 +137,7 @@ public sealed class SidebarNavigationShellTests
             @"private void NavigateToSettings_Click\(object sender, RoutedEventArgs e\)\s*\{\s*MainTabs\.SelectedIndex\s*=\s*7;\s*\}",
             mainWindowCode);
         Assert.Matches(
-            @"private void NavigationItem_Click\(object sender, RoutedEventArgs e\)\s*\{\s*if \(sender is Button \{ Tag: SidebarNavigationItem item \}\)\s*SelectedIndex = item\.PageIndex;\s*\}",
+            @"private void NavigationItem_Click\(object sender, RoutedEventArgs e\)\s*\{\s*if \(sender is Button \{ Tag: SidebarNavigationItem item \}\)\s*SetCurrentValue\(SelectedIndexProperty, item\.PageIndex\);\s*}",
             sidebarCode);
     }
 
