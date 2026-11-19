@@ -123,6 +123,11 @@
                     IsTabStop="False"
                     Focusable="False"
                     IsHitTestVisible="False">
+            <TabControl.Template>
+                <ControlTemplate TargetType="{x:Type TabControl}">
+                    <Grid/>
+                </ControlTemplate>
+            </TabControl.Template>
         <TabItem>
             <TabItem.Header>
                 <StackPanel Orientation="Horizontal">
