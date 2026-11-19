@@ -2,7 +2,6 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:local="clr-namespace:UniToStudyHub.Presentation.Controls"
-             Width="236"
              MinWidth="80"
              HorizontalAlignment="Left"
              AutomationProperties.Name="Navigazione principale">
