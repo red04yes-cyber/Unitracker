@@ -38,7 +38,14 @@ public partial class App : System.Windows.Application
             ["WarningBrush"] = "#C98224",
             ["WarningSoftBrush"] = "#FFF4E5",
             ["AiBrush"] = "#7C4DEB",
-            ["AiSoftBrush"] = "#F1EBFF"
+            ["AiSoftBrush"] = "#F1EBFF",
+            ["SegmentedTrackBrush"] = "#EAF0F7",
+            ["SegmentedSelectedBrush"] = "#FFFFFF",
+            ["SegmentedSelectedBorderBrush"] = "#D8E3F8",
+            ["SegmentedAccentBrush"] = "#3157D5",
+            ["SegmentedMutedBrush"] = "#718096",
+            ["SegmentedHoverBrush"] = "#E2EAF5",
+            ["SegmentedBorderBrush"] = "#DCE4EF"
         };
 
     private static readonly IReadOnlyDictionary<string, string> DarkPalette =
@@ -62,7 +69,14 @@ public partial class App : System.Windows.Application
             ["WarningBrush"] = "#F2B866",
             ["WarningSoftBrush"] = "#352A1D",
             ["AiBrush"] = "#C4A8FF",
-            ["AiSoftBrush"] = "#2A2044"
+            ["AiSoftBrush"] = "#2A2044",
+            ["SegmentedTrackBrush"] = "#151C28",
+            ["SegmentedSelectedBrush"] = "#202D43",
+            ["SegmentedSelectedBorderBrush"] = "#3A5278",
+            ["SegmentedAccentBrush"] = "#91B2FF",
+            ["SegmentedMutedBrush"] = "#A6B2C4",
+            ["SegmentedHoverBrush"] = "#263247",
+            ["SegmentedBorderBrush"] = "#303B4E"
         };
 
     private void ConfigureThemeSynchronization()
@@ -105,7 +119,14 @@ public partial class App : System.Windows.Application
             ["WarningBrush"] = SystemColors.HighlightColor.ToString(),
             ["WarningSoftBrush"] = SystemColors.ControlColor.ToString(),
             ["AiBrush"] = SystemColors.HighlightColor.ToString(),
-            ["AiSoftBrush"] = SystemColors.ControlColor.ToString()
+            ["AiSoftBrush"] = SystemColors.ControlColor.ToString(),
+            ["SegmentedTrackBrush"] = SystemColors.ControlColor.ToString(),
+            ["SegmentedSelectedBrush"] = SystemColors.HighlightColor.ToString(),
+            ["SegmentedSelectedBorderBrush"] = SystemColors.WindowTextColor.ToString(),
+            ["SegmentedAccentBrush"] = SystemColors.HighlightTextColor.ToString(),
+            ["SegmentedMutedBrush"] = SystemColors.GrayTextColor.ToString(),
+            ["SegmentedHoverBrush"] = SystemColors.ControlColor.ToString(),
+            ["SegmentedBorderBrush"] = SystemColors.WindowTextColor.ToString()
         };
 
         ApplyPalette(palette);
