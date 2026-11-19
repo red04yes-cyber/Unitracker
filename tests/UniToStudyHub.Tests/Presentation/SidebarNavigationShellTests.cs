@@ -60,7 +60,7 @@ public sealed class SidebarNavigationShellTests
     }
 
     [Fact]
-    public void MainWindowUsesTheSidebarAndContentControlInsteadOfVisibleTabChrome()
+    public void MainWindowUsesButtonSidebarAndMovesPageInstancesIntoContentControl()
     {
         var window = LoadXaml("UniToStudyHub.Tests.Presentation.MainWindow.xaml");
         var root = window.Root!;
@@ -74,8 +74,13 @@ public sealed class SidebarNavigationShellTests
 
         Assert.Equal("{Binding SelectedIndex, ElementName=MainTabs, Mode=TwoWay}",
             (string?)sidebar.Attribute("SelectedIndex"));
-        Assert.Equal("{Binding SelectedContent, ElementName=MainTabs}",
-            (string?)contentHost.Attribute("Content"));
+        Assert.Null(contentHost.Attribute("Content"));
+        var mainWindowCode = ReadResource("UniToStudyHub.Tests.Presentation.MainWindow.xaml.cs");
+        Assert.Contains("_pageContentRegistry.Add(tabItem, pageContent);", mainWindowCode);
+        Assert.Contains("tabItem.Content = null;", mainWindowCode);
+        Assert.Contains("MainTabs.SelectionChanged += MainTabs_SelectionChanged;", mainWindowCode);
+        Assert.Contains("PageContentHost.Content = MainTabs.SelectedItem is TabItem selectedPage", mainWindowCode);
+        Assert.Contains("_pageContentRegistry.TryGetValue(selectedPage, out var pageContent)", mainWindowCode);
         Assert.Equal("Collapsed", (string?)pageRegistry.Attribute("Visibility"));
         Assert.Null(pageRegistry.Attribute("IsHitTestVisible"));
         Assert.Equal(8, pageRegistry.Elements(presentation + "TabItem").Count());
