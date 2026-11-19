@@ -77,7 +77,10 @@ public sealed class SidebarNavigationShellTests
         Assert.Equal("{Binding SelectedContent, ElementName=MainTabs}",
             (string?)contentHost.Attribute("Content"));
         Assert.Equal("Collapsed", (string?)pageRegistry.Attribute("Visibility"));
-        Assert.Equal("False", (string?)pageRegistry.Attribute("IsHitTestVisible"));
+        Assert.Null(pageRegistry.Attribute("IsHitTestVisible"));
+        Assert.Equal(8, pageRegistry.Elements(presentation + "TabItem").Count());
+        Assert.DoesNotContain(pageRegistry.Elements(presentation + "TabItem"),
+            item => (string?)item.Attribute("Visibility") == "Collapsed");
         Assert.Empty(pageRegistry.Descendants(presentation + "ContentPresenter"));
         Assert.Equal("980", (string?)root.Attribute("MinWidth"));
         Assert.Equal("680", (string?)root.Attribute("MinHeight"));
