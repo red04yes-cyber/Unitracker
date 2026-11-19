@@ -14,9 +14,10 @@
                       Background="Transparent" BorderThickness="0" Padding="0"
                       HorizontalContentAlignment="Stretch" Focusable="True"
                       AutomationProperties.Name="{Binding Header, RelativeSource={RelativeSource AncestorType={x:Type local:CollapsibleSection}}}">
-            <Border Background="{DynamicResource PanelBrush}"
-                    BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
-                    CornerRadius="10" Padding="14,11">
+            <Border Background="{DynamicResource GlassSurfaceBrush}"
+                    BorderBrush="{DynamicResource GlassBorderBrush}" BorderThickness="1"
+                    CornerRadius="10" Padding="14,11"
+                    Effect="{StaticResource GlassShadow}">
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
