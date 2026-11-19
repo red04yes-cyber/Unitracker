@@ -100,10 +100,12 @@ public sealed class PrivacyResetAndDiagnosticsTests
             AppDiagnostics.IsEnabled = true;
             AppDiagnostics.Info("privacy",
                 $"token={Token}; email=student@example.edu; path=C:\\Users\\Student\\Documents\\private.txt");
+            await File.WriteAllTextAsync(Path.Combine(logs, "unitracker.log.1"),
+                $"rotated marker token={Token}");
 
             var service = new PrivacyService(new InMemoryStudyDataStore());
             var preview = service.PreviewDiagnosticBundle();
-            Assert.Equal(1, preview.AvailableLogFiles);
+            Assert.Equal(2, preview.AvailableLogFiles);
             Assert.False(preview.IncludesCredentials);
             Assert.False(preview.IncludesPersonalDatabase);
 
@@ -120,6 +122,7 @@ public sealed class PrivacyResetAndDiagnosticsTests
             Assert.DoesNotContain("student@example.edu", log, StringComparison.Ordinal);
             Assert.DoesNotContain("Student", log, StringComparison.Ordinal);
             Assert.Contains("[REDACTED]", log, StringComparison.Ordinal);
+            Assert.Contains("rotated marker", log, StringComparison.Ordinal);
             Assert.Contains("diagnostics.json", archive.Entries.Select(x => x.FullName));
         }
         finally
@@ -127,6 +130,109 @@ public sealed class PrivacyResetAndDiagnosticsTests
             AppDiagnostics.IsEnabled = previousEnabled;
             AppDiagnostics.Configure(previousDirectory);
             if (Directory.Exists(logs)) Directory.Delete(logs, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void ClearDeletesCurrentAndBothRotatedLogs()
+    {
+        var previousDirectory = AppDiagnostics.Directory;
+        var previousEnabled = AppDiagnostics.IsEnabled;
+        var logs = Path.Combine(Path.GetTempPath(), "unitracker-clear-" + Guid.NewGuid().ToString("N"));
+        var names = new[] { "unitracker.log", "unitracker.log.1", "unitracker.log.2" };
+        try
+        {
+            AppDiagnostics.Configure(logs);
+            AppDiagnostics.IsEnabled = true;
+            Directory.CreateDirectory(logs);
+            foreach (var name in names)
+                File.WriteAllText(Path.Combine(logs, name), "redacted diagnostic data");
+
+            Assert.Equal(3, AppDiagnostics.Clear());
+            Assert.All(names, name => Assert.False(File.Exists(Path.Combine(logs, name))));
+        }
+        finally
+        {
+            AppDiagnostics.IsEnabled = previousEnabled;
+            AppDiagnostics.Configure(previousDirectory);
+            if (Directory.Exists(logs)) Directory.Delete(logs, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task DiagnosticsDoNotWriteOrScrubThroughSymlinkedLogFile()
+    {
+        if (!OperatingSystem.IsLinux()) return;
+
+        var previousDirectory = AppDiagnostics.Directory;
+        var previousEnabled = AppDiagnostics.IsEnabled;
+        var root = Path.Combine(Path.GetTempPath(), "unitracker-log-link-" + Guid.NewGuid().ToString("N"));
+        var logs = Path.Combine(root, "logs");
+        var external = Path.Combine(root, "external.log");
+        var link = Path.Combine(logs, "unitracker.log");
+        const string original = "external file must remain byte-for-byte unchanged";
+        try
+        {
+            Directory.CreateDirectory(logs);
+            await File.WriteAllTextAsync(external, original);
+            File.CreateSymbolicLink(link, external);
+            AppDiagnostics.Configure(logs);
+            AppDiagnostics.IsEnabled = true;
+
+            AppDiagnostics.Info("security", "this message must not be appended through a link");
+
+            Assert.Null(AppDiagnostics.CurrentLogPath);
+            Assert.Empty(AppDiagnostics.GetManagedLogFiles());
+            Assert.Equal(0, AppDiagnostics.Clear());
+            Assert.Equal(original, await File.ReadAllTextAsync(external));
+            Assert.NotNull(new FileInfo(link).LinkTarget);
+        }
+        finally
+        {
+            AppDiagnostics.IsEnabled = previousEnabled;
+            AppDiagnostics.Configure(previousDirectory);
+            if (new FileInfo(link).LinkTarget is not null) File.Delete(link);
+            if (Directory.Exists(logs)) Directory.Delete(logs, recursive: true);
+            if (File.Exists(external)) File.Delete(external);
+            if (Directory.Exists(root)) Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task DiagnosticsDoNotFollowSymlinkedLogDirectory()
+    {
+        if (!OperatingSystem.IsLinux()) return;
+
+        var previousDirectory = AppDiagnostics.Directory;
+        var previousEnabled = AppDiagnostics.IsEnabled;
+        var root = Path.Combine(Path.GetTempPath(), "unitracker-log-root-link-" + Guid.NewGuid().ToString("N"));
+        var externalDirectory = Path.Combine(root, "external");
+        var linkedDirectory = Path.Combine(root, "logs");
+        var externalLog = Path.Combine(externalDirectory, "unitracker.log");
+        const string original = "external log directory must remain unchanged";
+        try
+        {
+            Directory.CreateDirectory(externalDirectory);
+            await File.WriteAllTextAsync(externalLog, original);
+            Directory.CreateSymbolicLink(linkedDirectory, externalDirectory);
+            AppDiagnostics.Configure(linkedDirectory);
+            AppDiagnostics.IsEnabled = true;
+
+            AppDiagnostics.Info("security", "this message must not be written through a directory link");
+
+            Assert.Null(AppDiagnostics.CurrentLogPath);
+            Assert.Empty(AppDiagnostics.GetManagedLogFiles());
+            Assert.Equal(0, AppDiagnostics.Clear());
+            Assert.Equal(original, await File.ReadAllTextAsync(externalLog));
+        }
+        finally
+        {
+            AppDiagnostics.IsEnabled = previousEnabled;
+            AppDiagnostics.Configure(previousDirectory);
+            if (Directory.Exists(linkedDirectory)) Directory.Delete(linkedDirectory);
+            else if (new DirectoryInfo(linkedDirectory).LinkTarget is not null) Directory.Delete(linkedDirectory);
+            if (Directory.Exists(externalDirectory)) Directory.Delete(externalDirectory, recursive: true);
+            if (Directory.Exists(root)) Directory.Delete(root, recursive: true);
         }
     }
 
