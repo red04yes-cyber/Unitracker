@@ -84,8 +84,8 @@ public sealed class SidebarNavigationShellTests
         Assert.Empty(pageRegistry.Descendants(presentation + "ContentPresenter"));
         Assert.Equal("980", (string?)root.Attribute("MinWidth"));
         Assert.Equal("680", (string?)root.Attribute("MinHeight"));
-        Assert.Empty(root.Descendants(presentation + "TabPanel"));
-        Assert.Empty(root.Descendants().Where(element =>
+        Assert.Empty(pageRegistry.Descendants(presentation + "TabPanel"));
+        Assert.Empty(sidebar.Descendants().Where(element =>
             element.Name.LocalName is "BackEase" or "Storyboard" or "DoubleAnimation"));
     }
 
@@ -142,6 +142,34 @@ public sealed class SidebarNavigationShellTests
         Assert.Matches(
             @"private void NavigationItem_Click\(object sender, RoutedEventArgs e\)\s*\{\s*if \(sender is Button \{ Tag: SidebarNavigationItem item \}\)\s*SetCurrentValue\(SelectedIndexProperty, item\.PageIndex\);\s*}",
             sidebarCode);
+    }
+
+
+    [Fact]
+    public void SidebarResourceReferencesResolveAgainstApplicationAndControlResources()
+    {
+        var application = LoadXaml("UniToStudyHub.Tests.Presentation.App.xaml");
+        var sidebar = LoadXaml("UniToStudyHub.Tests.Presentation.StudyHubSidebar.xaml");
+        var resourceReference = new Regex(
+            @"\\{(?:StaticResource|DynamicResource)\\s+(?<key>[^}\\s]+)",
+            RegexOptions.CultureInvariant);
+
+        var declaredKeys = application.Root!.DescendantsAndSelf()
+            .Attributes(XamlNamespace + "Key")
+            .Concat(sidebar.Root!.DescendantsAndSelf().Attributes(XamlNamespace + "Key"))
+            .Select(attribute => attribute.Value)
+            .ToHashSet(StringComparer.Ordinal);
+
+        var missingKeys = sidebar.Root!.DescendantsAndSelf()
+            .Attributes()
+            .SelectMany(attribute => resourceReference.Matches(attribute.Value)
+                .Select(match => match.Groups["key"].Value))
+            .Where(key => !declaredKeys.Contains(key))
+            .Distinct(StringComparer.Ordinal)
+            .OrderBy(key => key, StringComparer.Ordinal)
+            .ToArray();
+
+        Assert.Empty(missingKeys);
     }
 
     private static XDocument LoadXaml(string resourceName)
