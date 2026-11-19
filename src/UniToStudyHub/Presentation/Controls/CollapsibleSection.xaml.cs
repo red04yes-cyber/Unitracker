@@ -58,6 +58,12 @@ public partial class CollapsibleSection : UserControl
         var transform = (TranslateTransform)SectionContentPresenter.RenderTransform;
         var chevron = (RotateTransform)Chevron.RenderTransform;
 
+        // Preserve the currently rendered values before clearing the previous
+        // animation, so rapid open/close interactions remain continuous.
+        var currentOpacity = SectionContentPresenter.Opacity;
+        var currentY = transform.Y;
+        var currentAngle = chevron.Angle;
+
         SectionContentPresenter.BeginAnimation(UIElement.OpacityProperty, null);
         transform.BeginAnimation(TranslateTransform.YProperty, null);
         chevron.BeginAnimation(RotateTransform.AngleProperty, null);
@@ -73,14 +79,15 @@ public partial class CollapsibleSection : UserControl
                 return;
             }
 
-            SectionContentPresenter.Opacity = 0;
-            transform.Y = 5;
+            SectionContentPresenter.Opacity = currentOpacity;
+            transform.Y = currentY;
+            chevron.Angle = currentAngle;
             SectionContentPresenter.BeginAnimation(UIElement.OpacityProperty,
-                new DoubleAnimation(0, 1, duration) { EasingFunction = ease });
+                new DoubleAnimation(currentOpacity, 1, duration) { EasingFunction = ease });
             transform.BeginAnimation(TranslateTransform.YProperty,
-                new DoubleAnimation(5, 0, duration) { EasingFunction = ease });
+                new DoubleAnimation(currentY, 0, duration) { EasingFunction = ease });
             chevron.BeginAnimation(RotateTransform.AngleProperty,
-                new DoubleAnimation(0, 180, duration) { EasingFunction = ease });
+                new DoubleAnimation(currentAngle, 180, duration) { EasingFunction = ease });
         }
         else
         {
@@ -93,7 +100,7 @@ public partial class CollapsibleSection : UserControl
                 return;
             }
 
-            var fade = new DoubleAnimation(SectionContentPresenter.Opacity, 0, duration)
+            var fade = new DoubleAnimation(currentOpacity, 0, duration)
             {
                 EasingFunction = ease
             };
@@ -102,11 +109,14 @@ public partial class CollapsibleSection : UserControl
                 if (!IsExpanded)
                     SectionContentPresenter.Visibility = Visibility.Collapsed;
             };
+            SectionContentPresenter.Opacity = currentOpacity;
+            transform.Y = currentY;
+            chevron.Angle = currentAngle;
             SectionContentPresenter.BeginAnimation(UIElement.OpacityProperty, fade);
             transform.BeginAnimation(TranslateTransform.YProperty,
-                new DoubleAnimation(transform.Y, 5, duration) { EasingFunction = ease });
+                new DoubleAnimation(currentY, 5, duration) { EasingFunction = ease });
             chevron.BeginAnimation(RotateTransform.AngleProperty,
-                new DoubleAnimation(180, 0, duration) { EasingFunction = ease });
+                new DoubleAnimation(currentAngle, 0, duration) { EasingFunction = ease });
         }
     }
 }
