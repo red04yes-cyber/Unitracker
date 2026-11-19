@@ -17,12 +17,14 @@ public partial class MainWindow : Window
     private readonly AiProviderPreferencesStore _aiPreferences;
     private readonly PrivacyService _privacy;
     private readonly StudyDataImportService _dataImport;
+    private readonly Dictionary<TabItem, object?> _pageContentRegistry = new();
 
     public MainWindow(MainViewModel viewModel, AiCredentialStore aiCredentials,
         AiProviderPreferencesStore aiPreferences, PrivacyService privacy,
         StudyDataImportService dataImport)
     {
         InitializeComponent();
+        InitializePageContentRegistry();
         _aiCredentials = aiCredentials;
         _aiPreferences = aiPreferences;
         _privacy = privacy;
@@ -618,6 +620,32 @@ public partial class MainWindow : Window
             MessageBoxResult.No);
         if (result == MessageBoxResult.Yes)
             viewModel.Workspace.RemoveTaskCommand.Execute(null);
+    }
+
+    private void InitializePageContentRegistry()
+    {
+        foreach (var tabItem in MainTabs.Items.OfType<TabItem>())
+        {
+            var pageContent = tabItem.Content;
+            _pageContentRegistry.Add(tabItem, pageContent);
+            tabItem.Content = null;
+        }
+
+        MainTabs.SelectionChanged += MainTabs_SelectionChanged;
+        UpdateSelectedPageContent();
+    }
+
+    private void MainTabs_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        UpdateSelectedPageContent();
+    }
+
+    private void UpdateSelectedPageContent()
+    {
+        PageContentHost.Content = MainTabs.SelectedItem is TabItem selectedPage &&
+                                  _pageContentRegistry.TryGetValue(selectedPage, out var pageContent)
+            ? pageContent
+            : null;
     }
 
     private void NavigateToSubjects_Click(object sender, RoutedEventArgs e)
