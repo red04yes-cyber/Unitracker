@@ -81,7 +81,9 @@ public sealed class SidebarNavigationShellTests
         Assert.Equal(8, pageRegistry.Elements(presentation + "TabItem").Count());
         Assert.DoesNotContain(pageRegistry.Elements(presentation + "TabItem"),
             item => (string?)item.Attribute("Visibility") == "Collapsed");
-        Assert.Empty(pageRegistry.Descendants(presentation + "ContentPresenter"));
+        var pageRegistryTemplate = pageRegistry.Element(presentation + "TabControl.Template");
+        Assert.NotNull(pageRegistryTemplate);
+        Assert.Empty(pageRegistryTemplate!.Descendants(presentation + "ContentPresenter"));
         Assert.Equal("980", (string?)root.Attribute("MinWidth"));
         Assert.Equal("680", (string?)root.Attribute("MinHeight"));
         Assert.Empty(pageRegistry.Descendants(presentation + "TabPanel"));
