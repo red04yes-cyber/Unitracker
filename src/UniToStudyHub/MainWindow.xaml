@@ -809,7 +809,7 @@
         </Border>
         <Grid>
             <Grid.ColumnDefinitions><ColumnDefinition Width="1.2*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-            <controls:CollapsibleSection Grid.Column="0" Header="Check-in energia e focus" Margin="0,0,12,0"><controls:CollapsibleSection.SectionContent><Border Grid.Column="0" Style="{StaticResource CardBorderStyle}" Margin="0,0,12,0">
+            <Border Grid.Column="0" Style="{StaticResource CardBorderStyle}" Margin="0,0,12,0">
                 <StackPanel>
                     <TextBlock Text="{Binding SelectedDayDisplay}" Style="{StaticResource SectionTitleStyle}"/>
                     <TextBlock Text="Eventi del giorno selezionato" FontSize="11" Foreground="{DynamicResource MutedBrush}" Margin="0,4,0,12"/>
@@ -835,8 +835,8 @@
                     <TextBlock Text="Nessun evento in questa data. Puoi aggiungerne uno dal pannello a destra." Visibility="{Binding NoSelectedDayEvents, Converter={StaticResource BooleanToVisibilityConverter}}" FontSize="10" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="2,7,2,0"/>
                     <TextBlock Text="Gli eventi Pianificati sono stime organizzative; solo quelli verificati come ufficiali vanno considerati confermati." FontSize="10" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,8,0,0"/>
                 </StackPanel>
-            </Border></controls:CollapsibleSection.SectionContent></controls:CollapsibleSection>
-            <controls:CollapsibleSection Grid.Column="1" Header="Diario degli errori"><controls:CollapsibleSection.SectionContent><controls:CollapsibleSection Grid.Column="1" Header="Parcheggio distrazioni"><controls:CollapsibleSection.SectionContent><Border Grid.Column="1" Style="{StaticResource CardBorderStyle}">
+            </Border>
+            <Border Grid.Column="1" Style="{StaticResource CardBorderStyle}">
                 <StackPanel>
                     <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Text="Dettagli evento" Style="{StaticResource SectionTitleStyle}"/><Button Content="Nuovo" Grid.Column="1" Command="{Binding NewCalendarEventCommand}" Style="{StaticResource QuietButtonStyle}" HorizontalAlignment="Right"/></Grid>
                     <TextBlock Text="Titolo" Style="{StaticResource KpiLabelStyle}" Margin="0,14,0,5"/>
@@ -856,7 +856,7 @@
                     <Button Content="Elimina evento selezionato" Click="DeleteCalendarEvent_Click" IsEnabled="{Binding HasSelectedCalendarEvent}" Style="{StaticResource QuietButtonStyle}" Margin="0,8,0,0"/>
                     <TextBlock Text="{Binding StatusMessage}" FontSize="10" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,12,0,0"/>
                 </StackPanel>
-            </Border></controls:CollapsibleSection.SectionContent></controls:CollapsibleSection></controls:CollapsibleSection.SectionContent></controls:CollapsibleSection>
+            </Border>
         </Grid>
     </StackPanel>
 </ScrollViewer>
@@ -1075,7 +1075,7 @@
                     <Button Content="Aggiungi flashcard" Command="{Binding Workspace.AddFlashcardCommand}" Margin="0,9,0,0"/>
                 </StackPanel>
             </Border>
-            <Border Grid.Column="1" Style="{StaticResource CardBorderStyle}">
+            <controls:CollapsibleSection Grid.Column="1" Header="Diario degli errori"><controls:CollapsibleSection.SectionContent><Border Grid.Column="1" Style="{StaticResource CardBorderStyle}">
                 <StackPanel>
                     <TextBlock Text="Diario degli errori" Style="{StaticResource SectionTitleStyle}"/>
                     <TextBlock Text="Registra il quesito, la risposta errata e quella corretta per pianificare il ripasso." FontSize="11" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,5,0,12"/>
@@ -1085,14 +1085,14 @@
                     <TextBlock Text="Nessun errore da ripassare." Visibility="{Binding Workspace.NoOpenErrorEntries, Converter={StaticResource BooleanToVisibilityConverter}}" FontSize="10" Foreground="{DynamicResource MutedBrush}" Margin="2,7,2,0"/>
                     <WrapPanel Margin="0,8,0,0"><Button Content="Da ripassare" Command="{Binding Workspace.ReviewErrorNeedsWorkCommand}" Style="{StaticResource QuietButtonStyle}" Margin="0,0,6,0"/><Button Content="Ricordato" Command="{Binding Workspace.ReviewErrorRememberedCommand}" Style="{StaticResource SecondaryButtonStyle}"/></WrapPanel>
                 </StackPanel>
-            </Border>
+            </Border></controls:CollapsibleSection.SectionContent></controls:CollapsibleSection>
         </Grid>
             </StackPanel></TabItem>
             <TabItem Header="Benessere"><StackPanel>
                 <TextBlock Text="Tieni traccia delle energie e parcheggia le distrazioni senza interrompere lo studio." Style="{StaticResource PageSubtitleStyle}" Margin="0,0,0,12"/>
                 <Grid Margin="0,16,0,0">
             <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-            <Border Grid.Column="0" Style="{StaticResource CardBorderStyle}" Margin="0,0,12,0">
+            <controls:CollapsibleSection Grid.Column="0" Header="Check-in energia e focus"><controls:CollapsibleSection.SectionContent><Border Grid.Column="0" Style="{StaticResource CardBorderStyle}" Margin="0,0,12,0">
                 <StackPanel>
                     <TextBlock Text="Check-in energia e focus" Style="{StaticResource SectionTitleStyle}"/>
                     <TextBlock Text="Registra come ti senti: sono annotazioni personali, non valutazioni automatiche." FontSize="10" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,4,0,10"/>
@@ -1111,8 +1111,8 @@
                         </DataTemplate></ItemsControl.ItemTemplate>
                     </ItemsControl>
                 </StackPanel>
-            </Border>
-            <Border Grid.Column="1" Style="{StaticResource CardBorderStyle}">
+            </Border></controls:CollapsibleSection.SectionContent></controls:CollapsibleSection>
+            <controls:CollapsibleSection Grid.Column="1" Header="Parcheggio distrazioni"><controls:CollapsibleSection.SectionContent><Border Grid.Column="1" Style="{StaticResource CardBorderStyle}">
                 <StackPanel>
                     <TextBlock Text="Parcheggio distrazioni" Style="{StaticResource SectionTitleStyle}"/>
                     <TextBlock Text="Annota ciò che ti distrae e torna al compito senza perderlo." FontSize="10" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,4,0,10"/>
@@ -1129,7 +1129,7 @@
                     <TextBlock Text="Nessuna distrazione annotata." Visibility="{Binding Workspace.NoOpenDistractions, Converter={StaticResource BooleanToVisibilityConverter}}" FontSize="10" Foreground="{DynamicResource MutedBrush}" Margin="2,7,2,0"/>
                     <Button Content="Segna come risolta" Command="{Binding Workspace.ResolveDistractionCommand}" Style="{StaticResource SecondaryButtonStyle}" HorizontalAlignment="Left" Margin="0,8,0,0"/>
                 </StackPanel>
-            </Border>
+            </Border></controls:CollapsibleSection.SectionContent></controls:CollapsibleSection>
         </Grid>
             </StackPanel></TabItem>
             <TabItem Header="Avvisi">
