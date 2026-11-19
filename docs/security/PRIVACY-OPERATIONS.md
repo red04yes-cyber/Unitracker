@@ -20,6 +20,8 @@ The diagnostic flow is two-step:
 1. `PreviewDiagnosticBundle()` returns app version, OS/runtime, number and size of eligible local log files. It does not read or expose personal database content.
 2. `CreateDiagnosticBundleAsync(userConsent: true, includeLogs: ...)` creates an in-memory ZIP only after explicit consent.
 
-The archive contains `diagnostics.json` and, only when selected, `redacted-application.log`. Log lines are redacted again at export time. User name, email, credentials, database, PDFs, Moodle downloads and arbitrary environment variables are excluded. At most three rotated logs are considered; each is capped at 512 KiB and the combined log text at 2 MiB.
+The archive contains `diagnostics.json` and, only when selected, `redacted-application.log`. Log lines are redacted again at export time. User name, email, credentials, database, PDFs, Moodle downloads and arbitrary environment variables are excluded. The log inventory is an exact allowlist of `unitracker.log`, `unitracker.log.1` and `unitracker.log.2`; rotations are included oldest-first. Each file is capped at 512 KiB and the combined log text at 2 MiB.
+
+The same allowlist is used by the delete-my-data operation, so the current log and both retained rotations are removed. Log discovery, reading, writing and scrubbing reject reparse points and paths whose containment cannot be verified. A symlinked log file or log directory is skipped; its target is never treated as an application log.
 
 The bundle is returned as bytes; the caller must show the preview and let the user choose where to save or share it. There is no automatic upload or telemetry.
