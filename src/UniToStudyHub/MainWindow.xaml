@@ -5,8 +5,8 @@
         Title="UniTo StudyHub"
         Height="900"
         Width="1440"
-        MinHeight="700"
-        MinWidth="1024"
+        MinHeight="640"
+        MinWidth="940"
         WindowStartupLocation="CenterScreen"
         Background="{DynamicResource PageBrush}"
         FontFamily="Segoe UI Variable"
@@ -33,26 +33,17 @@
                             <Border x:Name="HoverOverlay" Background="White" CornerRadius="12" Opacity="0"
                                     IsHitTestVisible="False"/>
                             <Border x:Name="SelectedOverlay" CornerRadius="12" Opacity="0" IsHitTestVisible="False"
-                                    BorderBrush="#40A78BFA" BorderThickness="1">
-                                <Border.Background>
-                                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-                                        <GradientStop Color="#3D8B5CF6" Offset="0"/>
-                                        <GradientStop Color="#128B5CF6" Offset="1"/>
-                                    </LinearGradientBrush>
-                                </Border.Background>
-                            </Border>
+                                    Background="{DynamicResource AccentFillBrush}"
+                                    BorderBrush="{DynamicResource AccentFillBrush}" BorderThickness="1"/>
                             <Grid Margin="10,4">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="3"/>
                                     <ColumnDefinition Width="*"/>
                                 </Grid.ColumnDefinitions>
                                 <Border x:Name="ActiveIndicator" Grid.Column="0" Height="22"
-                                        Background="{StaticResource AccentGradientBrush}"
+                                        Background="{DynamicResource AccentFillBrush}"
                                         CornerRadius="2" Opacity="0" RenderTransformOrigin="0.5,0.5">
                                     <Border.RenderTransform><ScaleTransform x:Name="IndicatorScale" ScaleY="0.3"/></Border.RenderTransform>
-                                    <Border.Effect>
-                                        <DropShadowEffect BlurRadius="10" ShadowDepth="0" Color="#8B5CF6" Opacity="0.9"/>
-                                    </Border.Effect>
                                 </Border>
                                 <ContentPresenter Grid.Column="1" ContentSource="Header" Margin="9,0,0,0"
                                                   HorizontalAlignment="Stretch" VerticalAlignment="Center"/>
@@ -74,7 +65,7 @@
                             <Trigger Property="IsSelected" Value="True">
                                 <Trigger.EnterActions>
                                     <BeginStoryboard><Storyboard>
-                                        <DoubleAnimation Storyboard.TargetName="SelectedOverlay" Storyboard.TargetProperty="Opacity" To="1" Duration="0:0:0.28"/>
+                                        <DoubleAnimation Storyboard.TargetName="SelectedOverlay" Storyboard.TargetProperty="Opacity" To="0.14" Duration="0:0:0.18"/>
                                         <DoubleAnimation Storyboard.TargetName="ActiveIndicator" Storyboard.TargetProperty="Opacity" To="1" Duration="0:0:0.2"/>
                                         <DoubleAnimation Storyboard.TargetName="IndicatorScale" Storyboard.TargetProperty="ScaleY" To="1" Duration="0:0:0.35">
                                             <DoubleAnimation.EasingFunction><BackEase EasingMode="EaseOut" Amplitude="0.4"/></DoubleAnimation.EasingFunction>
@@ -88,7 +79,7 @@
                                         <DoubleAnimation Storyboard.TargetName="IndicatorScale" Storyboard.TargetProperty="ScaleY" To="0.3" Duration="0:0:0.2"/>
                                     </Storyboard></BeginStoryboard>
                                 </Trigger.ExitActions>
-                                <Setter Property="Foreground" Value="{DynamicResource InkBrush}"/>
+                                <Setter Property="Foreground" Value="White"/>
                             </Trigger>
                             <Trigger Property="IsEnabled" Value="False">
                                 <Setter TargetName="TabSurface" Property="Opacity" Value="0.55"/>
@@ -152,8 +143,9 @@
                         <ColumnDefinition Width="*"/>
                     </Grid.ColumnDefinitions>
 
-                    <Border Grid.Column="0" Background="{StaticResource SidebarGradientBrush}"
-                            BorderBrush="{DynamicResource SidebarDividerBrush}" BorderThickness="0,0,1,0">
+                    <Border Grid.Column="0" Background="{DynamicResource GlassSidebarBrush}"
+                            BorderBrush="{DynamicResource GlassBorderBrush}" BorderThickness="0,0,1,0"
+                            Effect="{StaticResource GlassShadow}">
                         <Grid>
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto"/>
@@ -164,8 +156,7 @@
                             <StackPanel Grid.Row="0" Margin="22,24,18,16">
                                 <StackPanel Orientation="Horizontal">
                                     <Border Width="40" Height="40" CornerRadius="12"
-                                            Background="{StaticResource AccentGradientBrush}" VerticalAlignment="Center"
-                                            Effect="{StaticResource AccentGlow}">
+                                            Background="{StaticResource AccentGradientBrush}" VerticalAlignment="Center">
                                         <TextBlock Text="S" Foreground="White" FontSize="23"
                                                    FontWeight="Bold" HorizontalAlignment="Center"
                                                    VerticalAlignment="Center"/>
@@ -216,7 +207,7 @@
                                         <TextBlock Text="Un passo alla volta." Foreground="{DynamicResource InkBrush}"
                                                    FontSize="12" FontWeight="SemiBold"/>
                                         <TextBlock Text="Il tuo spazio per imparare e crescere."
-                                                   Foreground="{DynamicResource SidebarMutedBrush}" FontSize="10"
+                                                   Foreground="{DynamicResource MutedBrush}" FontSize="10"
                                                    TextWrapping="Wrap" Margin="0,4,0,0"/>
                                     </StackPanel>
                                 </Border>
@@ -229,9 +220,9 @@
                             <RowDefinition Height="68"/>
                             <RowDefinition Height="*"/>
                         </Grid.RowDefinitions>
-                        <Border Grid.Row="0" Background="{DynamicResource PageBrush}"
-                                BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1"
-                                Padding="30,0">
+                        <Border Grid.Row="0" Background="{DynamicResource GlassTopbarBrush}"
+                                BorderBrush="{DynamicResource GlassBorderBrush}" BorderThickness="0,0,0,1"
+                                Effect="{StaticResource GlassShadow}" Padding="30,0">
                             <Grid VerticalAlignment="Center">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*"/>
