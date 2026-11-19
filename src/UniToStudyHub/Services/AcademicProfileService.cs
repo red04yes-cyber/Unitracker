@@ -15,6 +15,53 @@ public sealed record AcademicProfileUpdate(
     int MaxDailyStudyMinutes);
 
 /// <summary>
+/// A non-mutating inventory of the records affected by deleting a course.
+/// Calendar events are counted separately because they can be detached while
+/// preserving the event itself. Active focus work must be completed first.
+/// </summary>
+public sealed record CourseRemovalImpact(
+    int GradeRecords,
+    int PlannedExams,
+    int CareerExams,
+    int SyllabusTopics,
+    int PrerequisiteLinks,
+    int Questions,
+    int StudySessions,
+    int StudySessionSegments,
+    int StudyTasks,
+    int StudyActivities,
+    int StudyMissions,
+    int MissionSteps,
+    int Flashcards,
+    int FlashcardReviews,
+    int ErrorJournalEntries,
+    int Distractions,
+    int PomodoroCycles,
+    int PdfDocuments,
+    int CalendarEventsToDetach,
+    int ActivityRevisions,
+    bool HasActiveStudySession,
+    bool HasActivePomodoro)
+{
+    public bool HasAcademicHistory =>
+        GradeRecords > 0 || PlannedExams > 0 || CareerExams > 0 ||
+        SyllabusTopics > 0 || PrerequisiteLinks > 0;
+
+    public bool HasStudyHistory =>
+        Questions > 0 || StudySessions > 0 || StudySessionSegments > 0 ||
+        StudyTasks > 0 || StudyActivities > 0 || StudyMissions > 0 ||
+        MissionSteps > 0 || Flashcards > 0 || FlashcardReviews > 0 ||
+        ErrorJournalEntries > 0 || Distractions > 0 || PomodoroCycles > 0 ||
+        PdfDocuments > 0 || ActivityRevisions > 0;
+
+    public bool HasActiveWork => HasActiveStudySession || HasActivePomodoro;
+
+    public bool CanRemoveWithoutConfirmation =>
+        !HasAcademicHistory && !HasStudyHistory &&
+        CalendarEventsToDetach == 0 && !HasActiveWork;
+}
+
+/// <summary>
 /// Validates and applies university-profile changes. This service never saves:
 /// the caller owns the transaction through <see cref="IStudyDataStore"/>.
 /// </summary>
@@ -141,49 +188,207 @@ public sealed class AcademicProfileService
     }
 
     /// <summary>
-    /// Deletes a course only together with its dependent records. Career history
-    /// is deliberately not silently discarded: callers must first archive or
-    /// explicitly remove it through a dedicated confirmation flow.
+    /// Builds a stable, non-mutating preview of every record that would be
+    /// removed or detached with the course.
     /// </summary>
-    public void RemoveCourse(StudyData data, string courseId, bool removeCareerHistory = false)
+    public CourseRemovalImpact GetCourseRemovalImpact(StudyData data, string courseId)
     {
         ArgumentNullException.ThrowIfNull(data);
-        var course = FindCourse(data, courseId);
-        // Validate every deletion constraint before mutating any collection.
-        // Callers may catch this exception and continue editing the same
-        // snapshot; a rejected deletion must never leave grades/exams removed.
-        if (!removeCareerHistory)
-        {
-            if (data.CareerExams.Any(x => x.CourseId == courseId) ||
-                data.Grades.Any(x => x.CourseId == courseId) ||
-                data.Exams.Any(x => x.CourseId == courseId))
-                throw new InvalidOperationException("The course has exam history and cannot be deleted without explicit confirmation.");
-            if (data.SyllabusTopics.Any(x => x.CourseId == courseId))
-                throw new InvalidOperationException("The course has syllabus data and cannot be deleted without explicit confirmation.");
-        }
-
-        var gradeIds = data.Grades.Where(x => x.CourseId == courseId).Select(x => x.Id).ToList();
-        foreach (var grade in data.Grades.Where(x => gradeIds.Contains(x.Id)).ToList()) data.Grades.Remove(grade);
-        foreach (var exam in data.Exams.Where(x => x.CourseId == courseId).ToList()) data.Exams.Remove(exam);
-        if (removeCareerHistory)
-        {
-            foreach (var careerExam in data.CareerExams.Where(x => x.CourseId == courseId).ToList())
-                data.CareerExams.Remove(careerExam);
-            foreach (var topic in data.SyllabusTopics.Where(x => x.CourseId == courseId).ToList())
-                data.SyllabusTopics.Remove(topic);
-        }
-
-        foreach (var prerequisite in data.CoursePrerequisites
-                     .Where(x => x.CourseId == courseId || x.PrerequisiteCourseId == courseId).ToList())
-            data.CoursePrerequisites.Remove(prerequisite);
-        foreach (var question in data.Questions.Where(x => x.CourseId == courseId).ToList())
-            data.Questions.Remove(question);
-        data.Courses.Remove(course);
+        return BuildCourseRemovalPlan(data, courseId).Impact;
     }
 
-    private static Course FindCourse(StudyData data, string courseId) =>
-        data.Courses.FirstOrDefault(x => string.Equals(x.Id, courseId, StringComparison.Ordinal))
-        ?? throw new ArgumentException($"Course '{courseId}' does not exist.", nameof(courseId));
+    /// <summary>
+    /// Deletes a course only after separate confirmation for academic history,
+    /// Study Lab history and calendar-event detachment. All constraints are
+    /// checked before the first collection is changed.
+    /// </summary>
+    public void RemoveCourse(
+        StudyData data,
+        string courseId,
+        bool removeCareerHistory = false,
+        bool removeStudyHistory = false,
+        bool detachCalendarEvents = false)
+    {
+        ArgumentNullException.ThrowIfNull(data);
+        var plan = BuildCourseRemovalPlan(data, courseId);
+        var impact = plan.Impact;
+
+        if (impact.HasActiveStudySession)
+            throw new InvalidOperationException("Finish or cancel the course focus session before deleting the course.");
+        if (impact.HasActivePomodoro)
+            throw new InvalidOperationException("Complete or reset the course Pomodoro timer before deleting the course.");
+        if (impact.HasAcademicHistory && !removeCareerHistory)
+            throw new InvalidOperationException(
+                "The course has grades, exams, syllabus or prerequisite links. Review the removal impact and explicitly confirm academic-history deletion.");
+        if (impact.HasStudyHistory && !removeStudyHistory)
+            throw new InvalidOperationException(
+                "The course has Study Lab records. Review the removal impact and explicitly confirm Study Lab history deletion.");
+        if (impact.CalendarEventsToDetach > 0 && !detachCalendarEvents)
+            throw new InvalidOperationException(
+                "The course has calendar events. Review the removal impact and explicitly confirm that their course link may be detached.");
+
+        // No mutation occurs until all three confirmation gates and active-work
+        // checks have passed. Remove child records before their parents.
+        foreach (var grade in plan.Grades) data.Grades.Remove(grade);
+        foreach (var exam in plan.PlannedExams) data.Exams.Remove(exam);
+
+        if (removeCareerHistory)
+        {
+            foreach (var careerExam in plan.CareerExams) data.CareerExams.Remove(careerExam);
+            foreach (var topic in plan.SyllabusTopics) data.SyllabusTopics.Remove(topic);
+            foreach (var prerequisite in plan.PrerequisiteLinks) data.CoursePrerequisites.Remove(prerequisite);
+        }
+
+        if (removeStudyHistory)
+        {
+            foreach (var revision in plan.ActivityRevisions) data.ActivityRevisions.Remove(revision);
+            foreach (var review in plan.FlashcardReviews) data.FlashcardReviews.Remove(review);
+            foreach (var activity in plan.StudyActivities) data.StudyActivities.Remove(activity);
+            foreach (var distraction in plan.Distractions) data.Distractions.Remove(distraction);
+            foreach (var cycle in plan.PomodoroCycles) data.PomodoroCycles.Remove(cycle);
+            foreach (var question in plan.Questions) data.Questions.Remove(question);
+            foreach (var card in plan.Flashcards) data.Flashcards.Remove(card);
+            foreach (var entry in plan.ErrorJournalEntries) data.ErrorJournalEntries.Remove(entry);
+            foreach (var document in plan.PdfDocuments) data.PdfDocuments.Remove(document);
+            foreach (var mission in plan.StudyMissions) data.StudyMissions.Remove(mission);
+            foreach (var task in plan.StudyTasks) data.StudyTasks.Remove(task);
+            foreach (var session in plan.StudySessions) data.StudySessions.Remove(session);
+
+            if (data.PomodoroTimer is { } timer && plan.SessionIds.Contains(timer.SessionId))
+                data.PomodoroTimer = null;
+        }
+
+        if (detachCalendarEvents)
+        {
+            foreach (var calendarEvent in plan.CalendarEvents)
+            {
+                if (string.IsNullOrWhiteSpace(calendarEvent.CourseName))
+                    calendarEvent.CourseName = plan.Course.Name;
+                calendarEvent.CourseId = null;
+                calendarEvent.UpdatedAt = DateTimeOffset.UtcNow;
+            }
+        }
+
+        data.Courses.Remove(plan.Course);
+    }
+
+    private static CourseRemovalPlan BuildCourseRemovalPlan(StudyData data, string courseId)
+    {
+        var course = FindCourse(data, courseId);
+        var grades = data.Grades.Where(x => x.CourseId == courseId).ToArray();
+        var plannedExams = data.Exams.Where(x => x.CourseId == courseId).ToArray();
+        var careerExams = data.CareerExams.Where(x => x.CourseId == courseId).ToArray();
+        var syllabusTopics = data.SyllabusTopics.Where(x => x.CourseId == courseId).ToArray();
+        var topicIds = syllabusTopics.Select(x => x.Id).ToHashSet(StringComparer.Ordinal);
+        var prerequisiteLinks = data.CoursePrerequisites
+            .Where(x => x.CourseId == courseId || x.PrerequisiteCourseId == courseId).ToArray();
+
+        var studySessions = data.StudySessions.Where(x => x.CourseId == courseId).ToArray();
+        var sessionIds = studySessions.Select(x => x.Id).ToHashSet(StringComparer.Ordinal);
+        var studyTasks = data.StudyTasks.Where(x => x.CourseId == courseId).ToArray();
+        var taskIds = studyTasks.Select(x => x.Id).ToHashSet(StringComparer.Ordinal);
+        var studyMissions = data.StudyMissions
+            .Where(x => x.CourseId == courseId || topicIds.Contains(x.SyllabusTopicId)).ToArray();
+        var missionIds = studyMissions.Select(x => x.Id).ToHashSet(StringComparer.Ordinal);
+        var examIds = plannedExams.Select(x => x.Id).ToHashSet(StringComparer.Ordinal);
+
+        var questions = data.Questions
+            .Where(x => x.CourseId == courseId || topicIds.Contains(x.SyllabusTopicId)).ToArray();
+        var flashcards = data.Flashcards
+            .Where(x => x.CourseId == courseId || topicIds.Contains(x.SyllabusTopicId)).ToArray();
+        var flashcardIds = flashcards.Select(x => x.Id).ToHashSet(StringComparer.Ordinal);
+        var flashcardReviews = data.FlashcardReviews
+            .Where(x => flashcardIds.Contains(x.FlashcardId)).ToArray();
+        var errorJournalEntries = data.ErrorJournalEntries
+            .Where(x => x.CourseId == courseId || topicIds.Contains(x.SyllabusTopicId)).ToArray();
+        var pdfDocuments = data.PdfDocuments.Where(x => x.CourseId == courseId).ToArray();
+        var calendarEvents = data.CalendarEvents.Where(x => x.CourseId == courseId).ToArray();
+
+        // Activities may omit CourseId and still be dependent through a topic,
+        // task, mission, planned exam or focus session. Include the full closure.
+        var studyActivities = data.StudyActivities
+            .Where(x => x.CourseId == courseId ||
+                        topicIds.Contains(x.SyllabusTopicId) ||
+                        taskIds.Contains(x.TaskId) ||
+                        missionIds.Contains(x.MissionId) ||
+                        examIds.Contains(x.ExamId) ||
+                        sessionIds.Contains(x.SessionId))
+            .ToArray();
+        var activityIds = studyActivities.Select(x => x.Id).ToHashSet(StringComparer.Ordinal);
+        var activityRevisions = data.ActivityRevisions
+            .Where(x => activityIds.Contains(x.ActivityId)).ToArray();
+        var distractions = data.Distractions
+            .Where(x => sessionIds.Contains(x.SessionId ?? string.Empty)).ToArray();
+        var pomodoroCycles = data.PomodoroCycles
+            .Where(x => sessionIds.Contains(x.SessionId)).ToArray();
+
+        var hasActiveStudySession = studySessions.Any(x =>
+            x.State is StudySessionState.Running or StudySessionState.Paused);
+        var hasActivePomodoro = data.PomodoroTimer is { } timer &&
+            timer.Status is PomodoroTimerStatus.Running or PomodoroTimerStatus.Paused &&
+            sessionIds.Contains(timer.SessionId);
+
+        var impact = new CourseRemovalImpact(
+            GradeRecords: grades.Length,
+            PlannedExams: plannedExams.Length,
+            CareerExams: careerExams.Length,
+            SyllabusTopics: syllabusTopics.Length,
+            PrerequisiteLinks: prerequisiteLinks.Length,
+            Questions: questions.Length,
+            StudySessions: studySessions.Length,
+            StudySessionSegments: studySessions.Sum(x => x.Segments?.Count ?? 0),
+            StudyTasks: studyTasks.Length,
+            StudyActivities: studyActivities.Length,
+            StudyMissions: studyMissions.Length,
+            MissionSteps: studyMissions.Sum(x => x.Steps?.Count ?? 0),
+            Flashcards: flashcards.Length,
+            FlashcardReviews: flashcardReviews.Length,
+            ErrorJournalEntries: errorJournalEntries.Length,
+            Distractions: distractions.Length,
+            PomodoroCycles: pomodoroCycles.Length,
+            PdfDocuments: pdfDocuments.Length,
+            CalendarEventsToDetach: calendarEvents.Length,
+            ActivityRevisions: activityRevisions.Length,
+            HasActiveStudySession: hasActiveStudySession,
+            HasActivePomodoro: hasActivePomodoro);
+
+        return new CourseRemovalPlan(
+            course, grades, plannedExams, careerExams, syllabusTopics,
+            prerequisiteLinks, questions, studySessions, studyTasks,
+            studyActivities, studyMissions, flashcards, flashcardReviews,
+            errorJournalEntries, distractions, pomodoroCycles, pdfDocuments,
+            calendarEvents, activityRevisions, sessionIds, impact);
+    }
+
+    private sealed record CourseRemovalPlan(
+        Course Course,
+        IReadOnlyList<Grade> Grades,
+        IReadOnlyList<Exam> PlannedExams,
+        IReadOnlyList<CareerExamData> CareerExams,
+        IReadOnlyList<SyllabusTopicData> SyllabusTopics,
+        IReadOnlyList<CoursePrerequisiteData> PrerequisiteLinks,
+        IReadOnlyList<QuestionBankItemData> Questions,
+        IReadOnlyList<StudySessionData> StudySessions,
+        IReadOnlyList<StudyTaskData> StudyTasks,
+        IReadOnlyList<StudyActivityData> StudyActivities,
+        IReadOnlyList<StudyMissionData> StudyMissions,
+        IReadOnlyList<FlashcardData> Flashcards,
+        IReadOnlyList<FlashcardReviewData> FlashcardReviews,
+        IReadOnlyList<ErrorJournalEntryData> ErrorJournalEntries,
+        IReadOnlyList<DistractionData> Distractions,
+        IReadOnlyList<PomodoroCycleData> PomodoroCycles,
+        IReadOnlyList<PdfDocumentData> PdfDocuments,
+        IReadOnlyList<CalendarEvent> CalendarEvents,
+        IReadOnlyList<ActivityRevisionData> ActivityRevisions,
+        HashSet<string> SessionIds,
+        CourseRemovalImpact Impact);
+
+    private static Course FindCourse(StudyData data, string courseId)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(courseId);
+        return data.Courses.FirstOrDefault(x => string.Equals(x.Id, courseId, StringComparison.Ordinal))
+            ?? throw new ArgumentException($"Course '{courseId}' does not exist.", nameof(courseId));
+    }
 
     private static void ValidateCourse(Course course, StudyData data, string? existingId = null)
     {
