@@ -61,6 +61,6 @@ public partial class StudyHubSidebar : UserControl
     private void NavigationItem_Click(object sender, RoutedEventArgs e)
     {
         if (sender is Button { Tag: SidebarNavigationItem item })
-            SelectedIndex = item.PageIndex;
+            SetCurrentValue(SelectedIndexProperty, item.PageIndex);
     }
 }
