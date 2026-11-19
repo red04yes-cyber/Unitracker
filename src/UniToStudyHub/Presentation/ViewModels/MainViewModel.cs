@@ -45,6 +45,12 @@ public sealed class MainViewModel : INotifyPropertyChanged
     public ObservableCollection<Announcement> Announcements => _data.Announcements;
     public ObservableCollection<Course> VisibleCourses { get; } = new();
     public ObservableCollection<CalendarEvent> CalendarEvents => _data.CalendarEvents;
+    public IReadOnlyList<CalendarEvent> UpcomingEvents => CalendarEvents
+        .Where(item => !item.IsCancelled && item.EndsAt >= DateTimeOffset.Now)
+        .OrderBy(item => item.StartsAt)
+        .ToList();
+    public int UpcomingEventsCount => UpcomingEvents.Count;
+    public bool NoUpcomingEvents => UpcomingEventsCount == 0;
     public ObservableCollection<CalendarEvent> VisibleCalendarEvents { get; } = new();
     public ObservableCollection<CalendarEvent> SelectedDayEvents { get; } = new();
     public ObservableCollection<CalendarDayCell> CalendarDayCells { get; } = new();
@@ -859,6 +865,9 @@ public sealed class MainViewModel : INotifyPropertyChanged
 
     private void RefreshCalendar()
     {
+        OnPropertyChanged(nameof(UpcomingEvents));
+        OnPropertyChanged(nameof(UpcomingEventsCount));
+        OnPropertyChanged(nameof(NoUpcomingEvents));
         CalendarDayCells.Clear();
         DateTime gridStart;
         DateTime visibleStart;
