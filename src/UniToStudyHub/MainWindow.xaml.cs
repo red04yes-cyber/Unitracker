@@ -627,6 +627,6 @@ public partial class MainWindow : Window
 
     private void NavigateToSettings_Click(object sender, RoutedEventArgs e)
     {
-        MainTabs.SelectedIndex = 6;
+        MainTabs.SelectedIndex = 7;
     }
 }
