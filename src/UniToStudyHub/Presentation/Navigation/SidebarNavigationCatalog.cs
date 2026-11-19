@@ -54,14 +54,14 @@ public static class SidebarNavigationCatalog
 {
     private static readonly SidebarNavigationDefinition[] Definitions =
     [
-        new("Oggi", "La tua dashboard", "\\uE80F", 0),
-        new("Materie", "Corsi e archivio", "\\uE8A5", 1),
-        new("Calendario", "Appelli e pianificazione", "\\uE787", 2),
-        new("Studio Lab", "Focus e allenamento", "\\uE945", 3),
-        new("Accademia", "Strumenti di apprendimento", "\\uE82D", 4),
-        new("Progressi", "Statistiche di carriera", "\\uE9D2", 5),
-        new("Profilo", "Carriera e obiettivi", "\\uE77B", 6, IsSectionStart: true),
-        new("Impostazioni", "Profilo e integrazioni", "\\uE713", 7)
+        new("Oggi", "La tua dashboard", "\uE80F", 0),
+        new("Materie", "Corsi e archivio", "\uE8A5", 1),
+        new("Calendario", "Appelli e pianificazione", "\uE787", 2),
+        new("Studio Lab", "Focus e allenamento", "\uE945", 3),
+        new("Accademia", "Strumenti di apprendimento", "\uE82D", 4),
+        new("Progressi", "Statistiche di carriera", "\uE9D2", 5),
+        new("Profilo", "Carriera e obiettivi", "\uE77B", 6, IsSectionStart: true),
+        new("Impostazioni", "Profilo e integrazioni", "\uE713", 7)
     ];
 
     public static IReadOnlyList<SidebarNavigationDefinition> Entries { get; } =
