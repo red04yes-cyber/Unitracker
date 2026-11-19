@@ -542,13 +542,7 @@
                         </StackPanel>
                     </controls:CollapsibleSection.SectionContent></controls:CollapsibleSection>
 
-                    <Border Style="{StaticResource AnimatedCardStyle}" Margin="0,0,0,14">
-                        <Expander IsExpanded="False">
-                            <Expander.Header>
-                                <TextBlock Text="Registra un tentativo d’esame" FontSize="13"
-                                           FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}"/>
-                            </Expander.Header>
-                            <StackPanel Margin="0,12,0,0">
+                    <controls:CollapsibleSection Header="Registra un tentativo d’esame" Margin="0,0,0,14"><controls:CollapsibleSection.SectionContent><StackPanel Margin="0,12,0,0">
                                 <TextBlock Text="Registra un esame superato (accettato o rifiutato), non superato oppure un’idoneità. Il voto numerico serve solo per gli esiti superati."
                                            Style="{StaticResource PageSubtitleStyle}" Margin="0,0,0,10"/>
                                 <WrapPanel>
@@ -571,9 +565,7 @@
                                         <Button Content="Registra tentativo" Command="{Binding AddGradeCommand}"/>
                                     </StackPanel>
                                 </WrapPanel>
-                            </StackPanel>
-                        </Expander>
-                    </Border>
+                            </StackPanel></controls:CollapsibleSection.SectionContent></controls:CollapsibleSection>
 
                     <Grid Margin="0,0,0,12">
                         <Grid.ColumnDefinitions>
