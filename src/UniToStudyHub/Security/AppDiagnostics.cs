@@ -22,6 +22,12 @@ public static class AppDiagnostics
     private const long MaximumFileBytes = 512 * 1024;
     private const int RetainedRotations = 2;
     private const string FileName = "unitracker.log";
+    private static readonly string[] ManagedLogFileNames =
+    {
+        FileName,
+        FileName + ".1",
+        FileName + ".2"
+    };
     private static readonly object Gate = new();
     private static string _directory = DefaultDirectory;
 
@@ -43,7 +49,38 @@ public static class AppDiagnostics
         get
         {
             var path = Path.Combine(_directory, FileName);
-            return File.Exists(path) ? path : null;
+            return File.Exists(path) && LocalFileSecurity.IsInside(_directory, path) ? path : null;
+        }
+    }
+
+    /// <summary>
+    /// Returns only the current log and the two files managed by rotation.
+    /// Reparse points and paths whose containment cannot be verified are
+    /// excluded so callers never read or scrub a link target outside the log
+    /// directory.
+    /// </summary>
+    public static IReadOnlyList<string> GetManagedLogFiles()
+    {
+        try
+        {
+            var root = Path.GetFullPath(_directory);
+            if (!System.IO.Directory.Exists(root)) return Array.Empty<string>();
+
+            var files = new List<string>();
+            foreach (var name in ManagedLogFileNames.Reverse())
+            {
+                var path = Path.Combine(root, name);
+                if (!File.Exists(path) || !LocalFileSecurity.IsInside(root, path)) continue;
+                if ((File.GetAttributes(path) & FileAttributes.ReparsePoint) != 0) continue;
+                files.Add(path);
+            }
+
+            return files;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or SecurityException
+                                       or ArgumentException or NotSupportedException)
+        {
+            return Array.Empty<string>();
         }
     }
 
@@ -63,9 +100,17 @@ public static class AppDiagnostics
         {
             lock (Gate)
             {
-                LocalFileSecurity.EnsurePrivateDirectory(_directory);
                 var path = Path.Combine(_directory, FileName);
+                // Check before creating/restricting the directory: if the
+                // configured root is a link, even ACL changes could affect an
+                // unrelated target outside the application's data folder.
+                if (!LocalFileSecurity.IsInside(_directory, path)) return;
+                LocalFileSecurity.EnsurePrivateDirectory(_directory);
+                if (!LocalFileSecurity.IsInside(_directory, path)) return;
+
                 RotateIfNeeded(path);
+                if (!LocalFileSecurity.IsInside(_directory, path)) return;
+
                 var line = string.Join(" | ",
                     DateTimeOffset.UtcNow.ToString("O"),
                     level.ToString().ToUpperInvariant(),
@@ -88,24 +133,18 @@ public static class AppDiagnostics
         }
     }
 
-    /// <summary>Deletes the local diagnostics, used by the "delete my data" flow.</summary>
+    /// <summary>Deletes the current and rotated local diagnostics safely.</summary>
     public static int Clear()
     {
         lock (Gate)
         {
             var deleted = 0;
-            try
+            foreach (var file in GetManagedLogFiles())
             {
-                if (!System.IO.Directory.Exists(_directory)) return 0;
-                foreach (var file in System.IO.Directory.EnumerateFiles(_directory, "unitracker*.log"))
-                {
-                    LocalFileSecurity.ScrubAndDelete(file);
-                    if (!File.Exists(file)) deleted++;
-                }
-            }
-            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or SecurityException)
-            {
-                // Reported as a partial result.
+                // Revalidate immediately before opening a file for scrubbing.
+                if (!LocalFileSecurity.IsInside(_directory, file)) continue;
+                LocalFileSecurity.ScrubAndDelete(file);
+                if (!File.Exists(file)) deleted++;
             }
             return deleted;
         }
@@ -113,15 +152,19 @@ public static class AppDiagnostics
 
     private static void RotateIfNeeded(string path)
     {
-        if (!File.Exists(path)) return;
+        if (!File.Exists(path) || !LocalFileSecurity.IsInside(_directory, path)) return;
         var info = new FileInfo(path);
         if (info.Length < MaximumFileBytes) return;
         for (var index = RetainedRotations; index >= 1; index--)
         {
             var source = index == 1 ? path : path + "." + (index - 1);
             var destination = path + "." + index;
+            if (!LocalFileSecurity.IsInside(_directory, source) ||
+                !LocalFileSecurity.IsInside(_directory, destination))
+                continue;
             if (!File.Exists(source)) continue;
             if (File.Exists(destination)) LocalFileSecurity.TryDelete(destination);
+            if (!LocalFileSecurity.IsInside(_directory, destination)) continue;
             File.Move(source, destination, overwrite: true);
         }
     }
