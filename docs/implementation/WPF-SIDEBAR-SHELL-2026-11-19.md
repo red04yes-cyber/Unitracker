@@ -12,7 +12,7 @@ Semplificare la navigazione primaria dopo il redesign WPF, riducendo la logica v
 - La navigazione non usa storyboard o animazioni: la selezione è immediata (0 ms) e non usa BackEase, overlay o glow.
 - SidebarNavigationCatalog mantiene in un unico punto l'ordine e gli indici delle pagine. Le sei aree primarie sono seguite da Profilo e Impostazioni come destinazioni secondarie.
 - La selezione è sincronizzata in modo bidirezionale con il selettore di pagine. Il controllo usa SetCurrentValue per non rimuovere il binding quando un pulsante aggiorna l'indice.
-- Il contenuto visibile è ospitato da ContentControl (PageContentHost). Il vecchio elenco di TabItem rimane temporaneamente in un TabControl nascosto con template vuoto: serve solo come registro compatibile con le pagine XAML già esistenti e non crea una seconda area visuale per il contenuto.
+- Il contenuto visibile è ospitato da ContentControl (PageContentHost). Dopo InitializeComponent, il code-behind trasferisce gli otto contenuti dei TabItem in un dizionario per istanza e svuota i TabItem; il TabControl resta nascosto con template vuoto e viene usato solo come registro di selezione. Solo PageContentHost possiede e visualizza la pagina selezionata, mentre il dizionario conserva le istanze non selezionate.
 - Il collegamento topbar “Impostazioni” ora seleziona la pagina Impostazioni (indice 7); la pagina Profilo resta raggiungibile dalla sidebar (indice 6).
 - Finestra iniziale 1360 × 860 px e minimo 980 × 680 px, allineati alla specifica prodotto.
 
