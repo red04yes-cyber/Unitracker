@@ -598,19 +598,22 @@
                         <TextBox Grid.Column="0" Text="{Binding CourseSearchText, UpdateSourceTrigger=PropertyChanged}"
                                  ToolTip="Cerca per nome o codice" MinWidth="190"
                                  AutomationProperties.Name="Cerca materie per nome o codice"/>
-                        <WrapPanel Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Center">
-                            <RadioButton Content="{Binding ActiveCoursesCount, StringFormat='In corso ({0})'}"
-                                         GroupName="CourseFilters" Tag="active"
-                                         IsChecked="True" Checked="CourseFilter_Checked"
-                                         Style="{StaticResource FilterRadioButtonStyle}"/>
-                            <RadioButton Content="{Binding ArchivedCoursesCount, StringFormat='Archivio ({0})'}"
-                                         GroupName="CourseFilters" Tag="archive"
-                                         Checked="CourseFilter_Checked"
-                                         Style="{StaticResource FilterRadioButtonStyle}"/>
-                            <RadioButton Content="Tutte" GroupName="CourseFilters" Tag="all"
-                                         Checked="CourseFilter_Checked"
-                                         Style="{StaticResource FilterRadioButtonStyle}"/>
-                        </WrapPanel>
+                        <Border Grid.Column="1" Style="{StaticResource SegmentedGroupBorderStyle}"
+                                HorizontalAlignment="Right" VerticalAlignment="Center">
+                            <WrapPanel>
+                                <RadioButton Content="{Binding ActiveCoursesCount, StringFormat='In corso ({0})'}"
+                                             GroupName="CourseFilters" Tag="active"
+                                             IsChecked="True" Checked="CourseFilter_Checked"
+                                             Style="{StaticResource SegmentedRadioButtonStyle}"/>
+                                <RadioButton Content="{Binding ArchivedCoursesCount, StringFormat='Archivio ({0})'}"
+                                             GroupName="CourseFilters" Tag="archive"
+                                             Checked="CourseFilter_Checked"
+                                             Style="{StaticResource SegmentedRadioButtonStyle}"/>
+                                <RadioButton Content="Tutte" GroupName="CourseFilters" Tag="all"
+                                             Checked="CourseFilter_Checked"
+                                             Style="{StaticResource SegmentedRadioButtonStyle}"/>
+                            </WrapPanel>
+                        </Border>
                     </Grid>
 
                     <ItemsControl ItemsSource="{Binding VisibleCourses}">
@@ -716,9 +719,24 @@
                         <Button Content="‹" Width="38" Command="{Binding PreviousCalendarPeriodCommand}" Style="{StaticResource QuietButtonStyle}"/>
                         <Button Content="Oggi" Margin="6,0" Command="{Binding TodayCalendarCommand}" Style="{StaticResource SecondaryButtonStyle}"/>
                         <Button Content="›" Width="38" Command="{Binding NextCalendarPeriodCommand}" Style="{StaticResource QuietButtonStyle}"/>
-                        <ComboBox Width="126" Margin="12,0,0,0" SelectedValuePath="Tag" SelectedValue="{Binding CalendarViewMode, UpdateSourceTrigger=PropertyChanged}">
-                            <ComboBoxItem Content="Mese" Tag="Month"/><ComboBoxItem Content="Settimana" Tag="Week"/><ComboBoxItem Content="Giorno" Tag="Day"/>
-                        </ComboBox>
+                        <Border Width="192" Margin="12,0,0,0"
+                                Style="{StaticResource SegmentedGroupBorderStyle}"
+                                VerticalAlignment="Center">
+                            <ListBox Style="{StaticResource SegmentedListBoxStyle}"
+                                     ItemContainerStyle="{StaticResource SegmentedListBoxItemStyle}"
+                                     SelectedValuePath="Tag"
+                                     SelectedValue="{Binding CalendarViewMode, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                     AutomationProperties.Name="Visualizzazione calendario">
+                                <ListBox.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <StackPanel Orientation="Horizontal"/>
+                                    </ItemsPanelTemplate>
+                                </ListBox.ItemsPanel>
+                                <ListBoxItem Content="Giorno" Tag="Day"/>
+                                <ListBoxItem Content="Settimana" Tag="Week"/>
+                                <ListBoxItem Content="Mese" Tag="Month"/>
+                            </ListBox>
+                        </Border>
                     </StackPanel>
                 </Grid>
                 <UniformGrid Columns="7" Visibility="{Binding ShowCalendarWeekHeader, Converter={StaticResource BooleanToVisibilityConverter}}" Margin="0,18,0,6">
