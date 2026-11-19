@@ -37,7 +37,15 @@ public sealed class CourseRemovalSafetyTests
         });
         data.CareerExams.Add(new CareerExamData
         {
-            Id = "career-1", CourseId = "course-1", Name = "Analisi", Cfu = 6
+            Id = "career-1", CourseId = "course-1", Name = "Analisi", Cfu = 6,
+            Attempts = new ObservableCollection<ExamAttemptData>
+            {
+                new()
+                {
+                    Id = "attempt-1", AttemptedAt = Now, Status = "Scheduled",
+                    Outcome = "Pending", GradeDecision = "Pending"
+                }
+            }
         });
         data.SyllabusTopics.Add(new SyllabusTopicData
         {
@@ -125,7 +133,11 @@ public sealed class CourseRemovalSafetyTests
         };
         data.PdfDocuments.Add(new PdfDocumentData
         {
-            Id = "pdf-1", CourseId = "course-1", FileName = "appunti.pdf"
+            Id = "pdf-1", CourseId = "course-1", FileName = "appunti.pdf",
+            Pages = new ObservableCollection<PdfPageData>
+            {
+                new() { PageNumber = 1, Text = "Definizione di limite." }
+            }
         });
         data.CalendarEvents.Add(new CalendarEvent
         {
@@ -144,6 +156,7 @@ public sealed class CourseRemovalSafetyTests
         Assert.Equal(1, impact.GradeRecords);
         Assert.Equal(1, impact.PlannedExams);
         Assert.Equal(1, impact.CareerExams);
+        Assert.Equal(1, impact.CareerExamAttempts);
         Assert.Equal(1, impact.SyllabusTopics);
         Assert.Equal(1, impact.PrerequisiteLinks);
         Assert.Equal(1, impact.Questions);
@@ -159,6 +172,7 @@ public sealed class CourseRemovalSafetyTests
         Assert.Equal(1, impact.Distractions);
         Assert.Equal(1, impact.PomodoroCycles);
         Assert.Equal(1, impact.PdfDocuments);
+        Assert.Equal(1, impact.PdfPages);
         Assert.Equal(1, impact.CalendarEventsToDetach);
         Assert.Equal(1, impact.ActivityRevisions);
         Assert.True(impact.HasAcademicHistory);
