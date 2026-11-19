@@ -20,7 +20,7 @@ Revisione source-level della sola shell e del controllo StudyHubSidebar, con tes
 | 10 | File system | Path arbitrari o accesso a file dal controllo; ispezione code-behind | Non applicabile | Nessuna API filesystem |
 | 11 | Import / export | Azioni di import o export involontarie da pulsanti di navigazione | Non applicabile | Le voci non espongono comandi di import/export |
 | 12 | Deserializzazione | XAML o dati dinamici deserializzati da input non attendibile | Superato | Markup dichiarativo statico, nessun loader dinamico |
-| 13 | Host contenuti | Visualizzazione di contenuto diverso dalla pagina selezionata; verifica binding | Superato | PageContentHost usa solo MainTabs.SelectedContent |
+| 13 | Host contenuti | Visualizzazione di contenuto diverso dalla pagina selezionata; verifica binding | Superato | PageContentHost usa l’istanza associata al TabItem selezionato nel registro privato |
 | 14 | Registro pagine | Doppio presenter visuale o interazione con il registro nascosto; test XAML | Superato | Template vuoto e nessun ContentPresenter nel template del registro |
 | 15 | Accessibilità pulsanti | Controlli senza nome leggibile dai lettori di schermo; test markup | Superato | AutomationProperties.Name e HelpText derivati dal catalogo |
 | 16 | Modalità compatta | Perdita della destinazione quando i testi sono nascosti; revisione/test XAML | Superato | Tooltip e AutomationProperties restano sul Button |
