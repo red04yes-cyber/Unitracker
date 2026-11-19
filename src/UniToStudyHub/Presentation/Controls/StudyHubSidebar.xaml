@@ -1,0 +1,277 @@
+<UserControl x:Class="UniToStudyHub.Presentation.Controls.StudyHubSidebar"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:UniToStudyHub.Presentation.Controls"
+             MinWidth="80"
+             HorizontalAlignment="Left"
+             AutomationProperties.Name="Navigazione principale">
+    <UserControl.Style>
+        <Style TargetType="{x:Type local:StudyHubSidebar}">
+            <Setter Property="Width" Value="236"/>
+            <Style.Triggers>
+                <Trigger Property="IsCollapsed" Value="True">
+                    <Setter Property="Width" Value="80"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+    </UserControl.Style>
+
+    <UserControl.Resources>
+        <Style x:Key="CollapsedTextStackStyle" TargetType="{x:Type StackPanel}">
+            <Setter Property="Visibility" Value="Visible"/>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsCollapsed, RelativeSource={RelativeSource AncestorType={x:Type local:StudyHubSidebar}}}"
+                             Value="True">
+                    <Setter Property="Visibility" Value="Collapsed"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="CollapsedFooterStyle" TargetType="{x:Type Border}">
+            <Setter Property="Visibility" Value="Visible"/>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsCollapsed, RelativeSource={RelativeSource AncestorType={x:Type local:StudyHubSidebar}}}"
+                             Value="True">
+                    <Setter Property="Visibility" Value="Collapsed"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="SidebarNavigationButtonBaseStyle" TargetType="{x:Type Button}">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Margin" Value="0,2"/>
+            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type Button}">
+                        <Border x:Name="Surface"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="9"
+                                SnapsToDevicePixels="True">
+                            <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                              VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                                              RecognizesAccessKey="True"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsKeyboardFocused" Value="True">
+                                <Setter TargetName="Surface" Property="BorderBrush"
+                                        Value="{DynamicResource AccentBrush}"/>
+                                <Setter TargetName="Surface" Property="BorderThickness" Value="1"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="Surface" Property="Opacity" Value="0.55"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="SidebarNavigationButtonStyle"
+               TargetType="{x:Type Button}"
+               BasedOn="{StaticResource SidebarNavigationButtonBaseStyle}">
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                    <Setter Property="Background" Value="{DynamicResource AccentSoftBrush}"/>
+                </DataTrigger>
+                <MultiDataTrigger>
+                    <MultiDataTrigger.Conditions>
+                        <Condition Binding="{Binding IsSelected}" Value="False"/>
+                        <Condition Binding="{Binding IsMouseOver, RelativeSource={RelativeSource Self}}" Value="True"/>
+                    </MultiDataTrigger.Conditions>
+                    <Setter Property="Background" Value="{DynamicResource SubtleBrush}"/>
+                </MultiDataTrigger>
+                <DataTrigger Binding="{Binding IsSectionStart}" Value="True">
+                    <Setter Property="Margin" Value="0,12,0,2"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="SidebarSelectedIndicatorStyle" TargetType="{x:Type Border}">
+            <Setter Property="Opacity" Value="0"/>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                    <Setter Property="Opacity" Value="1"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="SidebarNavigationGlyphStyle" TargetType="{x:Type TextBlock}">
+            <Setter Property="Foreground" Value="{DynamicResource SidebarMutedBrush}"/>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                    <Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="SidebarCollapseToggleStyle" TargetType="{x:Type ToggleButton}">
+            <Setter Property="Width" Value="28"/>
+            <Setter Property="Height" Value="28"/>
+            <Setter Property="Padding" Value="4"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="ToolTip" Value="Comprimi o espandi la barra laterale"/>
+            <Setter Property="AutomationProperties.Name" Value="Comprimi o espandi la barra laterale"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type ToggleButton}">
+                        <Border x:Name="Surface"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="7">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Surface" Property="Background"
+                                        Value="{DynamicResource SubtleBrush}"/>
+                            </Trigger>
+                            <Trigger Property="IsKeyboardFocused" Value="True">
+                                <Setter TargetName="Surface" Property="BorderBrush"
+                                        Value="{DynamicResource AccentBrush}"/>
+                                <Setter TargetName="Surface" Property="BorderThickness" Value="1"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </UserControl.Resources>
+
+    <Border Background="{StaticResource SidebarGradientBrush}"
+            BorderBrush="{DynamicResource SidebarDividerBrush}"
+            BorderThickness="0,0,1,0"
+            SnapsToDevicePixels="True">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <Grid Grid.Row="0" Margin="8,18,8,14">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="36"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="28"/>
+                </Grid.ColumnDefinitions>
+
+                <Border Grid.Column="0" Width="36" Height="36" CornerRadius="10"
+                        Background="{StaticResource AccentGradientBrush}"
+                        VerticalAlignment="Center">
+                    <TextBlock Text="S" Foreground="White" FontSize="21" FontWeight="Bold"
+                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                </Border>
+
+                <StackPanel Grid.Column="1" Margin="10,0,4,0" VerticalAlignment="Center"
+                            Style="{StaticResource CollapsedTextStackStyle}">
+                    <TextBlock Text="StudyHub" Foreground="White"
+                               FontFamily="{StaticResource DisplayFont}"
+                               FontSize="18" FontWeight="SemiBold"/>
+                    <TextBlock Text="UNITO WORKSPACE"
+                               Foreground="{DynamicResource SidebarMutedBrush}"
+                               FontSize="9" FontWeight="SemiBold" Margin="0,2,0,0"/>
+                </StackPanel>
+
+                <ToggleButton Grid.Column="2"
+                              IsChecked="{Binding IsCollapsed, RelativeSource={RelativeSource AncestorType={x:Type local:StudyHubSidebar}}, Mode=TwoWay}"
+                              Style="{StaticResource SidebarCollapseToggleStyle}">
+                    <TextBlock FontFamily="Segoe MDL2 Assets" FontSize="12"
+                               Foreground="{DynamicResource SidebarMutedBrush}">
+                        <TextBlock.Style>
+                            <Style TargetType="{x:Type TextBlock}">
+                                <Setter Property="Text" Value="&#xE76B;"/>
+                                <Setter Property="Foreground" Value="{DynamicResource SidebarMutedBrush}"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsCollapsed, RelativeSource={RelativeSource AncestorType={x:Type local:StudyHubSidebar}}}"
+                                                 Value="True">
+                                        <Setter Property="Text" Value="&#xE76C;"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                </ToggleButton>
+            </Grid>
+
+            <ScrollViewer Grid.Row="1"
+                          VerticalScrollBarVisibility="Auto"
+                          HorizontalScrollBarVisibility="Disabled">
+                <ItemsControl ItemsSource="{Binding NavigationItems, RelativeSource={RelativeSource AncestorType={x:Type local:StudyHubSidebar}}}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <StackPanel/>
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Button Tag="{Binding}"
+                                    Click="NavigationItem_Click"
+                                    Style="{StaticResource SidebarNavigationButtonStyle}"
+                                    ToolTip="{Binding Title}"
+                                    AutomationProperties.Name="{Binding Title}"
+                                    AutomationProperties.HelpText="{Binding Description}">
+                                <Grid Height="48" Margin="6,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="3"/>
+                                        <ColumnDefinition Width="40"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <Border Grid.Column="0" Width="3" Height="24"
+                                            HorizontalAlignment="Left" VerticalAlignment="Center"
+                                            Background="{DynamicResource AccentBrush}"
+                                            CornerRadius="2"
+                                            Style="{StaticResource SidebarSelectedIndicatorStyle}"/>
+
+                                    <TextBlock Grid.Column="1" Text="{Binding Glyph}"
+                                               FontFamily="Segoe MDL2 Assets" FontSize="17"
+                                               HorizontalAlignment="Center" VerticalAlignment="Center"
+                                               Style="{StaticResource SidebarNavigationGlyphStyle}"/>
+
+                                    <StackPanel Grid.Column="2" Margin="10,0,0,0"
+                                                VerticalAlignment="Center"
+                                                Style="{StaticResource CollapsedTextStackStyle}">
+                                        <TextBlock Text="{Binding Title}" FontSize="13"
+                                                   FontWeight="SemiBold"
+                                                   Foreground="{DynamicResource InkBrush}"/>
+                                        <TextBlock Text="{Binding Description}" FontSize="10"
+                                                   Foreground="{DynamicResource SidebarMutedBrush}"
+                                                   TextTrimming="CharacterEllipsis"/>
+                                    </StackPanel>
+                                </Grid>
+                            </Button>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+
+            <Border Grid.Row="2"
+                    Background="{DynamicResource AccentSoftBrush}"
+                    BorderBrush="{DynamicResource GlassBorderBrush}"
+                    BorderThickness="1"
+                    CornerRadius="12"
+                    Padding="12"
+                    Margin="12,10,12,18"
+                    Style="{StaticResource CollapsedFooterStyle}">
+                <StackPanel>
+                    <TextBlock Text="Un passo alla volta."
+                               Foreground="{DynamicResource InkBrush}"
+                               FontSize="12" FontWeight="SemiBold"/>
+                    <TextBlock Text="Il tuo spazio per imparare e crescere."
+                               Foreground="{DynamicResource SidebarMutedBrush}"
+                               FontSize="10" TextWrapping="Wrap" Margin="0,4,0,0"/>
+                </StackPanel>
+            </Border>
+        </Grid>
+    </Border>
+</UserControl>
