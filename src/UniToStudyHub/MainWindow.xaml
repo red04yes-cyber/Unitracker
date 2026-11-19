@@ -403,7 +403,7 @@
                     </UniformGrid></controls:CollapsibleSection.SectionContent>
                     </controls:CollapsibleSection>
 
-                    <controls:CollapsibleSection Header="Ultimi voti e attività recenti" Margin="0,0,0,12"><controls:CollapsibleSection.SectionContent><Grid>
+                    <controls:CollapsibleSection Header="Ultimi voti e riepilogo materie" Margin="0,0,0,12"><controls:CollapsibleSection.SectionContent><Grid>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="1.2*"/>
                             <ColumnDefinition Width="*"/>
