@@ -18,7 +18,7 @@ Il mapper SQLite valida queste relazioni prima del salvataggio. La cancellazione
 `AcademicProfileService.GetCourseRemovalImpact(data, courseId)` restituisce conteggi separati per:
 
 - carriera, esami, syllabus e collegamenti di propedeuticità;
-- domande e dati Study Lab, inclusi segmenti delle sessioni e passi delle missioni;
+- domande e dati Study Lab, inclusi tentativi d'esame, pagine PDF, segmenti delle sessioni e passi delle missioni;
 - revisioni attività, review flashcard, distrazioni e cicli Pomodoro;
 - documenti PDF indicizzati;
 - eventi calendario da scollegare;
@@ -54,7 +54,7 @@ Sono stati eseguiti 30 controlli source-level sulla superficie di cancellazione 
 5. Repeated preview is deterministic for an unchanged snapshot.
 6. Grade records are included in the impact.
 7. Planned exams are included.
-8. Career exam records are included.
+8. Career exam records and nested attempts are counted.
 9. Syllabus topics are included.
 10. Incoming prerequisite edges are included.
 11. Outgoing prerequisite edges are included.
@@ -74,7 +74,7 @@ Sono stati eseguiti 30 controlli source-level sulla superficie di cancellazione 
 25. Error-journal entries linked by course or topic are included.
 26. Distractions are included through their focus session.
 27. Pomodoro cycles are included through their focus session.
-28. PDF document metadata is included by course.
+28. PDF metadata and indexed pages are counted by course.
 29. Running/paused focus sessions and Pomodoro timers block deletion.
 30. Academic, Study Lab and calendar confirmations are checked before mutation; calendar events are detached rather than deleted.
 
