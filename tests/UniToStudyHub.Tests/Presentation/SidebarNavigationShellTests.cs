@@ -90,6 +90,12 @@ public sealed class SidebarNavigationShellTests
         var pageRegistryTemplate = pageRegistry.Element(presentation + "TabControl.Template");
         Assert.NotNull(pageRegistryTemplate);
         Assert.Empty(pageRegistryTemplate!.Descendants(presentation + "ContentPresenter"));
+        var windowResources = root.Element(presentation + "Window.Resources");
+        Assert.NotNull(windowResources);
+        Assert.DoesNotContain(windowResources!.Elements(presentation + "Style"),
+            style => (string?)style.Attribute("TargetType") == "{x:Type TabItem}");
+        Assert.Empty(windowResources.Descendants()
+            .Where(element => element.Name.LocalName == "BackEase"));
         Assert.Equal("980", (string?)root.Attribute("MinWidth"));
         Assert.Equal("680", (string?)root.Attribute("MinHeight"));
         Assert.Empty(pageRegistry.Descendants(presentation + "TabPanel"));
