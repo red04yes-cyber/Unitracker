@@ -23,6 +23,7 @@ public sealed record CourseRemovalImpact(
     int GradeRecords,
     int PlannedExams,
     int CareerExams,
+    int CareerExamAttempts,
     int SyllabusTopics,
     int PrerequisiteLinks,
     int Questions,
@@ -38,13 +39,14 @@ public sealed record CourseRemovalImpact(
     int Distractions,
     int PomodoroCycles,
     int PdfDocuments,
+    int PdfPages,
     int CalendarEventsToDetach,
     int ActivityRevisions,
     bool HasActiveStudySession,
     bool HasActivePomodoro)
 {
     public bool HasAcademicHistory =>
-        GradeRecords > 0 || PlannedExams > 0 || CareerExams > 0 ||
+        GradeRecords > 0 || PlannedExams > 0 || CareerExams > 0 || CareerExamAttempts > 0 ||
         SyllabusTopics > 0 || PrerequisiteLinks > 0;
 
     public bool HasStudyHistory =>
@@ -52,7 +54,7 @@ public sealed record CourseRemovalImpact(
         StudyTasks > 0 || StudyActivities > 0 || StudyMissions > 0 ||
         MissionSteps > 0 || Flashcards > 0 || FlashcardReviews > 0 ||
         ErrorJournalEntries > 0 || Distractions > 0 || PomodoroCycles > 0 ||
-        PdfDocuments > 0 || ActivityRevisions > 0;
+        PdfDocuments > 0 || PdfPages > 0 || ActivityRevisions > 0;
 
     public bool HasActiveWork => HasActiveStudySession || HasActivePomodoro;
 
@@ -332,6 +334,7 @@ public sealed class AcademicProfileService
             GradeRecords: grades.Length,
             PlannedExams: plannedExams.Length,
             CareerExams: careerExams.Length,
+            CareerExamAttempts: careerExams.Sum(x => x.Attempts?.Count ?? 0),
             SyllabusTopics: syllabusTopics.Length,
             PrerequisiteLinks: prerequisiteLinks.Length,
             Questions: questions.Length,
@@ -347,6 +350,7 @@ public sealed class AcademicProfileService
             Distractions: distractions.Length,
             PomodoroCycles: pomodoroCycles.Length,
             PdfDocuments: pdfDocuments.Length,
+            PdfPages: pdfDocuments.Sum(x => x.Pages?.Count ?? 0),
             CalendarEventsToDetach: calendarEvents.Length,
             ActivityRevisions: activityRevisions.Length,
             HasActiveStudySession: hasActiveStudySession,
