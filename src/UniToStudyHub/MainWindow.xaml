@@ -1213,7 +1213,7 @@
 </ScrollViewer>
         </TabItem>
 
-        <TabItem Visibility="Collapsed">
+        <TabItem>
             <ScrollViewer Style="{StaticResource PageEnterStyle}" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                 <StackPanel Margin="34,30,34,40">
                     <TextBlock Text="AREA PERSONALE" FontSize="10" FontWeight="Bold"
