@@ -485,6 +485,22 @@
                             </StackPanel>
                         </controls:CollapsibleSection.SectionContent>
                     </controls:CollapsibleSection>
+                    <controls:CollapsibleSection Header="Prossimo esame pianificato" Margin="0,0,0,12">
+                        <controls:CollapsibleSection.SectionContent>
+                            <Border Style="{StaticResource CardBorderStyle}" Padding="14">
+                                <StackPanel>
+                                    <TextBlock Text="{Binding NextExamNameDisplay}" FontSize="13"
+                                               FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}"
+                                               TextWrapping="Wrap"/>
+                                    <TextBlock Text="{Binding NextExamDateDisplay}" FontSize="11"
+                                               Foreground="{DynamicResource MutedBrush}" Margin="0,4,0,0"/>
+                                    <TextBlock Text="Pianificato · indicativo, da verificare sulla fonte ufficiale."
+                                               FontSize="10" Foreground="{DynamicResource WarningBrush}"
+                                               TextWrapping="Wrap" Margin="0,7,0,0"/>
+                                </StackPanel>
+                            </Border>
+                        </controls:CollapsibleSection.SectionContent>
+                    </controls:CollapsibleSection>
                     <TextBlock Text="{Binding StatusMessage}" Foreground="{DynamicResource MutedBrush}"
                                FontSize="11" TextWrapping="Wrap" Margin="3,16,3,0"/>
                 </StackPanel>
