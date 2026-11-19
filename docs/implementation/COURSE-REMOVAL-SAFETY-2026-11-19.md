@@ -89,7 +89,7 @@ Gli altri controlli confermano i guard-rail introdotti o già presenti nel mappe
 
 ## Test aggiunti
 
-`CourseRemovalSafetyTests.cs` contiene 12 test:
+`CourseRemovalSafetyTests.cs` contiene 13 test:
 
 - conteggio completo dell'impatto, inclusi record annidati;
 - conferma accademica e conferma Study Lab indipendenti;
