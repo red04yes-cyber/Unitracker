@@ -13,7 +13,7 @@ public sealed record SidebarNavigationDefinition(
 /// A navigation entry with a small observable selection state for the WPF shell.
 /// The page index deliberately mirrors the stable TabItem order in MainWindow.xaml.
 /// </summary>
-public sealed class SidebarNavigationItem
+public sealed class SidebarNavigationItem : INotifyPropertyChanged
 {
     private bool _isSelected;
 
