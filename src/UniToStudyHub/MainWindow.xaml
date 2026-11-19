@@ -719,7 +719,7 @@
                         <Button Content="‹" Width="38" Command="{Binding PreviousCalendarPeriodCommand}" Style="{StaticResource QuietButtonStyle}"/>
                         <Button Content="Oggi" Margin="6,0" Command="{Binding TodayCalendarCommand}" Style="{StaticResource SecondaryButtonStyle}"/>
                         <Button Content="›" Width="38" Command="{Binding NextCalendarPeriodCommand}" Style="{StaticResource QuietButtonStyle}"/>
-                        <Border Width="192" Margin="12,0,0,0"
+                        <Border Width="220" Margin="12,0,0,0"
                                 Style="{StaticResource SegmentedGroupBorderStyle}"
                                 VerticalAlignment="Center">
                             <ListBox Style="{StaticResource SegmentedListBoxStyle}"
