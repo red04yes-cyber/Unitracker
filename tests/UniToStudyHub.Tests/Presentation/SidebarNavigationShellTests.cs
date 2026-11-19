@@ -151,7 +151,7 @@ public sealed class SidebarNavigationShellTests
         var application = LoadXaml("UniToStudyHub.Tests.Presentation.App.xaml");
         var sidebar = LoadXaml("UniToStudyHub.Tests.Presentation.StudyHubSidebar.xaml");
         var resourceReference = new Regex(
-            @"\\{(?:StaticResource|DynamicResource)\\s+(?<key>[^}\\s]+)",
+            @"\{(?:StaticResource|DynamicResource)\s+(?<key>[^}\s]+)",
             RegexOptions.CultureInvariant);
 
         var declaredKeys = application.Root!.DescendantsAndSelf()
