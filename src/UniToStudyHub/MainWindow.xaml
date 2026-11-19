@@ -961,7 +961,12 @@
                     <Button Content="Prossimo focus" Command="{Binding Workspace.StartNextFocusCommand}"
                             Style="{StaticResource SecondaryButtonStyle}" Margin="10,0,0,0"/>
                 </WrapPanel>
-                <controls:CollapsibleSection Header="Focus Room · musica" Margin="0,14,0,0"><controls:CollapsibleSection.SectionContent><Border Style="{StaticResource CardBorderStyle}" Margin="0,18,12,0">
+                <Expander IsExpanded="False" Margin="0,14,0,0" Foreground="{DynamicResource InkBrush}">
+                    <Expander.Header>
+                        <TextBlock Text="Focus Room · musica" FontSize="13" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource InkBrush}"/>
+                    </Expander.Header>
+                    <Border Style="{StaticResource CardBorderStyle}" Margin="0,18,12,0">
                     <Grid>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*"/>
@@ -1005,7 +1010,8 @@
                             </ScrollViewer>
                         </StackPanel>
                     </Grid>
-                </Border></controls:CollapsibleSection.SectionContent></controls:CollapsibleSection>
+                </Border>
+                </Expander>
                 <MediaElement x:Name="FocusMusicPlayer" Width="1" Height="1" Opacity="0"
                               LoadedBehavior="Manual" UnloadedBehavior="Stop" Volume="0.42"
                               MediaEnded="FocusMusicPlayer_MediaEnded"/>
