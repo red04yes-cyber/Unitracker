@@ -133,9 +133,10 @@ try {{
   Get-ChildItem -LiteralPath $target -Force | Copy-Item -Destination $backup -Recurse -Force
   Copy-Item -Path (Join-Path $payload '*') -Destination $target -Recurse -Force
   if (-not (Test-Path -LiteralPath (Join-Path $target 'UniToStudyHub.exe'))) {{ throw 'Installazione incompleta.' }}
-  $newProcess = Start-Process -FilePath (Join-Path $target 'UniToStudyHub.exe') -PassThru
+  $shell = New-Object -ComObject Shell.Application
+  $shell.ShellExecute((Join-Path $target 'UniToStudyHub.exe'), '', $target, 'open', 1)
   Start-Sleep -Seconds 4
-  if ($newProcess.HasExited) {{ throw 'La nuova versione non è rimasta in esecuzione.' }}
+  if (-not (Get-Process -Name 'UniToStudyHub' -ErrorAction SilentlyContinue)) {{ throw 'La nuova versione non è rimasta in esecuzione.' }}
   Remove-Item -LiteralPath $backup -Recurse -Force -ErrorAction SilentlyContinue
   Remove-Item -LiteralPath $tempRoot -Recurse -Force -ErrorAction SilentlyContinue
 }} catch {{
