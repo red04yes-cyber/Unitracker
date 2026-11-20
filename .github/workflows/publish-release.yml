@@ -31,12 +31,19 @@ jobs:
           if ($tag -notmatch '^v(?<version>\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?)$') {
             throw "Release tags must use vMAJOR.MINOR.PATCH (optional prerelease suffix)."
           }
+          $version = $Matches.version
+          [xml]$project = Get-Content 'src/UniToStudyHub/UniToStudyHub.csproj'
+          $baselineVersion = [version]$project.Project.PropertyGroup.Version
+          $releaseVersion = [version]($version.Split('-')[0])
+          if ($releaseVersion -le $baselineVersion) {
+            throw "Release tag must be newer than the project baseline version $baselineVersion."
+          }
           git fetch origin main
           git merge-base --is-ancestor $env:GITHUB_SHA origin/main
           if ($LASTEXITCODE -ne 0) {
             throw "A release can only be published from a commit already contained in main."
           }
-          "RELEASE_VERSION=$($Matches.version)" | Out-File -FilePath $env:GITHUB_ENV -Append
+          "RELEASE_VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Append
       - name: Run automated tests
         run: dotnet test tests/UniToStudyHub.Tests/UniToStudyHub.Tests.csproj --configuration Release --logger "console;verbosity=minimal"
       - name: Publish self-contained Windows x64 application
