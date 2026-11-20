@@ -31,6 +31,7 @@ Corsi, voti, esami, calendario e dati Study Lab devono condividere una fonte di 
 - Backup e procedure di ripristino restano necessari per migrazione e recupero; non vanno confusi con una sincronizzazione multi-dispositivo.
 - Ogni nuova relazione persistente richiede entità, mapping, migrazione e test su database nuovo ed esistente.
 - `SaveAsync` riceve uno snapshot completo: valida prima della scrittura e sostituisce il contenuto in una transazione. Non è un'API di patch parziale.
+- `LocalFileSecurity.EnsurePrivateDirectory` tenta di applicare ACL/modalità private, ma oggi ignora il valore restituito da `TryRestrictDirectory`. Se il filesystem non supporta l'hardening, l'app continua: è una limitazione concreta da tenere visibile, non una prova di esposizione dei dati. La directory configurata deve risiedere su storage locale con ACL per utente; l'esito effettivo va verificato su Windows. La helper è inoltre interessata dalla PR concorrente #82, quindi questa slice non la modifica.
 
 ## Evidenze
 

@@ -59,6 +59,7 @@ Le migrazioni dello schema sono incrementali in `Infrastructure/Data/Migrations`
 - `DatabaseKeyVault` genera una chiave casuale di 256 bit e conserva l'envelope protetto da DPAPI per l'account Windows corrente. Se l'envelope esistente non è leggibile, il servizio fallisce in modo chiuso: non genera una nuova chiave che renderebbe il database esistente illeggibile.
 - La conversione del vecchio SQLite in chiaro verifica il file cifrato prima della sostituzione.
 - Le credenziali Moodle sono conservate separatamente dal DTO accademico tramite il vault protetto; non sono dati di carriera.
+- L'hardening ACL della directory è best effort: `EnsurePrivateDirectory` non propaga il fallimento di `TryRestrictDirectory`. Su filesystem senza ACL affidabili la protezione della directory è quindi una limitazione; usare storage locale con ACL per utente e verificarne l'esito su Windows.
 
 I dettagli decisionali e le conseguenze operative sono in [ADR-0002](adr/0002-persistenza-locale-sqlcipher.md).
 
