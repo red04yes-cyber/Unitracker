@@ -32,7 +32,7 @@ Per esempio, dopo aver integrato in `main` una versione che deve essere distribu
 - Una modifica non pubblicata in una GitHub Release non genera notifiche.
 - Gli utenti ricevono il controllo al successivo avvio o entro 24 ore se l'app resta aperta e connessa.
 - Il controllo automatico richiede accesso HTTPS a GitHub. Nessun dato dell'utente viene inviato.
-- L'aggiornamento è assistito, non silenzioso: l'utente sceglie se aprire la release e scaricare il pacchetto.
+- L'aggiornamento è assistito: l'utente sceglie quando installare; dopo il clic l'installazione e il riavvio sono automatici.
 - Il pacchetto portabile non è firmato digitalmente; il checksum rileva corruzione ma non autentica l'autore. La firma del codice richiede un certificato di code signing gestito dal proprietario del progetto.
 
 ## Test
