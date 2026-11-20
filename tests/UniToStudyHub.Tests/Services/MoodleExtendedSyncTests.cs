@@ -211,6 +211,28 @@ public sealed class MoodleExtendedSyncTests
     }
 
     [Fact]
+    public async Task FileDownloadRejectsNestedSameOriginPluginfileEndpoint()
+    {
+        var requests = 0;
+        using var client = new MoodleClient("https://moodle.example.edu/moodle", Token,
+            new StubHandler(_ => { requests++; return new HttpResponseMessage(HttpStatusCode.OK); }));
+        var folder = Path.Combine(Path.GetTempPath(), "UnitrackerMoodleTests", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(folder);
+        try
+        {
+            await Assert.ThrowsAsync<InvalidOperationException>(() =>
+                client.DownloadFileAsync("https://moodle.example.edu/moodle/other/pluginfile.php/1/file.pdf",
+                    Path.Combine(folder, "file.pdf"), allowedDirectory: folder));
+            Assert.Equal(0, requests);
+            Assert.Empty(Directory.EnumerateFiles(folder));
+        }
+        finally
+        {
+            try { Directory.Delete(folder, recursive: true); } catch (IOException) { }
+        }
+    }
+
+    [Fact]
     public async Task FileDownloadRejectsSameOriginPathOutsideConfiguredMoodleBase()
     {
         var requests = 0;
