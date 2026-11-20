@@ -138,7 +138,7 @@ public sealed class MoodleExtendedSyncTests
         try
         {
             await client.DownloadFileAsync(
-                "https://moodle.example.edu/pluginfile.php/1/mod_resource/content/lecture.pdf?token=stale& wstoken=old&forcedownload=1",
+                "https://moodle.example.edu/pluginfile.php/1/mod_resource/content/lecture.pdf?token=stale&wstoken=old&forcedownload=1",
                 destination, allowedDirectory: folder);
             Assert.Equal(payload, await File.ReadAllBytesAsync(destination));
             Assert.NotNull(requestedUri);
