@@ -440,7 +440,9 @@ public sealed class ActivityLedgerService
         var at = now ?? DateTimeOffset.Now;
         var dayStart = StartOfDay(day, zone);
         var dayEnd = StartOfDay(day.AddDays(1), zone);
-        var totalSeconds = Math.Max(0, (int)Math.Floor((dayEnd - dayStart).TotalSeconds));
+        var dayStartUtc = dayStart.ToUniversalTime();
+        var dayEndUtc = dayEnd.ToUniversalTime();
+        var totalSeconds = Math.Max(0, (int)Math.Floor((dayEndUtc - dayStartUtc).TotalSeconds));
         var slotSeconds = slotMinutes * 60;
         var slotCount = Math.Max(1, (int)Math.Ceiling(totalSeconds / (double)slotSeconds));
         var intervals = GetRecordedIntervals(data, at).ToList();
@@ -449,10 +451,15 @@ public sealed class ActivityLedgerService
 
         for (var index = 0; index < slotCount; index++)
         {
-            var start = dayStart.AddSeconds(index * slotSeconds);
-            var end = start.AddSeconds(slotSeconds);
-            if (end > dayEnd) end = dayEnd;
-            if (end <= start) break;
+            // DateTimeOffset.AddSeconds preserves its offset. Advance in UTC and
+            // convert each boundary back so DST gaps and repeated hours are real.
+            var slotStartUtc = dayStartUtc.AddSeconds(index * slotSeconds);
+            var slotEndUtc = slotStartUtc.AddSeconds(slotSeconds);
+            if (slotEndUtc > dayEndUtc) slotEndUtc = dayEndUtc;
+            if (slotEndUtc <= slotStartUtc) break;
+
+            var start = TimeZoneInfo.ConvertTime(slotStartUtc, zone);
+            var end = TimeZoneInfo.ConvertTime(slotEndUtc, zone);
             var inSlot = intervals
                 .Where(x => x.End > start && x.Start < end)
                 .Select(x => (
@@ -489,7 +496,7 @@ public sealed class ActivityLedgerService
             slots);
     }
 
-    public ActivityHeatmap BuildHeatmap(
+        public ActivityHeatmap BuildHeatmap(
         StudyData data,
         DateOnly from,
         DateOnly to,
@@ -507,30 +514,41 @@ public sealed class ActivityLedgerService
         {
             var dayStart = StartOfDay(day, zone);
             var dayEnd = StartOfDay(day.AddDays(1), zone);
+            var hourIntervals = Enumerable.Range(0, 24)
+                .Select(_ => new List<(DateTimeOffset Start, DateTimeOffset End, string ActivityId)>())
+                .ToArray();
+
+            // A heatmap has 24 wall-clock buckets. A missing spring-forward hour
+            // remains empty; a repeated fall-back hour contributes both real
+            // occurrences to the same bucket.
+            foreach (var segment in BuildLocalHourSegments(dayStart, dayEnd, zone))
+            {
+                foreach (var interval in intervals)
+                {
+                    if (interval.End <= segment.Start || interval.Start >= segment.End)
+                        continue;
+
+                    var start = interval.Start < segment.Start ? segment.Start : interval.Start;
+                    var end = interval.End > segment.End ? segment.End : interval.End;
+                    if (end > start)
+                        hourIntervals[segment.Hour].Add((start, end, interval.Activity.Id));
+                }
+            }
+
             for (var hour = 0; hour < 24; hour++)
             {
-                var start = dayStart.AddHours(hour);
-                var end = start.AddHours(1);
-                if (end > dayEnd) end = dayEnd;
-                if (end <= start) continue;
-                var inHour = intervals
-                    .Where(x => x.End > start && x.Start < end)
-                    .Select(x => (
-                        Start: x.Start < start ? start : x.Start,
-                        End: x.End > end ? end : x.End,
-                        x.Activity.Id))
-                    .ToList();
+                var inHour = hourIntervals[hour];
                 cells.Add(new ActivityHeatmapCell(
                     day,
                     hour,
                     UnionSeconds(inHour.Select(x => (x.Start, x.End))),
-                    inHour.Select(x => x.Id).Distinct(StringComparer.Ordinal).Count()));
+                    inHour.Select(x => x.ActivityId).Distinct(StringComparer.Ordinal).Count()));
             }
         }
         return new ActivityHeatmap(from, to, cells);
     }
 
-    public ActivitySummary Summarize(
+        public ActivitySummary Summarize(
         StudyData data,
         DateOnly from,
         DateOnly to,
@@ -811,6 +829,67 @@ public sealed class ActivityLedgerService
             previous = current.At;
         }
         return total;
+    }
+
+
+    private static IReadOnlyList<(int Hour, DateTimeOffset Start, DateTimeOffset End)> BuildLocalHourSegments(
+        DateTimeOffset dayStart,
+        DateTimeOffset dayEnd,
+        TimeZoneInfo zone)
+    {
+        var startUtc = dayStart.ToUniversalTime();
+        var endUtc = dayEnd.ToUniversalTime();
+        var segments = new List<(int Hour, DateTimeOffset Start, DateTimeOffset End)>();
+        var cursor = startUtc;
+
+        while (cursor < endUtc)
+        {
+            var local = TimeZoneInfo.ConvertTime(cursor, zone);
+            var localDate = DateOnly.FromDateTime(local.DateTime);
+            var lastSameHour = cursor;
+            var probe = cursor.AddMinutes(1);
+            if (probe > endUtc) probe = endUtc;
+
+            // Find the next instant at which the local hour (or date) changes.
+            // Minute probes keep this bounded for the 367-day heatmap window;
+            // binary search below restores the exact transition instant.
+            while (probe < endUtc)
+            {
+                var candidate = TimeZoneInfo.ConvertTime(probe, zone);
+                if (candidate.Hour != local.Hour ||
+                    DateOnly.FromDateTime(candidate.DateTime) != localDate)
+                    break;
+
+                lastSameHour = probe;
+                probe = probe.AddMinutes(1);
+                if (probe > endUtc) probe = endUtc;
+            }
+
+            if (probe < endUtc)
+            {
+                var low = lastSameHour.UtcDateTime.Ticks;
+                var high = probe.UtcDateTime.Ticks;
+                while (high - low > 1)
+                {
+                    var middle = low + (high - low) / 2;
+                    var instant = new DateTimeOffset(middle, TimeSpan.Zero);
+                    var candidate = TimeZoneInfo.ConvertTime(instant, zone);
+                    if (candidate.Hour == local.Hour &&
+                        DateOnly.FromDateTime(candidate.DateTime) == localDate)
+                        low = middle;
+                    else
+                        high = middle;
+                }
+                probe = new DateTimeOffset(high, TimeSpan.Zero);
+            }
+
+            if (probe <= cursor)
+                throw new InvalidOperationException("The selected time zone did not advance to the next local hour.");
+            segments.Add((local.Hour, cursor, probe));
+            cursor = probe;
+        }
+
+        return segments;
     }
 
     private static DateTimeOffset StartOfDay(DateOnly day, TimeZoneInfo zone)
