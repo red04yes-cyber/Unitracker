@@ -848,15 +848,21 @@ public sealed class ActivityLedgerService
             var lastSameHour = cursor;
             var probe = cursor.AddMinutes(1);
             if (probe > endUtc) probe = endUtc;
+            var boundaryFound = false;
 
-            // Find the next instant at which the local hour (or date) changes.
-            // Minute probes keep this bounded for the 367-day heatmap window;
-            // binary search below restores the exact transition instant.
-            while (probe < endUtc)
+            // Minute probes keep this bounded for the 367-day heatmap window.
+            // Binary search below restores the exact local-hour transition instant.
+            while (true)
             {
                 var candidate = TimeZoneInfo.ConvertTime(probe, zone);
                 if (candidate.Hour != local.Hour ||
                     DateOnly.FromDateTime(candidate.DateTime) != localDate)
+                {
+                    boundaryFound = true;
+                    break;
+                }
+
+                if (probe == endUtc)
                     break;
 
                 lastSameHour = probe;
@@ -864,7 +870,7 @@ public sealed class ActivityLedgerService
                 if (probe > endUtc) probe = endUtc;
             }
 
-            if (probe < endUtc)
+            if (boundaryFound)
             {
                 var low = lastSameHour.UtcDateTime.Ticks;
                 var high = probe.UtcDateTime.Ticks;
