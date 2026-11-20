@@ -1,0 +1,62 @@
+name: Publish Windows release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: windows-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6
+        with:
+          dotnet-version: 10.0.x
+      - name: Validate release tag and main ancestry
+        shell: pwsh
+        run: |
+          $tag = $env:GITHUB_REF_NAME
+          if ($tag -notmatch '^v(?<version>\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?)$') {
+            throw "Release tags must use vMAJOR.MINOR.PATCH (optional prerelease suffix)."
+          }
+          git fetch origin main
+          git merge-base --is-ancestor $env:GITHUB_SHA origin/main
+          if ($LASTEXITCODE -ne 0) {
+            throw "A release can only be published from a commit already contained in main."
+          }
+          "RELEASE_VERSION=$($Matches.version)" | Out-File -FilePath $env:GITHUB_ENV -Append
+      - name: Run automated tests
+        run: dotnet test tests/UniToStudyHub.Tests/UniToStudyHub.Tests.csproj --configuration Release --logger "console;verbosity=minimal"
+      - name: Publish self-contained Windows x64 application
+        run: dotnet publish src/UniToStudyHub/UniToStudyHub.csproj --configuration Release --runtime win-x64 --self-contained true /p:PublishSingleFile=true "/p:Version=$env:RELEASE_VERSION"
+      - name: Package portable release and checksum
+        shell: pwsh
+        run: ./scripts/package-windows.ps1 -Version $env:RELEASE_VERSION
+      - name: Create GitHub release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $version = $env:RELEASE_VERSION
+          $args = @(
+            $env:GITHUB_REF_NAME,
+            "artifacts/UniToStudyHub-$version-win-x64-portable.zip",
+            "artifacts/UniToStudyHub-$version-win-x64-portable.zip.sha256",
+            "--verify-tag",
+            "--title", "UniToStudyHub $version",
+            "--generate-notes"
+          )
+          if ($version.Contains('-')) { $args += '--prerelease' }
+          gh release create @args
