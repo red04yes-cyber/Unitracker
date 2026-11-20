@@ -3,7 +3,7 @@ using System.Text.Json;
 
 namespace UniToStudyHub.Services;
 
-public sealed record AvailableAppUpdate(Version Version, string TagName, Uri ReleaseUri);
+public sealed record AvailableAppUpdate(Version Version, string TagName, Uri ReleaseUri, Uri ReleaseDownloadBase);
 
 /// <summary>
 /// Checks the public GitHub Releases endpoint. It sends no user data or credentials
@@ -75,7 +75,8 @@ public sealed class UpdateCheckService(HttpClient httpClient)
             $"https://github.com/red04yes-cyber/Unitracker/releases/tag/{Uri.EscapeDataString(tag)}",
             UriKind.Absolute);
 
-        return new AvailableAppUpdate(publishedVersion, tag, releaseUri);
+        var downloadBase = new Uri($"https://github.com/red04yes-cyber/Unitracker/releases/download/{Uri.EscapeDataString(tag)}/", UriKind.Absolute);
+        return new AvailableAppUpdate(publishedVersion, tag, releaseUri, downloadBase);
     }
 
     private static bool TryGetString(JsonElement element, string property, out string value)
