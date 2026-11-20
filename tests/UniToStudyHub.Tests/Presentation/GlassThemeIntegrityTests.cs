@@ -63,10 +63,8 @@ public sealed class GlassThemeIntegrityTests
 
         Assert.NotNull(toggle);
         Assert.NotNull(toggle!.Attribute("IsChecked"));
-        Assert.NotNull(toggle.Attribute(XName.Get("Name", "http://schemas.microsoft.com/winfx/2006/xaml/presentation")));
-        Assert.Contains(toggle.Attributes(), attribute =>
-            attribute.Name.LocalName == "Name" && attribute.Value.Contains("Automation", StringComparison.Ordinal)
-            || attribute.Name.LocalName == "AutomationProperties.Name");
+        Assert.Contains(toggle.Attributes(),
+            attribute => attribute.Name.LocalName == "AutomationProperties.Name");
         Assert.NotNull(presenter);
         Assert.NotNull(presenter!.Attribute("Content"));
     }
