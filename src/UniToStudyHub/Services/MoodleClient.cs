@@ -11,12 +11,11 @@ namespace UniToStudyHub.Services;
 /// Minimal Moodle Web Services client for an instance the user is authorised to
 /// use.
 ///
-/// Requests are POSTed (the token travels in the form body, not the URL),
-/// redirects are never followed, the base URL is validated against
-/// <see cref="OutboundEndpointPolicy"/> and responses are size-bounded. File
-/// downloads are restricted to the same origin, written atomically and refused
-/// when the server answers with an HTML page instead of the requested file.
-/// No method logs the token or the tokenised URL.
+/// Web-service function requests are POSTed (the token travels in the form body).
+/// Moodle file downloads use the dedicated /webservice/pluginfile.php endpoint,
+/// which requires a token query parameter. The client restricts that exception
+/// to the configured same-origin base path, never follows redirects and never
+/// logs the tokenised URL. Responses are bounded and files are written atomically.
 /// </summary>
 public sealed class MoodleClient : IDisposable
 {
@@ -326,6 +325,8 @@ public sealed class MoodleClient : IDisposable
             throw new InvalidOperationException("Download bloccato: URL esterno all'istanza Moodle.");
         if (source.Scheme != _baseUri.Scheme)
             throw new InvalidOperationException("Download bloccato: schema non coerente con l'istanza Moodle.");
+        if (!IsWithinBasePath(source))
+            throw new InvalidOperationException("Download bloccato: URL fuori dal percorso Moodle configurato.");
 
         var destination = Path.GetFullPath(path);
         if (!string.IsNullOrWhiteSpace(allowedDirectory) &&
@@ -443,6 +444,20 @@ public sealed class MoodleClient : IDisposable
     private Uri WithToken(Uri source)
     {
         var builder = new UriBuilder(source);
+        const string webServiceEndpoint = "/webservice/pluginfile.php";
+        if (!HasPathEndpoint(builder.Path, webServiceEndpoint))
+        {
+            const string pluginFileEndpoint = "/pluginfile.php";
+            if (!HasPathEndpoint(builder.Path, pluginFileEndpoint))
+                throw new InvalidOperationException("Download bloccato: endpoint file Moodle non valido.");
+
+            // Moodle's course-content API can return pluginfile.php URLs. Web
+            // service clients must fetch the same file through this dedicated
+            // endpoint, which is the one that accepts a web-service token.
+            var endpointIndex = builder.Path.LastIndexOf(pluginFileEndpoint, StringComparison.OrdinalIgnoreCase);
+            builder.Path = builder.Path.Insert(endpointIndex, "/webservice");
+        }
+
         var parts = builder.Query.TrimStart('?')
             .Split('&', StringSplitOptions.RemoveEmptyEntries)
             .Where(part => !Uri.UnescapeDataString(part.Split('=', 2)[0])
@@ -451,6 +466,21 @@ public sealed class MoodleClient : IDisposable
         parts.Add("token=" + Uri.EscapeDataString(_token));
         builder.Query = string.Join("&", parts);
         return builder.Uri;
+    }
+
+    private static bool HasPathEndpoint(string path, string endpoint)
+    {
+        var index = path.LastIndexOf(endpoint, StringComparison.OrdinalIgnoreCase);
+        return index >= 0 &&
+               (index + endpoint.Length == path.Length || path[index + endpoint.Length] == '/');
+    }
+
+    private bool IsWithinBasePath(Uri candidate)
+    {
+        var basePath = _baseUri.AbsolutePath.EndsWith("/", StringComparison.Ordinal)
+            ? _baseUri.AbsolutePath
+            : _baseUri.AbsolutePath + "/";
+        return candidate.AbsolutePath.StartsWith(basePath, StringComparison.OrdinalIgnoreCase);
     }
 
     private static bool SameOrigin(Uri candidate, Uri baseUri) =>
