@@ -323,6 +323,8 @@ public sealed class MoodleClient : IDisposable
     {
         if (!Uri.TryCreate(url, UriKind.Absolute, out var source) || !SameOrigin(source, _baseUri))
             throw new InvalidOperationException("Download bloccato: URL esterno all'istanza Moodle.");
+        if (!string.IsNullOrEmpty(source.UserInfo) || !string.IsNullOrEmpty(source.Fragment))
+            throw new InvalidOperationException("Download bloccato: URL con credenziali o frammento.");
         if (source.Scheme != _baseUri.Scheme)
             throw new InvalidOperationException("Download bloccato: schema non coerente con l'istanza Moodle.");
         if (!IsWithinBasePath(source))
