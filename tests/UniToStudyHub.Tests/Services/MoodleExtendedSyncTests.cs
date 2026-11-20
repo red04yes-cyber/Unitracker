@@ -137,7 +137,8 @@ public sealed class MoodleExtendedSyncTests
         var destination = Path.Combine(folder, "lecture.pdf");
         try
         {
-            await client.DownloadFileAsync("https://moodle.example.edu/pluginfile.php/1/mod_resource/content/lecture.pdf",
+            await client.DownloadFileAsync(
+                "https://moodle.example.edu/pluginfile.php/1/mod_resource/content/lecture.pdf?token=stale& wstoken=old&forcedownload=1",
                 destination, allowedDirectory: folder);
             Assert.Equal(payload, await File.ReadAllBytesAsync(destination));
             Assert.NotNull(requestedUri);
@@ -145,6 +146,11 @@ public sealed class MoodleExtendedSyncTests
                 "/webservice/pluginfile.php/1/mod_resource/content/lecture.pdf",
                 StringComparison.OrdinalIgnoreCase));
             Assert.Contains("token=" + Token, requestedUri.Query, StringComparison.Ordinal);
+            Assert.DoesNotContain("wstoken=", requestedUri.Query, StringComparison.OrdinalIgnoreCase);
+            Assert.Contains("forcedownload=1", requestedUri.Query, StringComparison.Ordinal);
+            Assert.Equal(1, requestedUri.Query.Split('&').Count(part =>
+                part.StartsWith("?token=", StringComparison.OrdinalIgnoreCase) ||
+                part.StartsWith("token=", StringComparison.OrdinalIgnoreCase)));
         }
         finally
         {
