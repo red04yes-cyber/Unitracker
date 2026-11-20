@@ -5,7 +5,7 @@
     <Application.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
-                <ui:ThemesDictionary Theme="Dark" />
+                <ui:ThemesDictionary Theme="Light" />
                 <ui:ControlsDictionary />
             </ResourceDictionary.MergedDictionaries>
 
@@ -13,52 +13,57 @@
                  PALETTE (le chiavi restano invariate: App.xaml.cs le sostituisce
                  a runtime in base al tema di sistema)
                  ============================================================ -->
-            <SolidColorBrush x:Key="NavyBrush" Color="#0A0912"/>
-            <SolidColorBrush x:Key="SidebarBrush" Color="#0B0A14"/>
-            <SolidColorBrush x:Key="SidebarMutedBrush" Color="#A59DC0"/>
-            <SolidColorBrush x:Key="SidebarDividerBrush" Color="#241F36"/>
-            <SolidColorBrush x:Key="InkBrush" Color="#F5F2FF"/>
-            <SolidColorBrush x:Key="MutedBrush" Color="#9A93B3"/>
-            <SolidColorBrush x:Key="AccentBrush" Color="#B79CFF"/>
-            <SolidColorBrush x:Key="AccentFillBrush" Color="#8B5CF6"/>
-            <SolidColorBrush x:Key="AccentSoftBrush" Color="#271D45"/>
-            <SolidColorBrush x:Key="PanelBrush" Color="#171423"/>
-            <SolidColorBrush x:Key="PageBrush" Color="#0E0C17"/>
-            <SolidColorBrush x:Key="BorderBrush" Color="#2B2540"/>
-            <SolidColorBrush x:Key="SubtleBrush" Color="#201B31"/>
-            <SolidColorBrush x:Key="SuccessBrush" Color="#5DD6A3"/>
-            <SolidColorBrush x:Key="SuccessSoftBrush" Color="#16302A"/>
-            <SolidColorBrush x:Key="WarningBrush" Color="#F2B866"/>
-            <SolidColorBrush x:Key="WarningSoftBrush" Color="#352A1D"/>
+            <!-- Fallback chiaro: il tema di sistema aggiorna questi token all'avvio. -->
+            <SolidColorBrush x:Key="NavyBrush" Color="#1B3154"/>
+            <SolidColorBrush x:Key="SidebarBrush" Color="#17243B"/>
+            <SolidColorBrush x:Key="SidebarMutedBrush" Color="#C0CDE0"/>
+            <SolidColorBrush x:Key="SidebarDividerBrush" Color="#50627D"/>
+            <SolidColorBrush x:Key="InkBrush" Color="#1B2434"/>
+            <SolidColorBrush x:Key="MutedBrush" Color="#52627A"/>
+            <SolidColorBrush x:Key="AccentBrush" Color="#3157D5"/>
+            <SolidColorBrush x:Key="AccentFillBrush" Color="#3157D5"/>
+            <SolidColorBrush x:Key="AccentSoftBrush" Color="#E9F0FF"/>
+            <SolidColorBrush x:Key="PanelBrush" Color="#FFFFFF"/>
+            <SolidColorBrush x:Key="PageBrush" Color="#F3F6FC"/>
+            <SolidColorBrush x:Key="BorderBrush" Color="#DAE2F0"/>
+            <SolidColorBrush x:Key="SubtleBrush" Color="#EDF2FA"/>
+            <SolidColorBrush x:Key="SuccessBrush" Color="#187A50"/>
+            <SolidColorBrush x:Key="SuccessSoftBrush" Color="#E7F5ED"/>
+            <SolidColorBrush x:Key="WarningBrush" Color="#9A5B10"/>
+            <SolidColorBrush x:Key="WarningSoftBrush" Color="#FFF3E1"/>
             <SolidColorBrush x:Key="AiBrush" Color="#C4A8FF"/>
             <SolidColorBrush x:Key="AiSoftBrush" Color="#2A2044"/>
 
             <!-- Elementi fissi, indipendenti dal tema -->
+            <!-- Glass soft: superfici quasi opache, senza blur sulla visual tree. -->
+            <SolidColorBrush x:Key="GlassSurfaceBrush" Color="#EBFFFFFF"/>
+            <SolidColorBrush x:Key="GlassSidebarBrush" Color="#D917243B"/>
+            <SolidColorBrush x:Key="GlassTopbarBrush" Color="#E6FFFFFF"/>
+            <SolidColorBrush x:Key="GlassBorderBrush" Color="#BFD5E0F0"/>
+            <SolidColorBrush x:Key="GlassHoverBrush" Color="#22FFFFFF"/>
+            <SolidColorBrush x:Key="FocusRingBrush" Color="#3157D5"/>
+
             <LinearGradientBrush x:Key="AccentGradientBrush" StartPoint="0,0" EndPoint="1,1">
-                <GradientStop Color="#9B6BFF" Offset="0"/>
-                <GradientStop Color="#7C4DEB" Offset="1"/>
+                <GradientStop Color="#3157D5" Offset="0"/>
+                <GradientStop Color="#2448B8" Offset="1"/>
             </LinearGradientBrush>
             <LinearGradientBrush x:Key="SidebarGradientBrush" StartPoint="0,0" EndPoint="0,1">
-                <GradientStop Color="#120F20" Offset="0"/>
-                <GradientStop Color="#0A0912" Offset="0.55"/>
-                <GradientStop Color="#0A0912" Offset="1"/>
+                <GradientStop Color="#243A5C" Offset="0"/>
+                <GradientStop Color="#17243B" Offset="1"/>
             </LinearGradientBrush>
             <LinearGradientBrush x:Key="ProgressGradientBrush" StartPoint="0,0" EndPoint="1,0">
-                <GradientStop Color="#7C4DEB" Offset="0"/>
-                <GradientStop Color="#C4A8FF" Offset="1"/>
+                <GradientStop Color="#3157D5" Offset="0"/>
+                <GradientStop Color="#7894EA" Offset="1"/>
             </LinearGradientBrush>
-            <SolidColorBrush x:Key="GlassBorderBrush" Color="#1FFFFFFF"/>
-            <SolidColorBrush x:Key="GlassHoverBrush" Color="#14FFFFFF"/>
-            <SolidColorBrush x:Key="FocusRingBrush" Color="#8B5CF6"/>
 
             <!-- Segmented controls: blue selection stays independent from the AI accent. -->
-            <SolidColorBrush x:Key="SegmentedTrackBrush" Color="#171E2B"/>
-            <SolidColorBrush x:Key="SegmentedSelectedBrush" Color="#202D43"/>
-            <SolidColorBrush x:Key="SegmentedSelectedBorderBrush" Color="#344B70"/>
-            <SolidColorBrush x:Key="SegmentedAccentBrush" Color="#91B2FF"/>
-            <SolidColorBrush x:Key="SegmentedMutedBrush" Color="#A6B2C4"/>
-            <SolidColorBrush x:Key="SegmentedHoverBrush" Color="#252F40"/>
-            <SolidColorBrush x:Key="SegmentedBorderBrush" Color="#303B4E"/>
+            <SolidColorBrush x:Key="SegmentedTrackBrush" Color="#EAF0F7"/>
+            <SolidColorBrush x:Key="SegmentedSelectedBrush" Color="#FFFFFF"/>
+            <SolidColorBrush x:Key="SegmentedSelectedBorderBrush" Color="#D8E3F8"/>
+            <SolidColorBrush x:Key="SegmentedAccentBrush" Color="#3157D5"/>
+            <SolidColorBrush x:Key="SegmentedMutedBrush" Color="#718096"/>
+            <SolidColorBrush x:Key="SegmentedHoverBrush" Color="#E2EAF5"/>
+            <SolidColorBrush x:Key="SegmentedBorderBrush" Color="#DCE4EF"/>
 
             <CornerRadius x:Key="RadiusSm">8</CornerRadius>
             <CornerRadius x:Key="RadiusMd">10</CornerRadius>
@@ -71,11 +76,11 @@
             <QuinticEase x:Key="EaseOutStrong" EasingMode="EaseOut"/>
 
             <DropShadowEffect x:Key="SoftShadow" BlurRadius="24" ShadowDepth="6" Direction="270"
-                              Color="#000000" Opacity="0.35"/>
+                              Color="#000000" Opacity="0.25"/>
             <DropShadowEffect x:Key="SegmentedSelectedShadow" BlurRadius="7" ShadowDepth="1"
                               Direction="270" Color="#101828" Opacity="0.10"/>
-            <DropShadowEffect x:Key="AccentGlow" BlurRadius="22" ShadowDepth="0"
-                              Color="#8B5CF6" Opacity="0.55"/>
+            <DropShadowEffect x:Key="GlassShadow" BlurRadius="16" ShadowDepth="2" Direction="270"
+                              Color="#21324F" Opacity="0.10"/>
 
             <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
 
@@ -319,11 +324,12 @@
                  CARD
                  ============================================================ -->
             <Style x:Key="CardBorderStyle" TargetType="{x:Type Border}">
-                <Setter Property="Background" Value="{DynamicResource PanelBrush}"/>
-                <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
+                <Setter Property="Background" Value="{DynamicResource GlassSurfaceBrush}"/>
+                <Setter Property="BorderBrush" Value="{DynamicResource GlassBorderBrush}"/>
                 <Setter Property="BorderThickness" Value="1"/>
                 <Setter Property="CornerRadius" Value="16"/>
                 <Setter Property="Padding" Value="20"/>
+                <Setter Property="Effect" Value="{StaticResource GlassShadow}"/>
             </Style>
 
             <!-- Ingresso morbido + sollevamento sottile all'hover (niente zoom invasivo) -->

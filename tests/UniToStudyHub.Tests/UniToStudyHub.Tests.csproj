@@ -41,6 +41,12 @@
     <EmbeddedResource Include="../../src/UniToStudyHub/MainWindow.xaml.cs">
       <LogicalName>UniToStudyHub.Tests.Presentation.MainWindow.xaml.cs</LogicalName>
     </EmbeddedResource>
+    <EmbeddedResource Include="../../src/UniToStudyHub/App.xaml.cs">
+      <LogicalName>UniToStudyHub.Tests.Presentation.App.xaml.cs</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="../../src/UniToStudyHub/Presentation/Controls/CollapsibleSection.xaml">
+      <LogicalName>UniToStudyHub.Tests.Presentation.CollapsibleSection.xaml</LogicalName>
+    </EmbeddedResource>
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite.Core" Version="10.0.14" />
