@@ -11,12 +11,11 @@ namespace UniToStudyHub.Services;
 /// Minimal Moodle Web Services client for an instance the user is authorised to
 /// use.
 ///
-/// Requests are POSTed (the token travels in the form body, not the URL),
-/// redirects are never followed, the base URL is validated against
-/// <see cref="OutboundEndpointPolicy"/> and responses are size-bounded. File
-/// downloads are restricted to the same origin, written atomically and refused
-/// when the server answers with an HTML page instead of the requested file.
-/// No method logs the token or the tokenised URL.
+/// Web-service function requests are POSTed (the token travels in the form body).
+/// Moodle file downloads use the dedicated /webservice/pluginfile.php endpoint,
+/// which requires a token query parameter. The client restricts that exception
+/// to the configured same-origin base path, never follows redirects and never
+/// logs the tokenised URL. Responses are bounded and files are written atomically.
 /// </summary>
 public sealed class MoodleClient : IDisposable
 {
@@ -324,8 +323,12 @@ public sealed class MoodleClient : IDisposable
     {
         if (!Uri.TryCreate(url, UriKind.Absolute, out var source) || !SameOrigin(source, _baseUri))
             throw new InvalidOperationException("Download bloccato: URL esterno all'istanza Moodle.");
+        if (!string.IsNullOrEmpty(source.UserInfo) || !string.IsNullOrEmpty(source.Fragment))
+            throw new InvalidOperationException("Download bloccato: URL con credenziali o frammento.");
         if (source.Scheme != _baseUri.Scheme)
             throw new InvalidOperationException("Download bloccato: schema non coerente con l'istanza Moodle.");
+        if (!IsWithinBasePath(source))
+            throw new InvalidOperationException("Download bloccato: URL fuori dal percorso Moodle configurato.");
 
         var destination = Path.GetFullPath(path);
         if (!string.IsNullOrWhiteSpace(allowedDirectory) &&
@@ -443,14 +446,46 @@ public sealed class MoodleClient : IDisposable
     private Uri WithToken(Uri source)
     {
         var builder = new UriBuilder(source);
+        var basePath = _baseUri.AbsolutePath.EndsWith("/", StringComparison.Ordinal)
+            ? _baseUri.AbsolutePath
+            : _baseUri.AbsolutePath + "/";
+        var webServiceEndpoint = basePath + "webservice/pluginfile.php";
+        if (!HasPathEndpoint(builder.Path, webServiceEndpoint))
+        {
+            var pluginFileEndpoint = basePath + "pluginfile.php";
+            if (!HasPathEndpoint(builder.Path, pluginFileEndpoint))
+                throw new InvalidOperationException("Download bloccato: endpoint file Moodle non valido.");
+
+            // Moodle's course-content API can return pluginfile.php URLs. Web
+            // service clients must fetch the same file through this dedicated
+            // endpoint, which is the one that accepts a web-service token.
+            builder.Path = webServiceEndpoint + builder.Path[pluginFileEndpoint.Length..];
+        }
+
         var parts = builder.Query.TrimStart('?')
             .Split('&', StringSplitOptions.RemoveEmptyEntries)
-            .Where(part => !Uri.UnescapeDataString(part.Split('=', 2)[0])
-                .Equals("token", StringComparison.OrdinalIgnoreCase))
+            .Where(part =>
+            {
+                var key = Uri.UnescapeDataString(part.Split('=', 2)[0]);
+                return !key.Equals("token", StringComparison.OrdinalIgnoreCase) &&
+                       !key.Equals("wstoken", StringComparison.OrdinalIgnoreCase);
+            })
             .ToList();
         parts.Add("token=" + Uri.EscapeDataString(_token));
         builder.Query = string.Join("&", parts);
         return builder.Uri;
+    }
+
+    private static bool HasPathEndpoint(string path, string endpoint) =>
+        path.StartsWith(endpoint, StringComparison.OrdinalIgnoreCase) &&
+        (path.Length == endpoint.Length || path[endpoint.Length] == '/');
+
+    private bool IsWithinBasePath(Uri candidate)
+    {
+        var basePath = _baseUri.AbsolutePath.EndsWith("/", StringComparison.Ordinal)
+            ? _baseUri.AbsolutePath
+            : _baseUri.AbsolutePath + "/";
+        return candidate.AbsolutePath.StartsWith(basePath, StringComparison.OrdinalIgnoreCase);
     }
 
     private static bool SameOrigin(Uri candidate, Uri baseUri) =>

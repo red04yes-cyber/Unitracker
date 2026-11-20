@@ -71,7 +71,7 @@ Se in futuro venisse trovata una credenziale reale:
 
 ## Verificato senza modifiche
 
-- Il token Moodle viaggia nel corpo POST, mai in URL o query string.
+- Per le chiamate alle funzioni Web Service il token Moodle viaggia nel corpo POST, non nell'URL. I download file sono un'eccezione richiesta dal protocollo: il client riscrive gli URL `pluginfile.php` sull'endpoint dedicato `/webservice/pluginfile.php` e aggiunge il token in query solo dopo i controlli same-origin e base-path, senza redirect e senza log dell'URL tokenizzato. Vedi la [documentazione ufficiale Moodle](https://moodledev.io/docs/5.2/apis/subsystems/external/files).
 - Nessun contenuto scaricato viene eseguito: nel codice applicativo non ci sono
   `Process.Start`, `Assembly.Load`, hook di tastiera o enumerazione di finestre.
 - Gli export JSON/CSV/XLSX già neutralizzavano HTML e formule; ora è coperto da
