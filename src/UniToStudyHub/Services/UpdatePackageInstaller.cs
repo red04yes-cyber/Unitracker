@@ -129,18 +129,19 @@ try {{
   try {{ $p = Get-Process -Id {processId} -ErrorAction Stop; $p.WaitForExit() }} catch {{ }}
   if (-not (Test-Path -LiteralPath (Join-Path $payload 'UniToStudyHub.exe'))) {{ throw 'Pacchetto incompleto.' }}
   if (Test-Path -LiteralPath $backup) {{ Remove-Item -LiteralPath $backup -Recurse -Force }}
-  Copy-Item -LiteralPath $target -Destination $backup -Recurse -Force
-  Get-ChildItem -LiteralPath $target -Force | Remove-Item -Recurse -Force
+  New-Item -ItemType Directory -Path $backup -Force | Out-Null
+  Get-ChildItem -LiteralPath $target -Force | Copy-Item -Destination $backup -Recurse -Force
   Copy-Item -Path (Join-Path $payload '*') -Destination $target -Recurse -Force
   if (-not (Test-Path -LiteralPath (Join-Path $target 'UniToStudyHub.exe'))) {{ throw 'Installazione incompleta.' }}
-  Start-Process -FilePath (Join-Path $target 'UniToStudyHub.exe')
-  Start-Sleep -Seconds 3
+  $newProcess = Start-Process -FilePath (Join-Path $target 'UniToStudyHub.exe') -PassThru
+  Start-Sleep -Seconds 4
+  if ($newProcess.HasExited) {{ throw 'La nuova versione non è rimasta in esecuzione.' }}
   Remove-Item -LiteralPath $backup -Recurse -Force -ErrorAction SilentlyContinue
   Remove-Item -LiteralPath $tempRoot -Recurse -Force -ErrorAction SilentlyContinue
 }} catch {{
   try {{
     if (Test-Path -LiteralPath $target) {{ Get-ChildItem -LiteralPath $target -Force | Remove-Item -Recurse -Force }}
-    if (Test-Path -LiteralPath $backup) {{ Copy-Item -Path (Join-Path $backup '*') -Destination $target -Recurse -Force }}
+    if (Test-Path -LiteralPath $backup) {{ Get-ChildItem -LiteralPath $backup -Force | Copy-Item -Destination $target -Recurse -Force }}
     Add-Type -AssemblyName PresentationFramework
     [System.Windows.MessageBox]::Show('Aggiornamento non completato. La versione precedente è stata ripristinata. ' + $_.Exception.Message, 'UniToStudyHub', 'OK', 'Error') | Out-Null
   }} catch {{ }}
