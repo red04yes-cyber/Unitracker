@@ -241,16 +241,90 @@ public sealed class ActivityAndMissionTests
     }
 
     [Fact]
-    public void DstDayUsesItsRealLength()
+    public void DstDayUsesItsRealLengthAndSkipsTheMissingLocalHour()
     {
         var data = Data();
         var ledger = new ActivityLedgerService();
         var day = new DateOnly(2026, 3, 29);
+        var zone = TimeZoneInfo.FindSystemTimeZoneById("Europe/Rome");
         var timeline = ledger.BuildTimeline(data, day, 60,
-            new DateTimeOffset(2026, 3, 29, 12, 0, 0, TimeSpan.FromHours(2)), "Europe/Rome");
+            new DateTimeOffset(2026, 3, 29, 12, 0, 0, TimeSpan.FromHours(2)), zone.Id);
+        var localStarts = timeline.Slots
+            .Select(slot => TimeZoneInfo.ConvertTime(slot.StartsAt, zone))
+            .ToList();
 
         Assert.Equal(23 * 3600, timeline.TotalSeconds);
         Assert.Equal(23, timeline.Slots.Count);
+        Assert.DoesNotContain(localStarts, value => value.Hour == 2);
+        Assert.Equal(3, localStarts[2].Hour);
+        Assert.Equal(TimeSpan.FromHours(2), localStarts[2].Offset);
+    }
+
+    [Fact]
+    public void DstHeatmapLeavesTheMissingHourEmptyAndKeepsLaterHoursAligned()
+    {
+        var data = Data();
+        var ledger = new ActivityLedgerService();
+        ledger.AddManual(data, new StudyActivityData
+        {
+            Type = StudyActivityType.Study,
+            Title = "Studio durante il cambio ora",
+            StartedAt = new DateTimeOffset(2026, 3, 29, 0, 0, 0, TimeSpan.Zero),
+            EndedAt = new DateTimeOffset(2026, 3, 29, 2, 0, 0, TimeSpan.Zero),
+            TimeZoneId = "Europe/Rome"
+        }, new DateTimeOffset(2026, 3, 29, 4, 0, 0, TimeSpan.FromHours(2)));
+
+        var heatmap = ledger.BuildHeatmap(data, new DateOnly(2026, 3, 29), new DateOnly(2026, 3, 29),
+            new DateTimeOffset(2026, 3, 29, 6, 0, 0, TimeSpan.FromHours(2)), "Europe/Rome");
+
+        Assert.Equal(24, heatmap.Cells.Count);
+        Assert.Equal(3600, heatmap.Cells.Single(x => x.Hour == 1).RecordedSeconds);
+        Assert.Equal(0, heatmap.Cells.Single(x => x.Hour == 2).RecordedSeconds);
+        Assert.Equal(3600, heatmap.Cells.Single(x => x.Hour == 3).RecordedSeconds);
+        Assert.Equal(7200, heatmap.Cells.Sum(x => x.RecordedSeconds));
+    }
+
+    [Fact]
+    public void FallBackTimelineIncludesBothOccurrencesOfTheRepeatedHour()
+    {
+        var data = Data();
+        var ledger = new ActivityLedgerService();
+        var day = new DateOnly(2026, 10, 25);
+        var zone = TimeZoneInfo.FindSystemTimeZoneById("Europe/Rome");
+        var timeline = ledger.BuildTimeline(data, day, 60,
+            new DateTimeOffset(2026, 10, 25, 12, 0, 0, TimeSpan.FromHours(1)), zone.Id);
+        var repeatedHours = timeline.Slots
+            .Select(slot => TimeZoneInfo.ConvertTime(slot.StartsAt, zone))
+            .Where(value => value.Hour == 2)
+            .ToList();
+
+        Assert.Equal(25 * 3600, timeline.TotalSeconds);
+        Assert.Equal(25, timeline.Slots.Count);
+        Assert.Equal(2, repeatedHours.Count);
+        Assert.Equal(TimeSpan.FromHours(2), repeatedHours[0].Offset);
+        Assert.Equal(TimeSpan.FromHours(1), repeatedHours[1].Offset);
+    }
+
+    [Fact]
+    public void FallBackHeatmapCombinesBothOccurrencesIntoTheSameLocalHour()
+    {
+        var data = Data();
+        var ledger = new ActivityLedgerService();
+        ledger.AddManual(data, new StudyActivityData
+        {
+            Type = StudyActivityType.Study,
+            Title = "Studio durante l'ora ripetuta",
+            StartedAt = new DateTimeOffset(2026, 10, 25, 0, 0, 0, TimeSpan.Zero),
+            EndedAt = new DateTimeOffset(2026, 10, 25, 2, 0, 0, TimeSpan.Zero),
+            TimeZoneId = "Europe/Rome"
+        }, new DateTimeOffset(2026, 10, 25, 4, 0, 0, TimeSpan.FromHours(1)));
+
+        var heatmap = ledger.BuildHeatmap(data, new DateOnly(2026, 10, 25), new DateOnly(2026, 10, 25),
+            new DateTimeOffset(2026, 10, 25, 6, 0, 0, TimeSpan.FromHours(1)), "Europe/Rome");
+
+        Assert.Equal(24, heatmap.Cells.Count);
+        Assert.Equal(7200, heatmap.Cells.Single(x => x.Hour == 2).RecordedSeconds);
+        Assert.Equal(7200, heatmap.Cells.Sum(x => x.RecordedSeconds));
     }
 
     [Fact]
