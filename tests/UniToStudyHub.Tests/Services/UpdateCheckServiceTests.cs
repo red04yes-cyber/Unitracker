@@ -55,6 +55,28 @@ public sealed class UpdateCheckServiceTests
     }
 
     [Fact]
+    public async Task IgnoresJsonThatIsNotAReleaseObject()
+    {
+        using var client = CreateClient("[]");
+
+        var update = await new UpdateCheckService(client)
+            .CheckForUpdateAsync(new Version(0, 2, 0));
+
+        Assert.Null(update);
+    }
+
+    [Fact]
+    public async Task TreatsServerErrorsAsNoUpdate()
+    {
+        using var client = new HttpClient(new StubHandler(HttpStatusCode.ServiceUnavailable, string.Empty));
+
+        var update = await new UpdateCheckService(client)
+            .CheckForUpdateAsync(new Version(0, 2, 0));
+
+        Assert.Null(update);
+    }
+
+    [Fact]
     public async Task TreatsMissingReleaseAsNoUpdate()
     {
         using var client = new HttpClient(new StubHandler(HttpStatusCode.NotFound, string.Empty));
