@@ -11,10 +11,13 @@ Il controllo:
 - usa la versione dell'assembly installato e confronta tag stabili `vMAJOR.MINOR.PATCH`;
 - ignora release draft, prerelease, tag non validi e risposte oltre 256 KiB;
 - usa timeout breve e fallisce in modo silenzioso se la rete o GitHub non sono disponibili;
-- mostra una notifica solo quando esiste una versione più recente;
-- apre esclusivamente la pagina HTTPS della release ufficiale GitHub dopo conferma dell'utente.
+- mostra una finestra con i pulsanti **Installa ora** e **Più tardi**;
+- con **Installa ora**, scarica la ZIP ufficiale e il checksum SHA-256, verifica il digest e controlla i percorsi contenuti nell'archivio;
+- avvia un processo separato, attende la chiusura dell'app, sostituisce i file nella cartella corrente e riavvia l'eseguibile;
+- conserva una copia temporanea della versione precedente e tenta il ripristino se la sostituzione fallisce;
+- costruisce gli URL degli asset usando il tag validato e l'origine HTTPS GitHub fissata nel codice.
 
-Non installa né sovrascrive file automaticamente. Il pacchetto attuale è portabile: l'utente scarica la nuova ZIP, la estrae in una nuova cartella e avvia il nuovo eseguibile. I dati utente restano in `%LOCALAPPDATA%\UniToStudyHub`.
+L'aggiornamento sostituisce soltanto i binari nella cartella dell'applicazione. I dati utente restano in `%LOCALAPPDATA%\\UniToStudyHub` e non fanno parte del pacchetto. Windows può mostrare una richiesta UAC per autorizzare la sostituzione. Se il download, la verifica o l'installazione falliscono, l'app mostra un errore e il processo di aggiornamento tenta il rollback.
 
 ## Pubblicazione
 
