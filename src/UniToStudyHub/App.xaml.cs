@@ -213,7 +213,8 @@ public partial class App : System.Windows.Application
     private async Task RunUpdateChecksAsync(CancellationToken cancellationToken)
     {
         var checker = _serviceProvider?.GetService<UpdateCheckService>();
-        if (checker is null)
+        var installer = _serviceProvider?.GetService<UpdatePackageInstaller>();
+        if (checker is null || installer is null)
             return;
 
         var currentVersion = typeof(App).Assembly.GetName().Version ?? new Version(0, 0);
@@ -232,17 +233,34 @@ public partial class App : System.Windows.Application
                     if (update is not null && update.TagName != promptedTag && MainWindow is not null)
                     {
                         promptedTag = update.TagName;
-                        var choice = MessageBox.Show(
-                            MainWindow,
-                            $"È disponibile UniToStudyHub {update.Version}.\n\nVuoi aprire la pagina ufficiale per leggere le novità e scaricare l'aggiornamento?\n\nI tuoi dati locali non verranno modificati.",
-                            "Aggiornamento disponibile",
-                            MessageBoxButton.YesNo,
-                            MessageBoxImage.Information);
-
-                        if (choice == MessageBoxResult.Yes)
+                        if (ShowUpdateDialog(update))
                         {
-                            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(
-                                update.ReleaseUri.AbsoluteUri) { UseShellExecute = true });
+                            try
+                            {
+                                using var installTimeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                                installTimeout.CancelAfter(TimeSpan.FromMinutes(5));
+                                await installer.StageAndLaunchAsync(
+                                    update,
+                                    Environment.ProcessId,
+                                    AppContext.BaseDirectory,
+                                    installTimeout.Token);
+                                Shutdown();
+                                return;
+                            }
+                            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                            {
+                                break;
+                            }
+                            catch (Exception ex)
+                            {
+                                AppDiagnostics.Error("updates", "Automatic update could not be installed.", ex);
+                                MessageBox.Show(
+                                    MainWindow,
+                                    $"Non è stato possibile installare l'aggiornamento. La versione attuale è rimasta installata.\\n\\n{ex.Message}",
+                                    "Aggiornamento non riuscito",
+                                    MessageBoxButton.OK,
+                                    MessageBoxImage.Warning);
+                            }
                         }
                     }
                 }
@@ -256,8 +274,6 @@ public partial class App : System.Windows.Application
                 }
                 catch (Exception ex)
                 {
-                    // Update discovery is optional and must never prevent study work.
-                    // Log only the exception type; never include remote response content.
                     AppDiagnostics.Info("updates", $"Update check unavailable ({ex.GetType().Name}).");
                 }
             }
@@ -267,6 +283,66 @@ public partial class App : System.Windows.Application
         {
             // Normal application shutdown.
         }
+    }
+
+    private bool ShowUpdateDialog(AvailableAppUpdate update)
+    {
+        var dialog = new Window
+        {
+            Title = "Aggiornamento disponibile",
+            Owner = MainWindow,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+            SizeToContent = SizeToContent.WidthAndHeight,
+            ResizeMode = ResizeMode.NoResize,
+            ShowInTaskbar = false,
+            WindowStyle = WindowStyle.ToolWindow
+        };
+
+        var panel = new System.Windows.Controls.StackPanel { Margin = new Thickness(24), Width = 390 };
+        panel.Children.Add(new System.Windows.Controls.TextBlock
+        {
+            Text = $"È disponibile UniToStudyHub {update.Version}",
+            FontSize = 18,
+            FontWeight = FontWeights.SemiBold,
+            TextWrapping = TextWrapping.Wrap,
+            Margin = new Thickness(0, 0, 0, 10)
+        });
+        panel.Children.Add(new System.Windows.Controls.TextBlock
+        {
+            Text = "Installa subito la nuova versione. L'app verrà chiusa e riavviata automaticamente. I tuoi dati personali resteranno sul dispositivo e non verranno sostituiti.",
+            TextWrapping = TextWrapping.Wrap,
+            Margin = new Thickness(0, 0, 0, 20)
+        });
+
+        var buttons = new System.Windows.Controls.StackPanel
+        {
+            Orientation = System.Windows.Controls.Orientation.Horizontal,
+            HorizontalAlignment = HorizontalAlignment.Right
+        };
+        var later = new System.Windows.Controls.Button
+        {
+            Content = "Più tardi",
+            MinWidth = 100,
+            Padding = new Thickness(12, 7, 12, 7),
+            Margin = new Thickness(0, 0, 8, 0),
+            IsCancel = true
+        };
+        var install = new System.Windows.Controls.Button
+        {
+            Content = "Installa ora",
+            MinWidth = 120,
+            Padding = new Thickness(12, 7, 12, 7),
+            IsDefault = true
+        };
+        var installNow = false;
+        later.Click += (_, _) => dialog.Close();
+        install.Click += (_, _) => { installNow = true; dialog.Close(); };
+        buttons.Children.Add(later);
+        buttons.Children.Add(install);
+        panel.Children.Add(buttons);
+        dialog.Content = panel;
+        dialog.ShowDialog();
+        return installNow;
     }
 
     protected override void OnExit(ExitEventArgs e)
