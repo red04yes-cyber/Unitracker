@@ -232,6 +232,29 @@ public sealed class MoodleExtendedSyncTests
         }
     }
 
+    [Theory]
+    [InlineData("https://user:pass@moodle.example.edu/moodle/pluginfile.php/1/lecture.pdf")]
+    [InlineData("https://moodle.example.edu/moodle/pluginfile.php/1/lecture.pdf#secret")]
+    public async Task FileDownloadRejectsCredentialsAndFragmentsBeforeSendingARequest(string url)
+    {
+        var requests = 0;
+        using var client = new MoodleClient("https://moodle.example.edu/moodle", Token,
+            new StubHandler(_ => { requests++; return new HttpResponseMessage(HttpStatusCode.OK); }));
+        var folder = Path.Combine(Path.GetTempPath(), "UnitrackerMoodleTests", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(folder);
+        try
+        {
+            await Assert.ThrowsAsync<InvalidOperationException>(() =>
+                client.DownloadFileAsync(url, Path.Combine(folder, "lecture.pdf"), allowedDirectory: folder));
+            Assert.Equal(0, requests);
+            Assert.Empty(Directory.EnumerateFiles(folder));
+        }
+        finally
+        {
+            try { Directory.Delete(folder, recursive: true); } catch (IOException) { }
+        }
+    }
+
     private static HttpResponseMessage Json(string value) => new(HttpStatusCode.OK)
     {
         Content = new StringContent(value, Encoding.UTF8, "application/json")
