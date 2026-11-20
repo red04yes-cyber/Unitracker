@@ -446,18 +446,20 @@ public sealed class MoodleClient : IDisposable
     private Uri WithToken(Uri source)
     {
         var builder = new UriBuilder(source);
-        const string webServiceEndpoint = "/webservice/pluginfile.php";
+        var basePath = _baseUri.AbsolutePath.EndsWith("/", StringComparison.Ordinal)
+            ? _baseUri.AbsolutePath
+            : _baseUri.AbsolutePath + "/";
+        var webServiceEndpoint = basePath + "webservice/pluginfile.php";
         if (!HasPathEndpoint(builder.Path, webServiceEndpoint))
         {
-            const string pluginFileEndpoint = "/pluginfile.php";
+            var pluginFileEndpoint = basePath + "pluginfile.php";
             if (!HasPathEndpoint(builder.Path, pluginFileEndpoint))
                 throw new InvalidOperationException("Download bloccato: endpoint file Moodle non valido.");
 
             // Moodle's course-content API can return pluginfile.php URLs. Web
             // service clients must fetch the same file through this dedicated
             // endpoint, which is the one that accepts a web-service token.
-            var endpointIndex = builder.Path.LastIndexOf(pluginFileEndpoint, StringComparison.OrdinalIgnoreCase);
-            builder.Path = builder.Path.Insert(endpointIndex, "/webservice");
+            builder.Path = webServiceEndpoint + builder.Path[pluginFileEndpoint.Length..];
         }
 
         var parts = builder.Query.TrimStart('?')
@@ -470,12 +472,9 @@ public sealed class MoodleClient : IDisposable
         return builder.Uri;
     }
 
-    private static bool HasPathEndpoint(string path, string endpoint)
-    {
-        var index = path.LastIndexOf(endpoint, StringComparison.OrdinalIgnoreCase);
-        return index >= 0 &&
-               (index + endpoint.Length == path.Length || path[index + endpoint.Length] == '/');
-    }
+    private static bool HasPathEndpoint(string path, string endpoint) =>
+        path.StartsWith(endpoint, StringComparison.OrdinalIgnoreCase) &&
+        (path.Length == endpoint.Length || path[endpoint.Length] == '/');
 
     private bool IsWithinBasePath(Uri candidate)
     {
