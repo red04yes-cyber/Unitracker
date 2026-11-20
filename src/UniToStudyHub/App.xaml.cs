@@ -16,6 +16,7 @@ namespace UniToStudyHub;
 public partial class App : System.Windows.Application
 {
     private ServiceProvider? _serviceProvider;
+    private CancellationTokenSource? _updateCheckCancellation;
 
     private static readonly IReadOnlyDictionary<string, string> LightPalette =
         new Dictionary<string, string>(StringComparer.Ordinal)
@@ -181,6 +182,8 @@ public partial class App : System.Windows.Application
             var window = _serviceProvider.GetRequiredService<MainWindow>();
             MainWindow = window;
             window.Show();
+            _updateCheckCancellation = new CancellationTokenSource();
+            _ = RunUpdateChecksAsync(_updateCheckCancellation.Token);
             AppDiagnostics.Info("startup", "Main window shown successfully.");
         }
         catch (Exception ex)
@@ -206,8 +209,70 @@ public partial class App : System.Windows.Application
         }
     }
 
+
+    private async Task RunUpdateChecksAsync(CancellationToken cancellationToken)
+    {
+        var checker = _serviceProvider?.GetService<UpdateCheckService>();
+        if (checker is null)
+            return;
+
+        var currentVersion = typeof(App).Assembly.GetName().Version ?? new Version(0, 0);
+        var promptedTag = string.Empty;
+
+        try
+        {
+            using var timer = new PeriodicTimer(TimeSpan.FromHours(24));
+            do
+            {
+                try
+                {
+                    using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                    timeout.CancelAfter(TimeSpan.FromSeconds(8));
+                    var update = await checker.CheckForUpdateAsync(currentVersion, timeout.Token);
+                    if (update is not null && update.TagName != promptedTag && MainWindow is not null)
+                    {
+                        promptedTag = update.TagName;
+                        var choice = MessageBox.Show(
+                            MainWindow,
+                            $"È disponibile UniToStudyHub {update.Version}.\\n\\nVuoi aprire la pagina ufficiale per leggere le novità e scaricare l'aggiornamento?\\n\\nI tuoi dati locali non verranno modificati.",
+                            "Aggiornamento disponibile",
+                            MessageBoxButton.YesNo,
+                            MessageBoxImage.Information);
+
+                        if (choice == MessageBoxResult.Yes)
+                        {
+                            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(
+                                update.ReleaseUri.AbsoluteUri) { UseShellExecute = true });
+                        }
+                    }
+                }
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                {
+                    break;
+                }
+                catch (OperationCanceledException)
+                {
+                    AppDiagnostics.Info("updates", "Update check timed out; application continues normally.");
+                }
+                catch (Exception ex)
+                {
+                    // Update discovery is optional and must never prevent study work.
+                    // Log only the exception type; never include remote response content.
+                    AppDiagnostics.Info("updates", $"Update check unavailable ({ex.GetType().Name}).");
+                }
+            }
+            while (await timer.WaitForNextTickAsync(cancellationToken));
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            // Normal application shutdown.
+        }
+    }
+
     protected override void OnExit(ExitEventArgs e)
     {
+        _updateCheckCancellation?.Cancel();
+        _updateCheckCancellation?.Dispose();
         _serviceProvider?.Dispose();
         base.OnExit(e);
     }
