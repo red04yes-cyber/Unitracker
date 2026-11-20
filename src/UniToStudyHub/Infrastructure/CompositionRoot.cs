@@ -47,6 +47,7 @@ public static class CompositionRoot
         services.AddSingleton<NotificationCenterService>();
         services.AddSingleton<HttpClient>(_ => new HttpClient { Timeout = TimeSpan.FromSeconds(8) });
         services.AddSingleton<UpdateCheckService>();
+        services.AddSingleton<UpdatePackageInstaller>();
         services.AddSingleton<StudyDataExportService>();
         services.AddSingleton<StudyPlannerService>();
         services.AddSingleton<StudyMissionService>();
