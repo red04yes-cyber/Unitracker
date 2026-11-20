@@ -496,7 +496,7 @@ public sealed class ActivityLedgerService
             slots);
     }
 
-        public ActivityHeatmap BuildHeatmap(
+    public ActivityHeatmap BuildHeatmap(
         StudyData data,
         DateOnly from,
         DateOnly to,
@@ -548,7 +548,7 @@ public sealed class ActivityLedgerService
         return new ActivityHeatmap(from, to, cells);
     }
 
-        public ActivitySummary Summarize(
+    public ActivitySummary Summarize(
         StudyData data,
         DateOnly from,
         DateOnly to,
@@ -830,7 +830,6 @@ public sealed class ActivityLedgerService
         }
         return total;
     }
-
 
     private static IReadOnlyList<(int Hour, DateTimeOffset Start, DateTimeOffset End)> BuildLocalHourSegments(
         DateTimeOffset dayStart,
