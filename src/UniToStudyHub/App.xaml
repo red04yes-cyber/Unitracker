@@ -31,8 +31,8 @@
             <SolidColorBrush x:Key="SuccessSoftBrush" Color="#E7F5ED"/>
             <SolidColorBrush x:Key="WarningBrush" Color="#9A5B10"/>
             <SolidColorBrush x:Key="WarningSoftBrush" Color="#FFF3E1"/>
-            <SolidColorBrush x:Key="AiBrush" Color="#6B52C8"/>
-            <SolidColorBrush x:Key="AiSoftBrush" Color="#F0ECFF"/>
+            <SolidColorBrush x:Key="AiBrush" Color="#C4A8FF"/>
+            <SolidColorBrush x:Key="AiSoftBrush" Color="#2A2044"/>
 
             <!-- Elementi fissi, indipendenti dal tema -->
             <!-- Glass soft: superfici quasi opache, senza blur sulla visual tree. -->
