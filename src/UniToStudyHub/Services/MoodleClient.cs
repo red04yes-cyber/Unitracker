@@ -464,8 +464,12 @@ public sealed class MoodleClient : IDisposable
 
         var parts = builder.Query.TrimStart('?')
             .Split('&', StringSplitOptions.RemoveEmptyEntries)
-            .Where(part => !Uri.UnescapeDataString(part.Split('=', 2)[0])
-                .Equals("token", StringComparison.OrdinalIgnoreCase))
+            .Where(part =>
+            {
+                var key = Uri.UnescapeDataString(part.Split('=', 2)[0]);
+                return !key.Equals("token", StringComparison.OrdinalIgnoreCase) &&
+                       !key.Equals("wstoken", StringComparison.OrdinalIgnoreCase);
+            })
             .ToList();
         parts.Add("token=" + Uri.EscapeDataString(_token));
         builder.Query = string.Join("&", parts);
