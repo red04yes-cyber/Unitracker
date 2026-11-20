@@ -55,6 +55,8 @@ public sealed class UpdateCheckService(HttpClient httpClient)
 
         using var document = JsonDocument.Parse(buffer.ToArray(), new JsonDocumentOptions { MaxDepth = 8 });
         var root = document.RootElement;
+        if (root.ValueKind != JsonValueKind.Object)
+            return null;
 
         if (!TryGetString(root, "tag_name", out var tag) ||
             tag.Length is < 2 or > 64 ||
