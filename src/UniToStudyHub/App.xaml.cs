@@ -234,7 +234,7 @@ public partial class App : System.Windows.Application
                         promptedTag = update.TagName;
                         var choice = MessageBox.Show(
                             MainWindow,
-                            $"È disponibile UniToStudyHub {update.Version}.\\n\\nVuoi aprire la pagina ufficiale per leggere le novità e scaricare l'aggiornamento?\\n\\nI tuoi dati locali non verranno modificati.",
+                            $"È disponibile UniToStudyHub {update.Version}.\n\nVuoi aprire la pagina ufficiale per leggere le novità e scaricare l'aggiornamento?\n\nI tuoi dati locali non verranno modificati.",
                             "Aggiornamento disponibile",
                             MessageBoxButton.YesNo,
                             MessageBoxImage.Information);
