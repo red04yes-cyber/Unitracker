@@ -56,7 +56,10 @@ public static class StudyHubDatabase
         var folder = GetDataDirectory();
         Directory.CreateDirectory(folder);
         var path = Path.Combine(folder, "unitracker.db");
-        if (File.Exists(path)) LocalFileSecurity.TryRestrictFile(path);
+        if (!LocalFileSecurity.IsInside(folder, path))
+            throw new IOException("Il percorso del database non può attraversare collegamenti o reparse point.");
+        if (File.Exists(path) && !LocalFileSecurity.TryRestrictFile(path))
+            throw new IOException("Impossibile proteggere il file del database locale.");
         return path;
     }
 
@@ -81,6 +84,11 @@ public static class StudyHubDatabase
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(databasePath);
         var fullPath = Path.GetFullPath(databasePath);
+        var directory = Path.GetDirectoryName(fullPath)!;
+        if (!LocalFileSecurity.IsInside(directory, fullPath))
+            throw new IOException("Il percorso del database non può attraversare collegamenti o reparse point.");
+        if (File.Exists(fullPath) && !LocalFileSecurity.TryRestrictFile(fullPath))
+            throw new IOException("Impossibile proteggere il file del database locale.");
         var key = new DatabaseKeyVault(ResolveKeyDirectory(fullPath)).GetOrCreateKey();
         try
         {
@@ -121,6 +129,12 @@ public static class StudyHubDatabase
     /// </summary>
     public static void EnsureEncryptedDatabase(string databasePath)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(databasePath);
+        databasePath = Path.GetFullPath(databasePath);
+        var directory = Path.GetDirectoryName(databasePath)!;
+        LocalFileSecurity.EnsurePrivateDirectory(directory);
+        if (!LocalFileSecurity.IsInside(directory, databasePath))
+            throw new IOException("Il percorso del database non può attraversare collegamenti o reparse point.");
         if (!File.Exists(databasePath) || new FileInfo(databasePath).Length == 0) return;
         using (var probe = new FileStream(databasePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
         {
@@ -184,9 +198,12 @@ public static class StudyHubDatabase
             Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
             LocalFileSecurity.ScrubAndDelete(databasePath + "-wal");
             LocalFileSecurity.TryDelete(databasePath + "-shm");
-            LocalFileSecurity.TryRestrictFile(temporary);
+            if (!LocalFileSecurity.TryRestrictFile(temporary))
+                throw new IOException("Impossibile proteggere il database temporaneo cifrato.");
+            if (!LocalFileSecurity.IsInside(directory, databasePath))
+                throw new IOException("Il percorso del database è diventato un collegamento o un reparse point.");
+            // File.Replace preserves the ACL/mode of the verified temporary file.
             File.Replace(temporary, databasePath, destinationBackupFileName: null);
-            LocalFileSecurity.TryRestrictFile(databasePath);
         }
         catch
         {
