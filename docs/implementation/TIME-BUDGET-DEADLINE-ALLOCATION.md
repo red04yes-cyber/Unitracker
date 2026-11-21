@@ -15,7 +15,7 @@ reported in `Warnings`.
 
 For an exam with a planned date, the service uses the exam's positive
 `EstimatedStudyHours`; when absent, it falls back to the course estimate.
-Negative fallback estimates are treated as missing and reported.
+Negative exam or fallback estimates are treated as missing and reported.
 
 The date distance is measured in calendar days from the calculation date,
 with a minimum of one day for an exam scheduled today. Capacity available by a
@@ -57,7 +57,7 @@ commitments and actual availability are handled by the separate Study Planner.
 - proportional distribution for exams sharing a date;
 - an infeasible early deadline despite sufficient total horizon capacity;
 - clamping invalid profile values without integer overflow;
-- missing estimates remaining visibly unknown.
+- missing and negative estimates remaining visibly unknown.
 
 No UI, persistence schema, database migration, external dependency, or AI
 integration is changed. A UI binding can use `StudyAllocation.HasEstimate`,
