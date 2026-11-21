@@ -143,9 +143,7 @@ public static class StudyHubDatabase
             if (read < 16 || !header.SequenceEqual("SQLite format 3\0"u8)) return;
         }
 
-        var directory = Path.GetDirectoryName(databasePath)!;
         var temporary = databasePath + ".encrypt-" + Guid.NewGuid().ToString("N") + ".tmp";
-        LocalFileSecurity.EnsurePrivateDirectory(directory);
         var key = new DatabaseKeyVault(directory).GetOrCreateKey();
         try
         {
