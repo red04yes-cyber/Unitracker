@@ -195,7 +195,9 @@ public sealed class SyllabusQuestionAndTimeBudgetTests
         Assert.Equal(171, plan.AvailableMinutes);
         Assert.Equal(171, plan.Allocations.Single().AllocatedMinutes);
         Assert.True(plan.Allocations.Single().IsAtRisk);
+        Assert.Equal(2, plan.Allocations.Single().DaysAvailable);
         Assert.Equal(1, plan.Allocations.Single().WeeksAvailable);
+        Assert.Contains("2 giorni", plan.Allocations.Single().Explanation, StringComparison.Ordinal);
     }
 
     [Fact]
