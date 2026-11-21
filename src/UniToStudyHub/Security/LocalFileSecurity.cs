@@ -11,9 +11,9 @@ namespace UniToStudyHub.Security;
 ///
 /// On Windows the inherited DACL is replaced with a single full-control ACE for
 /// the current user; on Unix the mode becomes 0700 for folders and 0600 for
-/// files. Hardening never throws: a filesystem that cannot store ACLs (FAT32,
-/// some network shares) must not stop the application, the failure is reported
-/// to the caller so it can be surfaced as a limitation instead of being hidden.
+/// files. The Try methods report failures without throwing. Operations that
+/// persist private data fail closed when permissions cannot be restricted or
+/// when a path resolves through a symbolic link, junction or reparse point.
 /// </summary>
 public static class LocalFileSecurity
 {
@@ -29,6 +29,7 @@ public static class LocalFileSecurity
         if (string.IsNullOrWhiteSpace(path) || !Directory.Exists(path)) return false;
         try
         {
+            if (IsReparsePoint(path)) return false;
             if (OperatingSystem.IsWindows()) ApplyDirectoryAcl(path);
             else File.SetUnixFileMode(path, PrivateDirectoryMode);
             return true;
@@ -45,6 +46,7 @@ public static class LocalFileSecurity
         if (string.IsNullOrWhiteSpace(path) || !File.Exists(path)) return false;
         try
         {
+            if (IsReparsePoint(path)) return false;
             if (OperatingSystem.IsWindows()) ApplyFileAcl(path);
             else File.SetUnixFileMode(path, PrivateFileMode);
             return true;
@@ -60,7 +62,8 @@ public static class LocalFileSecurity
     {
         if (string.IsNullOrWhiteSpace(path)) throw new ArgumentException("A directory path is required.", nameof(path));
         Directory.CreateDirectory(path);
-        TryRestrictDirectory(path);
+        if (!TryRestrictDirectory(path))
+            throw new IOException("Impossibile proteggere la cartella dei dati locali.");
     }
 
     /// <summary>
@@ -79,6 +82,8 @@ public static class LocalFileSecurity
         var fullPath = Path.GetFullPath(path);
         var directory = Path.GetDirectoryName(fullPath)
                         ?? throw new ArgumentException("The destination path has no folder.", nameof(path));
+        if (IsReparsePoint(fullPath))
+            throw new IOException("La destinazione non può essere un collegamento o un reparse point.");
         EnsurePrivateDirectory(directory);
         var temporary = fullPath + "." + Guid.NewGuid().ToString("N") + ".tmp";
         try
@@ -90,9 +95,13 @@ public static class LocalFileSecurity
                 await stream.FlushAsync(cancellationToken);
                 stream.Flush(flushToDisk: true);
             }
-            TryRestrictFile(temporary);
+            if (!TryRestrictFile(temporary))
+                throw new IOException("Impossibile proteggere il file temporaneo.");
+            if (IsReparsePoint(fullPath))
+                throw new IOException("La destinazione è diventata un collegamento o un reparse point.");
+            // Rename within the same directory preserves the restricted file
+            // mode/DACL applied to the temporary file.
             File.Move(temporary, fullPath, overwrite: true);
-            TryRestrictFile(fullPath);
         }
         finally
         {
@@ -114,6 +123,8 @@ public static class LocalFileSecurity
         var fullPath = Path.GetFullPath(path);
         var directory = Path.GetDirectoryName(fullPath)
                         ?? throw new ArgumentException("The destination path has no folder.", nameof(path));
+        if (IsReparsePoint(fullPath))
+            throw new IOException("La destinazione non può essere un collegamento o un reparse point.");
         EnsurePrivateDirectory(directory);
         var temporary = fullPath + "." + Guid.NewGuid().ToString("N") + ".tmp";
         try
@@ -124,9 +135,13 @@ public static class LocalFileSecurity
                 stream.Write(content);
                 stream.Flush(flushToDisk: true);
             }
-            TryRestrictFile(temporary);
+            if (!TryRestrictFile(temporary))
+                throw new IOException("Impossibile proteggere il file temporaneo.");
+            if (IsReparsePoint(fullPath))
+                throw new IOException("La destinazione è diventata un collegamento o un reparse point.");
+            // Rename within the same directory preserves the restricted file
+            // mode/DACL applied to the temporary file.
             File.Move(temporary, fullPath, overwrite: true);
-            TryRestrictFile(fullPath);
         }
         finally
         {
@@ -299,8 +314,8 @@ public static class LocalFileSecurity
     [SupportedOSPlatform("windows")]
     private static void ApplyDirectoryAcl(string path)
     {
-        var identity = WindowsIdentity.GetCurrent().User;
-        if (identity is null) return;
+        var identity = WindowsIdentity.GetCurrent().User
+                       ?? throw new InvalidOperationException("Current Windows user identity is unavailable.");
         var security = new DirectorySecurity();
         security.SetAccessRuleProtection(isProtected: true, preserveInheritance: false);
         security.AddAccessRule(new FileSystemAccessRule(identity, FileSystemRights.FullControl,
@@ -312,8 +327,8 @@ public static class LocalFileSecurity
     [SupportedOSPlatform("windows")]
     private static void ApplyFileAcl(string path)
     {
-        var identity = WindowsIdentity.GetCurrent().User;
-        if (identity is null) return;
+        var identity = WindowsIdentity.GetCurrent().User
+                       ?? throw new InvalidOperationException("Current Windows user identity is unavailable.");
         var security = new FileSecurity();
         security.SetAccessRuleProtection(isProtected: true, preserveInheritance: false);
         security.AddAccessRule(new FileSystemAccessRule(identity, FileSystemRights.FullControl,
