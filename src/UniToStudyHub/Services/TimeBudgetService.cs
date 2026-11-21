@@ -10,7 +10,11 @@ public sealed record StudyAllocation(
     int AllocatedMinutes,
     int WeeksAvailable,
     bool IsAtRisk,
-    string Explanation);
+    string Explanation)
+{
+    /// <summary>False when neither the exam nor its course provides an estimate.</summary>
+    public bool HasEstimate => EstimatedStudyMinutes > 0;
+}
 
 public sealed record TimeBudgetPlan(
     int WeeklyMinutes,
@@ -128,8 +132,15 @@ public sealed class TimeBudgetService
         var allocations = allocatedItems.Select(item =>
         {
             var allocated = item.AllocatedMinutes;
-            var isAtRisk = allocated < item.Item.Minutes;
+            var hasEstimate = item.Item.Minutes > 0;
+            var isAtRisk = hasEstimate && allocated < item.Item.Minutes;
             var remaining = item.Item.Minutes - allocated;
+            var explanation = !hasEstimate
+                ? "Stima non disponibile: inserisci le ore previste per valutare il carico."
+                : isAtRisk
+                    ? $"Mancano {remaining} minuti per coprire la stima entro {item.Item.Weeks} settimane."
+                    : "La stima è coperta entro la scadenza pianificata.";
+
             return new StudyAllocation(
                 item.Item.Exam.CourseId,
                 item.Item.Exam.Name,
@@ -138,9 +149,7 @@ public sealed class TimeBudgetService
                 ToInt32Saturated(allocated),
                 item.Item.Weeks,
                 isAtRisk,
-                isAtRisk
-                    ? $"Mancano {remaining} minuti per coprire la stima entro {item.Item.Weeks} settimane."
-                    : "La stima è coperta entro la scadenza pianificata.");
+                explanation);
         }).ToList();
 
         if (required <= available && allocations.Any(x => x.IsAtRisk))
