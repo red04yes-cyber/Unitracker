@@ -12,6 +12,9 @@ public sealed record StudyAllocation(
     bool IsAtRisk,
     string Explanation)
 {
+    /// <summary>Exact calendar-day horizon used by the allocation.</summary>
+    public int DaysAvailable { get; init; }
+
     /// <summary>False when neither the exam nor its course provides an estimate.</summary>
     public bool HasEstimate => EstimatedStudyMinutes > 0;
 }
@@ -134,10 +137,11 @@ public sealed class TimeBudgetService
             var hasEstimate = item.Item.Minutes > 0;
             var isAtRisk = hasEstimate && allocated < item.Item.Minutes;
             var remaining = item.Item.Minutes - allocated;
+            var deadlineLabel = item.Item.Days == 1 ? "1 giorno" : $"{item.Item.Days} giorni";
             var explanation = !hasEstimate
                 ? "Stima non disponibile: inserisci le ore previste per valutare il carico."
                 : isAtRisk
-                    ? $"Mancano {remaining} minuti per coprire la stima entro {item.Item.Weeks} settimane."
+                    ? $"Mancano {remaining} minuti per coprire la stima entro {deadlineLabel}."
                     : "La stima è coperta entro la scadenza pianificata.";
 
             return new StudyAllocation(
@@ -148,7 +152,10 @@ public sealed class TimeBudgetService
                 ToInt32Saturated(allocated),
                 item.Item.Weeks,
                 isAtRisk,
-                explanation);
+                explanation)
+            {
+                DaysAvailable = item.Item.Days
+            };
         }).ToList();
 
         if (required <= available && allocations.Any(x => x.IsAtRisk))
