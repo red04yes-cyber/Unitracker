@@ -323,4 +323,26 @@ public sealed class SyllabusQuestionAndTimeBudgetTests
         Assert.Contains("non disponibile", allocation.Explanation, StringComparison.OrdinalIgnoreCase);
         Assert.Contains(plan.Warnings, x => x.Contains("Nessuna stima", StringComparison.Ordinal));
     }
+
+    [Fact]
+    public void TimeBudgetIgnoresAndReportsNegativeExamOrCourseEstimates()
+    {
+        var data = Data();
+        data.Courses[0].EstimatedStudyHours = -5;
+        data.Exams.Add(new Exam
+        {
+            Id = "negative-estimate",
+            CourseId = "analisi",
+            Name = "Esame con stima non valida",
+            EstimatedStudyHours = -2,
+            PlannedDate = new DateTime(2026, 1, 8)
+        });
+
+        var plan = new TimeBudgetService().Calculate(data, new DateTime(2026, 1, 1));
+
+        var allocation = Assert.Single(plan.Allocations);
+        Assert.False(allocation.HasEstimate);
+        Assert.Equal(0, plan.RequiredMinutes);
+        Assert.Contains(plan.Warnings, x => x.Contains("stime negative", StringComparison.Ordinal));
+    }
 }
