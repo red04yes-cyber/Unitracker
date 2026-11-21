@@ -40,9 +40,10 @@ commitments and actual availability are handled by the separate Study Planner.
 4. `IsOverCapacity` is true when total demand exceeds the horizon capacity or
    when any individual deadline cannot be covered, even if unused capacity
    remains after that deadline.
-5. `StudyAllocation.HasEstimate` distinguishes an unknown estimate from a
-   zero-minute requirement. Missing estimates receive an explicit explanation
-   and are not presented as covered.
+5. `StudyAllocation.DaysAvailable` exposes the exact calendar-day horizon;
+   `WeeksAvailable` remains for compatibility. `HasEstimate` distinguishes an
+   unknown estimate from a zero-minute requirement. Missing estimates receive
+   an explicit explanation and are not presented as covered.
 6. The service only returns a proposal. It never changes tasks, exams, or
    calendar events.
 
@@ -52,7 +53,7 @@ commitments and actual availability are handled by the separate Study Planner.
 - backward-compatible full-week capacity;
 - total shortage and missing future exams;
 - earliest-deadline-first allocation;
-- partial-week proration;
+- partial-week proration and exact deadline-day reporting;
 - the daily limit when it is more restrictive;
 - proportional distribution for exams sharing a date;
 - an infeasible early deadline despite sufficient total horizon capacity;
