@@ -1,4 +1,5 @@
 using System.Text;
+using UniToStudyHub.Infrastructure.Data;
 using UniToStudyHub.Security;
 using Xunit;
 
@@ -152,6 +153,39 @@ public sealed class SecretAndFileSecurityTests
         finally
         {
             if (linkCreated) Directory.Delete(link);
+            Directory.Delete(root, recursive: true);
+            Directory.Delete(outside, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void DatabaseOperationsRejectASymbolicLinkBeforeTouchingItsTarget()
+    {
+        var root = NewDirectory();
+        var outside = NewDirectory();
+        var target = Path.Combine(outside, "source.db");
+        var link = Path.Combine(root, "unitracker.db");
+        var linkCreated = false;
+        try
+        {
+            File.WriteAllText(target, "not a database");
+            try
+            {
+                File.CreateSymbolicLink(link, target);
+                linkCreated = true;
+            }
+            catch (Exception ex) when (ex is UnauthorizedAccessException or IOException or NotSupportedException)
+            {
+                return;
+            }
+
+            Assert.Throws<IOException>(() => StudyHubDatabase.EnsureEncryptedDatabase(link));
+            Assert.Throws<IOException>(() => StudyHubDatabase.CreateEncryptedConnectionString(link));
+            Assert.Equal("not a database", File.ReadAllText(target));
+        }
+        finally
+        {
+            if (linkCreated) File.Delete(link);
             Directory.Delete(root, recursive: true);
             Directory.Delete(outside, recursive: true);
         }
