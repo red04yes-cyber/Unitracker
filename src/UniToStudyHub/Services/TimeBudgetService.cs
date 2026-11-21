@@ -79,14 +79,13 @@ public sealed class TimeBudgetService
         {
             var course = data.Courses.FirstOrDefault(x =>
                 string.Equals(x.Id, exam.CourseId, StringComparison.Ordinal));
+            var courseEstimateHours = course?.EstimatedStudyHours ?? 0;
+            if (exam.EstimatedStudyHours < 0 ||
+                (exam.EstimatedStudyHours <= 0 && courseEstimateHours < 0))
+                negativeEstimateFound = true;
             var estimateHours = exam.EstimatedStudyHours > 0
                 ? exam.EstimatedStudyHours
-                : course?.EstimatedStudyHours ?? 0;
-            if (estimateHours < 0)
-            {
-                negativeEstimateFound = true;
-                estimateHours = 0;
-            }
+                : Math.Max(0, courseEstimateHours);
 
             var days = Math.Max(1, (exam.PlannedDate!.Value.Date - start).Days);
             var weeks = Math.Max(1, (int)Math.Ceiling(days / 7d));
