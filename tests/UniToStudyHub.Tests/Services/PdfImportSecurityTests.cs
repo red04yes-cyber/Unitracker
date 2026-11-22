@@ -114,6 +114,17 @@ public sealed class PdfImportSecurityTests
     }
 
     [Fact]
+    public async Task DefaultStreamAdapterStopsReadingAtTheLimitPlusOneByte()
+    {
+        IPdfTextExtractor extractor = new FakeExtractor(1, "testo");
+        var stream = new GeneratedOversizedStream(PdfImportService.MaximumFileBytes + 100_000);
+
+        await Assert.ThrowsAsync<InvalidDataException>(() => extractor.ExtractAsync(stream));
+
+        Assert.Equal(PdfImportService.MaximumFileBytes + 1, stream.BytesRead);
+    }
+
+    [Fact]
     public async Task PdfExtractorStopsReadingNonSeekableStreamsAtTheLimitPlusOneByte()
     {
         var stream = new GeneratedOversizedStream(PdfImportService.MaximumFileBytes + 100_000);
