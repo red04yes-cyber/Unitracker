@@ -268,6 +268,40 @@ END:VCALENDAR
     }
 
     [Fact]
+    public void IcsParserSkipsOversizedEventAndContinuesWithFollowingEvents()
+    {
+        var lines = new List<string>
+        {
+            "BEGIN:VCALENDAR",
+            "BEGIN:VEVENT",
+            "UID:oversized",
+            "SUMMARY:Evento troppo grande",
+            "DTSTART:20261104T080000Z"
+        };
+        lines.AddRange(Enumerable.Repeat("X-EXTRA:1", IcsCalendarParser.MaximumEventLines));
+        lines.AddRange(new[]
+        {
+            "END:VEVENT",
+            "BEGIN:VEVENT",
+            "UID:valid",
+            "SUMMARY:Evento valido",
+            "DTSTART:20261104T090000Z",
+            "END:VEVENT",
+            "END:VCALENDAR"
+        });
+
+        var result = new IcsCalendarParser().Parse(
+            string.Join("\n", lines),
+            new DateTimeOffset(2026, 11, 1, 0, 0, 0, TimeSpan.Zero),
+            new DateTimeOffset(2026, 11, 10, 0, 0, 0, TimeSpan.Zero));
+
+        var imported = Assert.Single(result.Events);
+        Assert.Equal("Evento valido", imported.Title);
+        Assert.Contains(result.Warnings, warning =>
+            warning.Contains("10000 righe", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public async Task IcsFileImportRejectsFilesLargerThanTheByteLimit()
     {
         var path = TemporaryIcsPath();
