@@ -436,6 +436,7 @@ public sealed record IcsImportResult(
 public sealed class IcsImportService
 {
     public const long MaximumFileBytes = 10 * 1024 * 1024;
+    private const int ReadBufferBytes = 81920;
 
     public async Task<IcsImportResult> ImportFileAsync(
         string path,
@@ -447,9 +448,6 @@ public sealed class IcsImportService
         ArgumentNullException.ThrowIfNull(data);
         if (string.IsNullOrWhiteSpace(path) || !File.Exists(path))
             throw new FileNotFoundException("File ICS non trovato.", path);
-        var info = new FileInfo(path);
-        if (info.Length == 0) throw new InvalidDataException("Il file ICS è vuoto.");
-        if (info.Length > MaximumFileBytes) throw new InvalidDataException("Il file ICS supera il limite di 10 MB.");
         var content = await ReadBoundedTextAsync(path, cancellationToken).ConfigureAwait(false);
         cancellationToken.ThrowIfCancellationRequested();
         return ImportText(content, data, windowStart, windowEnd);
