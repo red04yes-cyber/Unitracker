@@ -1564,9 +1564,10 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
                 hasEstimate,
                 allocation.IsAtRisk,
                 hasEstimate
-                    ? allocation.IsAtRisk
-                        ? allocation.Explanation
-                        : $"Allocazione prevista: {allocation.AllocatedMinutes:N0} min su {allocation.EstimatedStudyMinutes:N0} min stimati."
+                    ? $"Allocazione prevista: {allocation.AllocatedMinutes:N0} min su {allocation.EstimatedStudyMinutes:N0} min stimati." +
+                      (allocation.IsAtRisk
+                          ? $" Deficit: {Math.Max(0, allocation.EstimatedStudyMinutes - allocation.AllocatedMinutes):N0} min."
+                          : string.Empty)
                     : "Stima non configurata: la copertura dell'esame non è valutabile."));
         }
 
