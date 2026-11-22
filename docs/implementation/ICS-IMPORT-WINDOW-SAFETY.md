@@ -22,6 +22,30 @@ window.
 No schema, database migration, external dependency, network behavior, or AI
 component is changed.
 
+
+## Input resource limits
+
+File imports now enforce the 10 MiB limit while reading the already-open
+stream, rather than trusting a FileInfo.Length pre-check followed by an
+unbounded ReadAllTextAsync call. Reads remain asynchronous and cancellable;
+the Windows read share mode prevents new write/delete handles while the file
+is being read.
+
+The importer accepts UTF-8 only, rejects malformed byte sequences, and strips
+one optional UTF-8 BOM. Empty files are rejected. Direct text imports and
+direct parser callers are independently capped at 10 Mi characters, and the
+parser hard-caps materialized occurrences at 1,000 even if a caller requests a
+larger value. Parsing stops once the occurrence cap is reached.
+
+ICS line unfolding is lazy, avoiding an additional normalized full-file copy,
+split array, and list of every physical line. This reduces peak allocation
+without changing the supported event/property semantics.
+
+Regression tests cover direct parser limits, the hard event cap, bounded file
+size, malformed UTF-8, optional BOM, empty files, cancellation, and stopping at
+the requested occurrence limit. The byte cap is enforced on the stream itself;
+the parser cap also protects callers that bypass file import.
+
 ## Regression coverage
 
 `CalendarAndStudyLabTests` verifies:
