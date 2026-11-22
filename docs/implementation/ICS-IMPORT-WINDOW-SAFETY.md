@@ -43,9 +43,10 @@ ICS line unfolding is lazy, avoiding an additional normalized full-file copy,
 split array, and list of every physical line. This reduces peak allocation
 without changing the supported event/property semantics.
 
-Regression tests cover direct parser limits, the hard event cap, bounded file
-size, malformed UTF-8, optional BOM, empty files, cancellation, and stopping at
-the requested occurrence limit. The byte cap is enforced on the stream itself;
+Regression tests cover direct parser limits, the hard event cap, oversized
+VEVENT rejection with continued parsing, bounded file size, malformed UTF-8,
+optional BOM, empty files, cancellation, and stopping at the requested
+occurrence limit. The byte cap is enforced on the stream itself;
 the parser cap also protects callers that bypass file import.
 
 ## Regression coverage
