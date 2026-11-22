@@ -22,6 +22,7 @@ public sealed class IcsCalendarParser
 {
     public const int MaximumContentCharacters = 10 * 1024 * 1024;
     public const int MaximumEvents = 1000;
+    public const int MaximumEventLines = 10_000;
 
     internal static (DateTimeOffset From, DateTimeOffset To) ResolveWindow(
         DateTimeOffset? windowStart,
@@ -54,17 +55,19 @@ public sealed class IcsCalendarParser
         var lines = Unfold(content);
         var block = new List<string>();
         var inEvent = false;
+        var discardingOversizedEvent = false;
         foreach (var line in lines)
         {
             if (line.Equals("BEGIN:VEVENT", StringComparison.OrdinalIgnoreCase))
             {
                 block.Clear();
                 inEvent = true;
+                discardingOversizedEvent = false;
                 continue;
             }
             if (line.Equals("END:VEVENT", StringComparison.OrdinalIgnoreCase))
             {
-                if (inEvent)
+                if (inEvent && !discardingOversizedEvent)
                 {
                     try
                     {
@@ -80,6 +83,7 @@ public sealed class IcsCalendarParser
                     }
                 }
                 inEvent = false;
+                discardingOversizedEvent = false;
                 block.Clear();
                 if (events.Count >= maxEvents)
                 {
@@ -88,7 +92,19 @@ public sealed class IcsCalendarParser
                 }
                 continue;
             }
-            if (inEvent) block.Add(line);
+            if (inEvent && !discardingOversizedEvent)
+            {
+                if (block.Count >= MaximumEventLines)
+                {
+                    block.Clear();
+                    discardingOversizedEvent = true;
+                    warnings.Add($"Evento ICS ignorato: supera il limite di {MaximumEventLines} righe.");
+                }
+                else
+                {
+                    block.Add(line);
+                }
+            }
         }
 
         return new IcsParseResult(events, warnings);
