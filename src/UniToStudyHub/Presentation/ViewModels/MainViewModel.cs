@@ -432,7 +432,6 @@ public sealed class MainViewModel : INotifyPropertyChanged
         RefreshCourseSummary();
         RefreshCareerSummary();
         RefreshVisibleCourses();
-        RefreshExamSummary();
     }
 
     private async Task PlanExamsAsync()
