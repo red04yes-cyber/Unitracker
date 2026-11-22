@@ -79,6 +79,7 @@ public sealed class StudyWorkspaceTimeBudgetTests
             Assert.Equal(120, workspace.TimeBudgetAllocations.Single().AllocatedMinutes);
             Assert.True(workspace.TimeBudgetAllocations.Single().HasEstimate);
             Assert.True(workspace.TimeBudgetAllocations.Single().IsAtRisk);
+            Assert.Contains("120 min su 240 min stimati", workspace.TimeBudgetAllocations.Single().Explanation);
             Assert.True(workspace.IsTimeBudgetOverCapacity);
             Assert.Equal(0, workspace.TimeBudgetUnknownEstimateCount);
             Assert.Contains("supera", workspace.TimeBudgetStatus, StringComparison.OrdinalIgnoreCase);
