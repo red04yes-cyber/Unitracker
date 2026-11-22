@@ -1564,7 +1564,9 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
                 hasEstimate,
                 allocation.IsAtRisk,
                 hasEstimate
-                    ? allocation.Explanation
+                    ? allocation.IsAtRisk
+                        ? allocation.Explanation
+                        : $"Allocazione prevista: {allocation.AllocatedMinutes:N0} min su {allocation.EstimatedStudyMinutes:N0} min stimati."
                     : "Stima non configurata: la copertura dell'esame non è valutabile."));
         }
 
@@ -1587,7 +1589,7 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
                     ? "Il carico stimato supera il budget disponibile."
                     : unknownEstimates > 0
                         ? $"Budget parziale: {unknownEstimates} esami senza stima."
-                        : "Le stime disponibili rientrano nel budget configurato.";
+                        : "Nessun superamento rilevato dal calcolo corrente.";
     }
 
     private void RefreshCollections()
