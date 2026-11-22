@@ -1,5 +1,7 @@
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using UniToStudyHub.Infrastructure;
+using UniToStudyHub.Infrastructure.Data;
 using UniToStudyHub.Models;
 using UniToStudyHub.Presentation.Composition;
 using UniToStudyHub.Presentation.ViewModels;
@@ -11,7 +13,7 @@ namespace UniToStudyHub.Tests.Presentation;
 public sealed class StudyWorkspaceTimeBudgetTests
 {
     [Fact]
-    public void InitializeAndRefreshExposeBudgetWithoutTreatingMissingEstimateAsCovered()
+    public async Task MainViewModelInitializationAndRefreshExposeBudgetWithoutTreatingMissingEstimateAsCovered()
     {
         var folder = Path.Combine(Path.GetTempPath(), "UnitrackerTests", Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(folder);
@@ -23,7 +25,11 @@ public sealed class StudyWorkspaceTimeBudgetTests
             services.AddUniToStudyHubViewModels();
 
             using var provider = services.BuildServiceProvider(validateScopes: true);
-            var workspace = provider.GetRequiredService<StudyWorkspaceViewModel>();
+            var factory = provider.GetRequiredService<IDbContextFactory<StudyHubDbContext>>();
+            await using (var db = await factory.CreateDbContextAsync())
+                await db.Database.MigrateAsync();
+
+            var store = provider.GetRequiredService<IStudyDataStore>();
             var data = new StudyData
             {
                 WeeklyStudyHours = 1,
@@ -38,7 +44,10 @@ public sealed class StudyWorkspaceTimeBudgetTests
                 Name = "Analisi",
                 PlannedDate = DateTime.Today.AddDays(14)
             });
+            await store.SaveAsync(data);
 
+            var main = provider.GetRequiredService<MainViewModel>();
+            var workspace = main.Workspace;
             var changedProperties = new HashSet<string>(StringComparer.Ordinal);
             workspace.PropertyChanged += (_, args) =>
             {
@@ -46,7 +55,7 @@ public sealed class StudyWorkspaceTimeBudgetTests
                     changedProperties.Add(args.PropertyName);
             };
 
-            workspace.Initialize(data);
+            await main.InitializeAsync();
 
             var initialPlan = Assert.IsType<TimeBudgetPlan>(workspace.CurrentTimeBudgetPlan);
             Assert.Equal(60, initialPlan.WeeklyMinutes);
@@ -61,7 +70,7 @@ public sealed class StudyWorkspaceTimeBudgetTests
             Assert.False(unknownRow.HasEstimate);
             Assert.Contains("non è valutabile", unknownRow.Explanation);
 
-            data.Exams.Single().EstimatedStudyHours = 4;
+            main.Exams.Single().EstimatedStudyHours = 4;
             workspace.RefreshTimeBudget();
 
             var updatedPlan = Assert.IsType<TimeBudgetPlan>(workspace.CurrentTimeBudgetPlan);
