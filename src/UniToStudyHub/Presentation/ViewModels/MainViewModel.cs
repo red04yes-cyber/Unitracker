@@ -432,6 +432,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
         RefreshCourseSummary();
         RefreshCareerSummary();
         RefreshVisibleCourses();
+        RefreshExamSummary();
     }
 
     private async Task PlanExamsAsync()
@@ -962,6 +963,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(NextExamNameDisplay));
         OnPropertyChanged(nameof(NextExamDateDisplay));
         OnPropertyChanged(nameof(NoPlannedExams));
+        Workspace.RefreshTimeBudget();
     }
 
     private void RefreshVisibleCourses()
