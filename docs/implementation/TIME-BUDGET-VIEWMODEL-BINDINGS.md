@@ -9,7 +9,7 @@
 - `CurrentTimeBudgetPlan`: riepilogo prodotto dal servizio (`WeeklyMinutes`, `AvailableMinutes`, `RequiredMinutes`, `UnallocatedMinutes`, `IsOverCapacity` e avvisi).
 - `TimeBudgetAllocations`: righe pronte per il binding, una per esame. Usare questa raccolta per i dettagli per-esame.
 - `TimeBudgetWarnings`: avvisi originali del servizio.
-- `TimeBudgetStatus`: sintesi leggibile che distingue budget sufficiente, sovraccarico e stime mancanti.
+- `TimeBudgetStatus`: sintesi leggibile che distingue sovraccarico, stime mancanti e assenza di superamenti rilevati dal calcolo corrente.
 - `HasTimeBudgetAllocations`, `HasTimeBudgetWarnings`, `HasTimeBudgetUnknownEstimates`, `TimeBudgetUnknownEstimateCount`, `TimeBudgetAtRiskCount` e `IsTimeBudgetOverCapacity`: indicatori per stati vuoti e riepiloghi.
 - `TimeBudgetCapacityDisplay`, `TimeBudgetRequiredDisplay` e `TimeBudgetUnallocatedDisplay`: valori già formattati per i binding testuali.
 
@@ -17,7 +17,7 @@
 
 `TimeBudgetAllocationRow` proietta corso, scadenza, minuti stimati/allocati, settimane disponibili, rischio e spiegazione.
 
-`HasEstimate` è `false` quando i minuti stimati sono zero o negativi. In quel caso la spiegazione della riga dichiara che la copertura non è valutabile: una stima assente non viene presentata come un esame coperto da zero minuti.
+`HasEstimate` è `false` quando i minuti stimati sono zero o negativi. In quel caso la spiegazione della riga dichiara che la copertura non è valutabile: una stima assente non viene presentata come un esame coperto da zero minuti. Per le stime presenti, la riga riporta i minuti allocati rispetto ai minuti stimati senza trasformare il risultato in una garanzia.
 
 Per i dettagli per-esame, la UI dovrebbe quindi usare `TimeBudgetAllocations` e non `CurrentTimeBudgetPlan.Allocations`, che resta il risultato grezzo del servizio.
 
