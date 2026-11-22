@@ -35,7 +35,9 @@ The importer accepts UTF-8 only, rejects malformed byte sequences, and strips
 one optional UTF-8 BOM. Empty files are rejected. Direct text imports and
 direct parser callers are independently capped at 10 Mi characters, and the
 parser hard-caps materialized occurrences at 1,000 even if a caller requests a
-larger value. Parsing stops once the occurrence cap is reached.
+larger value. Parsing stops once the occurrence cap is reached. A single
+VEVENT is also limited to 10,000 logical property lines; an oversized event is
+skipped with a warning and later events can still be imported.
 
 ICS line unfolding is lazy, avoiding an additional normalized full-file copy,
 split array, and list of every physical line. This reduces peak allocation
