@@ -369,12 +369,12 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
         }
     }
 
-    public ObservableCollection<StudyAllocation> TimeBudgetAllocations { get; } = new();
+    public ObservableCollection<TimeBudgetAllocationRow> TimeBudgetAllocations { get; } = new();
     public ObservableCollection<string> TimeBudgetWarnings { get; } = new();
     public bool HasTimeBudgetAllocations => TimeBudgetAllocations.Count > 0;
     public bool HasTimeBudgetWarnings => TimeBudgetWarnings.Count > 0;
     public bool HasTimeBudgetUnknownEstimates => TimeBudgetUnknownEstimateCount > 0;
-    public int TimeBudgetUnknownEstimateCount => TimeBudgetAllocations.Count(x => x.EstimatedStudyMinutes <= 0);
+    public int TimeBudgetUnknownEstimateCount => TimeBudgetAllocations.Count(x => !x.HasEstimate);
     public int TimeBudgetAtRiskCount => TimeBudgetAllocations.Count(x => x.IsAtRisk);
     public bool IsTimeBudgetOverCapacity => CurrentTimeBudgetPlan?.IsOverCapacity ?? false;
     public string TimeBudgetCapacityDisplay => CurrentTimeBudgetPlan is { } budget
@@ -1552,7 +1552,21 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
 
         TimeBudgetAllocations.Clear();
         foreach (var allocation in plan.Allocations)
-            TimeBudgetAllocations.Add(allocation);
+        {
+            var hasEstimate = allocation.EstimatedStudyMinutes > 0;
+            TimeBudgetAllocations.Add(new TimeBudgetAllocationRow(
+                allocation.CourseId,
+                allocation.CourseName,
+                allocation.Deadline,
+                allocation.EstimatedStudyMinutes,
+                allocation.AllocatedMinutes,
+                allocation.WeeksAvailable,
+                hasEstimate,
+                allocation.IsAtRisk,
+                hasEstimate
+                    ? allocation.Explanation
+                    : "Stima non configurata: la copertura dell'esame non è valutabile."));
+        }
 
         TimeBudgetWarnings.Clear();
         foreach (var warning in plan.Warnings)
