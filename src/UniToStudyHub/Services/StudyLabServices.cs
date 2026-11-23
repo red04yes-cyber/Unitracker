@@ -581,7 +581,9 @@ public sealed class ProgressService
             .ToList();
         var completed = sessions.Where(x => x.State == StudySessionState.Completed).ToList();
         var focusSeconds = sessions.Sum(x => FocusSessionService.ElapsedSeconds(x, at));
-        var ledgerSummary = new ActivityLedgerService().Summarize(data, from, to, at, TimeZoneInfo.Local.Id);
+        var ledger = new ActivityLedgerService();
+        var ledgerSummary = ledger.Summarize(data, from, to, at, TimeZoneInfo.Local.Id);
+        var dailyLedger = ledger.SummarizeByDay(data, from, to, at, TimeZoneInfo.Local.Id);
         var cycles = data.PomodoroCycles
             .Where(x => x.IsCompleted && x.CompletedAt is { } completedAt &&
                         InRange(LocalDate(completedAt), from, to))
@@ -589,7 +591,7 @@ public sealed class ProgressService
         var daily = new List<DailyProgressMetric>();
         for (var day = from; day <= to; day = day.AddDays(1))
         {
-            var daySummary = new ActivityLedgerService().Summarize(data, day, day, at, TimeZoneInfo.Local.Id);
+            var daySummary = dailyLedger.GetValueOrDefault(day);
             daily.Add(new DailyProgressMetric(
                 day,
                 daySummary.RecordedSeconds,
