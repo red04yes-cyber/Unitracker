@@ -260,27 +260,77 @@ END:VCALENDAR
     }
 
     [Fact]
-    public void IcsParserUsesTheOffsetBeforeAWholeDayTimezoneGap()
+    public void IcsParserUsesTheOffsetBeforeAThirtyMinuteTimezoneGap()
     {
         const string ics = """
 BEGIN:VCALENDAR
 BEGIN:VEVENT
-UID:apia-date-line-gap
-SUMMARY:Evento durante il salto di data
-DTSTART;TZID=Pacific/Apia:20111230T120000
+UID:lord-howe-half-hour-gap
+SUMMARY:Evento durante il cambio dell'ora
+DTSTART;TZID=Australia/Lord_Howe:20261004T021500
 END:VEVENT
 END:VCALENDAR
 """;
-        var from = new DateTimeOffset(2011, 12, 29, 0, 0, 0, TimeSpan.Zero);
-        var to = new DateTimeOffset(2012, 1, 2, 0, 0, 0, TimeSpan.Zero);
+        var from = new DateTimeOffset(2026, 10, 3, 0, 0, 0, TimeSpan.Zero);
+        var to = new DateTimeOffset(2026, 10, 5, 0, 0, 0, TimeSpan.Zero);
 
         var result = new IcsCalendarParser().Parse(ics, from, to);
         var item = Assert.Single(result.Events);
-        var zone = TimeZoneInfo.FindSystemTimeZoneById("Pacific/Apia");
+        var zone = TimeZoneInfo.FindSystemTimeZoneById("Australia/Lord_Howe");
 
-        Assert.Equal(TimeSpan.FromHours(-10), item.StartsAt.Offset);
-        Assert.Equal(new DateTime(2011, 12, 31, 12, 0, 0), TimeZoneInfo.ConvertTime(item.StartsAt, zone).DateTime);
+        Assert.Equal(TimeSpan.FromMinutes(630), item.StartsAt.Offset);
+        Assert.Equal(new DateTime(2026, 10, 4, 2, 45, 0), TimeZoneInfo.ConvertTime(item.StartsAt, zone).DateTime);
         Assert.Contains(result.Warnings, warning => warning.Contains("offset precedente", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public void IcsParserAppliesUtcUntilAfterTzidDstTransition()
+    {
+        const string ics = """
+BEGIN:VCALENDAR
+BEGIN:VEVENT
+UID:rome-until-after-dst
+SUMMARY:Lezione con UNTIL UTC
+DTSTART;TZID=Europe/Rome:20260322T090000
+DTEND;TZID=Europe/Rome:20260322T100000
+RRULE:FREQ=WEEKLY;UNTIL=20260329T070000Z
+END:VEVENT
+END:VCALENDAR
+""";
+        var from = new DateTimeOffset(2026, 3, 20, 0, 0, 0, TimeSpan.Zero);
+        var to = new DateTimeOffset(2026, 4, 15, 0, 0, 0, TimeSpan.Zero);
+
+        var result = new IcsCalendarParser().Parse(ics, from, to);
+        var occurrences = result.Events.OrderBy(item => item.StartsAt).ToArray();
+
+        Assert.Equal(2, occurrences.Length);
+        Assert.Equal(new DateTimeOffset(2026, 3, 29, 7, 0, 0, TimeSpan.Zero), occurrences[1].StartsAt.ToUniversalTime());
+        Assert.Equal(TimeSpan.FromHours(2), occurrences[1].StartsAt.Offset);
+    }
+
+    [Fact]
+    public void IcsParserUsesFirstOccurrenceForAmbiguousRecurringTzidTime()
+    {
+        const string ics = """
+BEGIN:VCALENDAR
+BEGIN:VEVENT
+UID:rome-recurring-ambiguous
+SUMMARY:Lezione durante l'ora ripetuta
+DTSTART;TZID=Europe/Rome:20261024T023000
+DTEND;TZID=Europe/Rome:20261024T033000
+RRULE:FREQ=DAILY;COUNT=2
+END:VEVENT
+END:VCALENDAR
+""";
+        var from = new DateTimeOffset(2026, 10, 23, 0, 0, 0, TimeSpan.Zero);
+        var to = new DateTimeOffset(2026, 10, 27, 0, 0, 0, TimeSpan.Zero);
+
+        var result = new IcsCalendarParser().Parse(ics, from, to);
+        var occurrences = result.Events.OrderBy(item => item.StartsAt).ToArray();
+
+        Assert.Equal(2, occurrences.Length);
+        Assert.All(occurrences, item => Assert.Equal(TimeSpan.FromHours(2), item.StartsAt.Offset));
+        Assert.Equal(new DateTime(2026, 10, 25, 2, 30, 0), occurrences[1].StartsAt.DateTime);
     }
 
     [Fact]

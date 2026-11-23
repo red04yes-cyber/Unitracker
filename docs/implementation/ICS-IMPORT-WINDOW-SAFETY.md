@@ -71,7 +71,8 @@ remains at 09:00 after a daylight-saving transition.
 
 Regression tests cover weekly and monthly Europe/Rome transitions in 2026,
 host-time-zone-independent `BYDAY`, ambiguous and nonexistent local times,
-a 24-hour Pacific/Apia date-line gap, and invalid UTC/`TZID` combinations.
+a 30-minute Australia/Lord_Howe gap, UTC UNTIL across DST, recurring
+ambiguous-time resolution, and invalid UTC/`TZID` combinations.
 
 ## Regression coverage
 
