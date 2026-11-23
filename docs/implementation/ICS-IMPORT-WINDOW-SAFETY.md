@@ -49,6 +49,28 @@ optional BOM, empty files, cancellation, and stopping at the requested
 occurrence limit. The byte cap is enforced on the stream itself;
 the parser cap also protects callers that bypass file import.
 
+## Named time-zone recurrence
+
+For a timed event with an explicit `DTSTART;TZID=...`, recurrence instances
+are generated from the original local wall-clock date/time. The parser resolves
+the zone offset separately for every occurrence, so a weekly lecture at 09:00
+remains at 09:00 after a daylight-saving transition.
+
+- `BYDAY` and `EXDATE` date comparisons use the calendar's local wall-clock
+  date, not the machine's converted local date.
+- An ambiguous initial local time uses the first occurrence (the larger UTC
+  offset), as specified by RFC 5545.
+- A nonexistent initial `DTSTART` is rejected with a warning. Later
+  nonexistent recurrence instances are skipped with a warning and do not
+  consume `COUNT`; valid instances still determine the requested count.
+- A UTC DATE-TIME ending in `Z` cannot also declare `TZID`.
+- Floating times without `TZID`, custom `VTIMEZONE`, `RDATE`, and
+  `BYSETPOS` remain outside the supported subset.
+
+Regression tests cover weekly and monthly Europe/Rome transitions in 2026,
+host-time-zone-independent `BYDAY`, ambiguous and nonexistent local times,
+and invalid UTC/`TZID` combinations.
+
 ## Regression coverage
 
 `CalendarAndStudyLabTests` verifies:

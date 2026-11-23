@@ -14,15 +14,17 @@ public sealed record IcsParseResult(
 /// Parses the reliable subset of RFC 5545 used by university calendars:
 /// VEVENT, DTSTART/DTEND, all-day values, TZID/Z, RRULE
 /// DAILY/WEEKLY/MONTHLY/YEARLY with INTERVAL/COUNT/UNTIL/BYDAY and EXDATE.
-/// Recurrences are materialized inside an explicit window; VTIMEZONE rules,
-/// BYSETPOS, RDATE and floating-time DST edge cases are deliberately reported
-/// as limitations rather than guessed.
+/// Named TZID recurrences preserve local wall time across daylight-saving
+/// transitions; ambiguous local times use the first occurrence, and nonexistent
+/// recurrence instances are skipped. VTIMEZONE rules, BYSETPOS, RDATE and
+/// floating-time DST edge cases remain unsupported.
 /// </summary>
 public sealed class IcsCalendarParser
 {
     public const int MaximumContentCharacters = 10 * 1024 * 1024;
     public const int MaximumEvents = 1000;
     public const int MaximumEventLines = 10_000;
+    private const int MaximumRecurrenceIterations = 20_000;
 
     internal static (DateTimeOffset From, DateTimeOffset To) ResolveWindow(
         DateTimeOffset? windowStart,
@@ -151,7 +153,10 @@ public sealed class IcsCalendarParser
         var exdates = ParseExDates(props, warnings);
         var rule = Get(props, "RRULE");
         var recurrenceRule = rule ?? string.Empty;
-        var occurrences = Expand(start, end, allDay, rule, exdates, from, to, remaining, warnings);
+        var recurrenceZone = allDay
+            ? null
+            : ResolveTimeZone(startProperty.Parameters.GetValueOrDefault("TZID"));
+        var occurrences = Expand(start, end, allDay, rule, exdates, from, to, remaining, warnings, recurrenceZone);
         var index = 0;
         foreach (var (occurrenceStart, occurrenceEnd) in occurrences)
         {
@@ -194,12 +199,13 @@ public sealed class IcsCalendarParser
         DateTimeOffset from,
         DateTimeOffset to,
         int max,
-        List<string> warnings)
+        List<string> warnings,
+        TimeZoneInfo? recurrenceZone)
     {
         var duration = end - start;
         if (string.IsNullOrWhiteSpace(rule))
         {
-            if (start < to && end > from && !exdates.Contains(DateOnly.FromDateTime(start.LocalDateTime)))
+            if (start < to && end > from && !exdates.Contains(DateOnly.FromDateTime(start.DateTime)))
                 yield return (start, end);
             yield break;
         }
@@ -233,51 +239,100 @@ public sealed class IcsCalendarParser
             ? ParseByDays(byDayText)
             : Array.Empty<DayOfWeek>();
         var emitted = 0;
-        var skipped = 0;
+        var generatedCount = 0;
         var cursor = start;
+        var localCursor = DateTime.SpecifyKind(start.DateTime, DateTimeKind.Unspecified);
         var guard = 0;
-        while (guard++ < 20000 && emitted < max)
+        while (guard++ < MaximumRecurrenceIterations && emitted < max)
         {
-            if (count is int maxCount && skipped >= maxCount) yield break;
-            if (until is not null && cursor > until.Value) yield break;
-            if (cursor >= to) yield break;
+            if (count is int maxCount && generatedCount >= maxCount) yield break;
+
+            // RRULE instances with TZID are local wall-clock values. Resolve the
+            // zone offset for each date instead of carrying DTSTART's offset
+            // through a daylight-saving transition.
+            var occurrenceDateTime = recurrenceZone is null ? cursor.DateTime : localCursor;
+            var occurrenceStart = cursor;
+            var invalidLocalTime = recurrenceZone?.IsInvalidTime(localCursor) == true;
+            if (recurrenceZone is not null)
+            {
+                var offset = invalidLocalTime
+                    ? recurrenceZone.BaseUtcOffset
+                    : GetZoneOffset(recurrenceZone, localCursor);
+                occurrenceStart = new DateTimeOffset(localCursor, offset);
+            }
+
+            if (until is not null && occurrenceStart > until.Value) yield break;
+            if (occurrenceStart >= to) yield break;
+
             var include = frequency.ToUpperInvariant() switch
             {
                 "DAILY" => true,
-                "WEEKLY" => byDays.Count == 0 || byDays.Contains(cursor.LocalDateTime.DayOfWeek),
+                "WEEKLY" => byDays.Count == 0 || byDays.Contains(occurrenceDateTime.DayOfWeek),
                 "MONTHLY" => true,
                 "YEARLY" => true,
                 _ => false
             };
             if (frequency.Equals("WEEKLY", StringComparison.OrdinalIgnoreCase) && byDays.Count > 0)
             {
-                var weekStart = CalendarService.StartOfWeek(start.LocalDateTime.Date);
-                var cursorWeek = CalendarService.StartOfWeek(cursor.LocalDateTime.Date);
+                var weekStart = CalendarService.StartOfWeek(start.DateTime.Date);
+                var cursorWeek = CalendarService.StartOfWeek(occurrenceDateTime.Date);
                 var weeks = (cursorWeek - weekStart).Days / 7;
                 include &= weeks % interval == 0;
             }
             if (include)
             {
-                skipped++;
-                if (!exdates.Contains(DateOnly.FromDateTime(cursor.LocalDateTime)) && cursor + duration > from)
+                var occurrenceEnd = occurrenceStart + duration;
+                if (invalidLocalTime)
                 {
-                    emitted++;
-                    yield return (cursor, cursor + duration);
+                    // RFC 5545 excludes nonexistent local recurrence instances
+                    // and they do not consume COUNT.
+                    if (occurrenceEnd > from)
+                    {
+                        warnings.Add(
+                            $"Ricorrenza saltata: l'orario locale {localCursor:yyyyMMdd'T'HHmmss} non esiste in {recurrenceZone!.Id} a causa del cambio dell'ora.");
+                    }
+                }
+                else
+                {
+                    // COUNT applies to valid RRULE instances before EXDATE is
+                    // subtracted, so an excluded date still consumes one count.
+                    generatedCount++;
+                    if (!exdates.Contains(DateOnly.FromDateTime(occurrenceDateTime)) && occurrenceEnd > from)
+                    {
+                        emitted++;
+                        yield return (occurrenceStart, occurrenceEnd);
+                    }
                 }
             }
 
-            cursor = frequency.ToUpperInvariant() switch
+            if (recurrenceZone is null)
             {
-                "DAILY" => cursor.AddDays(interval),
-                "WEEKLY" when byDays.Count > 0 => cursor.AddDays(1),
-                "WEEKLY" => cursor.AddDays(7 * interval),
-                "MONTHLY" => cursor.AddMonths(interval),
-                "YEARLY" => cursor.AddYears(interval),
-                _ => cursor.AddDays(1)
-            };
-            if (!frequency.Equals("WEEKLY", StringComparison.OrdinalIgnoreCase) && byDays.Count > 0) { /* BYDAY only weekly */ }
+                cursor = frequency.ToUpperInvariant() switch
+                {
+                    "DAILY" => cursor.AddDays(interval),
+                    "WEEKLY" when byDays.Count > 0 => cursor.AddDays(1),
+                    "WEEKLY" => cursor.AddDays(7 * interval),
+                    "MONTHLY" => cursor.AddMonths(interval),
+                    "YEARLY" => cursor.AddYears(interval),
+                    _ => cursor.AddDays(1)
+                };
+            }
+            else
+            {
+                localCursor = frequency.ToUpperInvariant() switch
+                {
+                    "DAILY" => localCursor.AddDays(interval),
+                    "WEEKLY" when byDays.Count > 0 => localCursor.AddDays(1),
+                    "WEEKLY" => localCursor.AddDays(7 * interval),
+                    "MONTHLY" => localCursor.AddMonths(interval),
+                    "YEARLY" => localCursor.AddYears(interval),
+                    _ => localCursor.AddDays(1)
+                };
+            }
         }
-        if (guard >= 20000) warnings.Add("Ricorrenza interrotta dopo 20000 iterazioni.");
+
+        if (guard >= MaximumRecurrenceIterations)
+            warnings.Add($"Ricorrenza interrotta dopo {MaximumRecurrenceIterations} iterazioni.");
     }
 
     private static HashSet<DateOnly> ParseExDates(
@@ -293,7 +348,7 @@ public sealed class IcsCalendarParser
                 try
                 {
                     var parsed = ParseDateValue(raw.Trim(), property.Parameters.GetValueOrDefault("TZID"), raw.Length == 8);
-                    result.Add(DateOnly.FromDateTime(parsed.LocalDateTime));
+                    result.Add(DateOnly.FromDateTime(parsed.DateTime));
                 }
                 catch (FormatException) { warnings.Add($"EXDATE non valido ignorato: {raw}"); }
             }
@@ -331,20 +386,45 @@ public sealed class IcsCalendarParser
         }
 
         var utc = value.EndsWith('Z');
+        if (utc && !string.IsNullOrWhiteSpace(tzid))
+            throw new FormatException("Un valore UTC ICS non può specificare anche TZID.");
         var text = utc ? value[..^1] : value;
         var parsed = DateTime.ParseExact(text, "yyyyMMdd'T'HHmmss", CultureInfo.InvariantCulture);
         if (utc) return new DateTimeOffset(parsed, TimeSpan.Zero);
-        if (!string.IsNullOrWhiteSpace(tzid))
-        {
-            try
-            {
-                var zone = TimeZoneInfo.FindSystemTimeZoneById(tzid);
-                return new DateTimeOffset(parsed, zone.GetUtcOffset(parsed));
-            }
-            catch (TimeZoneNotFoundException) { throw new FormatException($"Fuso orario ICS sconosciuto: {tzid}."); }
-            catch (InvalidTimeZoneException) { throw new FormatException($"Fuso orario ICS non valido: {tzid}."); }
-        }
+
+        var zone = ResolveTimeZone(tzid);
+        if (zone is not null)
+            return new DateTimeOffset(parsed, GetZoneOffset(zone, parsed));
         return new DateTimeOffset(parsed, TimeZoneInfo.Local.GetUtcOffset(parsed));
+    }
+
+    private static TimeZoneInfo? ResolveTimeZone(string? tzid)
+    {
+        if (string.IsNullOrWhiteSpace(tzid)) return null;
+        try
+        {
+            return TimeZoneInfo.FindSystemTimeZoneById(tzid);
+        }
+        catch (TimeZoneNotFoundException)
+        {
+            throw new FormatException($"Fuso orario ICS sconosciuto: {tzid}.");
+        }
+        catch (InvalidTimeZoneException)
+        {
+            throw new FormatException($"Fuso orario ICS non valido: {tzid}.");
+        }
+    }
+
+    private static TimeSpan GetZoneOffset(TimeZoneInfo zone, DateTime localDateTime)
+    {
+        var local = DateTime.SpecifyKind(localDateTime, DateTimeKind.Unspecified);
+        if (zone.IsInvalidTime(local))
+            throw new FormatException($"Orario locale ICS inesistente in {zone.Id}: {local:O}.");
+        // RFC 5545 resolves an ambiguous local time to its first occurrence,
+        // which is the numerically larger UTC offset.
+        if (zone.IsAmbiguousTime(local))
+            return zone.GetAmbiguousTimeOffsets(local).Max();
+        return zone.GetUtcOffset(local);
     }
 
     private static IcsProperty? ParseProperty(string line)
