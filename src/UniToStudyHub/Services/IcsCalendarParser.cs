@@ -15,8 +15,8 @@ public sealed record IcsParseResult(
 /// VEVENT, DTSTART/DTEND, all-day values, TZID/Z, RRULE
 /// DAILY/WEEKLY/MONTHLY/YEARLY with INTERVAL/COUNT/UNTIL/BYDAY and EXDATE.
 /// Named TZID recurrences preserve local wall time across daylight-saving
-/// transitions; ambiguous local times use the first occurrence, and nonexistent
-/// recurrence instances are skipped. VTIMEZONE rules, BYSETPOS, RDATE and
+/// transitions; ambiguous times use the first occurrence and nonexistent local
+/// times use the offset before the gap. VTIMEZONE rules, BYSETPOS, RDATE and
 /// floating-time DST edge cases remain unsupported.
 /// </summary>
 public sealed class IcsCalendarParser
@@ -156,6 +156,11 @@ public sealed class IcsCalendarParser
         var recurrenceZone = allDay
             ? null
             : ResolveTimeZone(startProperty.Parameters.GetValueOrDefault("TZID"));
+        if (recurrenceZone?.IsInvalidTime(start.DateTime) == true)
+        {
+            warnings.Add(
+                $"DTSTART interpretato usando l'offset precedente al salto in {recurrenceZone.Id}: {start.DateTime:yyyyMMdd'T'HHmmss}.");
+        }
         var occurrences = Expand(start, end, allDay, rule, exdates, from, to, remaining, warnings, recurrenceZone);
         var index = 0;
         foreach (var (occurrenceStart, occurrenceEnd) in occurrences)
@@ -282,26 +287,20 @@ public sealed class IcsCalendarParser
             if (include)
             {
                 var occurrenceEnd = occurrenceStart + duration;
-                if (invalidLocalTime)
+                if (invalidLocalTime && occurrenceEnd > from)
                 {
-                    // RFC 5545 excludes nonexistent local recurrence instances
-                    // and they do not consume COUNT.
-                    if (occurrenceEnd > from)
-                    {
-                        warnings.Add(
-                            $"Ricorrenza saltata: l'orario locale {localCursor:yyyyMMdd'T'HHmmss} non esiste in {recurrenceZone!.Id} a causa del cambio dell'ora.");
-                    }
+                    warnings.Add(
+                        $"Ricorrenza interpretata usando l'offset precedente al salto in {recurrenceZone!.Id}: {localCursor:yyyyMMdd'T'HHmmss}.");
                 }
-                else
+
+                // RFC 5545 section 3.3.5 (including verified Erratum 4271)
+                // interprets a nonexistent local time with the offset before
+                // the gap. It remains a generated recurrence instance.
+                generatedCount++;
+                if (!exdates.Contains(DateOnly.FromDateTime(occurrenceDateTime)) && occurrenceEnd > from)
                 {
-                    // COUNT applies to valid RRULE instances before EXDATE is
-                    // subtracted, so an excluded date still consumes one count.
-                    generatedCount++;
-                    if (!exdates.Contains(DateOnly.FromDateTime(occurrenceDateTime)) && occurrenceEnd > from)
-                    {
-                        emitted++;
-                        yield return (occurrenceStart, occurrenceEnd);
-                    }
+                    emitted++;
+                    yield return (occurrenceStart, occurrenceEnd);
                 }
             }
 
@@ -419,12 +418,53 @@ public sealed class IcsCalendarParser
     {
         var local = DateTime.SpecifyKind(localDateTime, DateTimeKind.Unspecified);
         if (zone.IsInvalidTime(local))
-            throw new FormatException($"Orario locale ICS inesistente in {zone.Id}: {local:O}.");
+            return GetOffsetBeforeGap(zone, local);
         // RFC 5545 resolves an ambiguous local time to its first occurrence,
         // which is the numerically larger UTC offset.
         if (zone.IsAmbiguousTime(local))
             return zone.GetAmbiguousTimeOffsets(local).Max();
         return zone.GetUtcOffset(local);
+    }
+
+    private static TimeSpan GetOffsetBeforeGap(TimeZoneInfo zone, DateTime invalidLocalTime)
+    {
+        // TimeZoneInfo has no direct transition lookup API. Find a valid local
+        // instant before the gap with exponentially increasing probes, then
+        // binary-search the last valid tick. This also handles non-hour gaps
+        // such as historical date-line changes without assuming a 60-minute DST shift.
+        var invalidTicks = invalidLocalTime.Ticks;
+        var searchTicks = TimeSpan.TicksPerMinute;
+        long validTicks = -1;
+
+        for (var attempt = 0; attempt < 14; attempt++)
+        {
+            var candidateTicks = Math.Max(DateTime.MinValue.Ticks, invalidTicks - searchTicks);
+            var candidate = new DateTime(candidateTicks, DateTimeKind.Unspecified);
+            if (!zone.IsInvalidTime(candidate))
+            {
+                validTicks = candidateTicks;
+                break;
+            }
+
+            searchTicks *= 2;
+        }
+
+        if (validTicks < 0)
+            throw new FormatException($"Impossibile determinare l'offset precedente al salto in {zone.Id}.");
+
+        var low = validTicks;
+        var high = invalidTicks;
+        while (high - low > 1)
+        {
+            var middle = low + ((high - low) / 2);
+            var candidate = new DateTime(middle, DateTimeKind.Unspecified);
+            if (zone.IsInvalidTime(candidate))
+                high = middle;
+            else
+                low = middle;
+        }
+
+        return zone.GetUtcOffset(new DateTime(low, DateTimeKind.Unspecified));
     }
 
     private static IcsProperty? ParseProperty(string line)

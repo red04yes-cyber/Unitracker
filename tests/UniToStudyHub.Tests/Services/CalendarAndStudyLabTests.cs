@@ -205,7 +205,7 @@ END:VCALENDAR
     }
 
     [Fact]
-    public void IcsParserSkipsNonexistentRecurringTzidTimeWithoutConsumingCount()
+    public void IcsParserInterpretsNonexistentRecurringTzidTimeUsingPreGapOffset()
     {
         const string ics = """
 BEGIN:VCALENDAR
@@ -224,13 +224,18 @@ END:VCALENDAR
         var result = new IcsCalendarParser().Parse(ics, from, to);
         var occurrences = result.Events.OrderBy(item => item.StartsAt).ToArray();
 
-        Assert.Equal(new[] { 28, 30, 31 }, occurrences.Select(item => item.StartsAt.DateTime.Day).ToArray());
-        Assert.All(occurrences, item => Assert.Equal(2, item.StartsAt.DateTime.Hour));
-        Assert.Contains(result.Warnings, warning => warning.Contains("non esiste", StringComparison.OrdinalIgnoreCase));
+        Assert.Equal(new[] { 28, 29, 30 }, occurrences.Select(item => item.StartsAt.DateTime.Day).ToArray());
+        Assert.Equal(
+            new[] { TimeSpan.FromHours(1), TimeSpan.FromHours(1), TimeSpan.FromHours(2) },
+            occurrences.Select(item => item.StartsAt.Offset).ToArray());
+        Assert.Equal(3, TimeZoneInfo.ConvertTime(
+            occurrences[1].StartsAt,
+            TimeZoneInfo.FindSystemTimeZoneById("Europe/Rome")).Hour);
+        Assert.Contains(result.Warnings, warning => warning.Contains("offset precedente", StringComparison.OrdinalIgnoreCase));
     }
 
     [Fact]
-    public void IcsParserRejectsNonexistentInitialTzidTime()
+    public void IcsParserInterpretsNonexistentInitialTzidTimeUsingPreGapOffset()
     {
         const string ics = """
 BEGIN:VCALENDAR
@@ -246,8 +251,36 @@ END:VCALENDAR
 
         var result = new IcsCalendarParser().Parse(ics, from, to);
 
-        Assert.Empty(result.Events);
-        Assert.Contains(result.Warnings, warning => warning.Contains("inesistente", StringComparison.OrdinalIgnoreCase));
+        var item = Assert.Single(result.Events);
+        Assert.Equal(TimeSpan.FromHours(1), item.StartsAt.Offset);
+        Assert.Equal(3, TimeZoneInfo.ConvertTime(
+            item.StartsAt,
+            TimeZoneInfo.FindSystemTimeZoneById("Europe/Rome")).Hour);
+        Assert.Contains(result.Warnings, warning => warning.Contains("offset precedente", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public void IcsParserUsesTheOffsetBeforeAWholeDayTimezoneGap()
+    {
+        const string ics = """
+BEGIN:VCALENDAR
+BEGIN:VEVENT
+UID:apia-date-line-gap
+SUMMARY:Evento durante il salto di data
+DTSTART;TZID=Pacific/Apia:20111230T120000
+END:VEVENT
+END:VCALENDAR
+""";
+        var from = new DateTimeOffset(2011, 12, 29, 0, 0, 0, TimeSpan.Zero);
+        var to = new DateTimeOffset(2012, 1, 2, 0, 0, 0, TimeSpan.Zero);
+
+        var result = new IcsCalendarParser().Parse(ics, from, to);
+        var item = Assert.Single(result.Events);
+        var zone = TimeZoneInfo.FindSystemTimeZoneById("Pacific/Apia");
+
+        Assert.Equal(TimeSpan.FromHours(-10), item.StartsAt.Offset);
+        Assert.Equal(new DateTime(2011, 12, 31, 12, 0, 0), TimeZoneInfo.ConvertTime(item.StartsAt, zone).DateTime);
+        Assert.Contains(result.Warnings, warning => warning.Contains("offset precedente", StringComparison.OrdinalIgnoreCase));
     }
 
     [Fact]

@@ -58,18 +58,20 @@ remains at 09:00 after a daylight-saving transition.
 
 - `BYDAY` and `EXDATE` date comparisons use the calendar's local wall-clock
   date, not the machine's converted local date.
-- An ambiguous initial local time uses the first occurrence (the larger UTC
-  offset), as specified by RFC 5545.
-- A nonexistent initial `DTSTART` is rejected with a warning. Later
-  nonexistent recurrence instances are skipped with a warning and do not
-  consume `COUNT`; valid instances still determine the requested count.
+- An ambiguous local time uses the first occurrence (the larger UTC offset).
+- A nonexistent initial `DTSTART` or recurrence instance uses the offset in
+  effect immediately before the gap, as specified by RFC 5545 §3.3.5 and
+  verified Erratum 4271. The resulting instant is shifted forward by the gap
+  when converted back to the named zone; the importer emits a warning.
+- A nonexistent recurrence instance remains part of the generated recurrence
+  sequence and consumes `COUNT`; `EXDATE` is applied afterwards.
 - A UTC DATE-TIME ending in `Z` cannot also declare `TZID`.
 - Floating times without `TZID`, custom `VTIMEZONE`, `RDATE`, and
   `BYSETPOS` remain outside the supported subset.
 
 Regression tests cover weekly and monthly Europe/Rome transitions in 2026,
 host-time-zone-independent `BYDAY`, ambiguous and nonexistent local times,
-and invalid UTC/`TZID` combinations.
+a 24-hour Pacific/Apia date-line gap, and invalid UTC/`TZID` combinations.
 
 ## Regression coverage
 
