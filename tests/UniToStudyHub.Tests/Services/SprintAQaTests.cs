@@ -238,11 +238,11 @@ public sealed class SprintAQaTests
             .Export(data, DefaultExport, StudyExportFormat.Json, Start.AddHours(1))
             .Files.Single().Content);
 
-        Assert.Contains("\"schemaVersion\": \"1.0\"", json, StringComparison.Ordinal);
+        Assert.Contains("\"schemaVersion\": \"1.1\"", json, StringComparison.Ordinal);
         Assert.DoesNotContain("nota riservata", json, StringComparison.Ordinal);
         Assert.DoesNotContain("appunto privato", json, StringComparison.Ordinal);
         using var parsed = JsonDocument.Parse(json);
-        Assert.Equal("1.0", parsed.RootElement.GetProperty("schemaVersion").GetString());
+        Assert.Equal("1.1", parsed.RootElement.GetProperty("schemaVersion").GetString());
 
         var full = Encoding.UTF8.GetString(service
             .Export(data, DefaultExport with { IncludePrivateNotes = true }, StudyExportFormat.Json, Start.AddHours(1))

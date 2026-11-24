@@ -110,7 +110,7 @@ public sealed class StudyDataExportCoverageTests
         {
             Id = "card-b",
             CourseId = "course-b",
-            Front = "FLASHCARD_B",
+            Front = "FLASHCARD_COURSE_B_FRONT",
             CreatedAt = Start,
             UpdatedAt = Start
         });
@@ -266,7 +266,7 @@ public sealed class StudyDataExportCoverageTests
         new StudyDataExportService().ExportStudyData(data, request ?? Request, format, Start.AddDays(1));
 
     private static string Csv(StudyExportBundle bundle, string fileName) =>
-        Encoding.UTF8.GetString(Assert.Single(bundle.Files.Where(x => x.FileName == fileName)).Content);
+        Encoding.UTF8.GetString(Assert.Single(bundle.Files, x => x.FileName == fileName).Content);
 
     private static string WorkbookXml(StudyExportFile file)
     {
@@ -374,7 +374,7 @@ public sealed class StudyDataExportCoverageTests
 
         Assert.DoesNotContain("TASK_B", Csv(bundle, "tasks.csv"), StringComparison.Ordinal);
         Assert.DoesNotContain("MISSION_B", Csv(bundle, "missions.csv"), StringComparison.Ordinal);
-        Assert.DoesNotContain("FLASHCARD_B", Csv(bundle, "flashcards.csv"), StringComparison.Ordinal);
+        Assert.DoesNotContain("FLASHCARD_COURSE_B_FRONT", Csv(bundle, "flashcards.csv"), StringComparison.Ordinal);
         Assert.DoesNotContain("ERROR_B_QUESTION", Csv(bundle, "errors.csv"), StringComparison.Ordinal);
         Assert.DoesNotContain("QUESTION_B", Csv(bundle, "questions.csv"), StringComparison.Ordinal);
         Assert.DoesNotContain("Fisica", Csv(bundle, "grades.csv"), StringComparison.Ordinal);
