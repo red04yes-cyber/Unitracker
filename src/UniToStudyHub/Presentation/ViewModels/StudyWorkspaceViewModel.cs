@@ -679,7 +679,7 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
             return;
         }
 
-        foreach (var notification in Notifications)
+        foreach (var notification in Notifications.Where(item => item.Kind != "Moodle"))
             _dismissedNotificationIds.Add(notification.Id);
         Notifications.Clear();
         OnPropertyChanged(nameof(NoNotifications));
@@ -692,7 +692,9 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
         var retainedPomodoro = Notifications.Where(x => x.Kind == "Pomodoro");
         var desired = retainedPomodoro
             .Concat(_notificationCenter.GetUpcoming(_data))
-            .Where(x => !_dismissedNotificationIds.Contains(x.Id))
+            // Moodle read state is persisted on the announcement itself. Do not
+            // let this session-only dismissal set hide a later source update.
+            .Where(x => x.Kind == "Moodle" || !_dismissedNotificationIds.Contains(x.Id))
             .OrderBy(x => x.OccursAt)
             .ToArray();
         if (!Notifications.SequenceEqual(desired))
