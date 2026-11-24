@@ -1,13 +1,21 @@
 # Esportazione completa dei dati di studio
 
-## Formati e integrazione
+## Contratti e integrazione
 
-StudyDataExportService produce:
+StudyDataExportService espone due percorsi distinti:
+- Export: report di progresso compatto già usato da StudyWorkspaceViewModel.ExportProgressAsync. Mantiene attività, sessioni, segmenti, riepilogo e cicli Pomodoro; non include automaticamente materiali, note, voti o check-in.
+- ExportStudyData: esportazione completa e intenzionale dei dati di studio. Imposta IncludeStudyLabRecords e produce le raccolte descritte sotto.
+
+La UI attuale resta invariata. Il controllo dedicato "Esporta dati di studio" deve chiamare ExportStudyData solo dopo un'azione esplicita dell'utente e deve esporre le opzioni di privacy/filtro di StudyExportRequest. Non riutilizzare il pulsante "Esporta report XLSX", che continua a generare il report compatto. Nessun XAML è stato modificato in questa slice.
+
+## Formati
+
+ExportStudyData produce:
 - un bundle di file CSV UTF-8 con BOM, uno per raccolta;
 - un file XLSX con fogli separati;
 - un JSON versionato (schemaVersion: 1.1) con le stesse raccolte strutturate.
 
-Il comando WPF già esistente StudyWorkspaceViewModel.ExportProgressAsync usa il formato XLSX dello stesso servizio: l'esportazione corrente include quindi anche i nuovi fogli senza introdurre un secondo percorso di persistenza o un nuovo pulsante non collegato.
+StudyExportRequest.IncludeStudyLabRecords è false per default; ExportStudyData lo imposta a true. Export ordinario non materializza né serializza le raccolte aggiuntive.
 
 ## Raccolte esportate
 
@@ -43,8 +51,8 @@ CourseIds filtra le raccolte collegate a una materia. Una lista non vuota compos
 - Non vengono esportati testo estratto o pagine PDF, percorsi locali, URL Moodle di configurazione, token, credenziali/provider AI o snapshot di ActivityRevisionData.
 - Le stringhe CSV passano dalla protezione anti-formula esistente; i valori testuali XLSX sono serializzati come inlineStr, non come formule.
 
-L'esportazione è una copia esplicita dei dati selezionati, non un backup ripristinabile. Per backup e ripristino continuano a valere i flussi dedicati di BackupService.
+L'esportazione completa è una copia esplicita dei dati selezionati, non un backup ripristinabile. Per backup e ripristino continuano a valere i flussi dedicati di BackupService.
 
 ## Verifica
 
-StudyDataExportCoverageTests copre bundle CSV, fogli XLSX, JSON, filtri per corso e data, filtri non validi fail-closed, omissione dei campi testuali/risultati, note private, righe orfane, formula injection e assenza di contenuti PDF, URL Moodle/syllabus e snapshot di audit.
+StudyDataExportCoverageTests copre il mantenimento del report compatto, bundle CSV, fogli XLSX, JSON, filtri per corso e data, filtri non validi fail-closed, omissione dei campi testuali/risultati, note private, righe orfane, formula injection e assenza di contenuti PDF, URL Moodle/syllabus e snapshot di audit.

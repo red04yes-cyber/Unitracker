@@ -27,7 +27,8 @@ public sealed record StudyExportRequest(
     bool IncludeRatings = true,
     bool IncludeTags = true,
     bool IncludeResult = true,
-    bool IncludeDeleted = false);
+    bool IncludeDeleted = false,
+    bool IncludeStudyLabRecords = false);
 
 public sealed record StudyExportFile(string FileName, string ContentType, byte[] Content);
 
@@ -73,6 +74,20 @@ public sealed class StudyDataExportService
                 new[] { BuildJson(selection, request, generatedAt) }),
             _ => throw new ArgumentOutOfRangeException(nameof(format))
         };
+    }
+
+    /// <summary>
+    /// Explicit full-study-data export. The ordinary Export method remains the
+    /// compact progress report used by the existing WPF report button.
+    /// </summary>
+    public StudyExportBundle ExportStudyData(
+        StudyData data,
+        StudyExportRequest request,
+        StudyExportFormat format,
+        DateTimeOffset? now = null)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        return Export(data, request with { IncludeStudyLabRecords = true }, format, now);
     }
 
     private static ExportSelection Select(StudyData data, StudyExportRequest request, DateTimeOffset now)
@@ -139,6 +154,19 @@ public sealed class StudyDataExportService
                 .ThenBy(x => x.Id, StringComparer.Ordinal)
                 .ToList()
             : new List<PomodoroCycleData>();
+
+        if (!request.IncludeStudyLabRecords)
+        {
+            var progressData = new StudyData
+            {
+                Courses = data.Courses,
+                StudyActivities = new ObservableCollection<StudyActivityData>(activities),
+                StudySessions = new ObservableCollection<StudySessionData>(sessions)
+            };
+            var progressSummary = new ActivityLedgerService().Summarize(
+                progressData, request.From, request.To, now, zone.Id);
+            return new ExportSelection(activities, sessions, cycles, progressSummary, zone, request, now);
+        }
 
         // A record belongs to the export window when one of its meaningful
         // lifecycle dates (created, due, completed, reviewed or updated) falls
@@ -324,21 +352,27 @@ public sealed class StudyDataExportService
             new("activities.csv", CsvContentType, CsvBytes(ActivityTable(selection, request))),
             new("sessions.csv", CsvContentType, CsvBytes(SessionTable(selection, request))),
             new("segments.csv", CsvContentType, CsvBytes(SegmentTable(selection))),
-            new("summary.csv", CsvContentType, CsvBytes(SummaryTable(selection))),
-            new("tasks.csv", CsvContentType, CsvBytes(TaskTable(selection, request))),
-            new("missions.csv", CsvContentType, CsvBytes(MissionTable(selection, request))),
-            new("mission-steps.csv", CsvContentType, CsvBytes(MissionStepTable(selection, request))),
-            new("flashcards.csv", CsvContentType, CsvBytes(FlashcardTable(selection, request))),
-            new("flashcard-reviews.csv", CsvContentType, CsvBytes(FlashcardReviewTable(selection))),
-            new("errors.csv", CsvContentType, CsvBytes(ErrorTable(selection, request))),
-            new("energy-checkins.csv", CsvContentType, CsvBytes(EnergyCheckInTable(selection, request))),
-            new("syllabus.csv", CsvContentType, CsvBytes(SyllabusTable(selection, request))),
-            new("questions.csv", CsvContentType, CsvBytes(QuestionTable(selection, request))),
-            new("grades.csv", CsvContentType, CsvBytes(GradeTable(selection, request))),
-            new("career-attempts.csv", CsvContentType, CsvBytes(CareerAttemptTable(selection, request))),
-            new("exams.csv", CsvContentType, CsvBytes(ExamTable(selection))),
-            new("courses.csv", CsvContentType, CsvBytes(CourseTable(selection, request)))
+            new("summary.csv", CsvContentType, CsvBytes(SummaryTable(selection)))
         };
+        if (request.IncludeStudyLabRecords)
+        {
+            files.AddRange(new[]
+            {
+                new StudyExportFile("tasks.csv", CsvContentType, CsvBytes(TaskTable(selection, request))),
+                new StudyExportFile("missions.csv", CsvContentType, CsvBytes(MissionTable(selection, request))),
+                new StudyExportFile("mission-steps.csv", CsvContentType, CsvBytes(MissionStepTable(selection, request))),
+                new StudyExportFile("flashcards.csv", CsvContentType, CsvBytes(FlashcardTable(selection, request))),
+                new StudyExportFile("flashcard-reviews.csv", CsvContentType, CsvBytes(FlashcardReviewTable(selection))),
+                new StudyExportFile("errors.csv", CsvContentType, CsvBytes(ErrorTable(selection, request))),
+                new StudyExportFile("energy-checkins.csv", CsvContentType, CsvBytes(EnergyCheckInTable(selection, request))),
+                new StudyExportFile("syllabus.csv", CsvContentType, CsvBytes(SyllabusTable(selection, request))),
+                new StudyExportFile("questions.csv", CsvContentType, CsvBytes(QuestionTable(selection, request))),
+                new StudyExportFile("grades.csv", CsvContentType, CsvBytes(GradeTable(selection, request))),
+                new StudyExportFile("career-attempts.csv", CsvContentType, CsvBytes(CareerAttemptTable(selection, request))),
+                new StudyExportFile("exams.csv", CsvContentType, CsvBytes(ExamTable(selection))),
+                new StudyExportFile("courses.csv", CsvContentType, CsvBytes(CourseTable(selection, request)))
+            });
+        }
         if (request.IncludePomodoroCycles)
             files.Add(new("pomodoro-cycles.csv", CsvContentType, CsvBytes(PomodoroTable(selection))));
         return files;
@@ -438,7 +472,7 @@ public sealed class StudyDataExportService
                     x.CompletedAt
                 })
                 : null,
-            tasks = selection.Tasks.Select(x => new
+            tasks = request.IncludeStudyLabRecords ? selection.Tasks.Select(x => new
             {
                 x.Id,
                 x.CourseId,
@@ -452,8 +486,8 @@ public sealed class StudyDataExportService
                 x.Source,
                 x.CreatedAt,
                 x.UpdatedAt
-            }),
-            missions = selection.Missions.Select(x => new
+            }) : null,
+            missions = request.IncludeStudyLabRecords ? selection.Missions.Select(x => new
             {
                 x.Id,
                 x.CourseId,
@@ -479,8 +513,8 @@ public sealed class StudyDataExportService
                 }),
                 x.CreatedAt,
                 x.UpdatedAt
-            }),
-            flashcards = selection.Flashcards.Select(x => new
+            }) : null,
+            flashcards = request.IncludeStudyLabRecords ? selection.Flashcards.Select(x => new
             {
                 x.Id,
                 x.CourseId,
@@ -497,8 +531,8 @@ public sealed class StudyDataExportService
                 x.IsSuspended,
                 x.CreatedAt,
                 x.UpdatedAt
-            }),
-            flashcardReviews = selection.FlashcardReviews.Select(x => new
+            }) : null,
+            flashcardReviews = request.IncludeStudyLabRecords ? selection.FlashcardReviews.Select(x => new
             {
                 x.Id,
                 x.FlashcardId,
@@ -507,8 +541,8 @@ public sealed class StudyDataExportService
                 x.PreviousIntervalDays,
                 x.NewIntervalDays,
                 x.EaseFactorAfter
-            }),
-            errors = selection.Errors.Select(x => new
+            }) : null,
+            errors = request.IncludeStudyLabRecords ? selection.Errors.Select(x => new
             {
                 x.Id,
                 x.CourseId,
@@ -525,16 +559,16 @@ public sealed class StudyDataExportService
                 x.Source,
                 x.CreatedAt,
                 x.UpdatedAt
-            }),
-            energyCheckIns = selection.EnergyCheckIns.Select(x => new
+            }) : null,
+            energyCheckIns = request.IncludeStudyLabRecords ? selection.EnergyCheckIns.Select(x => new
             {
                 x.Id,
                 x.RecordedAt,
                 x.EnergyLevel,
                 x.FocusLevel,
                 note = request.IncludeNotes && request.IncludePrivateNotes ? x.Note : null
-            }),
-            syllabusTopics = selection.SyllabusTopics.Select(x => new
+            }) : null,
+            syllabusTopics = request.IncludeStudyLabRecords ? selection.SyllabusTopics.Select(x => new
             {
                 x.Id,
                 x.CourseId,
@@ -544,8 +578,8 @@ public sealed class StudyDataExportService
                 x.EstimatedMinutes,
                 x.LastStudiedAt,
                 x.UpdatedAt
-            }),
-            questions = selection.Questions.Select(x => new
+            }) : null,
+            questions = request.IncludeStudyLabRecords ? selection.Questions.Select(x => new
             {
                 x.Id,
                 x.CourseId,
@@ -560,8 +594,8 @@ public sealed class StudyDataExportService
                 x.IsOfficial,
                 x.CreatedAt,
                 x.UpdatedAt
-            }),
-            grades = selection.Grades.Select(x => new
+            }) : null,
+            grades = request.IncludeStudyLabRecords ? selection.Grades.Select(x => new
             {
                 x.Id,
                 x.CourseId,
@@ -571,8 +605,8 @@ public sealed class StudyDataExportService
                 x.Cfu,
                 date = DateOnly.FromDateTime(x.Date),
                 x.CountsTowardAverage
-            }),
-            careerAttempts = selection.CareerAttempts.Select(x => new
+            }) : null,
+            careerAttempts = request.IncludeStudyLabRecords ? selection.CareerAttempts.Select(x => new
             {
                 x.ExamId,
                 x.CourseId,
@@ -588,8 +622,8 @@ public sealed class StudyDataExportService
                 isHonors = request.IncludeResult ? x.Attempt.IsHonors : (bool?)null,
                 x.Attempt.IsPassFail,
                 x.Attempt.RecordedAt
-            }),
-            exams = selection.Exams.Select(x => new
+            }) : null,
+            exams = request.IncludeStudyLabRecords ? selection.Exams.Select(x => new
             {
                 x.Id,
                 x.CourseId,
@@ -600,8 +634,8 @@ public sealed class StudyDataExportService
                 x.PlannedDate,
                 x.PlannedSession,
                 x.Completed
-            }),
-            courses = selection.Courses.Select(x => new
+            }) : null,
+            courses = request.IncludeStudyLabRecords ? selection.Courses.Select(x => new
             {
                 x.Id,
                 x.MoodleCourseId,
@@ -620,7 +654,7 @@ public sealed class StudyDataExportService
                 notes = request.IncludeNotes ? x.Notes : null,
                 x.Source,
                 x.UpdatedAt
-            })
+            }) : null
         };
         return new StudyExportFile("unitracker-export.json", JsonContentType,
             JsonSerializer.SerializeToUtf8Bytes(document, JsonOptions));
@@ -648,19 +682,22 @@ public sealed class StudyDataExportService
                 new object?[] { "Minuti per argomento", string.Join("; ", selection.Summary.ByTopic.OrderBy(x => x.Key).Select(x => $"{x.Key}: {x.Value / 60}")) }
             }, new[] { 0, 0 })
         };
-        sheets.Add(SheetFromTable("Task", TaskTable(selection, request)));
-        sheets.Add(SheetFromTable("Missioni", MissionTable(selection, request)));
-        sheets.Add(SheetFromTable("Passi missioni", MissionStepTable(selection, request)));
-        sheets.Add(SheetFromTable("Flashcard", FlashcardTable(selection, request)));
-        sheets.Add(SheetFromTable("Ripassi", FlashcardReviewTable(selection)));
-        sheets.Add(SheetFromTable("Errori", ErrorTable(selection, request)));
-        sheets.Add(SheetFromTable("Check-in", EnergyCheckInTable(selection, request)));
-        sheets.Add(SheetFromTable("Syllabus", SyllabusTable(selection, request)));
-        sheets.Add(SheetFromTable("Domande", QuestionTable(selection, request)));
-        sheets.Add(SheetFromTable("Voti", GradeTable(selection, request)));
-        sheets.Add(SheetFromTable("Tentativi", CareerAttemptTable(selection, request)));
-        sheets.Add(SheetFromTable("Appelli planner", ExamTable(selection)));
-        sheets.Add(SheetFromTable("Materie", CourseTable(selection, request)));
+        if (request.IncludeStudyLabRecords)
+        {
+            sheets.Add(SheetFromTable("Task", TaskTable(selection, request)));
+            sheets.Add(SheetFromTable("Missioni", MissionTable(selection, request)));
+            sheets.Add(SheetFromTable("Passi missioni", MissionStepTable(selection, request)));
+            sheets.Add(SheetFromTable("Flashcard", FlashcardTable(selection, request)));
+            sheets.Add(SheetFromTable("Ripassi", FlashcardReviewTable(selection)));
+            sheets.Add(SheetFromTable("Errori", ErrorTable(selection, request)));
+            sheets.Add(SheetFromTable("Check-in", EnergyCheckInTable(selection, request)));
+            sheets.Add(SheetFromTable("Syllabus", SyllabusTable(selection, request)));
+            sheets.Add(SheetFromTable("Domande", QuestionTable(selection, request)));
+            sheets.Add(SheetFromTable("Voti", GradeTable(selection, request)));
+            sheets.Add(SheetFromTable("Tentativi", CareerAttemptTable(selection, request)));
+            sheets.Add(SheetFromTable("Appelli planner", ExamTable(selection)));
+            sheets.Add(SheetFromTable("Materie", CourseTable(selection, request)));
+        }
         if (request.IncludePomodoroCycles)
             sheets.Add(SheetFromTable("Pomodoro", PomodoroTable(selection)));
         return new StudyExportFile("unitracker-export.xlsx", XlsxContentType, XlsxBytes(sheets));
@@ -1214,12 +1251,15 @@ public sealed class StudyDataExportService
         request.IncludeTags,
         request.IncludeResult,
         request.IncludeDeleted,
-        includedStudyLabCollections = new[]
-        {
-            "tasks", "missions", "missionSteps", "flashcards", "flashcardReviews",
-            "errors", "energyCheckIns", "syllabusTopics", "questions", "grades",
-            "careerAttempts", "exams", "courses"
-        }
+        request.IncludeStudyLabRecords,
+        includedStudyLabCollections = request.IncludeStudyLabRecords
+            ? new[]
+            {
+                "tasks", "missions", "missionSteps", "flashcards", "flashcardReviews",
+                "errors", "energyCheckIns", "syllabusTopics", "questions", "grades",
+                "careerAttempts", "exams", "courses"
+            }
+            : Array.Empty<string>()
     };
 
     private static TimeZoneInfo ResolveTimeZone(string id)

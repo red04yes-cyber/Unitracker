@@ -263,7 +263,7 @@ public sealed class StudyDataExportCoverageTests
         StudyData data,
         StudyExportFormat format,
         StudyExportRequest? request = null) =>
-        new StudyDataExportService().Export(data, request ?? Request, format, Start.AddDays(1));
+        new StudyDataExportService().ExportStudyData(data, request ?? Request, format, Start.AddDays(1));
 
     private static string Csv(StudyExportBundle bundle, string fileName) =>
         Encoding.UTF8.GetString(Assert.Single(bundle.Files.Where(x => x.FileName == fileName)).Content);
@@ -285,6 +285,26 @@ public sealed class StudyDataExportCoverageTests
                 using var reader = new StreamReader(entry.Open());
                 return reader.ReadToEnd();
             }));
+    }
+
+    [Fact]
+    public void ExistingProgressExportRemainsLimitedToProgressCollections()
+    {
+        var service = new StudyDataExportService();
+        var data = CreateData();
+        var xlsx = service.Export(data, Request, StudyExportFormat.Xlsx, Start.AddDays(1)).Files.Single();
+        var workbook = WorkbookXml(xlsx);
+        var csv = service.Export(data, Request, StudyExportFormat.Csv, Start.AddDays(1));
+
+        Assert.DoesNotContain("name=\"Task\"", workbook, StringComparison.Ordinal);
+        Assert.DoesNotContain("name=\"Flashcard\"", workbook, StringComparison.Ordinal);
+        Assert.DoesNotContain("tasks.csv", csv.Files.Select(x => x.FileName));
+        Assert.DoesNotContain("flashcards.csv", csv.Files.Select(x => x.FileName));
+
+        using var json = JsonDocument.Parse(
+            service.Export(data, Request, StudyExportFormat.Json, Start.AddDays(1)).Files.Single().Content);
+        Assert.Equal(JsonValueKind.Null, json.RootElement.GetProperty("tasks").ValueKind);
+        Assert.Equal(JsonValueKind.Null, json.RootElement.GetProperty("flashcards").ValueKind);
     }
 
     [Fact]
