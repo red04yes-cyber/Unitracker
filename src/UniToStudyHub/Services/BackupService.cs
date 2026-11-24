@@ -100,9 +100,13 @@ public sealed class BackupService
         if (File.Exists(target)) throw new IOException("A backup with the generated name already exists.");
 
         LocalFileSecurity.EnsurePrivateDirectory(_backupDirectory);
+        if (!LocalFileSecurity.TryRestrictDirectory(_backupDirectory))
+            throw new UnauthorizedAccessException("The backup directory could not be restricted to the current user.");
         LocalFileSecurity.CleanupStaleTemporaryFiles(_backupDirectory, TimeSpan.FromHours(1),
             "*.part", "*.tmp");
         LocalFileSecurity.EnsurePrivateDirectory(_stagingDirectory);
+        if (!LocalFileSecurity.TryRestrictDirectory(_stagingDirectory))
+            throw new UnauthorizedAccessException("The backup staging directory could not be restricted to the current user.");
         LocalFileSecurity.CleanupStaleTemporaryFiles(_stagingDirectory, TimeSpan.FromHours(1), "*.db", "*.tmp");
 
         var staging = Path.Combine(_stagingDirectory, $"snapshot-{Guid.NewGuid():N}.db");
@@ -207,11 +211,15 @@ public sealed class BackupService
             if (manifest is not null && manifest.FormatVersion > CurrentFormatVersion) return false;
 
             LocalFileSecurity.EnsurePrivateDirectory(_verificationDirectory);
+            if (!LocalFileSecurity.TryRestrictDirectory(_verificationDirectory))
+                throw new UnauthorizedAccessException("The backup verification directory could not be restricted to the current user.");
             if (isLegacy)
             {
                 temporaryPath = Path.Combine(_verificationDirectory, $"verify-legacy-{Guid.NewGuid():N}.db");
                 await CopyFileBoundedAsync(backupPath, temporaryPath, MaximumPayloadBytes, cancellationToken)
                     .ConfigureAwait(false);
+                if (!LocalFileSecurity.TryRestrictFile(temporaryPath))
+                    throw new UnauthorizedAccessException("The temporary backup copy could not be restricted to the current user.");
                 if (!await VerifySqliteFileAsync(temporaryPath, cancellationToken).ConfigureAwait(false))
                     return false;
 
@@ -242,7 +250,8 @@ public sealed class BackupService
 
             temporaryPath = Path.Combine(_verificationDirectory, $"verify-{Guid.NewGuid():N}.db");
             await File.WriteAllBytesAsync(temporaryPath, plaintext, cancellationToken).ConfigureAwait(false);
-            LocalFileSecurity.TryRestrictFile(temporaryPath);
+            if (!LocalFileSecurity.TryRestrictFile(temporaryPath))
+                throw new UnauthorizedAccessException("The decrypted backup copy could not be restricted to the current user.");
             return await VerifySqliteFileAsync(temporaryPath, cancellationToken).ConfigureAwait(false);
         }
         catch (Exception ex) when (ex is InvalidDataException or IOException or UnauthorizedAccessException
@@ -311,11 +320,15 @@ public sealed class BackupService
                     containerPayloadLength != plaintext.LongLength)
                     throw new InvalidDataException("The selected backup does not match its manifest length.");
                 await File.WriteAllBytesAsync(temporary, plaintext, cancellationToken).ConfigureAwait(false);
+                if (!LocalFileSecurity.TryRestrictFile(temporary))
+                    throw new UnauthorizedAccessException("The decrypted restore candidate could not be restricted to the current user.");
             }
             else
             {
                 await CopyFileBoundedAsync(backupPath, temporary, MaximumPayloadBytes, cancellationToken)
                     .ConfigureAwait(false);
+                if (!LocalFileSecurity.TryRestrictFile(temporary))
+                    throw new UnauthorizedAccessException("The legacy restore candidate could not be restricted to the current user.");
                 var payloadLength = new FileInfo(temporary).Length;
                 if (manifest?.PayloadLength is { } expectedLength && expectedLength != payloadLength)
                     throw new InvalidDataException("The selected legacy backup does not match its manifest length.");
@@ -329,7 +342,8 @@ public sealed class BackupService
             // Older v1 backups contain a plaintext SQLite file. Convert the
             // temporary restore candidate before it can replace the live DB.
             StudyHubDatabase.EnsureEncryptedDatabase(temporary);
-            LocalFileSecurity.TryRestrictFile(temporary);
+            if (!LocalFileSecurity.TryRestrictFile(temporary))
+                throw new UnauthorizedAccessException("The restore candidate could not be restricted to the current user.");
 
             if (!await VerifySqliteFileAsync(temporary, cancellationToken).ConfigureAwait(false))
                 throw new InvalidDataException("The selected backup failed SQLite integrity verification.");
@@ -484,6 +498,8 @@ public sealed class BackupService
             snapshot.Parameters.Add(new Microsoft.Data.Sqlite.SqliteParameter("$target", target));
             await snapshot.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
 
+            if (!LocalFileSecurity.TryRestrictFile(target))
+                throw new UnauthorizedAccessException("The database snapshot could not be restricted to the current user.");
             if (!await VerifySqliteFileAsync(target, cancellationToken).ConfigureAwait(false))
                 throw new InvalidDataException("Lo snapshot SQLite non ha superato il controllo di integrità.");
 
