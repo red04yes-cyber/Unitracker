@@ -65,6 +65,28 @@ public sealed class AnnouncementSyncServiceTests
     }
 
     [Fact]
+    public void ChangedDiscussionReappearsInInboxAfterItWasMarkedRead()
+    {
+        var data = new StudyData();
+        AnnouncementSyncService.Upsert(
+            data.Announcements, "moodle-discussion:42", "Analisi", "Discussione",
+            "Prima versione", "https://moodle.example/mod/forum/view.php?id=7", SyncedAt);
+        Assert.Equal(1, AnnouncementSyncService.MarkAllRead(data));
+        var center = new NotificationCenterService();
+        var now = new DateTimeOffset(SyncedAt);
+
+        Assert.Empty(center.GetUpcoming(data, now));
+
+        AnnouncementSyncService.Upsert(
+            data.Announcements, "moodle-discussion:42", "Analisi", "Discussione",
+            "Versione aggiornata", "https://moodle.example/mod/forum/view.php?id=7", SyncedAt.AddDays(1));
+
+        var notification = Assert.Single(center.GetUpcoming(data, now));
+        Assert.Equal("announcement:" + data.Announcements.Single().Id, notification.Id);
+        Assert.Equal("Discussione", notification.Title);
+    }
+
+    [Fact]
     public void ChangedDestinationAlsoReopensTheExistingItem()
     {
         var announcements = new ObservableCollection<Announcement>();
