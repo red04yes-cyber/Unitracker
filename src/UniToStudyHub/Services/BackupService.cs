@@ -604,6 +604,7 @@ public sealed class BackupService
     {
         if (maximumBytes <= 0) throw new ArgumentOutOfRangeException(nameof(maximumBytes));
         var destinationCreated = false;
+        var buffer = Array.Empty<byte>();
         try
         {
             await using var source = new FileStream(sourcePath, FileMode.Open, FileAccess.Read, FileShare.Read,
@@ -615,7 +616,7 @@ public sealed class BackupService
             await using var destination = new FileStream(destinationPath, FileMode.CreateNew, FileAccess.Write,
                 FileShare.None, 81_920, FileOptions.Asynchronous | FileOptions.SequentialScan);
             destinationCreated = true;
-            var buffer = new byte[81_920];
+            buffer = new byte[81_920];
             long total = 0;
             int read;
             while ((read = await source.ReadAsync(buffer.AsMemory(), cancellationToken).ConfigureAwait(false)) > 0)
@@ -635,6 +636,10 @@ public sealed class BackupService
             if (destinationCreated) LocalFileSecurity.ScrubAndDelete(destinationPath);
             throw;
         }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(buffer);
+        }
     }
 
     private static string ComputeSha256Bounded(string path, long maximumBytes)
@@ -648,19 +653,26 @@ public sealed class BackupService
 
         using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
         var buffer = new byte[81_920];
-        long total = 0;
-        int read;
-        while ((read = stream.Read(buffer, 0, buffer.Length)) > 0)
+        try
         {
-            total += read;
-            if (total > maximumBytes)
-                throw new InvalidDataException("The file grew beyond its validated size.");
-            hash.AppendData(buffer, 0, read);
-        }
+            long total = 0;
+            int read;
+            while ((read = stream.Read(buffer, 0, buffer.Length)) > 0)
+            {
+                total += read;
+                if (total > maximumBytes)
+                    throw new InvalidDataException("The file grew beyond its validated size.");
+                hash.AppendData(buffer, 0, read);
+            }
 
-        if (total != expectedLength)
-            throw new InvalidDataException("The file changed or ended before the expected length.");
-        return Convert.ToHexString(hash.GetHashAndReset());
+            if (total != expectedLength)
+                throw new InvalidDataException("The file changed or ended before the expected length.");
+            return Convert.ToHexString(hash.GetHashAndReset());
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(buffer);
+        }
     }
 
     private static string? TryComputeSha256Bounded(string path, long maximumBytes)
