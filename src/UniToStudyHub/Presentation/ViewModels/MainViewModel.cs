@@ -657,20 +657,28 @@ public sealed class MainViewModel : INotifyPropertyChanged
                 foreach (var detail in activitySnapshot.ActivityDetails)
                 {
                     var sourceKey = $"moodle-activity-api:{pair.Key}:{detail.Key}";
-                    var item = Announcements.FirstOrDefault(value => value.SourceKey == sourceKey);
-                    if (item is null)
+                    if (sourceKey.Length > AnnouncementSyncService.MaximumSourceKeyLength ||
+                        sourceKey.Any(char.IsControl))
                     {
-                        item = new Announcement { SourceKey = sourceKey };
-                        Announcements.Add(item);
-                        addedUpdates++;
+                        optionalErrors++;
+                        continue;
                     }
-                    item.CourseName = course.Name;
-                    item.Title = $"Dati attività · {detail.Key.Replace('_', ' ')}";
+
                     var serialized = detail.Value.GetRawText();
-                    item.Summary = serialized.Length > 1800 ? serialized[..1800] + "…" : serialized;
-                    item.Url = course.SyllabusUrl;
-                    item.UpdatedAt = DateTime.UtcNow;
-                    item.IsNew = true;
+                    if (serialized.Length > AnnouncementSyncService.MaximumSummaryLength)
+                        serialized = serialized[..(AnnouncementSyncService.MaximumSummaryLength - 1)] + "…";
+                    var result = AnnouncementSyncService.Upsert(
+                        Announcements,
+                        sourceKey,
+                        course.Name,
+                        $"Dati attività · {detail.Key.Replace('_', ' ')}",
+                        serialized,
+                        // The activity API response has no guaranteed deep link.
+                        // Do not substitute a syllabus URL that may contain private query parameters.
+                        string.Empty,
+                        DateTime.UtcNow);
+                    if (result.Created)
+                        addedUpdates++;
                 }
             }
 
@@ -678,28 +686,22 @@ public sealed class MainViewModel : INotifyPropertyChanged
             foreach (var discussion in pair.Value)
             {
                 var sourceKey = $"moodle-discussion:{discussion.id}";
-                var update = Announcements.FirstOrDefault(item => item.SourceKey == sourceKey);
-                var isNew = update is null;
-                if (update is null)
-                {
-                    update = new Announcement { SourceKey = sourceKey };
-                    Announcements.Add(update);
-                    addedUpdates++;
-                }
-                update.CourseName = forumCourseById.TryGetValue(pair.Key, out var moodleCourseId)
-                    ? Courses.FirstOrDefault(item => item.MoodleCourseId == moodleCourseId)?.Name ?? update.CourseName
-                    : update.CourseName;
-                update.Title = string.IsNullOrWhiteSpace(discussion.firstpost?.subject)
+                var courseName = forumCourseById.TryGetValue(pair.Key, out var moodleCourseId)
+                    ? Courses.FirstOrDefault(item => item.MoodleCourseId == moodleCourseId)?.Name ?? string.Empty
+                    : string.Empty;
+                var title = string.IsNullOrWhiteSpace(discussion.firstpost?.subject)
                     ? discussion.name
                     : discussion.firstpost.subject;
-                update.Summary = "Discussione Moodle · aggiornamento " +
-                                 DateTimeOffset.FromUnixTimeSeconds(Math.Max(0, discussion.timemodified))
-                                     .ToLocalTime().ToString("g", CultureInfo.GetCultureInfo("it-IT"));
-                update.UpdatedAt = DateTime.UtcNow;
-                update.IsNew = isNew;
-                update.Url = string.IsNullOrWhiteSpace(MoodleUrlInput)
+                var summary = "Discussione Moodle · aggiornamento " +
+                              DateTimeOffset.FromUnixTimeSeconds(Math.Max(0, discussion.timemodified))
+                                  .ToLocalTime().ToString("g", CultureInfo.GetCultureInfo("it-IT"));
+                var url = string.IsNullOrWhiteSpace(MoodleUrlInput)
                     ? string.Empty
                     : $"{MoodleUrlInput.TrimEnd('/')}/mod/forum/view.php?id={discussion.forumid}";
+                var result = AnnouncementSyncService.Upsert(
+                    Announcements, sourceKey, courseName, title, summary, url, DateTime.UtcNow);
+                if (result.Created)
+                    addedUpdates++;
             }
 
             _data.MoodleBaseUrl = MoodleUrlInput.Trim();
@@ -712,6 +714,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
             OnPropertyChanged(nameof(Courses));
             OnPropertyChanged(nameof(Announcements));
             OnPropertyChanged(nameof(IsMoodleConnected));
+            Workspace.RefreshNotificationSnapshot();
             RefreshVisibleCourses();
             RefreshCourseSummary();
             RefreshCalendar();
