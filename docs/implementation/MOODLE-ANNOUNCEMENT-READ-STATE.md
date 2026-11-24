@@ -9,6 +9,7 @@ Le voci `moodle-discussion:{id}` rappresentano discussioni Moodle nella inbox:
 - l'ID locale e la chiave sorgente restano stabili, quindi la sincronizzazione non crea duplicati.
 
 `AnnouncementSyncService.MarkRead` e `MarkAllRead` modificano lo stato in memoria. Il chiamante persiste poi lo snapshot tramite `IStudyDataStore`. Il pulsante esistente "Segna tutti come letti" del centro notifiche salva lo stato prima di chiudere gli avvisi temporanei; se il salvataggio fallisce, ripristina i flag e mantiene la inbox visibile.
+Gli ID delle discussioni non vengono inseriti nell'insieme di soppressione temporanea della sessione: se una discussione già letta cambia contenuto in una sincronizzazione successiva, torna visibile come non letta. La soppressione in memoria resta riservata a task, eventi e transizioni Pomodoro.
 
 ## Tipi che non sono messaggi della inbox
 
