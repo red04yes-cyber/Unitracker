@@ -363,6 +363,22 @@ public sealed class StudyDataExportCoverageTests
     }
 
     [Fact]
+    public void InvalidNonEmptyCourseFilterFailsClosedInsteadOfExportingAllCourses()
+    {
+        using var document = JsonDocument.Parse(
+            Export(CreateData(), StudyExportFormat.Json, Request with { CourseIds = new[] { " ", "" } })
+                .Files.Single().Content);
+        var root = document.RootElement;
+
+        Assert.Equal(0, root.GetProperty("tasks").GetArrayLength());
+        Assert.Equal(0, root.GetProperty("missions").GetArrayLength());
+        Assert.Equal(0, root.GetProperty("flashcards").GetArrayLength());
+        Assert.Equal(0, root.GetProperty("errors").GetArrayLength());
+        Assert.Equal(0, root.GetProperty("energyCheckIns").GetArrayLength());
+        Assert.Equal(0, root.GetProperty("courses").GetArrayLength());
+    }
+
+    [Fact]
     public void DateRangeIncludesTasksDueInWindowButExcludesUnrelatedOldTasks()
     {
         var data = CreateData();

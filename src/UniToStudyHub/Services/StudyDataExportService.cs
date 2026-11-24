@@ -40,7 +40,7 @@ public sealed record StudyExportBundle(
 /// <summary>
 /// Builds deterministic exports from the persisted StudyData. Exports are data
 /// selections, not a second database: the caller writes the returned bytes.
-/// Private notes are excluded by default; secrets and sensitive source URLs are never selected.
+/// Private notes are excluded by default; configured secrets and syllabus URLs are never selected.
 /// </summary>
 public sealed class StudyDataExportService
 {
@@ -87,10 +87,9 @@ public sealed class StudyDataExportService
             : ResolveTimeZone(request.TimeZoneId);
         var rangeStart = StartOfDay(request.From, zone);
         var rangeEnd = StartOfDay(request.To.AddDays(1), zone);
-        var courses = request.CourseIds?
-            .Where(x => !string.IsNullOrWhiteSpace(x))
-            .ToHashSet(StringComparer.Ordinal);
-        if (courses?.Count == 0) courses = null;
+        var courses = request.CourseIds is { Count: > 0 }
+            ? request.CourseIds.Where(x => !string.IsNullOrWhiteSpace(x)).ToHashSet(StringComparer.Ordinal)
+            : null;
         var types = request.ActivityTypes?.Count > 0 ? request.ActivityTypes.ToHashSet() : null;
 
         var activities = data.StudyActivities

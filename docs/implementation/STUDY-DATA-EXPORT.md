@@ -31,7 +31,7 @@ L'intervallo From–To è inclusivo e interpretato nel fuso orario indicato da T
 - I topic del syllabus usano ultima data di studio/aggiornamento; quelli senza date restano inclusi come dati di riferimento.
 - Le materie sono dati di riferimento: vengono incluse tutte quelle ammesse dal filtro per corso, anche se non modificate nel periodo.
 
-CourseIds filtra le raccolte collegate a una materia. I check-in energia/focus sono globali e non hanno un CourseId: vengono omessi quando è attivo un filtro per materia, evitando di attribuire a un corso dati personali non collegati.
+CourseIds filtra le raccolte collegate a una materia. Una lista non vuota composta solo da ID mancanti/blank produce un export vuoto, non un export senza filtro. I check-in energia/focus sono globali e non hanno un CourseId: vengono omessi quando è attivo un filtro per materia, evitando di attribuire a un corso dati personali non collegati.
 
 ## Privacy e sicurezza
 
@@ -47,4 +47,4 @@ L'esportazione è una copia esplicita dei dati selezionati, non un backup ripris
 
 ## Verifica
 
-StudyDataExportCoverageTests copre bundle CSV, fogli XLSX, JSON, filtri per corso e data, omissione dei campi testuali/risultati, note private, righe orfane, formula injection e assenza di contenuti PDF, URL Moodle/syllabus e snapshot di audit.
+StudyDataExportCoverageTests copre bundle CSV, fogli XLSX, JSON, filtri per corso e data, filtri non validi fail-closed, omissione dei campi testuali/risultati, note private, righe orfane, formula injection e assenza di contenuti PDF, URL Moodle/syllabus e snapshot di audit.
