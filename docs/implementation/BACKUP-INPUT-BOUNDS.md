@@ -16,6 +16,7 @@ I file vuoti, i formati con estensione non supportata e i contenuti che superano
 - La lettura controlla EOF anticipato e un eventuale byte aggiuntivo; la copia legacy confronta la quantità trasferita con la lunghezza iniziale.
 - Gli handle sorgente condividono la lettura ma non nuove scritture su Windows; i controlli di lunghezza durante il trasferimento coprono comunque file che cambiano.
 - I buffer temporanei usati per copie e hash vengono azzerati.
+- Le directory di backup, staging e verifica e i file temporanei plaintext vengono controllati con ACL restrictive; se la restrizione non riesce, creazione/verifica/ripristino si interrompono invece di continuare con una copia leggibile.
 - La lista backup non calcola hash su file fuori dai limiti: tali file possono essere mostrati per consentire all'utente di individuarli, ma non ricevono un hash calcolato dal servizio.
 
 ## Verifica dei backup legacy
