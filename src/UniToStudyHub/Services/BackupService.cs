@@ -585,9 +585,16 @@ public sealed class BackupService
             }
 
             var extra = new byte[1];
-            if (await stream.ReadAsync(extra.AsMemory(), cancellationToken).ConfigureAwait(false) != 0)
-                throw new InvalidDataException("The file grew beyond its validated size.");
-            return bytes;
+            try
+            {
+                if (await stream.ReadAsync(extra.AsMemory(), cancellationToken).ConfigureAwait(false) != 0)
+                    throw new InvalidDataException("The file grew beyond its validated size.");
+                return bytes;
+            }
+            finally
+            {
+                CryptographicOperations.ZeroMemory(extra);
+            }
         }
         catch
         {
