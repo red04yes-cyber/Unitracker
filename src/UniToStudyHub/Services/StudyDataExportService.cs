@@ -40,11 +40,11 @@ public sealed record StudyExportBundle(
 /// <summary>
 /// Builds deterministic exports from the persisted StudyData. Exports are data
 /// selections, not a second database: the caller writes the returned bytes.
-/// Private notes and secrets are removed before any serializer sees the rows.
+/// Private notes are excluded by default; secrets and sensitive source URLs are never selected.
 /// </summary>
 public sealed class StudyDataExportService
 {
-    public const string SchemaVersion = "1.0";
+    public const string SchemaVersion = "1.1";
     private const string CsvContentType = "text/csv; charset=utf-8";
     private const string XlsxContentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
     private const string JsonContentType = "application/json; charset=utf-8";
@@ -81,19 +81,22 @@ public sealed class StudyDataExportService
             throw new ArgumentOutOfRangeException(nameof(request), "The end date must not precede the start date.");
         if (request.To.DayNumber - request.From.DayNumber > 3660)
             throw new ArgumentOutOfRangeException(nameof(request), "The export range is limited to 3661 days.");
+
         var zone = string.IsNullOrWhiteSpace(request.TimeZoneId)
             ? TimeZoneInfo.Local
             : ResolveTimeZone(request.TimeZoneId);
         var rangeStart = StartOfDay(request.From, zone);
         var rangeEnd = StartOfDay(request.To.AddDays(1), zone);
-        var courses = request.CourseIds?.ToHashSet(StringComparer.Ordinal);
+        var courses = request.CourseIds?
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .ToHashSet(StringComparer.Ordinal);
+        if (courses?.Count == 0) courses = null;
         var types = request.ActivityTypes?.Count > 0 ? request.ActivityTypes.ToHashSet() : null;
 
         var activities = data.StudyActivities
             .Where(x => request.IncludeDeleted || !x.IsDeleted)
             .Where(x => x.StartedAt < rangeEnd && (x.EndedAt ?? now) > rangeStart)
-            .Where(x => courses is null || courses.Count == 0 ||
-                        (!string.IsNullOrWhiteSpace(x.CourseId) && courses.Contains(x.CourseId)))
+            .Where(x => CourseMatches(x.CourseId, courses))
             .Where(x => types is null || types.Contains(x.Type))
             .OrderBy(x => x.StartedAt)
             .ThenBy(x => x.Id, StringComparer.Ordinal)
@@ -101,8 +104,7 @@ public sealed class StudyDataExportService
 
         var sessions = data.StudySessions
             .Where(x => x.StartedAt < rangeEnd && (x.EndedAt ?? now) > rangeStart)
-            .Where(x => courses is null || courses.Count == 0 ||
-                        (!string.IsNullOrWhiteSpace(x.CourseId) && courses.Contains(x.CourseId)))
+            .Where(x => CourseMatches(x.CourseId, courses))
             .OrderBy(x => x.StartedAt)
             .ThenBy(x => x.Id, StringComparer.Ordinal)
             .ToList();
@@ -120,9 +122,7 @@ public sealed class StudyDataExportService
             // filters. Otherwise a malformed cross-course or out-of-range link
             // could disclose a session's notes and segments in a scoped export.
             var overlapsRange = linked.StartedAt < rangeEnd && (linked.EndedAt ?? now) > rangeStart;
-            var matchesCourse = courses is null || courses.Count == 0 ||
-                                (!string.IsNullOrWhiteSpace(linked.CourseId) && courses.Contains(linked.CourseId));
-            if (!overlapsRange || !matchesCourse)
+            if (!overlapsRange || !CourseMatches(linked.CourseId, courses))
                 continue;
 
             sessionIds.Add(linked.Id);
@@ -133,23 +133,189 @@ public sealed class StudyDataExportService
         var cycles = request.IncludePomodoroCycles
             ? data.PomodoroCycles
                 .Where(x => x.FocusStartedAt < rangeEnd && (x.CompletedAt ?? x.FocusEndedAt) > rangeStart)
-                .Where(x => courses is null || courses.Count == 0 ||
-                            data.StudySessions.FirstOrDefault(s => s.Id == x.SessionId) is { } session &&
-                            !string.IsNullOrWhiteSpace(session.CourseId) && courses.Contains(session.CourseId))
+                .Where(x => courses is null ||
+                            data.StudySessions.FirstOrDefault(session => session.Id == x.SessionId) is { } session &&
+                            CourseMatches(session.CourseId, courses))
                 .OrderBy(x => x.FocusStartedAt)
                 .ThenBy(x => x.Id, StringComparer.Ordinal)
                 .ToList()
             : new List<PomodoroCycleData>();
 
+        // A record belongs to the export window when one of its meaningful
+        // lifecycle dates (created, due, completed, reviewed or updated) falls
+        // inside the selected local-calendar range.
+        var tasks = data.StudyTasks
+            .Where(x => CourseMatches(x.CourseId, courses))
+            .Where(x => InRange(x.CreatedAt, request.From, request.To, zone) ||
+                        InRange(x.UpdatedAt, request.From, request.To, zone) ||
+                        InRange(x.DueAt, request.From, request.To, zone) ||
+                        InRange(x.CompletedAt, request.From, request.To, zone))
+            .OrderBy(x => x.CreatedAt)
+            .ThenBy(x => x.Id, StringComparer.Ordinal)
+            .ToList();
+
+        var missions = data.StudyMissions
+            .Where(x => CourseMatches(x.CourseId, courses))
+            .Where(x => InRange(x.StartsAt, request.From, request.To, zone) ||
+                        InRange(x.CreatedAt, request.From, request.To, zone) ||
+                        InRange(x.UpdatedAt, request.From, request.To, zone) ||
+                        InRange(x.DueAt, request.From, request.To, zone) ||
+                        InRange(x.CompletedAt, request.From, request.To, zone))
+            .OrderBy(x => x.StartsAt)
+            .ThenBy(x => x.Id, StringComparer.Ordinal)
+            .ToList();
+
+        var flashcards = data.Flashcards
+            .Where(x => CourseMatches(x.CourseId, courses))
+            .Where(x => InRange(x.CreatedAt, request.From, request.To, zone) ||
+                        InRange(x.UpdatedAt, request.From, request.To, zone) ||
+                        InRange(x.DueAt, request.From, request.To, zone) ||
+                        InRange(x.LastReviewedAt, request.From, request.To, zone))
+            .OrderBy(x => x.CreatedAt)
+            .ThenBy(x => x.Id, StringComparer.Ordinal)
+            .ToList();
+        var flashcardsById = flashcards
+            .Where(x => !string.IsNullOrWhiteSpace(x.Id))
+            .GroupBy(x => x.Id, StringComparer.Ordinal)
+            .ToDictionary(group => group.Key, group => group.First(), StringComparer.Ordinal);
+        var flashcardReviews = data.FlashcardReviews
+            .Where(x => InRange(x.ReviewedAt, request.From, request.To, zone))
+            .Where(x => flashcardsById.TryGetValue(x.FlashcardId, out var card) &&
+                        CourseMatches(card.CourseId, courses))
+            .OrderBy(x => x.ReviewedAt)
+            .ThenBy(x => x.Id, StringComparer.Ordinal)
+            .ToList();
+
+        var errors = data.ErrorJournalEntries
+            .Where(x => CourseMatches(x.CourseId, courses))
+            .Where(x => InRange(x.CreatedAt, request.From, request.To, zone) ||
+                        InRange(x.UpdatedAt, request.From, request.To, zone) ||
+                        InRange(x.NextReviewAt, request.From, request.To, zone))
+            .OrderBy(x => x.CreatedAt)
+            .ThenBy(x => x.Id, StringComparer.Ordinal)
+            .ToList();
+
+        // Energy check-ins are global and have no course relationship. They are
+        // deliberately omitted from a course-scoped export rather than implying
+        // that a personal check-in belongs to the selected course.
+        var energyCheckIns = courses is null
+            ? data.EnergyCheckIns
+                .Where(x => InRange(x.RecordedAt, request.From, request.To, zone))
+                .OrderBy(x => x.RecordedAt)
+                .ThenBy(x => x.Id, StringComparer.Ordinal)
+                .ToList()
+            : new List<EnergyCheckInData>();
+
+        var syllabusTopics = data.SyllabusTopics
+            .Where(x => CourseMatches(x.CourseId, courses))
+            .Where(x => (!x.LastStudiedAt.HasValue && !x.UpdatedAt.HasValue) ||
+                        InRange(x.LastStudiedAt, request.From, request.To, zone) ||
+                        InRange(x.UpdatedAt, request.From, request.To, zone))
+            .OrderBy(x => x.CourseId, StringComparer.Ordinal)
+            .ThenBy(x => x.Title, StringComparer.CurrentCultureIgnoreCase)
+            .ToList();
+
+        var questions = data.Questions
+            .Where(x => CourseMatches(x.CourseId, courses))
+            .Where(x => InRange(x.CreatedAt, request.From, request.To, zone) ||
+                        InRange(x.UpdatedAt, request.From, request.To, zone))
+            .OrderBy(x => x.CreatedAt)
+            .ThenBy(x => x.Id, StringComparer.Ordinal)
+            .ToList();
+
+        var grades = data.Grades
+            .Where(x => CourseMatches(x.CourseId, courses))
+            .Where(x => InDateRange(x.Date, request.From, request.To))
+            .OrderBy(x => x.Date)
+            .ThenBy(x => x.Id, StringComparer.Ordinal)
+            .ToList();
+
+        var careerAttempts = data.CareerExams
+            .Where(x => CourseMatches(x.CourseId, courses))
+            .SelectMany(exam => exam.Attempts
+                .Where(attempt => InRange(attempt.AttemptedAt, request.From, request.To, zone) ||
+                                  InRange(attempt.RecordedAt, request.From, request.To, zone))
+                .Select(attempt => new CareerAttemptRow(
+                    exam.Id, exam.CourseId, exam.Name, exam.Cfu, exam.CountsTowardAverage, attempt)))
+            .OrderBy(x => x.Attempt.AttemptedAt)
+            .ThenBy(x => x.Attempt.Id, StringComparer.Ordinal)
+            .ToList();
+
+        var exams = data.Exams
+            .Where(x => CourseMatches(x.CourseId, courses))
+            .Where(x => InDateRange(x.PlannedDate, request.From, request.To))
+            .OrderBy(x => x.PlannedDate)
+            .ThenBy(x => x.Id, StringComparer.Ordinal)
+            .ToList();
+
+        // Course rows are reference data for the selected records, so they are
+        // retained for the chosen courses even if the course itself was not
+        // edited during the reporting window.
+        var selectedCourses = data.Courses
+            .Where(x => CourseMatches(x.Id, courses))
+            .OrderBy(x => x.Name, StringComparer.CurrentCultureIgnoreCase)
+            .ThenBy(x => x.Id, StringComparer.Ordinal)
+            .ToList();
+
         var scopedData = new StudyData
         {
-            Courses = data.Courses,
+            Courses = new ObservableCollection<Course>(selectedCourses),
             StudyActivities = new ObservableCollection<StudyActivityData>(activities),
             StudySessions = new ObservableCollection<StudySessionData>(sessions)
         };
-        var ledger = new ActivityLedgerService();
-        var summary = ledger.Summarize(scopedData, request.From, request.To, now, zone.Id);
-        return new ExportSelection(activities, sessions, cycles, summary, zone, request, now);
+        var summary = new ActivityLedgerService().Summarize(scopedData, request.From, request.To, now, zone.Id);
+        return new ExportSelection(activities, sessions, cycles, summary, zone, request, now)
+        {
+            Tasks = tasks,
+            Missions = missions,
+            Flashcards = flashcards,
+            FlashcardReviews = flashcardReviews,
+            Errors = errors,
+            EnergyCheckIns = energyCheckIns,
+            SyllabusTopics = syllabusTopics,
+            Questions = questions,
+            Grades = grades,
+            CareerAttempts = careerAttempts,
+            Exams = exams,
+            Courses = selectedCourses
+        };
+    }
+
+    private static bool CourseMatches(string? courseId, HashSet<string>? courses) =>
+        courses is null ||
+        (!string.IsNullOrWhiteSpace(courseId) && courses.Contains(courseId));
+
+    private static bool InRange(DateTimeOffset value, DateOnly from, DateOnly to, TimeZoneInfo zone)
+    {
+        var day = DateOnly.FromDateTime(TimeZoneInfo.ConvertTime(value, zone).DateTime);
+        return day >= from && day <= to;
+    }
+
+    private static bool InRange(DateTimeOffset? value, DateOnly from, DateOnly to, TimeZoneInfo zone) =>
+        value is { } instant && InRange(instant, from, to, zone);
+
+    private static bool InRange(DateTime value, DateOnly from, DateOnly to, TimeZoneInfo zone)
+    {
+        var local = value.Kind switch
+        {
+            DateTimeKind.Utc => TimeZoneInfo.ConvertTime(new DateTimeOffset(value, TimeSpan.Zero), zone).DateTime,
+            DateTimeKind.Local => TimeZoneInfo.ConvertTime(new DateTimeOffset(value), zone).DateTime,
+            _ => value
+        };
+        var day = DateOnly.FromDateTime(local);
+        return day >= from && day <= to;
+    }
+
+    private static bool InRange(DateTime? value, DateOnly from, DateOnly to, TimeZoneInfo zone) =>
+        value is { } date && InRange(date, from, to, zone);
+
+    private static bool InDateRange(DateTime? value, DateOnly from, DateOnly to) =>
+        value is { } date && InDateRange(date, from, to);
+
+    private static bool InDateRange(DateTime value, DateOnly from, DateOnly to)
+    {
+        var day = DateOnly.FromDateTime(value);
+        return day >= from && day <= to;
     }
 
     private static IReadOnlyList<StudyExportFile> BuildCsv(ExportSelection selection, StudyExportRequest request)
@@ -159,7 +325,20 @@ public sealed class StudyDataExportService
             new("activities.csv", CsvContentType, CsvBytes(ActivityTable(selection, request))),
             new("sessions.csv", CsvContentType, CsvBytes(SessionTable(selection, request))),
             new("segments.csv", CsvContentType, CsvBytes(SegmentTable(selection))),
-            new("summary.csv", CsvContentType, CsvBytes(SummaryTable(selection)))
+            new("summary.csv", CsvContentType, CsvBytes(SummaryTable(selection))),
+            new("tasks.csv", CsvContentType, CsvBytes(TaskTable(selection, request))),
+            new("missions.csv", CsvContentType, CsvBytes(MissionTable(selection, request))),
+            new("mission-steps.csv", CsvContentType, CsvBytes(MissionStepTable(selection, request))),
+            new("flashcards.csv", CsvContentType, CsvBytes(FlashcardTable(selection, request))),
+            new("flashcard-reviews.csv", CsvContentType, CsvBytes(FlashcardReviewTable(selection))),
+            new("errors.csv", CsvContentType, CsvBytes(ErrorTable(selection, request))),
+            new("energy-checkins.csv", CsvContentType, CsvBytes(EnergyCheckInTable(selection, request))),
+            new("syllabus.csv", CsvContentType, CsvBytes(SyllabusTable(selection, request))),
+            new("questions.csv", CsvContentType, CsvBytes(QuestionTable(selection, request))),
+            new("grades.csv", CsvContentType, CsvBytes(GradeTable(selection, request))),
+            new("career-attempts.csv", CsvContentType, CsvBytes(CareerAttemptTable(selection, request))),
+            new("exams.csv", CsvContentType, CsvBytes(ExamTable(selection))),
+            new("courses.csv", CsvContentType, CsvBytes(CourseTable(selection, request)))
         };
         if (request.IncludePomodoroCycles)
             files.Add(new("pomodoro-cycles.csv", CsvContentType, CsvBytes(PomodoroTable(selection))));
@@ -259,7 +438,190 @@ public sealed class StudyDataExportService
                     x.IsCompleted,
                     x.CompletedAt
                 })
-                : null
+                : null,
+            tasks = selection.Tasks.Select(x => new
+            {
+                x.Id,
+                x.CourseId,
+                x.Title,
+                description = request.IncludeNotes ? x.Description : null,
+                x.DueAt,
+                x.EstimatedMinutes,
+                x.Priority,
+                status = x.Status.ToString(),
+                x.CompletedAt,
+                x.Source,
+                x.CreatedAt,
+                x.UpdatedAt
+            }),
+            missions = selection.Missions.Select(x => new
+            {
+                x.Id,
+                x.CourseId,
+                x.SyllabusTopicId,
+                x.Title,
+                description = request.IncludeNotes ? x.Description : null,
+                period = x.Period.ToString(),
+                x.StartsAt,
+                x.DueAt,
+                x.Difficulty,
+                status = x.Status.ToString(),
+                reward = request.IncludeNotes ? x.Reward : null,
+                x.CompletedAt,
+                completedStepCount = x.CompletedStepCount,
+                totalStepCount = x.Steps.Count,
+                steps = x.Steps.Select(step => new
+                {
+                    step.Id,
+                    title = request.IncludeNotes ? step.Title : null,
+                    step.IsCompleted,
+                    step.Position,
+                    step.CompletedAt
+                }),
+                x.CreatedAt,
+                x.UpdatedAt
+            }),
+            flashcards = selection.Flashcards.Select(x => new
+            {
+                x.Id,
+                x.CourseId,
+                x.SyllabusTopicId,
+                front = request.IncludeNotes ? x.Front : null,
+                back = request.IncludeNotes ? x.Back : null,
+                x.Source,
+                x.EaseFactor,
+                x.IntervalDays,
+                x.Repetitions,
+                x.Lapses,
+                x.DueAt,
+                x.LastReviewedAt,
+                x.IsSuspended,
+                x.CreatedAt,
+                x.UpdatedAt
+            }),
+            flashcardReviews = selection.FlashcardReviews.Select(x => new
+            {
+                x.Id,
+                x.FlashcardId,
+                x.ReviewedAt,
+                rating = x.Rating.ToString(),
+                x.PreviousIntervalDays,
+                x.NewIntervalDays,
+                x.EaseFactorAfter
+            }),
+            errors = selection.Errors.Select(x => new
+            {
+                x.Id,
+                x.CourseId,
+                x.SyllabusTopicId,
+                x.Topic,
+                question = request.IncludeNotes ? x.Question : null,
+                incorrectAnswer = request.IncludeNotes && request.IncludeResult ? x.IncorrectAnswer : null,
+                correctAnswer = request.IncludeNotes && request.IncludeResult ? x.CorrectAnswer : null,
+                x.ErrorType,
+                rootCause = request.IncludeNotes ? x.RootCause : null,
+                x.NextReviewAt,
+                x.ReviewCount,
+                status = x.Status.ToString(),
+                x.Source,
+                x.CreatedAt,
+                x.UpdatedAt
+            }),
+            energyCheckIns = selection.EnergyCheckIns.Select(x => new
+            {
+                x.Id,
+                x.RecordedAt,
+                x.EnergyLevel,
+                x.FocusLevel,
+                note = request.IncludeNotes && request.IncludePrivateNotes ? x.Note : null
+            }),
+            syllabusTopics = selection.SyllabusTopics.Select(x => new
+            {
+                x.Id,
+                x.CourseId,
+                x.Title,
+                description = request.IncludeNotes ? x.Description : null,
+                status = x.Status.ToString(),
+                x.EstimatedMinutes,
+                x.LastStudiedAt,
+                x.UpdatedAt
+            }),
+            questions = selection.Questions.Select(x => new
+            {
+                x.Id,
+                x.CourseId,
+                x.SyllabusTopicId,
+                text = request.IncludeNotes ? x.Text : null,
+                type = x.Type.ToString(),
+                x.Difficulty,
+                options = request.IncludeNotes ? x.Options : null,
+                correctAnswer = request.IncludeNotes && request.IncludeResult ? x.CorrectAnswer : null,
+                explanation = request.IncludeNotes ? x.Explanation : null,
+                x.Source,
+                x.IsOfficial,
+                x.CreatedAt,
+                x.UpdatedAt
+            }),
+            grades = selection.Grades.Select(x => new
+            {
+                x.Id,
+                x.CourseId,
+                x.CourseName,
+                value = request.IncludeResult ? x.Value : (int?)null,
+                honors = request.IncludeResult ? x.Honors : (bool?)null,
+                x.Cfu,
+                date = DateOnly.FromDateTime(x.Date),
+                x.CountsTowardAverage
+            }),
+            careerAttempts = selection.CareerAttempts.Select(x => new
+            {
+                x.ExamId,
+                x.CourseId,
+                x.ExamName,
+                x.Cfu,
+                x.CountsTowardAverage,
+                x.Attempt.Id,
+                x.Attempt.AttemptedAt,
+                status = x.Attempt.Status,
+                outcome = request.IncludeResult ? x.Attempt.Outcome : null,
+                gradeDecision = request.IncludeResult ? x.Attempt.GradeDecision : null,
+                numericGrade = request.IncludeResult ? x.Attempt.NumericGrade : null,
+                isHonors = request.IncludeResult ? x.Attempt.IsHonors : (bool?)null,
+                x.Attempt.IsPassFail,
+                x.Attempt.RecordedAt
+            }),
+            exams = selection.Exams.Select(x => new
+            {
+                x.Id,
+                x.CourseId,
+                x.CourseName,
+                x.Name,
+                x.Cfu,
+                x.EstimatedStudyHours,
+                x.PlannedDate,
+                x.PlannedSession,
+                x.Completed
+            }),
+            courses = selection.Courses.Select(x => new
+            {
+                x.Id,
+                x.MoodleCourseId,
+                x.Name,
+                x.Code,
+                x.Cfu,
+                x.Completed,
+                status = x.Status.ToString(),
+                x.Archived,
+                x.Teacher,
+                x.AcademicYear,
+                x.Session,
+                x.EstimatedStudyHours,
+                x.AppealDate,
+                syllabusSummary = request.IncludeNotes ? x.SyllabusSummary : null,
+                notes = request.IncludeNotes ? x.Notes : null,
+                x.Source,
+                x.UpdatedAt
+            })
         };
         return new StudyExportFile("unitracker-export.json", JsonContentType,
             JsonSerializer.SerializeToUtf8Bytes(document, JsonOptions));
@@ -287,6 +649,19 @@ public sealed class StudyDataExportService
                 new object?[] { "Minuti per argomento", string.Join("; ", selection.Summary.ByTopic.OrderBy(x => x.Key).Select(x => $"{x.Key}: {x.Value / 60}")) }
             }, new[] { 0, 0 })
         };
+        sheets.Add(SheetFromTable("Task", TaskTable(selection, request)));
+        sheets.Add(SheetFromTable("Missioni", MissionTable(selection, request)));
+        sheets.Add(SheetFromTable("Passi missioni", MissionStepTable(selection, request)));
+        sheets.Add(SheetFromTable("Flashcard", FlashcardTable(selection, request)));
+        sheets.Add(SheetFromTable("Ripassi", FlashcardReviewTable(selection)));
+        sheets.Add(SheetFromTable("Errori", ErrorTable(selection, request)));
+        sheets.Add(SheetFromTable("Check-in", EnergyCheckInTable(selection, request)));
+        sheets.Add(SheetFromTable("Syllabus", SyllabusTable(selection, request)));
+        sheets.Add(SheetFromTable("Domande", QuestionTable(selection, request)));
+        sheets.Add(SheetFromTable("Voti", GradeTable(selection, request)));
+        sheets.Add(SheetFromTable("Tentativi", CareerAttemptTable(selection, request)));
+        sheets.Add(SheetFromTable("Appelli planner", ExamTable(selection)));
+        sheets.Add(SheetFromTable("Materie", CourseTable(selection, request)));
         if (request.IncludePomodoroCycles)
             sheets.Add(SheetFromTable("Pomodoro", PomodoroTable(selection)));
         return new StudyExportFile("unitracker-export.xlsx", XlsxContentType, XlsxBytes(sheets));
@@ -393,6 +768,221 @@ public sealed class StudyDataExportService
             new ExportColumn<PomodoroCycleData>("Completato", x => x.IsCompleted),
             new ExportColumn<PomodoroCycleData>("Completato il", x => x.CompletedAt, 1, IsInstant: true)
         }, selection.Cycles);
+
+    private static ExportTable TaskTable(ExportSelection selection, StudyExportRequest request) =>
+        Table(new[]
+        {
+            new ExportColumn<StudyTaskData>("ID", x => x.Id),
+            new ExportColumn<StudyTaskData>("Materia", x => x.CourseId),
+            new ExportColumn<StudyTaskData>("Titolo", x => x.Title),
+            new ExportColumn<StudyTaskData>("Descrizione", x => request.IncludeNotes ? x.Description : null),
+            new ExportColumn<StudyTaskData>("Scadenza", x => x.DueAt, 1, IsInstant: true),
+            new ExportColumn<StudyTaskData>("Minuti stimati", x => x.EstimatedMinutes),
+            new ExportColumn<StudyTaskData>("Priorità", x => x.Priority),
+            new ExportColumn<StudyTaskData>("Stato", x => x.Status.ToString()),
+            new ExportColumn<StudyTaskData>("Completato il", x => x.CompletedAt, 1, IsInstant: true),
+            new ExportColumn<StudyTaskData>("Origine", x => x.Source),
+            new ExportColumn<StudyTaskData>("Creato il", x => x.CreatedAt, 1, IsInstant: true),
+            new ExportColumn<StudyTaskData>("Aggiornato il", x => x.UpdatedAt, 1, IsInstant: true)
+        }, selection.Tasks);
+
+    private static ExportTable MissionTable(ExportSelection selection, StudyExportRequest request) =>
+        Table(new[]
+        {
+            new ExportColumn<StudyMissionData>("ID", x => x.Id),
+            new ExportColumn<StudyMissionData>("Materia", x => x.CourseId),
+            new ExportColumn<StudyMissionData>("Argomento", x => x.SyllabusTopicId),
+            new ExportColumn<StudyMissionData>("Titolo", x => x.Title),
+            new ExportColumn<StudyMissionData>("Descrizione", x => request.IncludeNotes ? x.Description : null),
+            new ExportColumn<StudyMissionData>("Periodo", x => x.Period.ToString()),
+            new ExportColumn<StudyMissionData>("Inizio", x => x.StartsAt, 1, IsInstant: true),
+            new ExportColumn<StudyMissionData>("Scadenza", x => x.DueAt, 1, IsInstant: true),
+            new ExportColumn<StudyMissionData>("Difficoltà", x => x.Difficulty),
+            new ExportColumn<StudyMissionData>("Stato", x => x.Status.ToString()),
+            new ExportColumn<StudyMissionData>("Ricompensa", x => request.IncludeNotes ? x.Reward : null),
+            new ExportColumn<StudyMissionData>("Completato il", x => x.CompletedAt, 1, IsInstant: true),
+            new ExportColumn<StudyMissionData>("Passi completati", x => x.CompletedStepCount),
+            new ExportColumn<StudyMissionData>("Passi totali", x => x.Steps.Count),
+            new ExportColumn<StudyMissionData>("Origine", x => x.Source),
+            new ExportColumn<StudyMissionData>("Creato il", x => x.CreatedAt, 1, IsInstant: true),
+            new ExportColumn<StudyMissionData>("Aggiornato il", x => x.UpdatedAt, 1, IsInstant: true)
+        }, selection.Missions);
+
+    private static ExportTable MissionStepTable(ExportSelection selection, StudyExportRequest request) =>
+        Table(new[]
+        {
+            new ExportColumn<MissionStepRow>("Missione", x => x.MissionId),
+            new ExportColumn<MissionStepRow>("Materia", x => x.CourseId),
+            new ExportColumn<MissionStepRow>("ID passo", x => x.Step.Id),
+            new ExportColumn<MissionStepRow>("Titolo", x => request.IncludeNotes ? x.Step.Title : null),
+            new ExportColumn<MissionStepRow>("Completato", x => x.Step.IsCompleted),
+            new ExportColumn<MissionStepRow>("Posizione", x => x.Step.Position),
+            new ExportColumn<MissionStepRow>("Completato il", x => x.Step.CompletedAt, 1, IsInstant: true)
+        }, selection.Missions.SelectMany(mission =>
+            mission.Steps.Select(step => new MissionStepRow(mission.Id, mission.CourseId, step))));
+
+    private static ExportTable FlashcardTable(ExportSelection selection, StudyExportRequest request) =>
+        Table(new[]
+        {
+            new ExportColumn<FlashcardData>("ID", x => x.Id),
+            new ExportColumn<FlashcardData>("Materia", x => x.CourseId),
+            new ExportColumn<FlashcardData>("Argomento", x => x.SyllabusTopicId),
+            new ExportColumn<FlashcardData>("Fronte", x => request.IncludeNotes ? x.Front : null),
+            new ExportColumn<FlashcardData>("Retro", x => request.IncludeNotes ? x.Back : null),
+            new ExportColumn<FlashcardData>("Origine", x => x.Source),
+            new ExportColumn<FlashcardData>("Ease factor", x => x.EaseFactor),
+            new ExportColumn<FlashcardData>("Intervallo giorni", x => x.IntervalDays),
+            new ExportColumn<FlashcardData>("Ripetizioni", x => x.Repetitions),
+            new ExportColumn<FlashcardData>("Errori", x => x.Lapses),
+            new ExportColumn<FlashcardData>("Prossima revisione", x => x.DueAt, 1, IsInstant: true),
+            new ExportColumn<FlashcardData>("Ultima revisione", x => x.LastReviewedAt, 1, IsInstant: true),
+            new ExportColumn<FlashcardData>("Sospesa", x => x.IsSuspended),
+            new ExportColumn<FlashcardData>("Creata il", x => x.CreatedAt, 1, IsInstant: true),
+            new ExportColumn<FlashcardData>("Aggiornata il", x => x.UpdatedAt, 1, IsInstant: true)
+        }, selection.Flashcards);
+
+    private static ExportTable FlashcardReviewTable(ExportSelection selection) =>
+        Table(new[]
+        {
+            new ExportColumn<FlashcardReviewData>("ID", x => x.Id),
+            new ExportColumn<FlashcardReviewData>("Flashcard", x => x.FlashcardId),
+            new ExportColumn<FlashcardReviewData>("Data", x => x.ReviewedAt, 1, IsInstant: true),
+            new ExportColumn<FlashcardReviewData>("Valutazione", x => x.Rating.ToString()),
+            new ExportColumn<FlashcardReviewData>("Intervallo precedente", x => x.PreviousIntervalDays),
+            new ExportColumn<FlashcardReviewData>("Nuovo intervallo", x => x.NewIntervalDays),
+            new ExportColumn<FlashcardReviewData>("Ease factor", x => x.EaseFactorAfter)
+        }, selection.FlashcardReviews);
+
+    private static ExportTable ErrorTable(ExportSelection selection, StudyExportRequest request) =>
+        Table(new[]
+        {
+            new ExportColumn<ErrorJournalEntryData>("ID", x => x.Id),
+            new ExportColumn<ErrorJournalEntryData>("Materia", x => x.CourseId),
+            new ExportColumn<ErrorJournalEntryData>("Argomento", x => x.Topic),
+            new ExportColumn<ErrorJournalEntryData>("Domanda", x => request.IncludeNotes ? x.Question : null),
+            new ExportColumn<ErrorJournalEntryData>("Risposta errata", x => request.IncludeNotes && request.IncludeResult ? x.IncorrectAnswer : null),
+            new ExportColumn<ErrorJournalEntryData>("Risposta corretta", x => request.IncludeNotes && request.IncludeResult ? x.CorrectAnswer : null),
+            new ExportColumn<ErrorJournalEntryData>("Tipo errore", x => x.ErrorType),
+            new ExportColumn<ErrorJournalEntryData>("Causa", x => request.IncludeNotes ? x.RootCause : null),
+            new ExportColumn<ErrorJournalEntryData>("Prossimo ripasso", x => x.NextReviewAt, 1, IsInstant: true),
+            new ExportColumn<ErrorJournalEntryData>("Numero revisioni", x => x.ReviewCount),
+            new ExportColumn<ErrorJournalEntryData>("Stato", x => x.Status.ToString()),
+            new ExportColumn<ErrorJournalEntryData>("Origine", x => x.Source),
+            new ExportColumn<ErrorJournalEntryData>("Creato il", x => x.CreatedAt, 1, IsInstant: true),
+            new ExportColumn<ErrorJournalEntryData>("Aggiornato il", x => x.UpdatedAt, 1, IsInstant: true)
+        }, selection.Errors);
+
+    private static ExportTable EnergyCheckInTable(ExportSelection selection, StudyExportRequest request) =>
+        Table(new[]
+        {
+            new ExportColumn<EnergyCheckInData>("ID", x => x.Id),
+            new ExportColumn<EnergyCheckInData>("Data", x => x.RecordedAt, 1, IsInstant: true),
+            new ExportColumn<EnergyCheckInData>("Energia 1-5", x => x.EnergyLevel),
+            new ExportColumn<EnergyCheckInData>("Focus 1-5", x => x.FocusLevel),
+            new ExportColumn<EnergyCheckInData>("Nota privata", x => request.IncludeNotes && request.IncludePrivateNotes ? x.Note : null)
+        }, selection.EnergyCheckIns);
+
+    private static ExportTable SyllabusTable(ExportSelection selection, StudyExportRequest request) =>
+        Table(new[]
+        {
+            new ExportColumn<SyllabusTopicData>("ID", x => x.Id),
+            new ExportColumn<SyllabusTopicData>("Materia", x => x.CourseId),
+            new ExportColumn<SyllabusTopicData>("Argomento", x => x.Title),
+            new ExportColumn<SyllabusTopicData>("Descrizione", x => request.IncludeNotes ? x.Description : null),
+            new ExportColumn<SyllabusTopicData>("Stato", x => x.Status.ToString()),
+            new ExportColumn<SyllabusTopicData>("Minuti stimati", x => x.EstimatedMinutes),
+            new ExportColumn<SyllabusTopicData>("Ultimo studio", x => FormatDateTime(x.LastStudiedAt)),
+            new ExportColumn<SyllabusTopicData>("Aggiornato il", x => FormatDateTime(x.UpdatedAt))
+        }, selection.SyllabusTopics);
+
+    private static ExportTable QuestionTable(ExportSelection selection, StudyExportRequest request) =>
+        Table(new[]
+        {
+            new ExportColumn<QuestionBankItemData>("ID", x => x.Id),
+            new ExportColumn<QuestionBankItemData>("Materia", x => x.CourseId),
+            new ExportColumn<QuestionBankItemData>("Argomento", x => x.SyllabusTopicId),
+            new ExportColumn<QuestionBankItemData>("Testo", x => request.IncludeNotes ? x.Text : null),
+            new ExportColumn<QuestionBankItemData>("Tipo", x => x.Type.ToString()),
+            new ExportColumn<QuestionBankItemData>("Difficoltà", x => x.Difficulty),
+            new ExportColumn<QuestionBankItemData>("Opzioni", x => request.IncludeNotes ? string.Join(" | ", x.Options) : null),
+            new ExportColumn<QuestionBankItemData>("Risposta corretta", x => request.IncludeNotes && request.IncludeResult ? x.CorrectAnswer : null),
+            new ExportColumn<QuestionBankItemData>("Spiegazione", x => request.IncludeNotes ? x.Explanation : null),
+            new ExportColumn<QuestionBankItemData>("Fonte", x => x.Source),
+            new ExportColumn<QuestionBankItemData>("Ufficiale", x => x.IsOfficial),
+            new ExportColumn<QuestionBankItemData>("Creato il", x => FormatDateTime(x.CreatedAt)),
+            new ExportColumn<QuestionBankItemData>("Aggiornato il", x => FormatDateTime(x.UpdatedAt))
+        }, selection.Questions);
+
+    private static ExportTable GradeTable(ExportSelection selection, StudyExportRequest request) =>
+        Table(new[]
+        {
+            new ExportColumn<Grade>("ID", x => x.Id),
+            new ExportColumn<Grade>("Materia", x => x.CourseId),
+            new ExportColumn<Grade>("Nome materia", x => x.CourseName),
+            new ExportColumn<Grade>("Voto", x => request.IncludeResult ? x.Value : null),
+            new ExportColumn<Grade>("Lode", x => request.IncludeResult ? x.Honors : null),
+            new ExportColumn<Grade>("CFU", x => x.Cfu),
+            new ExportColumn<Grade>("Data", x => DateOnly.FromDateTime(x.Date)),
+            new ExportColumn<Grade>("Conta nella media", x => x.CountsTowardAverage)
+        }, selection.Grades);
+
+    private static ExportTable CareerAttemptTable(ExportSelection selection, StudyExportRequest request) =>
+        Table(new[]
+        {
+            new ExportColumn<CareerAttemptRow>("Esame", x => x.ExamId),
+            new ExportColumn<CareerAttemptRow>("Materia", x => x.CourseId),
+            new ExportColumn<CareerAttemptRow>("Nome esame", x => x.ExamName),
+            new ExportColumn<CareerAttemptRow>("CFU", x => x.Cfu),
+            new ExportColumn<CareerAttemptRow>("Conta nella media", x => x.CountsTowardAverage),
+            new ExportColumn<CareerAttemptRow>("Tentativo", x => x.Attempt.Id),
+            new ExportColumn<CareerAttemptRow>("Data tentativo", x => x.Attempt.AttemptedAt, 1, IsInstant: true),
+            new ExportColumn<CareerAttemptRow>("Stato", x => x.Attempt.Status),
+            new ExportColumn<CareerAttemptRow>("Esito", x => request.IncludeResult ? x.Attempt.Outcome : null),
+            new ExportColumn<CareerAttemptRow>("Decisione voto", x => request.IncludeResult ? x.Attempt.GradeDecision : null),
+            new ExportColumn<CareerAttemptRow>("Voto", x => request.IncludeResult ? x.Attempt.NumericGrade : null),
+            new ExportColumn<CareerAttemptRow>("Lode", x => request.IncludeResult ? x.Attempt.IsHonors : null),
+            new ExportColumn<CareerAttemptRow>("Idoneità", x => x.Attempt.IsPassFail),
+            new ExportColumn<CareerAttemptRow>("Registrato il", x => x.Attempt.RecordedAt, 1, IsInstant: true)
+        }, selection.CareerAttempts);
+
+    private static ExportTable ExamTable(ExportSelection selection) =>
+        Table(new[]
+        {
+            new ExportColumn<Exam>("ID", x => x.Id),
+            new ExportColumn<Exam>("Materia", x => x.CourseId),
+            new ExportColumn<Exam>("Nome materia", x => x.CourseName),
+            new ExportColumn<Exam>("Esame", x => x.Name),
+            new ExportColumn<Exam>("CFU", x => x.Cfu),
+            new ExportColumn<Exam>("Ore stimate", x => x.EstimatedStudyHours),
+            new ExportColumn<Exam>("Data pianificata", x => x.PlannedDate is { } date ? DateOnly.FromDateTime(date) : null),
+            new ExportColumn<Exam>("Sessione", x => x.PlannedSession),
+            new ExportColumn<Exam>("Completato", x => x.Completed)
+        }, selection.Exams);
+
+    private static ExportTable CourseTable(ExportSelection selection, StudyExportRequest request) =>
+        Table(new[]
+        {
+            new ExportColumn<Course>("ID", x => x.Id),
+            new ExportColumn<Course>("Moodle ID", x => x.MoodleCourseId),
+            new ExportColumn<Course>("Nome", x => x.Name),
+            new ExportColumn<Course>("Codice", x => x.Code),
+            new ExportColumn<Course>("CFU", x => x.Cfu),
+            new ExportColumn<Course>("Completato", x => x.Completed),
+            new ExportColumn<Course>("Stato", x => x.Status.ToString()),
+            new ExportColumn<Course>("Archiviato", x => x.Archived),
+            new ExportColumn<Course>("Docente", x => x.Teacher),
+            new ExportColumn<Course>("Anno accademico", x => x.AcademicYear),
+            new ExportColumn<Course>("Sessione", x => x.Session),
+            new ExportColumn<Course>("Ore stimate", x => x.EstimatedStudyHours),
+            new ExportColumn<Course>("Data appello", x => x.AppealDate is { } date ? DateOnly.FromDateTime(date) : null),
+            new ExportColumn<Course>("Syllabus", x => request.IncludeNotes ? x.SyllabusSummary : null),
+            new ExportColumn<Course>("Note", x => request.IncludeNotes ? x.Notes : null),
+            new ExportColumn<Course>("Fonte", x => x.Source),
+            new ExportColumn<Course>("Aggiornato il", x => FormatDateTime(x.UpdatedAt))
+        }, selection.Courses);
+
+    private static string? FormatDateTime(DateTime? value) =>
+        value?.ToString("O", CultureInfo.InvariantCulture);
 
     private static ExportTable SummaryTable(ExportSelection selection)
     {
@@ -624,7 +1214,13 @@ public sealed class StudyDataExportService
         request.IncludeRatings,
         request.IncludeTags,
         request.IncludeResult,
-        request.IncludeDeleted
+        request.IncludeDeleted,
+        includedStudyLabCollections = new[]
+        {
+            "tasks", "missions", "missionSteps", "flashcards", "flashcardReviews",
+            "errors", "energyCheckIns", "syllabusTopics", "questions", "grades",
+            "careerAttempts", "exams", "courses"
+        }
     };
 
     private static TimeZoneInfo ResolveTimeZone(string id)
@@ -662,7 +1258,30 @@ public sealed class StudyDataExportService
             .SelectMany(session => session.Segments.Select(segment => new SegmentRow(session.Id, segment, Now)))
             .OrderBy(x => x.Segment.StartedAt)
             .ToList();
+
+        public IReadOnlyList<StudyTaskData> Tasks { get; init; } = Array.Empty<StudyTaskData>();
+        public IReadOnlyList<StudyMissionData> Missions { get; init; } = Array.Empty<StudyMissionData>();
+        public IReadOnlyList<FlashcardData> Flashcards { get; init; } = Array.Empty<FlashcardData>();
+        public IReadOnlyList<FlashcardReviewData> FlashcardReviews { get; init; } = Array.Empty<FlashcardReviewData>();
+        public IReadOnlyList<ErrorJournalEntryData> Errors { get; init; } = Array.Empty<ErrorJournalEntryData>();
+        public IReadOnlyList<EnergyCheckInData> EnergyCheckIns { get; init; } = Array.Empty<EnergyCheckInData>();
+        public IReadOnlyList<SyllabusTopicData> SyllabusTopics { get; init; } = Array.Empty<SyllabusTopicData>();
+        public IReadOnlyList<QuestionBankItemData> Questions { get; init; } = Array.Empty<QuestionBankItemData>();
+        public IReadOnlyList<Grade> Grades { get; init; } = Array.Empty<Grade>();
+        public IReadOnlyList<CareerAttemptRow> CareerAttempts { get; init; } = Array.Empty<CareerAttemptRow>();
+        public IReadOnlyList<Exam> Exams { get; init; } = Array.Empty<Exam>();
+        public IReadOnlyList<Course> Courses { get; init; } = Array.Empty<Course>();
     }
+
+    private sealed record CareerAttemptRow(
+        string ExamId,
+        string CourseId,
+        string ExamName,
+        int Cfu,
+        bool CountsTowardAverage,
+        ExamAttemptData Attempt);
+
+    private sealed record MissionStepRow(string MissionId, string CourseId, MissionStepData Step);
 
     private sealed record SegmentRow(string SessionId, StudySessionSegmentData Segment, DateTimeOffset Now)
     {
