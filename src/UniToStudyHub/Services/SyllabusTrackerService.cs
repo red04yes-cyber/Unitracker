@@ -115,7 +115,7 @@ public sealed class SyllabusTrackerService
         var normalized = new string(value
             .Where(character =>
                 !char.IsControl(character) ||
-                (allowLineBreaks && (character is '\\r' or '\\n' or '\\t')))
+                (allowLineBreaks && (character is '\r' or '\n' or '\t')))
             .ToArray())
             .Trim();
 
