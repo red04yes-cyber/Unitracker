@@ -117,6 +117,87 @@ public sealed class SyllabusTrackerServiceTests
     }
 
     [Fact]
+    public void GetTopicsDueForReviewReturnsCompletedTopicsAtOrBeforeCutoffInOldestFirstOrder()
+    {
+        var data = CreateData();
+        var now = new DateTimeOffset(2026, 11, 25, 12, 0, 0, TimeSpan.Zero);
+        data.SyllabusTopics.Add(new SyllabusTopicData
+        {
+            Id = "oldest",
+            CourseId = "course-1",
+            Title = "Oldest",
+            Status = SyllabusTopicStatus.Completed,
+            LastStudiedAt = now.AddDays(-10).UtcDateTime
+        });
+        data.SyllabusTopics.Add(new SyllabusTopicData
+        {
+            Id = "boundary",
+            CourseId = "course-1",
+            Title = "Boundary",
+            Status = SyllabusTopicStatus.Completed,
+            LastStudiedAt = now.AddDays(-7).UtcDateTime
+        });
+        data.SyllabusTopics.Add(new SyllabusTopicData
+        {
+            Id = "recent",
+            CourseId = "course-1",
+            Title = "Recent",
+            Status = SyllabusTopicStatus.Completed,
+            LastStudiedAt = now.AddDays(-2).UtcDateTime
+        });
+        data.SyllabusTopics.Add(new SyllabusTopicData
+        {
+            Id = "in-progress",
+            CourseId = "course-1",
+            Title = "In progress",
+            Status = SyllabusTopicStatus.InProgress,
+            LastStudiedAt = now.AddDays(-30).UtcDateTime
+        });
+        data.SyllabusTopics.Add(new SyllabusTopicData
+        {
+            Id = "not-studied",
+            CourseId = "course-1",
+            Title = "Not studied",
+            Status = SyllabusTopicStatus.Completed
+        });
+
+        var due = _service.GetTopicsDueForReview(data, "course-1", TimeSpan.FromDays(7), now);
+
+        Assert.Equal(new[] { "oldest", "boundary" }, due.Select(x => x.Id));
+    }
+
+    [Fact]
+    public void GetTopicsDueForReviewTreatsUnspecifiedLegacyTimestampAsUtc()
+    {
+        var data = CreateData();
+        var now = new DateTimeOffset(2026, 11, 25, 12, 0, 0, TimeSpan.Zero);
+        data.SyllabusTopics.Add(new SyllabusTopicData
+        {
+            Id = "legacy",
+            CourseId = "course-1",
+            Status = SyllabusTopicStatus.Completed,
+            LastStudiedAt = new DateTime(2026, 11, 18, 12, 0, 0, DateTimeKind.Unspecified)
+        });
+
+        var due = _service.GetTopicsDueForReview(data, "course-1", TimeSpan.FromDays(7), now);
+
+        Assert.Single(due);
+        Assert.Equal("legacy", due[0].Id);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    [InlineData(366)]
+    public void GetTopicsDueForReviewRejectsInvalidIntervals(int days)
+    {
+        var data = CreateData();
+
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            _service.GetTopicsDueForReview(data, "course-1", TimeSpan.FromDays(days)));
+    }
+
+    [Fact]
     public void UpdateStatusRejectsInvalidEnumAndNormalizesUnspecifiedStudyDateToUtc()
     {
         var data = CreateData();
