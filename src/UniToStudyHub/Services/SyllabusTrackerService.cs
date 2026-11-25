@@ -108,6 +108,27 @@ public sealed class SyllabusTrackerService
             .ToList();
     }
 
+    public IReadOnlyList<SyllabusTopicData> GetTopicsDueForReview(
+        StudyData data,
+        string courseId,
+        TimeSpan reviewInterval,
+        DateTimeOffset? now = null)
+    {
+        ArgumentNullException.ThrowIfNull(data);
+        EnsureCourse(data, courseId);
+        if (reviewInterval <= TimeSpan.Zero || reviewInterval > TimeSpan.FromDays(365))
+            throw new ArgumentOutOfRangeException(nameof(reviewInterval), "Review interval must be greater than zero and at most one year.");
+
+        var cutoff = (now ?? DateTimeOffset.UtcNow).ToUniversalTime() - reviewInterval;
+        return data.SyllabusTopics
+            .Where(x => string.Equals(x.CourseId, courseId, StringComparison.Ordinal) &&
+                        x.Status == SyllabusTopicStatus.Completed &&
+                        x.LastStudiedAt.HasValue &&
+                        new DateTimeOffset(NormalizeTimestamp(x.LastStudiedAt.Value)) <= cutoff)
+            .OrderBy(x => NormalizeTimestamp(x.LastStudiedAt!.Value))
+            .ToList();
+    }
+
     private static string NormalizeText(string? value, int maximumLength, bool allowLineBreaks, string parameterName)
     {
         if (string.IsNullOrEmpty(value))
