@@ -7,7 +7,7 @@
 ## Rules
 
 - Topic titles are limited to 300 characters; descriptions to 4,000. Control characters are removed, except line breaks and tabs in descriptions. Whitespace is trimmed.
-- Source links are optional, limited to 2,048 characters, and must be absolute HTTP(S) URIs without user information, fragments, control characters, or common credential/signature query keys (`token`, `wstoken`, `password`, `api_key`, `access_token`, `signature`, etc.). Other safe query parameters such as course IDs are retained.
+- Source links are optional, limited to 2,048 characters, and must be absolute HTTP(S) URIs without user information, fragments, control characters, or common credential/signature query keys (`token`, `wstoken`, `password`, `api_key`, `access_token`, `signature`, `sesskey`, `key`, session IDs and cookie parameters, etc.). Other safe query parameters such as course IDs are retained.
 - Per-topic study estimates are limited to 0–525,600 minutes (one year). Negative values and implausibly large inputs are rejected.
 - Legacy or imported negative estimates are ignored by the remaining-time summary. Aggregation uses a wide accumulator and saturates the existing `int` DTO property at `Int32.MaxValue` instead of overflowing to a negative value.
 - `GetTopics` validates that the course exists, matching the contract of `Add` and `GetCoverage`.
