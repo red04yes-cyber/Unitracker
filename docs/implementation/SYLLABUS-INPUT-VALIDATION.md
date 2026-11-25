@@ -13,6 +13,10 @@
 - `GetTopics` validates that the course exists, matching the contract of `Add` and `GetCoverage`.
 - A completion timestamp with `DateTimeKind.Unspecified` is treated as UTC; local values are converted to UTC. No historical timestamps are rewritten unless the topic is marked completed.
 
+## Review candidates
+
+`GetTopicsDueForReview(data, courseId, reviewInterval, now)` returns only completed topics with a recorded study timestamp that is at or before the cutoff. It orders them from oldest study date to newest, accepts an explicit interval from greater than zero through one year, and uses UTC for the comparison. It is a read-only projection; it does not change topic status or persist a due date. Callers can choose the review interval and clock, so the service does not impose an arbitrary learning schedule.
+
 ## Compatibility
 
 No schema change, migration, dependency, UI, or network request is introduced. Existing safe source URLs remain; invalid legacy links are not changed by this slice because it validates new topic input only. The 525,600-minute ceiling is applied to new entries; existing persisted estimates remain readable, with coverage safely bounded.
