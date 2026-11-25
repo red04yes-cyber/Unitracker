@@ -25,7 +25,8 @@ public sealed class SyllabusTrackerService
     private static readonly HashSet<string> SensitiveQueryKeys = new(StringComparer.OrdinalIgnoreCase)
     {
         "token", "wstoken", "password", "pass", "secret", "api_key", "apikey",
-        "access_token", "authorization", "signature", "sig", "key", "sesskey",\n        "sessionkey", "sessionid", "sid", "moodle_session", "cookie"
+        "access_token", "authorization", "signature", "sig", "key", "sesskey",
+        "sessionkey", "sessionid", "sid", "moodle_session", "cookie"
     };
 
     public SyllabusTopicData Add(StudyData data, string courseId, string title, string description = "",
