@@ -49,7 +49,10 @@ public sealed class SyllabusTrackerServiceTests
     [InlineData("https://moodle.example/course?token=secret")]
     [InlineData("https://moodle.example/course?wstoken=secret")]
     [InlineData("https://moodle.example/course?access_token=secret")]
-    [InlineData("https://moodle.example/course?api_key=secret")]\n    [InlineData("https://moodle.example/course?sesskey=secret")]\n    [InlineData("https://moodle.example/course?key=secret")]\n    [InlineData("https://moodle.example/course?signature=secret")]
+    [InlineData("https://moodle.example/course?api_key=secret")]
+    [InlineData("https://moodle.example/course?sesskey=secret")]
+    [InlineData("https://moodle.example/course?key=secret")]
+    [InlineData("https://moodle.example/course?signature=secret")]
     [InlineData("https://moodle.example/course?%77stoken=secret")]
     public void AddRejectsUnsafeSourceUrls(string url)
     {
