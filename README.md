@@ -49,5 +49,9 @@ Il workflow `.github/workflows/security-scan.yml` esegue secret scanning con Git
 - Prima del rilascio su `main`/`develop`, un amministratore del repository deve rendere obbligatori i check CI nelle regole di protezione dei branch.
 
 ## Documentazione
+- [Primo avvio e guida rapida](docs/GETTING-STARTED.md)
+- [Guida sviluppatori](docs/DEVELOPMENT.md)
+- [Troubleshooting](docs/TROUBLESHOOTING.md)
+- [Privacy e protezione dei dati](docs/security/PRIVACY.md)
 - Moodle Web Services: https://docs.moodle.org/503/en/Web_services
 - .NET 10: https://dotnet.microsoft.com/download/dotnet/10.0
