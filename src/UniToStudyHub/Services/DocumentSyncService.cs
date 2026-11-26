@@ -157,6 +157,8 @@ public sealed class DocumentSyncService
     public static string GetCourseDirectory(Course course, string? documentsBasePath = null)
     {
         ArgumentNullException.ThrowIfNull(course);
+        if (string.IsNullOrWhiteSpace(course.Name))
+            throw new ArgumentException("Il corso deve avere un nome per determinare la cartella locale.", nameof(course));
         var basePath = documentsBasePath ?? Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
         if (string.IsNullOrWhiteSpace(basePath))
             throw new InvalidOperationException("La cartella Documenti dell'utente non è disponibile.");
