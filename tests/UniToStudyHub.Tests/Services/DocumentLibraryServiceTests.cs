@@ -218,6 +218,25 @@ public sealed class DocumentLibraryServiceTests
     }
 
     [Fact]
+    public async Task DistinctMoodleFilesWithTheSameLocalDestinationAreReportedAsOneConflict()
+    {
+        using var folder = new TemporaryFolder();
+        var course = CreateCourse();
+        var first = CreateFile("materiale.pdf", "https://moodle.example/files/first");
+        var second = CreateFile("materiale.pdf", "https://moodle.example/files/second");
+        var section = CreateSection(first, second);
+
+        var result = await new DocumentLibraryService().IndexCourseAsync(
+            course, new[] { section }, documentsBasePath: folder.Path);
+
+        var entry = Assert.Single(result.Entries);
+        Assert.Equal(DocumentLibraryStatus.PathConflict, entry.Status);
+        Assert.Equal(2, entry.DuplicateSourceCount);
+        Assert.Null(entry.LocalPath);
+        Assert.Null(entry.Sha256);
+    }
+
+    [Fact]
     public async Task CatalogueIsBoundedAndReportsTruncation()
     {
         using var folder = new TemporaryFolder();
