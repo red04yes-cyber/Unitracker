@@ -43,7 +43,7 @@ missing and carries an ambiguity flag when appropriate.
 
 ## Bounds and privacy
 
-- At most 1,000 unique Moodle file descriptors per course.
+- At most 500 sections, 5,000 modules, 5,000 source descriptors and 1,000 unique Moodle files per course.
 - Source URL length at most 8 KiB, file name at most 1 KiB, relative path at
   most 2 KiB and 32 segments.
 - Local moved-file discovery examines at most 5,000 filesystem entries.
