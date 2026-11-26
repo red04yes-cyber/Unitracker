@@ -82,7 +82,7 @@ public sealed class DocumentLibraryService
         var sourceSet = DocumentSyncService.EnumerateSources(sections, additionalFiles, cancellationToken);
         var warnings = new List<string>();
         if (sourceSet.Truncated)
-            warnings.Add($"L'indice è limitato ai primi {DocumentSyncService.MaximumFilesPerCourse} materiali del corso.");
+            warnings.Add("L'indice del corso è stato limitato per numero di sezioni, moduli o descrittori Moodle.");
         if (sourceSet.Rejected > 0)
             warnings.Add("Alcuni allegati Moodle sono stati ignorati perché incompleti o oltre i limiti consentiti.");
 
