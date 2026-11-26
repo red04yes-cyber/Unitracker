@@ -466,14 +466,20 @@ public sealed class PomodoroService(FocusSessionService focus, ActivityLedgerSer
             EnsureAtOrAfter(at, startedAt, "the linked focus-session transition");
     }
 
-    private static int DurationSeconds(PomodoroSettingsData settings, PomodoroPhase phase) =>
-        phase switch
+    private static int DurationSeconds(PomodoroSettingsData settings, PomodoroPhase phase)
+    {
+        ArgumentNullException.ThrowIfNull(settings);
+        var (minutes, maximum) = phase switch
         {
-            PomodoroPhase.Focus => settings.FocusMinutes * 60,
-            PomodoroPhase.ShortBreak => settings.ShortBreakMinutes * 60,
-            PomodoroPhase.LongBreak => settings.LongBreakMinutes * 60,
+            PomodoroPhase.Focus => (settings.FocusMinutes, 1440),
+            PomodoroPhase.ShortBreak => (settings.ShortBreakMinutes, 240),
+            PomodoroPhase.LongBreak => (settings.LongBreakMinutes, 240),
             _ => throw new ArgumentOutOfRangeException(nameof(phase))
         };
+        if (minutes is < 1 || minutes > maximum)
+            throw new InvalidDataException("Pomodoro settings are outside the supported range.");
+        return checked(minutes * 60);
+    }
 
     private static PomodoroTimerData RequireTimer(StudyData data) =>
         data.PomodoroTimer ?? throw new InvalidOperationException("No Pomodoro timer has been started.");
