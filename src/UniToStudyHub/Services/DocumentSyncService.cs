@@ -30,6 +30,9 @@ public sealed class DocumentSyncService
     };
 
     public const int MaximumFilesPerCourse = 1000;
+    public const int MaximumSectionsPerCourse = 500;
+    public const int MaximumModulesPerCourse = 5000;
+    public const int MaximumSourceDescriptorsPerCourse = 5000;
     public const int MaximumFilePathLength = 2048;
     public const int MaximumFilePathSegments = 32;
     private const int MaximumSourceUrlLength = 8192;
@@ -50,6 +53,9 @@ public sealed class DocumentSyncService
         var seenUrls = new HashSet<string>(StringComparer.Ordinal);
         var rejected = 0;
         var truncated = false;
+        var sectionsSeen = 0;
+        var modulesSeen = 0;
+        var descriptorsSeen = 0;
 
         void Add(string? sectionName, string? moduleName, MoodleContentFile? file)
         {
@@ -85,18 +91,36 @@ public sealed class DocumentSyncService
         foreach (var section in sections)
         {
             cancellationToken.ThrowIfCancellationRequested();
+            sectionsSeen++;
+            if (sectionsSeen > MaximumSectionsPerCourse)
+            {
+                truncated = true;
+                break;
+            }
             if (section?.modules is null)
                 continue;
 
             foreach (var module in section.modules)
             {
                 cancellationToken.ThrowIfCancellationRequested();
+                modulesSeen++;
+                if (modulesSeen > MaximumModulesPerCourse)
+                {
+                    truncated = true;
+                    break;
+                }
                 if (module?.contents is null)
                     continue;
 
                 foreach (var file in module.contents)
                 {
                     cancellationToken.ThrowIfCancellationRequested();
+                    descriptorsSeen++;
+                    if (descriptorsSeen > MaximumSourceDescriptorsPerCourse)
+                    {
+                        truncated = true;
+                        break;
+                    }
                     Add(section.name, module.name, file);
                     if (truncated) break;
                 }
@@ -112,6 +136,12 @@ public sealed class DocumentSyncService
             foreach (var file in additionalFiles)
             {
                 cancellationToken.ThrowIfCancellationRequested();
+                descriptorsSeen++;
+                if (descriptorsSeen > MaximumSourceDescriptorsPerCourse)
+                {
+                    truncated = true;
+                    break;
+                }
                 Add("Attività Moodle", "Allegati attività", file);
                 if (truncated) break;
             }
