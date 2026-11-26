@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
 using UniToStudyHub.Models;
 using UniToStudyHub.Services;
 using Xunit;
@@ -197,6 +198,22 @@ public sealed class DocumentLibraryServiceTests
         Assert.Equal(2, result.Entries.Count);
         Assert.Contains(result.Entries, entry => entry.FileName == "uno.pdf");
         Assert.Contains(result.Entries, entry => entry.FileName == "due.pdf");
+    }
+
+    [Fact]
+    public void ActivityFileExtractionPreservesCaseSensitiveUrlPaths()
+    {
+        using var document = JsonDocument.Parse(
+            """{"files":[
+                {"filename":"upper.pdf","fileurl":"https://moodle.example/pluginfile.php/1/File.pdf"},
+                {"filename":"lower.pdf","fileurl":"https://moodle.example/pluginfile.php/1/file.pdf"}
+            ]}""");
+
+        var files = MoodleClient.ExtractActivityFiles(new[] { document.RootElement });
+
+        Assert.Equal(2, files.Count);
+        Assert.Contains(files, file => file.filename == "upper.pdf");
+        Assert.Contains(files, file => file.filename == "lower.pdf");
     }
 
     [Fact]
