@@ -17,7 +17,7 @@ Each `DocumentLibraryEntry` contains:
 
 - local course ID/name, Moodle section/module, category, file name and extension;
 - remote and local sizes and modification timestamps (UTC);
-- SHA-256 for files that were safely read within the scan budget;
+- SHA-256 for files that were safely read within the scan budget (a local fingerprint, not a checksum supplied or authenticated by Moodle);
 - expected path and actual local path, when available;
 - status, moved-file flag and ambiguity flag.
 
@@ -30,6 +30,7 @@ credential-free Moodle module URL separately and must not reuse a download URL.
 | Status | Meaning |
 |---|---|
 | `Available` | Expected local path exists and its known remote size/time do not indicate an update |
+| `PathConflict` | Distinct Moodle resources resolve to the same local destination; none is treated as available or downloaded |
 | `Missing` | Expected path and a unique moved-file candidate were not found |
 | `Moved` | Expected path is missing, but exactly one same-name file was found inside the course folder |
 | `UpdateRequired` | Local size differs from the known remote size or local timestamp is older than Moodle metadata |
@@ -50,7 +51,7 @@ missing and carries an ambiguity flag when appropriate.
 - Each file is limited by the existing 250 MiB Moodle download ceiling.
 - SHA-256 reads at most 1 GiB per course scan. When the hash budget is reached,
   metadata remains available and the checksum is omitted with a warning.
-- Exact URL identity is ordinal; Moodle path casing is not folded.
+- Exact URL identity is ordinal; Moodle path casing is not folded. Distinct URLs that resolve to the same destination are surfaced as one `PathConflict` row, and the downloader skips all conflicting sources instead of overwriting one with another.
 - Local reparse points are excluded and paths are revalidated before and after
   hashing. File content is never opened for execution or modified.
 - Search and metadata filters operate on the returned snapshot and do not
