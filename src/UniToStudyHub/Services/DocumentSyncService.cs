@@ -22,6 +22,9 @@ public sealed record MoodleDocumentSourceSet(
 /// </summary>
 public sealed class DocumentSyncService
 {
+    private static readonly StringComparer DestinationPathComparer = OperatingSystem.IsWindows()
+        ? StringComparer.OrdinalIgnoreCase
+        : StringComparer.Ordinal;
     private static readonly HashSet<string> BlockedExtensions = new(StringComparer.OrdinalIgnoreCase)
     {
         ".exe", ".msi", ".msp", ".msix", ".appx", ".bat", ".cmd", ".com", ".cpl", ".scr", ".pif",
@@ -271,6 +274,9 @@ public sealed class DocumentSyncService
         const long maximumCourseBytes = 1024L * 1024 * 1024;
         var sourceSet = EnumerateSources(sections, additionalFiles, cancellationToken);
         var files = sourceSet.Files;
+        var destinationCounts = files
+            .GroupBy(item => Path.Combine(GetRelativePath(item), SafeName(item.File.filename)), DestinationPathComparer)
+            .ToDictionary(group => group.Key, group => group.Count(), DestinationPathComparer);
         if (sourceSet.Truncated)
             warnings.Add("Il catalogo Moodle supera i limiti di indicizzazione; il download è stato limitato per sicurezza.");
         if (sourceSet.Rejected > 0)
@@ -307,6 +313,13 @@ public sealed class DocumentSyncService
             }
 
             var relative = GetRelativePath(item);
+            var destinationKey = Path.Combine(relative, safeName);
+            if (destinationCounts[destinationKey] > 1)
+            {
+                warnings.Add($"Ignorato «{safeName}»: più materiali Moodle condividono lo stesso percorso locale.");
+                skipped++;
+                continue;
+            }
             var destinationDirectory = Path.Combine(root, relative);
             var destination = Path.Combine(destinationDirectory, safeName);
             if (!LocalFileSecurity.IsInside(moodleRoot, destination))
