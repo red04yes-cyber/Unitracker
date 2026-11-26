@@ -324,62 +324,58 @@ public sealed class DocumentLibraryService
         {
             cancellationToken.ThrowIfCancellationRequested();
             var directory = pending.Pop();
-            IEnumerable<string> children;
             try
             {
-                children = Directory.EnumerateFileSystemEntries(directory);
-            }
-            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-            {
-                complete = false;
-                continue;
-            }
-
-            foreach (var child in children)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                visited++;
-                if (visited > MaximumLocalEntriesToScan)
+                foreach (var child in Directory.EnumerateFileSystemEntries(directory))
                 {
-                    complete = false;
-                    pending.Clear();
-                    break;
-                }
+                    cancellationToken.ThrowIfCancellationRequested();
+                    visited++;
+                    if (visited > MaximumLocalEntriesToScan)
+                    {
+                        complete = false;
+                        pending.Clear();
+                        break;
+                    }
 
-                if (!LocalFileSecurity.IsInside(courseRoot, child))
-                {
-                    unsafeEntries++;
-                    continue;
-                }
-
-                try
-                {
-                    var attributes = File.GetAttributes(child);
-                    if ((attributes & FileAttributes.ReparsePoint) != 0)
+                    if (!LocalFileSecurity.IsInside(courseRoot, child))
                     {
                         unsafeEntries++;
                         continue;
                     }
 
-                    if ((attributes & FileAttributes.Directory) != 0)
+                    try
                     {
-                        pending.Push(child);
-                        continue;
-                    }
+                        var attributes = File.GetAttributes(child);
+                        if ((attributes & FileAttributes.ReparsePoint) != 0)
+                        {
+                            unsafeEntries++;
+                            continue;
+                        }
 
-                    var name = Path.GetFileName(child);
-                    if (!byName.TryGetValue(name, out var paths))
+                        if ((attributes & FileAttributes.Directory) != 0)
+                        {
+                            pending.Push(child);
+                            continue;
+                        }
+
+                        var name = Path.GetFileName(child);
+                        if (!byName.TryGetValue(name, out var paths))
+                        {
+                            paths = new List<string>();
+                            byName.Add(name, paths);
+                        }
+
+                        paths.Add(child);
+                    }
+                    catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
                     {
-                        paths = new List<string>();
-                        byName.Add(name, paths);
+                        complete = false;
                     }
-
-                    paths.Add(child);
                 }
-                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or FileNotFoundException)
-                {
-                    complete = false;
-                }
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                complete = false;
             }
         }
 
