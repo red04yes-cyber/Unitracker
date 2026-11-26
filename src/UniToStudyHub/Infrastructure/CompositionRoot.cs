@@ -30,6 +30,7 @@ public static class CompositionRoot
             sp.GetRequiredService<IDbContextFactory<StudyHubDbContext>>()));
         services.AddSingleton<IStudyDataStore, SqliteStudyDataStore>();
         services.AddSingleton<IMoodleTokenStore>(_ => new MoodleTokenVault(dataDirectory));
+        services.AddSingleton<DocumentLibraryService>();
         services.AddSingleton<MoodleApplicationService>();
         services.AddSingleton<AcademicProfileService>();
         services.AddSingleton<CareerApplicationService>();
