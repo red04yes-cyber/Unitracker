@@ -235,6 +235,19 @@ public sealed class DocumentLibraryServiceTests
     }
 
     [Fact]
+    public void CatalogueEnumerationIsBoundedEvenWhenSectionsContainNoFiles()
+    {
+        var sections = Enumerable.Range(0, DocumentSyncService.MaximumSectionsPerCourse + 1)
+            .Select(_ => new MoodleCourseSection())
+            .ToArray();
+
+        var result = DocumentSyncService.EnumerateSources(sections);
+
+        Assert.Empty(result.Files);
+        Assert.True(result.Truncated);
+    }
+
+    [Fact]
     public async Task InvalidAndNullDescriptorsAreIgnoredAndReportedWithoutThrowing()
     {
         using var folder = new TemporaryFolder();
