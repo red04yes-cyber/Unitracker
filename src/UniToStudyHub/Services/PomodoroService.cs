@@ -89,9 +89,10 @@ public sealed class PomodoroService(FocusSessionService focus, ActivityLedgerSer
 
         CloseCompletedRun(data, at);
         var settings = data.PomodoroSettings ??= new PomodoroSettingsData();
+        var duration = DurationSeconds(settings, PomodoroPhase.Focus);
+        var phaseEndsAt = at.AddSeconds(duration);
         var session = focus.Start(data, resolvedCourseId, topic, settings.FocusMinutes, at);
         session.PlannedMinutes = settings.FocusMinutes;
-        var duration = DurationSeconds(settings, PomodoroPhase.Focus);
         var timer = new PomodoroTimerData
         {
             SessionId = session.Id,
@@ -99,7 +100,7 @@ public sealed class PomodoroService(FocusSessionService focus, ActivityLedgerSer
             Status = PomodoroTimerStatus.Running,
             PhaseWindowStartedAt = at,
             PhaseStartedAt = at,
-            PhaseEndsAt = at.AddSeconds(duration),
+            PhaseEndsAt = phaseEndsAt,
             RemainingSeconds = duration,
             CycleNumber = 1,
             UpdatedAt = at
@@ -130,14 +131,14 @@ public sealed class PomodoroService(FocusSessionService focus, ActivityLedgerSer
             ?? throw new InvalidOperationException("No Pomodoro timer has been started.");
         var at = now ?? DateTimeOffset.Now;
         var duration = DurationSeconds(data.PomodoroSettings, timer.Phase);
-        var elapsed = timer.Status == PomodoroTimerStatus.Completed
-            ? (timer.Phase == PomodoroPhase.Focus ? timer.ActiveSeconds : timer.ActiveSeconds)
-            : ElapsedActive(timer, duration, at);
+        var elapsed = ElapsedActive(timer, duration, at);
         var remaining = timer.Status switch
         {
-            PomodoroTimerStatus.Paused => timer.RemainingSeconds,
+            PomodoroTimerStatus.Paused => Math.Min(
+                Math.Clamp(timer.RemainingSeconds, 0, duration),
+                Math.Max(0, duration - elapsed)),
             PomodoroTimerStatus.Completed => 0,
-            _ => timer.PhaseEndsAt is { } ends ? Math.Max(0, (int)Math.Floor((ends - at).TotalSeconds)) : 0
+            _ => Math.Max(0, duration - elapsed)
         };
         return new PomodoroSnapshot(
             timer.Phase,
@@ -157,16 +158,20 @@ public sealed class PomodoroService(FocusSessionService focus, ActivityLedgerSer
         if (timer.Status != PomodoroTimerStatus.Running)
             throw new InvalidOperationException("Only a running Pomodoro phase can be paused.");
         var at = now ?? DateTimeOffset.Now;
+        EnsureAtOrAfter(at, timer.PhaseStartedAt, "the current phase start");
         if (timer.PhaseEndsAt is null || at >= timer.PhaseEndsAt)
             throw new InvalidOperationException("The phase has already elapsed; reconcile it before pausing.");
+
+        // Validate and close the linked focus interval before changing the timer.
+        // A clock rollback must not leave the timer paused while the session runs.
+        if (timer.Phase == PomodoroPhase.Focus)
+            focus.Pause(data, timer.SessionId, at);
 
         timer.ActiveSeconds = ElapsedActive(timer, DurationSeconds(data.PomodoroSettings, timer.Phase), at);
         timer.RemainingSeconds = Math.Max(1, DurationSeconds(data.PomodoroSettings, timer.Phase) - timer.ActiveSeconds);
         timer.PhaseEndsAt = null;
         timer.Status = PomodoroTimerStatus.Paused;
         timer.UpdatedAt = at;
-        if (timer.Phase == PomodoroPhase.Focus)
-            focus.Pause(data, timer.SessionId, at);
         Sync(data, timer, at);
         return timer;
     }
@@ -178,14 +183,18 @@ public sealed class PomodoroService(FocusSessionService focus, ActivityLedgerSer
         if (timer.Status != PomodoroTimerStatus.Paused)
             throw new InvalidOperationException("Only a paused Pomodoro phase can be resumed.");
         var at = now ?? DateTimeOffset.Now;
+        EnsureAtOrAfter(at, timer.UpdatedAt, "the last pause transition");
         if (timer.RemainingSeconds <= 0)
             throw new InvalidOperationException("A paused phase with no remaining time cannot be resumed.");
-        timer.Status = PomodoroTimerStatus.Running;
-        timer.PhaseStartedAt = at;
-        timer.PhaseEndsAt = at.AddSeconds(timer.RemainingSeconds);
-        timer.UpdatedAt = at;
+        var phaseEndsAt = at.AddSeconds(timer.RemainingSeconds);
+        // Resume the focus session first so a rejected timestamp cannot mutate
+        // the persisted timer independently from its linked session.
         if (timer.Phase == PomodoroPhase.Focus)
             focus.Resume(data, timer.SessionId, at);
+        timer.Status = PomodoroTimerStatus.Running;
+        timer.PhaseStartedAt = at;
+        timer.PhaseEndsAt = phaseEndsAt;
+        timer.UpdatedAt = at;
         Sync(data, timer, at);
         return timer;
     }
@@ -200,16 +209,19 @@ public sealed class PomodoroService(FocusSessionService focus, ActivityLedgerSer
         if (timer.Phase == PomodoroPhase.Focus)
             throw new InvalidOperationException("The completed focus phase must be followed by a break.");
         var at = now ?? DateTimeOffset.Now;
+        EnsureAtOrAfter(at, timer.UpdatedAt, "the completed break");
         var session = FindSession(data, timer.SessionId);
         if (session.State != StudySessionState.Paused)
             throw new InvalidOperationException("The linked focus session is not paused and cannot start a new focus.");
-        focus.Resume(data, session.Id, at);
+        EnsureSessionTransitionTime(session, at);
         var duration = DurationSeconds(data.PomodoroSettings, PomodoroPhase.Focus);
+        var phaseEndsAt = at.AddSeconds(duration);
+        focus.Resume(data, session.Id, at);
         timer.Phase = PomodoroPhase.Focus;
         timer.Status = PomodoroTimerStatus.Running;
         timer.PhaseWindowStartedAt = at;
         timer.PhaseStartedAt = at;
-        timer.PhaseEndsAt = at.AddSeconds(duration);
+        timer.PhaseEndsAt = phaseEndsAt;
         timer.RemainingSeconds = duration;
         timer.ActiveSeconds = 0;
         timer.CurrentCycleId = string.Empty;
@@ -256,27 +268,42 @@ public sealed class PomodoroService(FocusSessionService focus, ActivityLedgerSer
         var at = now ?? DateTimeOffset.Now;
         var timer = data.PomodoroTimer;
         if (timer is null) return;
+
+        EnsureAtOrAfter(at,
+            timer.Status == PomodoroTimerStatus.Running ? timer.PhaseStartedAt : timer.UpdatedAt,
+            "the current Pomodoro phase");
         if (timer.Status == PomodoroTimerStatus.Running &&
             timer.PhaseEndsAt is { } deadline && deadline <= at)
             Reconcile(data, at);
+
         timer = data.PomodoroTimer;
         if (timer is null) return;
+        EnsureAtOrAfter(at,
+            timer.Status == PomodoroTimerStatus.Running ? timer.PhaseStartedAt : timer.UpdatedAt,
+            "the current Pomodoro phase");
+
+        var session = FindSession(data, timer.SessionId);
+        if (session.State is StudySessionState.Running or StudySessionState.Paused)
+        {
+            EnsureSessionTransitionTime(session, at);
+            focus.Finish(data, session.Id, "Pomodoro interrotto", at);
+        }
+        ledger.SyncFocusSession(data, session, at);
+
+        // Update the cycle only after all timestamp validation and session
+        // transitions have succeeded, so a rejected clock value leaves history intact.
         if (timer.CurrentCycleId is { Length: > 0 } cycleId &&
             data.PomodoroCycles.FirstOrDefault(x => string.Equals(x.Id, cycleId, StringComparison.Ordinal)) is { } cycle &&
             !cycle.IsCompleted)
         {
+            if (cycle.BreakStartedAt is { } breakStart)
+                EnsureAtOrAfter(at, breakStart, "the current break start");
             cycle.BreakEndedAt ??= at;
-            if (cycle.BreakStartedAt is { } breakStart && cycle.BreakEndedAt > breakStart)
-                cycle.BreakSeconds = (int)Math.Floor((cycle.BreakEndedAt.Value - breakStart).TotalSeconds);
+            if (cycle.BreakStartedAt is { } start && cycle.BreakEndedAt > start)
+                cycle.BreakSeconds = (int)Math.Floor((cycle.BreakEndedAt.Value - start).TotalSeconds);
             cycle.CompletedAt = null;
         }
 
-        var session = data.StudySessions.FirstOrDefault(x =>
-            string.Equals(x.Id, timer.SessionId, StringComparison.Ordinal));
-        if (session is not null && session.State is StudySessionState.Running or StudySessionState.Paused)
-            focus.Finish(data, session.Id, "Pomodoro interrotto", at);
-        if (session is not null)
-            ledger.SyncFocusSession(data, session, at);
         data.PomodoroTimer = null;
     }
 
@@ -287,6 +314,7 @@ public sealed class PomodoroService(FocusSessionService focus, ActivityLedgerSer
         if (timer.Status != PomodoroTimerStatus.Running)
             throw new InvalidOperationException("Only a running Pomodoro phase can be completed.");
         var at = now ?? DateTimeOffset.Now;
+        EnsureAtOrAfter(at, timer.PhaseStartedAt, "the current phase start");
         if (timer.PhaseEndsAt is { } deadline && deadline <= at)
         {
             // The phase already ended: reconcile it at the persisted deadline
@@ -305,17 +333,23 @@ public sealed class PomodoroService(FocusSessionService focus, ActivityLedgerSer
     private void FinishFocusAt(StudyData data, PomodoroTimerData timer, DateTimeOffset at, bool skipped)
     {
         var effectiveAt = timer.PhaseEndsAt is { } deadline && at > deadline ? deadline : at;
+        EnsureAtOrAfter(effectiveAt, timer.PhaseStartedAt, "the current focus phase start");
         var settings = data.PomodoroSettings;
+        var focusesCompletedInSet = skipped ? timer.FocusesCompletedInSet : timer.FocusesCompletedInSet + 1;
+        var breakType = !skipped && focusesCompletedInSet >= settings.SessionsBeforeLongBreak
+            ? PomodoroPhase.LongBreak
+            : PomodoroPhase.ShortBreak;
+        var breakDuration = DurationSeconds(settings, breakType);
+        var breakEndsAt = effectiveAt.AddSeconds(breakDuration);
         var active = ElapsedActive(timer, DurationSeconds(settings, PomodoroPhase.Focus), effectiveAt);
         var session = FindSession(data, timer.SessionId);
         if (session.State == StudySessionState.Running)
+        {
+            EnsureSessionTransitionTime(session, effectiveAt);
             focus.Pause(data, session.Id, effectiveAt);
+        }
 
-        if (!skipped)
-            timer.FocusesCompletedInSet++;
-        var breakType = !skipped && timer.FocusesCompletedInSet >= settings.SessionsBeforeLongBreak
-            ? PomodoroPhase.LongBreak
-            : PomodoroPhase.ShortBreak;
+        timer.FocusesCompletedInSet = focusesCompletedInSet;
         var cycle = new PomodoroCycleData
         {
             SessionId = timer.SessionId,
@@ -334,8 +368,8 @@ public sealed class PomodoroService(FocusSessionService focus, ActivityLedgerSer
         timer.Phase = breakType;
         timer.PhaseWindowStartedAt = effectiveAt;
         timer.PhaseStartedAt = effectiveAt;
-        timer.RemainingSeconds = DurationSeconds(settings, breakType);
-        timer.PhaseEndsAt = effectiveAt.AddSeconds(timer.RemainingSeconds);
+        timer.RemainingSeconds = breakDuration;
+        timer.PhaseEndsAt = breakEndsAt;
         timer.Status = PomodoroTimerStatus.Running;
         timer.UpdatedAt = effectiveAt;
         Sync(data, timer, effectiveAt);
@@ -344,6 +378,11 @@ public sealed class PomodoroService(FocusSessionService focus, ActivityLedgerSer
     private void FinishBreakAt(StudyData data, PomodoroTimerData timer, DateTimeOffset at, bool skipped)
     {
         var effectiveAt = timer.PhaseEndsAt is { } deadline && at > deadline ? deadline : at;
+        EnsureAtOrAfter(effectiveAt, timer.PhaseStartedAt, "the current break phase start");
+        if (timer.CurrentCycleId is { Length: > 0 } cycleId &&
+            data.PomodoroCycles.FirstOrDefault(x => string.Equals(x.Id, cycleId, StringComparison.Ordinal)) is { } existingCycle &&
+            existingCycle.BreakStartedAt is { } breakStart)
+            EnsureAtOrAfter(effectiveAt, breakStart, "the recorded break start");
         var active = ElapsedActive(timer, DurationSeconds(data.PomodoroSettings, timer.Phase), effectiveAt);
         if (timer.CurrentCycleId is { Length: > 0 } cycleId &&
             data.PomodoroCycles.FirstOrDefault(x => string.Equals(x.Id, cycleId, StringComparison.Ordinal)) is { } cycle)
@@ -369,9 +408,11 @@ public sealed class PomodoroService(FocusSessionService focus, ActivityLedgerSer
         if (timer is null) return;
         if (timer.Status != PomodoroTimerStatus.Completed)
             throw new InvalidOperationException("An active Pomodoro phase must be reset before starting a new run.");
+        EnsureAtOrAfter(at, timer.UpdatedAt, "the completed Pomodoro run");
         var session = FindSession(data, timer.SessionId);
         if (session.State is StudySessionState.Running or StudySessionState.Paused)
         {
+            EnsureSessionTransitionTime(session, at);
             focus.Finish(data, session.Id, "Pomodoro concluso", at);
             ledger.SyncFocusSession(data, session, at);
         }
@@ -388,10 +429,41 @@ public sealed class PomodoroService(FocusSessionService focus, ActivityLedgerSer
 
     private static int ElapsedActive(PomodoroTimerData timer, int duration, DateTimeOffset at)
     {
-        var elapsed = Math.Max(0, timer.ActiveSeconds);
-        if (timer.Status == PomodoroTimerStatus.Running)
-            elapsed += Math.Max(0, (int)Math.Floor((at - timer.PhaseStartedAt).TotalSeconds));
-        return Math.Min(duration, elapsed);
+        var elapsed = Math.Clamp(timer.ActiveSeconds, 0, duration);
+        if (timer.Status != PomodoroTimerStatus.Running)
+            return elapsed;
+
+        var remainingCapacity = duration - elapsed;
+        if (remainingCapacity <= 0)
+            return duration;
+
+        var interval = at - timer.PhaseStartedAt;
+        if (interval <= TimeSpan.Zero)
+            return elapsed;
+        if (interval.TotalSeconds >= remainingCapacity)
+            return duration;
+
+        // Compare before converting to int so extreme wall-clock jumps cannot
+        // overflow the elapsed-seconds calculation.
+        return elapsed + (int)Math.Floor(interval.TotalSeconds);
+    }
+
+    private static void EnsureAtOrAfter(DateTimeOffset at, DateTimeOffset minimum, string transition)
+    {
+        if (at < minimum)
+            throw new ArgumentOutOfRangeException(nameof(at), $"The clock moved before {transition}.");
+    }
+
+    private static void EnsureSessionTransitionTime(StudySessionData session, DateTimeOffset at)
+    {
+        var minimum = session.State switch
+        {
+            StudySessionState.Running => session.LastResumedAt,
+            StudySessionState.Paused => session.PausedAt,
+            _ => null
+        };
+        if (minimum is { } startedAt)
+            EnsureAtOrAfter(at, startedAt, "the linked focus-session transition");
     }
 
     private static int DurationSeconds(PomodoroSettingsData settings, PomodoroPhase phase) =>
