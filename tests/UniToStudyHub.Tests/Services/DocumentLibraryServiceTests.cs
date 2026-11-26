@@ -28,10 +28,10 @@ public sealed class DocumentLibraryServiceTests
         var entry = Assert.Single(result.Entries);
         Assert.Equal(DocumentLibraryStatus.Available, entry.Status);
         Assert.Equal(path, entry.LocalPath);
-        Assert.Equal(payload.Length, entry.LocalSizeBytes);
+        Assert.Equal((long)payload.Length, entry.LocalSizeBytes);
         Assert.Equal(Convert.ToHexString(SHA256.HashData(payload)), entry.Sha256);
         Assert.Equal(remoteTime, entry.RemoteModifiedUtc);
-        Assert.Equal(payload.Length, result.BytesHashed);
+        Assert.Equal((long)payload.Length, result.BytesHashed);
         Assert.True(result.LocationScanComplete);
     }
 
