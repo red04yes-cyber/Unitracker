@@ -27,6 +27,36 @@ public sealed class PomodoroClockRollbackTests
     }
 
     [Fact]
+    public void StartRejectsOutOfRangePersistedSettingsWithoutCreatingSession()
+    {
+        var data = new StudyData();
+        data.PomodoroSettings.FocusMinutes = int.MaxValue;
+        var service = new PomodoroService(new FocusSessionService(), new ActivityLedgerService());
+
+        Assert.Throws<InvalidDataException>(() =>
+            service.Start(data, null, "Derivate", Start));
+
+        Assert.Empty(data.StudySessions);
+        Assert.Null(data.PomodoroTimer);
+        Assert.Empty(data.StudyActivities);
+    }
+
+    [Fact]
+    public void CompletingFocusBeforeItsStartLeavesTheSessionRunning()
+    {
+        var (data, service, timer, session) = CreateRunning();
+
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            service.CompletePhase(data, Start.AddSeconds(-1)));
+
+        Assert.Equal(PomodoroTimerStatus.Running, timer.Status);
+        Assert.Equal(PomodoroPhase.Focus, timer.Phase);
+        Assert.Equal(StudySessionState.Running, session.State);
+        Assert.Equal(Start, session.LastResumedAt);
+        Assert.Empty(data.PomodoroCycles);
+    }
+
+    [Fact]
     public void PauseBeforeFocusStartLeavesTimerAndSessionUnchanged()
     {
         var (data, service, timer, session) = CreateRunning();
