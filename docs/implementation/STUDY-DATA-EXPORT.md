@@ -6,7 +6,16 @@ StudyDataExportService espone due percorsi distinti:
 - Export: report di progresso compatto già usato da StudyWorkspaceViewModel.ExportProgressAsync. Mantiene attività, sessioni, segmenti, riepilogo e cicli Pomodoro; non include automaticamente materiali, note, voti o check-in.
 - ExportStudyData: esportazione completa e intenzionale dei dati di studio. Imposta IncludeStudyLabRecords e produce le raccolte descritte sotto.
 
-La UI attuale resta invariata. Il controllo dedicato "Esporta dati di studio" deve chiamare ExportStudyData solo dopo un'azione esplicita dell'utente e deve esporre le opzioni di privacy/filtro di StudyExportRequest. Non riutilizzare il pulsante "Esporta report XLSX", che continua a generare il report compatto. Nessun XAML è stato modificato in questa slice.
+### UI WPF integrata
+
+La pagina **Progressi** mantiene il pulsante "Esporta report XLSX", che continua a generare il report compatto. Il pannello separato "Esportazione completa dei dati di studio" offre:
+- intervallo di date inclusivo (fuso locale; massimo 10 anni);
+- filtro facoltativo per materia, con tutte le materie incluse se non viene selezionata;
+- CSV (ZIP con file separati), XLSX multi-sheet o JSON versionato;
+- testo/note, note private e risultati, tutti esclusi per default;
+- selezione del percorso tramite SaveFileDialog e conferma di sovrascrittura.
+
+Il ViewModel costruisce StudyExportRequest e chiama ExportStudyData. Il writer crea il file temporaneo nella stessa cartella e sostituisce la destinazione solo dopo il completamento; il bundle CSV usa nomi piatti validati e rifiuta percorsi e duplicati. L'esportazione non è un backup ripristinabile.
 
 ## Formati
 
