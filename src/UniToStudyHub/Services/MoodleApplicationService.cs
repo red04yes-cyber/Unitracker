@@ -11,14 +11,20 @@ namespace UniToStudyHub.Services;
 public sealed class MoodleApplicationService
 {
     private readonly IMoodleTokenStore _tokens;
+    private readonly DocumentLibraryService _documentLibrary;
 
-    public MoodleApplicationService() : this(MoodleTokenVault.Default)
+    public MoodleApplicationService() : this(MoodleTokenVault.Default, new DocumentLibraryService())
     {
     }
 
-    public MoodleApplicationService(IMoodleTokenStore tokens)
+    public MoodleApplicationService(IMoodleTokenStore tokens) : this(tokens, new DocumentLibraryService())
+    {
+    }
+
+    public MoodleApplicationService(IMoodleTokenStore tokens, DocumentLibraryService documentLibrary)
     {
         _tokens = tokens ?? throw new ArgumentNullException(nameof(tokens));
+        _documentLibrary = documentLibrary ?? throw new ArgumentNullException(nameof(documentLibrary));
     }
 
     public bool IsConnected => _tokens.HasToken;
@@ -112,6 +118,34 @@ public sealed class MoodleApplicationService
         return await new DocumentSyncService()
             .DownloadCourseFilesAsync(client, course, sections, activityFiles, cancellationToken)
             .ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Reconciles the current Moodle course catalogue with the local download
+    /// folder. Existing section metadata can be supplied to avoid another API
+    /// request; activity attachments can be supplied from the activity snapshot.
+    /// </summary>
+    public async Task<DocumentLibraryIndexResult> GetCourseDocumentLibraryAsync(
+        string baseUrl,
+        Course course,
+        IEnumerable<MoodleCourseSection>? sections = null,
+        IEnumerable<MoodleContentFile>? activityFiles = null,
+        string? documentsBasePath = null,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(course);
+        if (course.MoodleCourseId is not > 0)
+            throw new InvalidOperationException("Il corso non è collegato a un ID Moodle valido.");
+
+        var resolvedSections = sections?.ToArray();
+        if (resolvedSections is null)
+        {
+            resolvedSections = (await GetCourseContentsAsync(
+                baseUrl, course.MoodleCourseId.Value, cancellationToken).ConfigureAwait(false)).ToArray();
+        }
+
+        return await _documentLibrary.IndexCourseAsync(
+            course, resolvedSections, activityFiles, documentsBasePath, cancellationToken).ConfigureAwait(false);
     }
 
     public async Task<IReadOnlyList<MoodleForumDiscussion>> GetForumDiscussionsAsync(

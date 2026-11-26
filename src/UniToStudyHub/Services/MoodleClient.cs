@@ -186,7 +186,7 @@ public sealed class MoodleClient : IDisposable
     public static IReadOnlyList<MoodleContentFile> ExtractActivityFiles(
         IEnumerable<JsonElement> activityResponses)
     {
-        var files = new Dictionary<string, MoodleContentFile>(StringComparer.OrdinalIgnoreCase);
+        var files = new Dictionary<string, MoodleContentFile>(StringComparer.Ordinal);
         foreach (var response in activityResponses ?? Array.Empty<JsonElement>())
             CollectActivityFiles(response, files);
         return files.Values.ToList();
