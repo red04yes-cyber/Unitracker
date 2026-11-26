@@ -162,13 +162,14 @@ public sealed class PomodoroService(FocusSessionService focus, ActivityLedgerSer
         if (timer.PhaseEndsAt is null || at >= timer.PhaseEndsAt)
             throw new InvalidOperationException("The phase has already elapsed; reconcile it before pausing.");
 
+        var duration = DurationSeconds(data.PomodoroSettings, timer.Phase);
         // Validate and close the linked focus interval before changing the timer.
         // A clock rollback must not leave the timer paused while the session runs.
         if (timer.Phase == PomodoroPhase.Focus)
             focus.Pause(data, timer.SessionId, at);
 
-        timer.ActiveSeconds = ElapsedActive(timer, DurationSeconds(data.PomodoroSettings, timer.Phase), at);
-        timer.RemainingSeconds = Math.Max(1, DurationSeconds(data.PomodoroSettings, timer.Phase) - timer.ActiveSeconds);
+        timer.ActiveSeconds = ElapsedActive(timer, duration, at);
+        timer.RemainingSeconds = Math.Max(1, duration - timer.ActiveSeconds);
         timer.PhaseEndsAt = null;
         timer.Status = PomodoroTimerStatus.Paused;
         timer.UpdatedAt = at;
@@ -282,6 +283,12 @@ public sealed class PomodoroService(FocusSessionService focus, ActivityLedgerSer
             timer.Status == PomodoroTimerStatus.Running ? timer.PhaseStartedAt : timer.UpdatedAt,
             "the current Pomodoro phase");
 
+        PomodoroCycleData? cycle = null;
+        if (timer.CurrentCycleId is { Length: > 0 } cycleId)
+            cycle = data.PomodoroCycles.FirstOrDefault(x => string.Equals(x.Id, cycleId, StringComparison.Ordinal));
+        if (cycle is { IsCompleted: false, BreakStartedAt: { } breakStart })
+            EnsureAtOrAfter(at, breakStart, "the current break start");
+
         var session = FindSession(data, timer.SessionId);
         if (session.State is StudySessionState.Running or StudySessionState.Paused)
         {
@@ -292,12 +299,8 @@ public sealed class PomodoroService(FocusSessionService focus, ActivityLedgerSer
 
         // Update the cycle only after all timestamp validation and session
         // transitions have succeeded, so a rejected clock value leaves history intact.
-        if (timer.CurrentCycleId is { Length: > 0 } cycleId &&
-            data.PomodoroCycles.FirstOrDefault(x => string.Equals(x.Id, cycleId, StringComparison.Ordinal)) is { } cycle &&
-            !cycle.IsCompleted)
+        if (cycle is { IsCompleted: false })
         {
-            if (cycle.BreakStartedAt is { } breakStart)
-                EnsureAtOrAfter(at, breakStart, "the current break start");
             cycle.BreakEndedAt ??= at;
             if (cycle.BreakStartedAt is { } start && cycle.BreakEndedAt > start)
                 cycle.BreakSeconds = (int)Math.Floor((cycle.BreakEndedAt.Value - start).TotalSeconds);
