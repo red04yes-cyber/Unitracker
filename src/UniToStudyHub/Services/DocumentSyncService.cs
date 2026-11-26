@@ -244,10 +244,7 @@ public sealed class DocumentSyncService
         if (sourceSet.Truncated)
             warnings.Add($"Il corso espone più di {MaximumFilesPerCourse} file: il download è stato limitato per sicurezza.");
         if (sourceSet.Rejected > 0)
-        {
-            skipped += sourceSet.Rejected;
             warnings.Add("Alcuni allegati Moodle sono stati ignorati perché incompleti o oltre i limiti consentiti.");
-        }
 
         foreach (var item in files)
         {
@@ -338,7 +335,7 @@ public sealed class DocumentSyncService
             }
         }
 
-        return new DocumentSyncResult(downloaded, skipped, warnings);
+        return new DocumentSyncResult(downloaded, skipped + sourceSet.Rejected, warnings);
     }
 
     public static string Categorize(string name, string mime)
