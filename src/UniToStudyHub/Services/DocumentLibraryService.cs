@@ -307,7 +307,30 @@ public sealed class DocumentLibraryService
     {
         var byName = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
         if (!Directory.Exists(courseRoot))
-            return new LocalFileLookup(byName, Complete: true);
+        {
+            try
+            {
+                var rootAttributes = File.GetAttributes(courseRoot);
+                if ((rootAttributes & FileAttributes.Directory) == 0)
+                {
+                    warnings.Add("Il percorso locale del corso non è una cartella; la scansione è stata interrotta.");
+                    return new LocalFileLookup(byName, Complete: false);
+                }
+            }
+            catch (FileNotFoundException)
+            {
+                return new LocalFileLookup(byName, Complete: true);
+            }
+            catch (DirectoryNotFoundException)
+            {
+                return new LocalFileLookup(byName, Complete: true);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                warnings.Add("La cartella locale del corso non è accessibile; lo stato dei materiali mancanti è provvisorio.");
+                return new LocalFileLookup(byName, Complete: false);
+            }
+        }
         if (!LocalFileSecurity.IsInside(courseRoot, Path.Combine(courseRoot, ".document-library-scan")))
         {
             warnings.Add("La cartella del corso contiene un collegamento o un percorso non verificabile; la scansione locale è stata interrotta.");
