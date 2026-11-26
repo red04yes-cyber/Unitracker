@@ -91,6 +91,9 @@ public static class StudyExportFileWriter
             fileName.Contains('/') ||
             fileName.Contains('\\') ||
             !string.Equals(Path.GetFileName(fileName), fileName, StringComparison.Ordinal) ||
+            fileName.IndexOfAny("<>:\"|?*".ToCharArray()) >= 0 ||
+            fileName.EndsWith(' ') ||
+            fileName.EndsWith('.') ||
             !fileName.EndsWith(".csv", StringComparison.OrdinalIgnoreCase))
         {
             throw new InvalidDataException("Il bundle CSV contiene un nome file non sicuro.");
