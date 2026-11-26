@@ -55,6 +55,7 @@ public sealed class StudyExportFileWriterTests
     [InlineData("../outside.csv")]
     [InlineData("nested/outside.csv")]
     [InlineData("nested\\outside.csv")]
+    [InlineData("bad:name.csv")]
     [InlineData("..")]
     public async Task CsvBundleRejectsEntryPathTraversal(string entryName)
     {
