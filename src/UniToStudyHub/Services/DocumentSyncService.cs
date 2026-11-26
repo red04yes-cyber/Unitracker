@@ -6,6 +6,9 @@ using UniToStudyHub.Security;
 namespace UniToStudyHub.Services;
 
 public sealed record DocumentSyncResult(int Downloaded, int Skipped, IReadOnlyList<string> Warnings);
+public sealed record MoodleDocumentSource(string SectionName, string ModuleName, MoodleContentFile File);
+public sealed record MoodleDocumentSourceSet(
+    IReadOnlyList<MoodleDocumentSource> Files, bool Truncated, int Rejected);
 
 /// <summary>
 /// Downloads the files exposed by an authorised Moodle course into the user's
@@ -26,6 +29,163 @@ public sealed class DocumentSyncService
         ".jar", ".dll", ".sys", ".drv", ".sh", ".bash", ".zsh", ".py", ".rb", ".pl", ".docm", ".xlsm"
     };
 
+    public const int MaximumFilesPerCourse = 1000;
+    public const int MaximumFilePathLength = 2048;
+    public const int MaximumFilePathSegments = 32;
+    private const int MaximumSourceUrlLength = 8192;
+    private const int MaximumSourceFileNameLength = 1024;
+
+    /// <summary>
+    /// Produces one bounded, deterministic source list shared by download and
+    /// library indexing. URL identity is ordinal because Moodle path segments
+    /// can be case-sensitive. Malformed descriptors never reach filesystem code.
+    /// </summary>
+    public static MoodleDocumentSourceSet EnumerateSources(
+        IEnumerable<MoodleCourseSection> sections,
+        IEnumerable<MoodleContentFile>? additionalFiles = null,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(sections);
+        var files = new List<MoodleDocumentSource>(MaximumFilesPerCourse);
+        var seenUrls = new HashSet<string>(StringComparer.Ordinal);
+        var rejected = 0;
+        var truncated = false;
+
+        void Add(string? sectionName, string? moduleName, MoodleContentFile? file)
+        {
+            if (file is null || !string.Equals(file.type, "file", StringComparison.OrdinalIgnoreCase))
+                return;
+
+            var filePath = file.filepath ?? string.Empty;
+            var segmentCount = filePath.Replace('\\', '/')
+                .Split('/', StringSplitOptions.RemoveEmptyEntries)
+                .Count(part => part is not "." and not "..");
+            if (string.IsNullOrWhiteSpace(file.fileurl) || file.fileurl.Length > MaximumSourceUrlLength ||
+                string.IsNullOrWhiteSpace(file.filename) || file.filename.Length > MaximumSourceFileNameLength ||
+                filePath.Length > MaximumFilePathLength || segmentCount > MaximumFilePathSegments)
+            {
+                rejected++;
+                return;
+            }
+
+            if (!seenUrls.Add(file.fileurl))
+                return;
+            if (files.Count >= MaximumFilesPerCourse)
+            {
+                truncated = true;
+                return;
+            }
+
+            files.Add(new MoodleDocumentSource(
+                sectionName ?? "Sezione Moodle",
+                moduleName ?? "Materiali Moodle",
+                file));
+        }
+
+        foreach (var section in sections)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (section?.modules is null)
+                continue;
+
+            foreach (var module in section.modules)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                if (module?.contents is null)
+                    continue;
+
+                foreach (var file in module.contents)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    Add(section.name, module.name, file);
+                    if (truncated) break;
+                }
+
+                if (truncated) break;
+            }
+
+            if (truncated) break;
+        }
+
+        if (!truncated && additionalFiles is not null)
+        {
+            foreach (var file in additionalFiles)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                Add("Attività Moodle", "Allegati attività", file);
+                if (truncated) break;
+            }
+        }
+
+        return new MoodleDocumentSourceSet(files, truncated, rejected);
+    }
+
+    /// <summary>Returns the same course directory used by Moodle downloads without creating it.</summary>
+    public static string GetCourseDirectory(Course course, string? documentsBasePath = null)
+    {
+        ArgumentNullException.ThrowIfNull(course);
+        var basePath = documentsBasePath ?? Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+        if (string.IsNullOrWhiteSpace(basePath))
+            throw new InvalidOperationException("La cartella Documenti dell'utente non è disponibile.");
+
+        basePath = ResolveDocumentsBaseDirectory(basePath);
+        var documentsRoot = Path.Combine(basePath, "UniToStudyHub");
+        var moodleRoot = Path.Combine(documentsRoot, "Moodle");
+        var courseRoot = Path.Combine(moodleRoot, SafeName(course.Name));
+
+        if (!LocalFileSecurity.IsInside(basePath, documentsRoot) ||
+            !LocalFileSecurity.IsInside(documentsRoot, moodleRoot) ||
+            !LocalFileSecurity.IsInside(moodleRoot, courseRoot))
+            throw new InvalidDataException("La cartella del corso non è contenuta nell'archivio Moodle.");
+
+        return courseRoot;
+    }
+
+    /// <summary>Builds the relative path shared by downloads and the local document index.</summary>
+    public static string GetRelativePath(MoodleDocumentSource source)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        return GetRelativePath(source.SectionName, source.ModuleName, source.File);
+    }
+
+    public static string GetRelativePath(string? sectionName, string? moduleName, MoodleContentFile file)
+    {
+        ArgumentNullException.ThrowIfNull(file);
+        var relative = Path.Combine(
+            SafeName(sectionName),
+            SafeName(moduleName),
+            Categorize(file.filename ?? string.Empty, file.mimetype ?? string.Empty));
+        var folders = (file.filepath ?? string.Empty).Replace('\\', '/')
+            .Split('/', StringSplitOptions.RemoveEmptyEntries)
+            .Where(part => part is not "." and not "..")
+            .Select(SafeName);
+        foreach (var folder in folders)
+            relative = Path.Combine(relative, folder);
+        return relative;
+    }
+
+    public static bool IsBlockedFileName(string? fileName) =>
+        BlockedExtensions.Contains(Path.GetExtension(SafeName(fileName)));
+
+    private static string ResolveDocumentsBaseDirectory(string path)
+    {
+        var fullPath = Path.GetFullPath(path);
+        var directoryInfo = new DirectoryInfo(fullPath);
+        if (directoryInfo.LinkTarget is not null ||
+            (Directory.Exists(fullPath) &&
+             (File.GetAttributes(fullPath) & FileAttributes.ReparsePoint) != 0))
+        {
+            // The user-selected Documents folder may legitimately be redirected
+            // (for example by OneDrive). Resolve that trusted boundary once.
+            var resolvedBase = directoryInfo.ResolveLinkTarget(returnFinalTarget: true)
+                               ?? throw new InvalidDataException(
+                                   "La cartella Documenti reindirizzata non può essere risolta.");
+            fullPath = Path.GetFullPath(resolvedBase.FullName);
+        }
+
+        return fullPath;
+    }
+
     public async Task<DocumentSyncResult> DownloadCourseFilesAsync(
         MoodleClient client,
         Course course,
@@ -41,24 +201,11 @@ public sealed class DocumentSyncService
         if (string.IsNullOrWhiteSpace(documentsBase))
             throw new InvalidOperationException("La cartella Documenti dell'utente non è disponibile.");
 
-        documentsBase = Path.GetFullPath(documentsBase);
-        var documentsBaseInfo = new DirectoryInfo(documentsBase);
-        if (documentsBaseInfo.LinkTarget is not null ||
-            (Directory.Exists(documentsBase) &&
-             (File.GetAttributes(documentsBase) & FileAttributes.ReparsePoint) != 0))
-        {
-            // The user-selected Documents folder may legitimately be redirected
-            // (for example by OneDrive). Resolve that trusted boundary once,
-            // then reject links created inside the app-owned subtree.
-            var resolvedBase = documentsBaseInfo.ResolveLinkTarget(returnFinalTarget: true)
-                               ?? throw new InvalidDataException(
-                                   "La cartella Documenti reindirizzata non può essere risolta.");
-            documentsBase = Path.GetFullPath(resolvedBase.FullName);
-        }
+        documentsBase = ResolveDocumentsBaseDirectory(documentsBase);
 
         var documentsRoot = Path.Combine(documentsBase, "UniToStudyHub");
         var moodleRoot = Path.Combine(documentsRoot, "Moodle");
-        var root = Path.Combine(moodleRoot, SafeName(course.Name));
+        var root = GetCourseDirectory(course, documentsBase);
 
         // Reject links at each application-owned boundary before applying ACLs
         // or creating directories. A link must not redirect a Moodle download
@@ -84,28 +231,14 @@ public sealed class DocumentSyncService
         var skipped = 0;
         long downloadedBytes = 0;
         const long maximumCourseBytes = 1024L * 1024 * 1024;
-        const int maximumFilesPerCourse = 1000;
-        var files = sections
-            .Where(section => section.modules is not null)
-            .SelectMany(section => section.modules.SelectMany(module =>
-                (module.contents ?? new List<MoodleContentFile>())
-                .Select(file => (Section: section, Module: module, File: file))))
-            .Concat((additionalFiles ?? Array.Empty<MoodleContentFile>()).Select(file =>
-                (Section: new MoodleCourseSection { name = "Attività Moodle" },
-                 Module: new MoodleModule { name = "Allegati attività" },
-                 File: file)))
-            .Where(item => item.File.type.Equals("file", StringComparison.OrdinalIgnoreCase) &&
-                           !string.IsNullOrWhiteSpace(item.File.fileurl) &&
-                           !string.IsNullOrWhiteSpace(item.File.filename))
-            .GroupBy(item => item.File.fileurl, StringComparer.OrdinalIgnoreCase)
-            .Select(group => group.First())
-            .Take(maximumFilesPerCourse + 1)
-            .ToList();
-
-        if (files.Count > maximumFilesPerCourse)
+        var sourceSet = EnumerateSources(sections, additionalFiles, cancellationToken);
+        var files = sourceSet.Files;
+        if (sourceSet.Truncated)
+            warnings.Add($"Il corso espone più di {MaximumFilesPerCourse} file: il download è stato limitato per sicurezza.");
+        if (sourceSet.Rejected > 0)
         {
-            warnings.Add($"Il corso espone più di {maximumFilesPerCourse} file: il download è stato limitato per sicurezza.");
-            files.RemoveAt(files.Count - 1);
+            skipped += sourceSet.Rejected;
+            warnings.Add("Alcuni allegati Moodle sono stati ignorati perché incompleti o oltre i limiti consentiti.");
         }
 
         foreach (var item in files)
@@ -113,9 +246,15 @@ public sealed class DocumentSyncService
             cancellationToken.ThrowIfCancellationRequested();
             var file = item.File;
             var safeName = SafeName(file.filename);
-            if (BlockedExtensions.Contains(Path.GetExtension(safeName)))
+            if (IsBlockedFileName(safeName))
             {
                 warnings.Add($"Ignorato «{safeName}»: estensione eseguibile o macro non consentita.");
+                skipped++;
+                continue;
+            }
+            if (file.filesize < 0)
+            {
+                warnings.Add($"Ignorato «{safeName}»: dimensione dichiarata non valida.");
                 skipped++;
                 continue;
             }
@@ -132,17 +271,7 @@ public sealed class DocumentSyncService
                 break;
             }
 
-            var relative = Path.Combine(
-                SafeName(item.Section.name),
-                SafeName(item.Module.name),
-                Categorize(file.filename, file.mimetype));
-            if (!string.IsNullOrWhiteSpace(file.filepath))
-            {
-                var folders = file.filepath.Replace('\\', '/').Split('/', StringSplitOptions.RemoveEmptyEntries)
-                    .Where(part => part is not "." and not "..")
-                    .Select(SafeName).ToArray();
-                foreach (var folder in folders) relative = Path.Combine(relative, folder);
-            }
+            var relative = GetRelativePath(item);
             var destinationDirectory = Path.Combine(root, relative);
             var destination = Path.Combine(destinationDirectory, safeName);
             if (!LocalFileSecurity.IsInside(moodleRoot, destination))
