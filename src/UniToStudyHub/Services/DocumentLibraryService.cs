@@ -8,6 +8,7 @@ namespace UniToStudyHub.Services;
 public enum DocumentLibraryStatus
 {
     Available,
+    PathConflict,
     Missing,
     Moved,
     UpdateRequired,
@@ -33,7 +34,8 @@ public sealed record DocumentLibraryEntry(
     string? LocalPath,
     DocumentLibraryStatus Status,
     bool IsMoved,
-    bool HasAmbiguousLocation);
+    bool HasAmbiguousLocation,
+    int DuplicateSourceCount);
 
 public sealed record DocumentLibraryIndexResult(
     IReadOnlyList<DocumentLibraryEntry> Entries,
@@ -87,18 +89,25 @@ public sealed class DocumentLibraryService
             warnings.Add("Alcuni allegati Moodle sono stati ignorati perché incompleti o oltre i limiti consentiti.");
 
         var localFiles = ScanLocalFiles(courseRoot, warnings, cancellationToken);
-        var entries = new List<DocumentLibraryEntry>(sourceSet.Files.Count);
+        var sourceGroups = sourceSet.Files
+            .GroupBy(source => Path.GetFullPath(Path.Combine(
+                courseRoot,
+                DocumentSyncService.GetRelativePath(source),
+                DocumentSyncService.SafeName(source.File.filename))), PathComparer)
+            .ToArray();
+        var entries = new List<DocumentLibraryEntry>(sourceGroups.Length);
         long bytesHashed = 0;
         var hashBudgetWarningAdded = false;
 
-        foreach (var source in sourceSet.Files)
+        foreach (var sourceGroup in sourceGroups)
         {
             cancellationToken.ThrowIfCancellationRequested();
+            var source = sourceGroup.First();
+            var duplicateSourceCount = sourceGroup.Count();
             var file = source.File;
             var fileName = DocumentSyncService.SafeName(file.filename);
             var category = DocumentSyncService.Categorize(file.filename, file.mimetype);
-            var relativePath = DocumentSyncService.GetRelativePath(source);
-            var expectedPath = Path.GetFullPath(Path.Combine(courseRoot, relativePath, fileName));
+            var expectedPath = sourceGroup.Key;
             var remoteModified = file.timemodified > 0
                 ? DateTimeOffset.FromUnixTimeSeconds(file.timemodified)
                 : (DateTimeOffset?)null;
@@ -112,7 +121,12 @@ public sealed class DocumentLibraryService
             var isMoved = false;
             var ambiguousLocation = false;
 
-            if (file.filesize < 0)
+            if (duplicateSourceCount > 1)
+            {
+                status = DocumentLibraryStatus.PathConflict;
+                warnings.Add($"Più materiali Moodle condividono il percorso locale di «{fileName}»; nessuno è stato considerato disponibile.");
+            }
+            else if (file.filesize < 0)
             {
                 status = DocumentLibraryStatus.Unavailable;
                 warnings.Add($"Metadati non validi per «{fileName}»: dimensione dichiarata negativa.");
@@ -228,7 +242,8 @@ public sealed class DocumentLibraryService
                 localPath,
                 status,
                 isMoved,
-                ambiguousLocation));
+                ambiguousLocation,
+                duplicateSourceCount));
         }
 
         var ordered = entries
