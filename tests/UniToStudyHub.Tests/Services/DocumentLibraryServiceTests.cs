@@ -28,9 +28,9 @@ public sealed class DocumentLibraryServiceTests
         var entry = Assert.Single(result.Entries);
         Assert.Equal(DocumentLibraryStatus.Available, entry.Status);
         Assert.Equal(path, entry.LocalPath);
-        Assert.Equal((long)payload.Length, entry.LocalSizeBytes);
+        Assert.Equal<long?>((long)payload.Length, entry.LocalSizeBytes);
         Assert.Equal(Convert.ToHexString(SHA256.HashData(payload)), entry.Sha256);
-        Assert.Equal(remoteTime, entry.RemoteModifiedUtc);
+        Assert.Equal<DateTimeOffset?>(remoteTime, entry.RemoteModifiedUtc);
         Assert.Equal((long)payload.Length, result.BytesHashed);
         Assert.True(result.LocationScanComplete);
     }
@@ -203,11 +203,12 @@ public sealed class DocumentLibraryServiceTests
     [Fact]
     public void ActivityFileExtractionPreservesCaseSensitiveUrlPaths()
     {
-        using var document = JsonDocument.Parse(
-            """{"files":[
+        using var document = JsonDocument.Parse("""
+            {"files":[
                 {"filename":"upper.pdf","fileurl":"https://moodle.example/pluginfile.php/1/File.pdf"},
                 {"filename":"lower.pdf","fileurl":"https://moodle.example/pluginfile.php/1/file.pdf"}
-            ]}""");
+            ]}
+            """);
 
         var files = MoodleClient.ExtractActivityFiles(new[] { document.RootElement });
 
