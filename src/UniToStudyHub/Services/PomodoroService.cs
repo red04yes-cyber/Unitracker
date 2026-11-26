@@ -382,13 +382,15 @@ public sealed class PomodoroService(FocusSessionService focus, ActivityLedgerSer
     {
         var effectiveAt = timer.PhaseEndsAt is { } deadline && at > deadline ? deadline : at;
         EnsureAtOrAfter(effectiveAt, timer.PhaseStartedAt, "the current break phase start");
-        if (timer.CurrentCycleId is { Length: > 0 } cycleId &&
-            data.PomodoroCycles.FirstOrDefault(x => string.Equals(x.Id, cycleId, StringComparison.Ordinal)) is { } existingCycle &&
-            existingCycle.BreakStartedAt is { } breakStart)
+        PomodoroCycleData? cycle = null;
+        if (timer.CurrentCycleId is { Length: > 0 } currentCycleId)
+            cycle = data.PomodoroCycles.FirstOrDefault(x =>
+                string.Equals(x.Id, currentCycleId, StringComparison.Ordinal));
+        if (cycle?.BreakStartedAt is { } breakStart)
             EnsureAtOrAfter(effectiveAt, breakStart, "the recorded break start");
+
         var active = ElapsedActive(timer, DurationSeconds(data.PomodoroSettings, timer.Phase), effectiveAt);
-        if (timer.CurrentCycleId is { Length: > 0 } cycleId &&
-            data.PomodoroCycles.FirstOrDefault(x => string.Equals(x.Id, cycleId, StringComparison.Ordinal)) is { } cycle)
+        if (cycle is not null)
         {
             cycle.BreakEndedAt = effectiveAt;
             cycle.BreakSeconds = active;
