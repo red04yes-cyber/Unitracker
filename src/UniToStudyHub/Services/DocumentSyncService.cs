@@ -272,7 +272,7 @@ public sealed class DocumentSyncService
         var sourceSet = EnumerateSources(sections, additionalFiles, cancellationToken);
         var files = sourceSet.Files;
         if (sourceSet.Truncated)
-            warnings.Add($"Il corso espone più di {MaximumFilesPerCourse} file: il download è stato limitato per sicurezza.");
+            warnings.Add("Il catalogo Moodle supera i limiti di indicizzazione; il download è stato limitato per sicurezza.");
         if (sourceSet.Rejected > 0)
             warnings.Add("Alcuni allegati Moodle sono stati ignorati perché incompleti o oltre i limiti consentiti.");
 
