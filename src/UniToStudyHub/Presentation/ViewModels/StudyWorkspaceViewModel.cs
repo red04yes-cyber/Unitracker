@@ -1709,13 +1709,14 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
 
         try
         {
+            var selectedCourseId = SelectedStudyExportCourse?.Id;
             var request = new StudyExportRequest(
                 DateOnly.FromDateTime(StudyExportFromDate!.Value.Date),
                 DateOnly.FromDateTime(StudyExportToDate!.Value.Date),
                 TimeZoneInfo.Local.Id,
-                CourseIds: string.IsNullOrWhiteSpace(SelectedStudyExportCourse?.Id)
+                CourseIds: string.IsNullOrWhiteSpace(selectedCourseId)
                     ? null
-                    : new[] { SelectedStudyExportCourse.Id },
+                    : new[] { selectedCourseId },
                 IncludeNotes: StudyExportIncludeNotes,
                 IncludePrivateNotes: StudyExportIncludeNotes && StudyExportIncludePrivateNotes,
                 IncludeResult: StudyExportIncludeResults);
