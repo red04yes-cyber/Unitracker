@@ -529,6 +529,42 @@ public partial class MainWindow : Window
             await viewModel.Workspace.ImportPdfAsync(dialog.FileName);
     }
 
+    private async void ExportStudyData_Click(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is not MainViewModel viewModel) return;
+        var format = viewModel.Workspace.SelectedStudyExportFormat;
+        var (filter, extension, fileName) = format switch
+        {
+            StudyExportFormat.Csv => ("CSV compresso ZIP (*.zip)|*.zip", ".zip", $"UniToStudyHub-studio-{DateTime.Today:yyyyMMdd}.zip"),
+            StudyExportFormat.Xlsx => ("Cartella Excel (*.xlsx)|*.xlsx", ".xlsx", $"UniToStudyHub-studio-{DateTime.Today:yyyyMMdd}.xlsx"),
+            StudyExportFormat.Json => ("Dati JSON (*.json)|*.json", ".json", $"UniToStudyHub-studio-{DateTime.Today:yyyyMMdd}.json"),
+            _ => throw new ArgumentOutOfRangeException(nameof(format))
+        };
+        var dialog = new SaveFileDialog
+        {
+            Title = "Esporta dati di studio",
+            Filter = filter,
+            DefaultExt = extension,
+            AddExtension = true,
+            FileName = fileName,
+            OverwritePrompt = true
+        };
+        if (dialog.ShowDialog(this) != true) return;
+
+        try
+        {
+            await viewModel.Workspace.ExportStudyDataAsync(dialog.FileName, format);
+            MessageBox.Show(this,
+                "Esportazione completa creata. Il file può contenere dati personali; conserva e condividi solo la copia necessaria. Le note private sono incluse solo se le hai selezionate.",
+                "Esportazione completata", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, $"Esportazione non riuscita: {ex.Message}", "Errore",
+                MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
     private async void ExportProgress_Click(object sender, RoutedEventArgs e)
     {
         if (DataContext is not MainViewModel viewModel) return;
