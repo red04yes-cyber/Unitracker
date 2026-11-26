@@ -36,6 +36,16 @@ public sealed class DocumentLibraryServiceTests
     }
 
     [Fact]
+    public void CourseDirectoryRejectsBlankCourseNames()
+    {
+        using var folder = new TemporaryFolder();
+        var course = CreateCourse();
+        course.Name = " ";
+
+        Assert.Throws<ArgumentException>(() => DocumentSyncService.GetCourseDirectory(course, folder.Path));
+    }
+
+    [Fact]
     public async Task MissingRemoteFileIsReportedWithoutCreatingDirectories()
     {
         using var folder = new TemporaryFolder();
