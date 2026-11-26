@@ -137,6 +137,8 @@ public sealed class DocumentSyncService
             !LocalFileSecurity.IsInside(documentsRoot, moodleRoot) ||
             !LocalFileSecurity.IsInside(moodleRoot, courseRoot))
             throw new InvalidDataException("La cartella del corso non è contenuta nell'archivio Moodle.");
+        if (File.Exists(courseRoot))
+            throw new InvalidDataException("Il percorso della cartella del corso è occupato da un file.");
 
         return courseRoot;
     }
