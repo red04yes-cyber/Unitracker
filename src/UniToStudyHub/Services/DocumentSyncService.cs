@@ -59,7 +59,7 @@ public sealed class DocumentSyncService
             var filePath = file.filepath ?? string.Empty;
             var segmentCount = filePath.Replace('\\', '/')
                 .Split('/', StringSplitOptions.RemoveEmptyEntries)
-                .Count(part => part is not "." and not "..");
+                .Length;
             if (string.IsNullOrWhiteSpace(file.fileurl) || file.fileurl.Length > MaximumSourceUrlLength ||
                 string.IsNullOrWhiteSpace(file.filename) || file.filename.Length > MaximumSourceFileNameLength ||
                 filePath.Length > MaximumFilePathLength || segmentCount > MaximumFilePathSegments)
@@ -155,8 +155,12 @@ public sealed class DocumentSyncService
             SafeName(sectionName),
             SafeName(moduleName),
             Categorize(file.filename ?? string.Empty, file.mimetype ?? string.Empty));
-        var folders = (file.filepath ?? string.Empty).Replace('\\', '/')
-            .Split('/', StringSplitOptions.RemoveEmptyEntries)
+        var rawFolders = (file.filepath ?? string.Empty).Replace('\\', '/')
+            .Split('/', StringSplitOptions.RemoveEmptyEntries);
+        if ((file.filepath?.Length ?? 0) > MaximumFilePathLength ||
+            rawFolders.Length > MaximumFilePathSegments)
+            throw new InvalidDataException("Il percorso relativo del materiale supera i limiti consentiti.");
+        var folders = rawFolders
             .Where(part => part is not "." and not "..")
             .Select(SafeName);
         foreach (var folder in folders)
@@ -170,6 +174,8 @@ public sealed class DocumentSyncService
     private static string ResolveDocumentsBaseDirectory(string path)
     {
         var fullPath = Path.GetFullPath(path);
+        if (File.Exists(fullPath))
+            throw new InvalidDataException("Il percorso Documenti configurato è un file, non una cartella.");
         var directoryInfo = new DirectoryInfo(fullPath);
         if (directoryInfo.LinkTarget is not null ||
             (Directory.Exists(fullPath) &&
