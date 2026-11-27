@@ -147,6 +147,12 @@ public sealed class FlashcardReviewData
     public decimal EaseFactorAfter { get; set; }
 }
 
+public sealed record FlashcardReviewForecastDay(DateOnly Date, int DueCount, int OverdueCount)
+{
+    /// <summary>Cards scheduled for this date plus overdue cards on the first forecast date.</summary>
+    public int TotalReviewCount => DueCount + OverdueCount;
+}
+
 public sealed class DistractionData
 {
     public string Id { get; set; } = Guid.NewGuid().ToString("N");
