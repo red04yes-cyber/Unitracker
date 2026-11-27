@@ -58,7 +58,7 @@ public sealed record ActivitySummary(
 /// entries first-class and links timer activities to their focus session so the
 /// same time cannot be counted twice. It never invents activity for empty slots.
 /// </summary>
-public sealed class ActivityLedgerService
+public sealed partial class ActivityLedgerService
 {
     private static readonly JsonSerializerOptions RevisionJsonOptions = new();
 
