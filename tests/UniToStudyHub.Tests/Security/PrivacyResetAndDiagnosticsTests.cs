@@ -15,6 +15,94 @@ public sealed class PrivacyResetAndDiagnosticsTests
 {
     private const string Token = "abcdef0123456789abcdef0123456789";
 
+    [RequiresSymbolicLinksFact]
+    public async Task PrivacyInventoryAndDocumentsResetRejectMoodleRootLink()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "unitracker-moodle-link-" + Guid.NewGuid().ToString("N"));
+        var target = Path.Combine(root, "outside");
+        var linkedRoot = Path.Combine(root, "managed-moodle");
+        var externalFile = Path.Combine(target, "materiale.pdf");
+        var externalEmptyDirectory = Path.Combine(target, "empty");
+        Directory.CreateDirectory(target);
+        Directory.CreateDirectory(externalEmptyDirectory);
+        try
+        {
+            File.WriteAllText(externalFile, "outside content");
+            Directory.CreateSymbolicLink(linkedRoot, target);
+            await using var database = await SqliteTestDatabase.CreateFileAsync();
+            var service = new PrivacyService(
+                new SqliteStudyDataStore(database.Factory),
+                moodleFilesDirectory: linkedRoot);
+
+            var inventory = await service.DescribeAsync();
+            Assert.Equal(0, inventory.MoodleFiles);
+
+            var reset = await service.ResetAsync(PrivacyResetScope.Documents, confirmed: true);
+            Assert.Equal(0, reset.DeletedFiles);
+            Assert.Equal("outside content", await File.ReadAllTextAsync(externalFile));
+            Assert.True(Directory.Exists(externalEmptyDirectory));
+            Assert.NotNull(new DirectoryInfo(linkedRoot).LinkTarget);
+        }
+        finally
+        {
+            DeleteDirectoryLink(linkedRoot);
+            if (Directory.Exists(root)) Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [RequiresSymbolicLinksFact]
+    public async Task PrivacyInventoryAndDocumentsResetSkipLinkedFilesAndSubdirectories()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "unitracker-moodle-links-" + Guid.NewGuid().ToString("N"));
+        var managed = Path.Combine(root, "managed");
+        var outside = Path.Combine(root, "outside");
+        var linkedDirectory = Path.Combine(managed, "linked-directory");
+        var linkedFile = Path.Combine(managed, "linked-file.pdf");
+        var managedFile = Path.Combine(managed, "managed.pdf");
+        var externalFile = Path.Combine(outside, "external.pdf");
+        try
+        {
+            Directory.CreateDirectory(managed);
+            Directory.CreateDirectory(outside);
+            File.WriteAllText(managedFile, "managed");
+            File.WriteAllText(externalFile, "external");
+            Directory.CreateSymbolicLink(linkedDirectory, outside);
+            File.CreateSymbolicLink(linkedFile, externalFile);
+            await using var database = await SqliteTestDatabase.CreateFileAsync();
+            var service = new PrivacyService(
+                new SqliteStudyDataStore(database.Factory),
+                moodleFilesDirectory: managed);
+
+            var inventory = await service.DescribeAsync();
+            Assert.Equal(1, inventory.MoodleFiles);
+
+            var reset = await service.ResetAsync(PrivacyResetScope.Documents, confirmed: true);
+            Assert.Equal(1, reset.DeletedFiles);
+            Assert.False(File.Exists(managedFile));
+            Assert.Equal("external", await File.ReadAllTextAsync(externalFile));
+            Assert.True(Directory.Exists(outside));
+            Assert.NotNull(new DirectoryInfo(linkedDirectory).LinkTarget);
+            Assert.NotNull(new FileInfo(linkedFile).LinkTarget);
+        }
+        finally
+        {
+            DeleteDirectoryLink(linkedDirectory);
+            File.Delete(linkedFile);
+            if (Directory.Exists(root)) Directory.Delete(root, recursive: true);
+        }
+    }
+
+    private static void DeleteDirectoryLink(string path)
+    {
+        try
+        {
+            if (new DirectoryInfo(path).LinkTarget is not null)
+                Directory.Delete(path);
+        }
+        catch (IOException) { }
+        catch (UnauthorizedAccessException) { }
+    }
+
     [Fact]
     public async Task StudyLabResetRequiresConfirmationAndPreservesCareerData()
     {
@@ -165,3 +253,48 @@ public sealed class PrivacyResetAndDiagnosticsTests
             Task.CompletedTask;
     }
 }
+public sealed class RequiresSymbolicLinksFactAttribute : FactAttribute
+{
+    public RequiresSymbolicLinksFactAttribute()
+    {
+        if (!SymbolicLinkTestSupport.IsSupported)
+            Skip = "The test environment does not permit file and directory symbolic links.";
+    }
+}
+
+internal static class SymbolicLinkTestSupport
+{
+    private static readonly Lazy<bool> SupportProbe = new(Probe);
+
+    public static bool IsSupported => SupportProbe.Value;
+
+    private static bool Probe()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "unitracker-link-probe-" + Guid.NewGuid().ToString("N"));
+        var targetDirectory = Path.Combine(root, "target");
+        var directoryLink = Path.Combine(root, "directory-link");
+        var targetFile = Path.Combine(targetDirectory, "target.txt");
+        var fileLink = Path.Combine(root, "file-link.txt");
+        try
+        {
+            Directory.CreateDirectory(targetDirectory);
+            File.WriteAllText(targetFile, "probe");
+            Directory.CreateSymbolicLink(directoryLink, targetDirectory);
+            File.CreateSymbolicLink(fileLink, targetFile);
+            return new DirectoryInfo(directoryLink).LinkTarget is not null &&
+                   new FileInfo(fileLink).LinkTarget is not null;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or NotSupportedException)
+        {
+            return false;
+        }
+        finally
+        {
+            try { File.Delete(fileLink); } catch (IOException) { } catch (UnauthorizedAccessException) { }
+            try { Directory.Delete(directoryLink); } catch (IOException) { } catch (UnauthorizedAccessException) { }
+            try { if (Directory.Exists(root)) Directory.Delete(root, recursive: true); }
+            catch (IOException) { } catch (UnauthorizedAccessException) { }
+        }
+    }
+}
+

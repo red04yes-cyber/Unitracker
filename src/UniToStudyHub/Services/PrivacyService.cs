@@ -380,37 +380,214 @@ public sealed class PrivacyService
 
     private int CountMoodleFiles()
     {
-        if (!Directory.Exists(_moodleFilesDirectory)) return 0;
-        try { return Directory.EnumerateFiles(_moodleFilesDirectory, "*", SearchOption.AllDirectories).Count(); }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return 0; }
+        var count = 0;
+        foreach (var _ in EnumerateSafeMoodleFiles())
+            count++;
+        return count;
     }
 
     private int DeleteMoodleFiles()
     {
-        if (!Directory.Exists(_moodleFilesDirectory)) return 0;
+        var root = Path.GetFullPath(_moodleFilesDirectory);
         var deleted = 0;
+        foreach (var file in EnumerateSafeMoodleFiles())
+        {
+            // Re-check immediately before opening the file for scrubbing. The
+            // enumerator also rejects links, but the path may change meanwhile.
+            if (!IsSafeMoodleFile(root, file)) continue;
+            LocalFileSecurity.ScrubAndDelete(file);
+            if (!File.Exists(file)) deleted++;
+        }
+
+        // Remove only empty, validated directories one at a time (never
+        // recursive deletion). This preserves the previous empty-root cleanup
+        // while avoiding a traversal through a reparse point.
+        foreach (var directory in EnumerateSafeMoodleDirectories())
+        {
+            if (!IsSafeMoodleDirectory(root, directory)) continue;
+            try
+            {
+                using var entries = Directory.EnumerateFileSystemEntries(directory, "*", SearchOption.TopDirectoryOnly)
+                    .GetEnumerator();
+                if (!entries.MoveNext())
+                    Directory.Delete(directory);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or SecurityException)
+            {
+                // If the directory changes or is in use, leave it in place.
+            }
+        }
+
+        return deleted;
+    }
+
+    private IEnumerable<string> EnumerateSafeMoodleFiles()
+    {
+        var root = Path.GetFullPath(_moodleFilesDirectory);
+        if (!Directory.Exists(root) || !IsSafeMoodleDirectory(root, root))
+            yield break;
+
+        var pending = new Stack<string>();
+        pending.Push(root);
+        while (pending.Count > 0)
+        {
+            var directory = pending.Pop();
+            if (!IsSafeMoodleDirectory(root, directory))
+                continue;
+
+            IEnumerator<string> entries;
+            try
+            {
+                entries = Directory.EnumerateFileSystemEntries(directory, "*", SearchOption.TopDirectoryOnly)
+                    .GetEnumerator();
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or SecurityException)
+            {
+                continue;
+            }
+
+            using (entries)
+            {
+                while (true)
+                {
+                    string entry;
+                    try
+                    {
+                        if (!entries.MoveNext()) break;
+                        entry = entries.Current;
+                    }
+                    catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or SecurityException)
+                    {
+                        break;
+                    }
+
+                    if (!LocalFileSecurity.IsInside(root, entry))
+                        continue;
+
+                    FileAttributes attributes;
+                    try { attributes = File.GetAttributes(entry); }
+                    catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or SecurityException)
+                    {
+                        continue;
+                    }
+
+                    // Never descend into or operate on symbolic links, junctions,
+                    // mount points, or other filesystem reparse entries.
+                    if ((attributes & FileAttributes.ReparsePoint) != 0)
+                        continue;
+
+                    if ((attributes & FileAttributes.Directory) != 0)
+                    {
+                        pending.Push(entry);
+                    }
+                    else if ((attributes & FileAttributes.Device) == 0 && IsSafeMoodleFile(root, entry))
+                    {
+                        yield return entry;
+                    }
+                }
+            }
+        }
+    }
+
+    private IEnumerable<string> EnumerateSafeMoodleDirectories()
+    {
+        var root = Path.GetFullPath(_moodleFilesDirectory);
+        if (!Directory.Exists(root) || !IsSafeMoodleDirectory(root, root))
+            yield break;
+
+        // Post-order traversal means child directories are considered before
+        // their parent, without recursion or following reparse points.
+        var pending = new Stack<(string Path, bool Visited)>();
+        pending.Push((root, false));
+        while (pending.Count > 0)
+        {
+            var (directory, visited) = pending.Pop();
+            if (!IsSafeMoodleDirectory(root, directory))
+                continue;
+            if (visited)
+            {
+                yield return directory;
+                continue;
+            }
+
+            pending.Push((directory, true));
+            IEnumerator<string> entries;
+            try
+            {
+                entries = Directory.EnumerateFileSystemEntries(directory, "*", SearchOption.TopDirectoryOnly)
+                    .GetEnumerator();
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or SecurityException)
+            {
+                continue;
+            }
+
+            using (entries)
+            {
+                while (true)
+                {
+                    string entry;
+                    try
+                    {
+                        if (!entries.MoveNext()) break;
+                        entry = entries.Current;
+                    }
+                    catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or SecurityException)
+                    {
+                        break;
+                    }
+
+                    if (!LocalFileSecurity.IsInside(root, entry)) continue;
+                    FileAttributes attributes;
+                    try { attributes = File.GetAttributes(entry); }
+                    catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or SecurityException)
+                    {
+                        continue;
+                    }
+
+                    if ((attributes & FileAttributes.Directory) != 0 &&
+                        (attributes & FileAttributes.ReparsePoint) == 0)
+                        pending.Push((entry, false));
+                }
+            }
+        }
+    }
+
+    private static bool IsSafeMoodleDirectory(string root, string directory)
+    {
+        // IsInside is strict (a child path is required), so probe a
+        // non-existent child to validate the root and each current component.
+        if (!LocalFileSecurity.IsInside(root, Path.Combine(directory, ".studyhub-scan-probe")))
+            return false;
+
         try
         {
-            foreach (var file in Directory.EnumerateFiles(_moodleFilesDirectory, "*", SearchOption.AllDirectories).ToList())
-            {
-                if (!LocalFileSecurity.IsInside(_moodleFilesDirectory, file)) continue;
-                LocalFileSecurity.ScrubAndDelete(file);
-                if (!File.Exists(file)) deleted++;
-            }
-            foreach (var directory in Directory.EnumerateDirectories(_moodleFilesDirectory, "*", SearchOption.AllDirectories)
-                         .OrderByDescending(path => path.Length))
-            {
-                try { if (!Directory.EnumerateFileSystemEntries(directory).Any()) Directory.Delete(directory); }
-                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
-            }
-            if (!Directory.EnumerateFileSystemEntries(_moodleFilesDirectory).Any())
-                Directory.Delete(_moodleFilesDirectory);
+            var attributes = File.GetAttributes(directory);
+            return (attributes & FileAttributes.Directory) != 0 &&
+                   (attributes & FileAttributes.ReparsePoint) == 0;
         }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or SecurityException)
         {
-            AppDiagnostics.Warning("privacy", "Alcuni file Moodle non sono stati eliminati.");
+            return false;
         }
-        return deleted;
+    }
+
+    private static bool IsSafeMoodleFile(string root, string file)
+    {
+        if (!LocalFileSecurity.IsInside(root, file))
+            return false;
+
+        try
+        {
+            var attributes = File.GetAttributes(file);
+            return (attributes & FileAttributes.Directory) == 0 &&
+                   (attributes & FileAttributes.Device) == 0 &&
+                   (attributes & FileAttributes.ReparsePoint) == 0;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or SecurityException)
+        {
+            return false;
+        }
     }
 
     private int DeleteLegacyFiles()
