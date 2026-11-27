@@ -655,21 +655,46 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
         }
     }
 
-    private Task ClearNotificationsAsync()
+    private async Task ClearNotificationsAsync()
     {
-        foreach (var notification in Notifications)
+        var unreadAnnouncements = _data.Announcements
+            .Where(AnnouncementSyncService.IsInboxItem)
+            .Where(item => item.IsNew)
+            .ToArray();
+
+        foreach (var announcement in unreadAnnouncements)
+            announcement.IsNew = false;
+
+        try
+        {
+            if (unreadAnnouncements.Length > 0)
+                await _store.SaveAsync(_data);
+        }
+        catch (Exception ex)
+        {
+            foreach (var announcement in unreadAnnouncements)
+                announcement.IsNew = true;
+            WorkspaceStatus = $"Lettura avvisi non salvata: {ex.Message}";
+            RefreshNotifications();
+            return;
+        }
+
+        foreach (var notification in Notifications.Where(item => item.Kind != "Moodle"))
             _dismissedNotificationIds.Add(notification.Id);
         Notifications.Clear();
         OnPropertyChanged(nameof(NoNotifications));
-        return Task.CompletedTask;
     }
+
+    public void RefreshNotificationSnapshot() => RefreshNotifications();
 
     private void RefreshNotifications()
     {
         var retainedPomodoro = Notifications.Where(x => x.Kind == "Pomodoro");
         var desired = retainedPomodoro
             .Concat(_notificationCenter.GetUpcoming(_data))
-            .Where(x => !_dismissedNotificationIds.Contains(x.Id))
+            // Moodle read state is persisted on the announcement itself. Do not
+            // let this session-only dismissal set hide a later source update.
+            .Where(x => x.Kind == "Moodle" || !_dismissedNotificationIds.Contains(x.Id))
             .OrderBy(x => x.OccursAt)
             .ToArray();
         if (!Notifications.SequenceEqual(desired))

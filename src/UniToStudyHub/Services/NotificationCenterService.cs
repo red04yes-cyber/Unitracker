@@ -10,8 +10,8 @@ public sealed record StudyNotificationItem(
     string Kind);
 
 /// <summary>
-/// Builds transparent, local reminders from the user's persisted calendar and task data.
-/// It does not invent events, send data remotely, or persist read state.
+/// Builds local reminders from the user's persisted calendar, tasks and unread
+/// Moodle discussions. It does not invent events or send data remotely.
 /// </summary>
 public sealed class NotificationCenterService
 {
@@ -22,7 +22,11 @@ public sealed class NotificationCenterService
     {
         ArgumentNullException.ThrowIfNull(data);
         var at = now ?? DateTimeOffset.Now;
-        var until = at + (horizon ?? TimeSpan.FromHours(24));
+        var window = horizon ?? TimeSpan.FromHours(24);
+        if (window < TimeSpan.Zero)
+            throw new ArgumentOutOfRangeException(nameof(horizon), "The reminder horizon cannot be negative.");
+
+        var until = at + window;
         var items = new List<StudyNotificationItem>();
 
         items.AddRange(data.CalendarEvents
@@ -44,6 +48,30 @@ public sealed class NotificationCenterService
                 x.DueAt!.Value,
                 "Attività")));
 
-        return items.OrderBy(x => x.OccursAt).ToArray();
+        items.AddRange(data.Announcements
+            .Where(AnnouncementSyncService.IsInboxItem)
+            .Where(x => x.IsNew)
+            .Select(x => new StudyNotificationItem(
+                $"announcement:{x.Id}",
+                string.IsNullOrWhiteSpace(x.Title) ? "Aggiornamento Moodle" : x.Title,
+                string.Join(" · ", new[] { x.CourseName, x.Summary }.Where(value => !string.IsNullOrWhiteSpace(value))),
+                ToUtcTimestamp(x.UpdatedAt, at),
+                "Moodle")));
+
+        return items.OrderBy(x => x.OccursAt).ThenBy(x => x.Id, StringComparer.Ordinal).ToArray();
+    }
+
+    private static DateTimeOffset ToUtcTimestamp(DateTime value, DateTimeOffset fallback)
+    {
+        if (value == default)
+            return fallback;
+
+        var utc = value.Kind switch
+        {
+            DateTimeKind.Utc => value,
+            DateTimeKind.Local => value.ToUniversalTime(),
+            _ => DateTime.SpecifyKind(value, DateTimeKind.Utc)
+        };
+        return new DateTimeOffset(utc);
     }
 }
