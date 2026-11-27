@@ -411,7 +411,11 @@ public sealed class FlashcardService
         ValidateText(front, nameof(front));
         ValidateText(back, nameof(back));
         var card = Find(data, flashcardId);
-        var normalizedCourseId = courseId?.Trim() ?? string.Empty;
+        var normalizedCourseId = courseId is null ? card.CourseId?.Trim() ?? string.Empty : courseId.Trim();
+        var normalizedTopicId = syllabusTopicId is null
+            ? card.SyllabusTopicId?.Trim() ?? string.Empty
+            : syllabusTopicId.Trim();
+        var normalizedSource = source is null ? NormalizeSource(card.Source) : NormalizeSource(source);
         if (!string.IsNullOrWhiteSpace(normalizedCourseId) &&
             !data.Courses.Any(x => string.Equals(x.Id, normalizedCourseId, StringComparison.Ordinal)))
             throw new ArgumentException("The flashcard course does not exist.", nameof(courseId));
@@ -419,8 +423,8 @@ public sealed class FlashcardService
         card.Front = front.Trim();
         card.Back = back.Trim();
         card.CourseId = normalizedCourseId;
-        card.SyllabusTopicId = syllabusTopicId?.Trim() ?? string.Empty;
-        card.Source = NormalizeSource(source);
+        card.SyllabusTopicId = normalizedTopicId;
+        card.Source = normalizedSource;
         card.UpdatedAt = now ?? DateTimeOffset.Now;
         return card;
     }
