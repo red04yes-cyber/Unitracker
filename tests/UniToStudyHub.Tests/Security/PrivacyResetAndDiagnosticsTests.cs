@@ -15,9 +15,8 @@ public sealed class PrivacyResetAndDiagnosticsTests
 {
     private const string Token = "abcdef0123456789abcdef0123456789";
 
-    [Fact]
     [RequiresSymbolicLinksFact]
-    public async Task PrivacyInventoryAndDocumentsResetRejectMoodleRootLink()
+    public async Task PrivacyInventoryAndDocumentsResetRejectMoodleRootLink
     {
         var root = Path.Combine(Path.GetTempPath(), "unitracker-moodle-link-" + Guid.NewGuid().ToString("N"));
         var target = Path.Combine(root, "outside");
@@ -106,6 +105,7 @@ public sealed class PrivacyResetAndDiagnosticsTests
         catch (UnauthorizedAccessException) { }
     }
 
+    [Fact]
     public async Task StudyLabResetRequiresConfirmationAndPreservesCareerData()
     {
         await using var database = await SqliteTestDatabase.CreateFileAsync();
