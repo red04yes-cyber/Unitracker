@@ -284,8 +284,7 @@ internal static class SymbolicLinkTestSupport
             return new DirectoryInfo(directoryLink).LinkTarget is not null &&
                    new FileInfo(fileLink).LinkTarget is not null;
         }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or
-                                   PlatformNotSupportedException or NotSupportedException)
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or NotSupportedException)
         {
             return false;
         }
