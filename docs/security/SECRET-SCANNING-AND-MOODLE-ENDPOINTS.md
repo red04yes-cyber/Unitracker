@@ -45,4 +45,16 @@ responses, request timeout and same-origin download checks.
   Gitleaks; the Windows workflow runs the complete .NET test suite and WPF
   release smoke test.
 
+## Moodle file-download token exception
+
+Moodle's dedicated `/webservice/pluginfile.php` endpoint requires a web-service
+ token to download files. See the [official Moodle file handling documentation](https://moodledev.io/docs/5.2/apis/subsystems/external/files).
+
+Function calls continue to send the token in the POST body. For file URLs returned
+as `/pluginfile.php`, `MoodleClient` rewrites the path to
+`/webservice/pluginfile.php` and appends the token only after validating the
+same origin and configured Moodle base path. Redirects remain disabled, and the
+tokenized URL is never logged. Same-origin URLs outside the Moodle base path or
+URLs that are not Moodle file endpoints are rejected before a request is sent.
+
 No live Moodle endpoint or real credential is used by these tests.

@@ -116,25 +116,166 @@ public sealed class MoodleExtendedSyncTests
     }
 
     [Fact]
-    public async Task FileDownloadStreamsContentToTheApprovedCourseFolder()
+    public async Task FileDownloadStreamsContentThroughTheWebServiceEndpoint()
     {
         var payload = Encoding.UTF8.GetBytes("%PDF-test-content");
+        Uri? requestedUri = null;
         using var client = new MoodleClient("https://moodle.example.edu", Token,
-            new StubHandler(_ => new HttpResponseMessage(HttpStatusCode.OK)
+            new StubHandler(request =>
             {
-                Content = new ByteArrayContent(payload)
+                requestedUri = request.RequestUri;
+                return new HttpResponseMessage(HttpStatusCode.OK)
                 {
-                    Headers = { ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/pdf") }
-                }
+                    Content = new ByteArrayContent(payload)
+                    {
+                        Headers = { ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/pdf") }
+                    }
+                };
             }));
         var folder = Path.Combine(Path.GetTempPath(), "UnitrackerMoodleTests", Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(folder);
         var destination = Path.Combine(folder, "lecture.pdf");
         try
         {
-            await client.DownloadFileAsync("https://moodle.example.edu/pluginfile.php/1/mod_resource/content/lecture.pdf",
+            await client.DownloadFileAsync(
+                "https://moodle.example.edu/pluginfile.php/1/mod_resource/content/lecture.pdf?token=stale&wstoken=old&forcedownload=1",
                 destination, allowedDirectory: folder);
             Assert.Equal(payload, await File.ReadAllBytesAsync(destination));
+            Assert.NotNull(requestedUri);
+            Assert.True(requestedUri!.AbsolutePath.EndsWith(
+                "/webservice/pluginfile.php/1/mod_resource/content/lecture.pdf",
+                StringComparison.OrdinalIgnoreCase));
+            Assert.Contains("token=" + Token, requestedUri.Query, StringComparison.Ordinal);
+            Assert.DoesNotContain("wstoken=", requestedUri.Query, StringComparison.OrdinalIgnoreCase);
+            Assert.Contains("forcedownload=1", requestedUri.Query, StringComparison.Ordinal);
+            Assert.Equal(1, requestedUri.Query.Split('&').Count(part =>
+                part.StartsWith("?token=", StringComparison.OrdinalIgnoreCase) ||
+                part.StartsWith("token=", StringComparison.OrdinalIgnoreCase)));
+        }
+        finally
+        {
+            try { Directory.Delete(folder, recursive: true); } catch (IOException) { }
+        }
+    }
+
+    [Fact]
+    public async Task FileDownloadKeepsAnAlreadyRewrittenWebServiceEndpoint()
+    {
+        Uri? requestedUri = null;
+        using var client = new MoodleClient("https://moodle.example.edu/moodle", Token,
+            new StubHandler(request =>
+            {
+                requestedUri = request.RequestUri;
+                return new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new ByteArrayContent(Encoding.UTF8.GetBytes("%PDF-test"))
+                    {
+                        Headers = { ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/pdf") }
+                    }
+                };
+            }));
+        var folder = Path.Combine(Path.GetTempPath(), "UnitrackerMoodleTests", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(folder);
+        try
+        {
+            await client.DownloadFileAsync(
+                "https://moodle.example.edu/moodle/webservice/pluginfile.php/1/lecture.pdf",
+                Path.Combine(folder, "lecture.pdf"), allowedDirectory: folder);
+
+            Assert.NotNull(requestedUri);
+            Assert.True(requestedUri!.AbsolutePath.EndsWith(
+                "/moodle/webservice/pluginfile.php/1/lecture.pdf",
+                StringComparison.OrdinalIgnoreCase));
+            Assert.DoesNotContain("/webservice/webservice/", requestedUri.AbsolutePath, StringComparison.OrdinalIgnoreCase);
+        }
+        finally
+        {
+            try { Directory.Delete(folder, recursive: true); } catch (IOException) { }
+        }
+    }
+
+    [Fact]
+    public async Task FileDownloadRejectsSameOriginNonFileEndpointBeforeSendingARequest()
+    {
+        var requests = 0;
+        using var client = new MoodleClient("https://moodle.example.edu/moodle", Token,
+            new StubHandler(_ => { requests++; return new HttpResponseMessage(HttpStatusCode.OK); }));
+        var folder = Path.Combine(Path.GetTempPath(), "UnitrackerMoodleTests", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(folder);
+        try
+        {
+            await Assert.ThrowsAsync<InvalidOperationException>(() =>
+                client.DownloadFileAsync("https://moodle.example.edu/moodle/login/index.php",
+                    Path.Combine(folder, "login.html"), allowedDirectory: folder));
+            Assert.Equal(0, requests);
+            Assert.Empty(Directory.EnumerateFiles(folder));
+        }
+        finally
+        {
+            try { Directory.Delete(folder, recursive: true); } catch (IOException) { }
+        }
+    }
+
+    [Fact]
+    public async Task FileDownloadRejectsNestedSameOriginPluginfileEndpoint()
+    {
+        var requests = 0;
+        using var client = new MoodleClient("https://moodle.example.edu/moodle", Token,
+            new StubHandler(_ => { requests++; return new HttpResponseMessage(HttpStatusCode.OK); }));
+        var folder = Path.Combine(Path.GetTempPath(), "UnitrackerMoodleTests", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(folder);
+        try
+        {
+            await Assert.ThrowsAsync<InvalidOperationException>(() =>
+                client.DownloadFileAsync("https://moodle.example.edu/moodle/other/pluginfile.php/1/file.pdf",
+                    Path.Combine(folder, "file.pdf"), allowedDirectory: folder));
+            Assert.Equal(0, requests);
+            Assert.Empty(Directory.EnumerateFiles(folder));
+        }
+        finally
+        {
+            try { Directory.Delete(folder, recursive: true); } catch (IOException) { }
+        }
+    }
+
+    [Fact]
+    public async Task FileDownloadRejectsSameOriginPathOutsideConfiguredMoodleBase()
+    {
+        var requests = 0;
+        using var client = new MoodleClient("https://moodle.example.edu/moodle", Token,
+            new StubHandler(_ => { requests++; return new HttpResponseMessage(HttpStatusCode.OK); }));
+        var folder = Path.Combine(Path.GetTempPath(), "UnitrackerMoodleTests", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(folder);
+        try
+        {
+            await Assert.ThrowsAsync<InvalidOperationException>(() =>
+                client.DownloadFileAsync("https://moodle.example.edu/other/pluginfile.php/1/lecture.pdf",
+                    Path.Combine(folder, "lecture.pdf"), allowedDirectory: folder));
+            Assert.Equal(0, requests);
+            Assert.Empty(Directory.EnumerateFiles(folder));
+        }
+        finally
+        {
+            try { Directory.Delete(folder, recursive: true); } catch (IOException) { }
+        }
+    }
+
+    [Theory]
+    [InlineData("https://user:pass@moodle.example.edu/moodle/pluginfile.php/1/lecture.pdf")]
+    [InlineData("https://moodle.example.edu/moodle/pluginfile.php/1/lecture.pdf#secret")]
+    public async Task FileDownloadRejectsCredentialsAndFragmentsBeforeSendingARequest(string url)
+    {
+        var requests = 0;
+        using var client = new MoodleClient("https://moodle.example.edu/moodle", Token,
+            new StubHandler(_ => { requests++; return new HttpResponseMessage(HttpStatusCode.OK); }));
+        var folder = Path.Combine(Path.GetTempPath(), "UnitrackerMoodleTests", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(folder);
+        try
+        {
+            await Assert.ThrowsAsync<InvalidOperationException>(() =>
+                client.DownloadFileAsync(url, Path.Combine(folder, "lecture.pdf"), allowedDirectory: folder));
+            Assert.Equal(0, requests);
+            Assert.Empty(Directory.EnumerateFiles(folder));
         }
         finally
         {
