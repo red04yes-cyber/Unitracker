@@ -30,10 +30,27 @@ public interface IPdfTextExtractor
         var temporary = Path.Combine(directory, "extract-" + Guid.NewGuid().ToString("N") + ".pdf");
         try
         {
+            var copyBuffer = new byte[81920];
+            long totalBytes = 0;
             await using (var file = new FileStream(temporary, FileMode.CreateNew, FileAccess.Write, FileShare.None,
-                             81920, FileOptions.Asynchronous))
+                             copyBuffer.Length, FileOptions.Asynchronous))
             {
-                await content.CopyToAsync(file, cancellationToken).ConfigureAwait(false);
+                while (true)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    var remaining = PdfImportService.MaximumFileBytes - totalBytes;
+                    var readLength = (int)Math.Min(copyBuffer.Length, remaining + 1);
+                    var read = await content.ReadAsync(copyBuffer.AsMemory(0, readLength), cancellationToken)
+                        .ConfigureAwait(false);
+                    if (read == 0) break;
+                    totalBytes += read;
+                    if (totalBytes > PdfImportService.MaximumFileBytes)
+                        throw new InvalidDataException("Il PDF supera il limite di 25 MB.");
+                    await file.WriteAsync(copyBuffer.AsMemory(0, read), cancellationToken).ConfigureAwait(false);
+                }
+
+                if (totalBytes == 0)
+                    throw new InvalidDataException("Il PDF è vuoto.");
                 await file.FlushAsync(cancellationToken).ConfigureAwait(false);
             }
             return await ExtractAsync(temporary, cancellationToken).ConfigureAwait(false);
