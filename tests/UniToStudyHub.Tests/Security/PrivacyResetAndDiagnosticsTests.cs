@@ -16,7 +16,7 @@ public sealed class PrivacyResetAndDiagnosticsTests
     private const string Token = "abcdef0123456789abcdef0123456789";
 
     [RequiresSymbolicLinksFact]
-    public async Task PrivacyInventoryAndDocumentsResetRejectMoodleRootLink
+    public async Task PrivacyInventoryAndDocumentsResetRejectMoodleRootLink()
     {
         var root = Path.Combine(Path.GetTempPath(), "unitracker-moodle-link-" + Guid.NewGuid().ToString("N"));
         var target = Path.Combine(root, "outside");
@@ -25,11 +25,10 @@ public sealed class PrivacyResetAndDiagnosticsTests
         var externalEmptyDirectory = Path.Combine(target, "empty");
         Directory.CreateDirectory(target);
         Directory.CreateDirectory(externalEmptyDirectory);
-        File.WriteAllText(externalFile, "outside content");
-        Directory.CreateSymbolicLink(linkedRoot, target);
-
         try
         {
+            File.WriteAllText(externalFile, "outside content");
+            Directory.CreateSymbolicLink(linkedRoot, target);
             await using var database = await SqliteTestDatabase.CreateFileAsync();
             var service = new PrivacyService(
                 new SqliteStudyDataStore(database.Factory),
@@ -61,15 +60,14 @@ public sealed class PrivacyResetAndDiagnosticsTests
         var linkedFile = Path.Combine(managed, "linked-file.pdf");
         var managedFile = Path.Combine(managed, "managed.pdf");
         var externalFile = Path.Combine(outside, "external.pdf");
-        Directory.CreateDirectory(managed);
-        Directory.CreateDirectory(outside);
-        File.WriteAllText(managedFile, "managed");
-        File.WriteAllText(externalFile, "external");
-        Directory.CreateSymbolicLink(linkedDirectory, outside);
-        File.CreateSymbolicLink(linkedFile, externalFile);
-
         try
         {
+            Directory.CreateDirectory(managed);
+            Directory.CreateDirectory(outside);
+            File.WriteAllText(managedFile, "managed");
+            File.WriteAllText(externalFile, "external");
+            Directory.CreateSymbolicLink(linkedDirectory, outside);
+            File.CreateSymbolicLink(linkedFile, externalFile);
             await using var database = await SqliteTestDatabase.CreateFileAsync();
             var service = new PrivacyService(
                 new SqliteStudyDataStore(database.Factory),
