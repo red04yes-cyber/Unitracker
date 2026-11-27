@@ -399,9 +399,25 @@ public sealed class PrivacyService
             if (!File.Exists(file)) deleted++;
         }
 
-        // Empty folders are intentionally retained: deleting directory trees
-        // is unnecessary for privacy and increases the risk of following a
-        // reparse point or racing a concurrent filesystem change.
+        // Remove only empty, validated directories one at a time (never
+        // recursive deletion). This preserves the previous empty-root cleanup
+        // while avoiding a traversal through a reparse point.
+        foreach (var directory in EnumerateSafeMoodleDirectories())
+        {
+            if (!IsSafeMoodleDirectory(root, directory)) continue;
+            try
+            {
+                using var entries = Directory.EnumerateFileSystemEntries(directory, "*", SearchOption.TopDirectoryOnly)
+                    .GetEnumerator();
+                if (!entries.MoveNext())
+                    Directory.Delete(directory);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or SecurityException)
+            {
+                // If the directory changes or is in use, leave it in place.
+            }
+        }
+
         return deleted;
     }
 
@@ -468,6 +484,70 @@ public sealed class PrivacyService
                     {
                         yield return entry;
                     }
+                }
+            }
+        }
+    }
+
+    private IEnumerable<string> EnumerateSafeMoodleDirectories()
+    {
+        var root = Path.GetFullPath(_moodleFilesDirectory);
+        if (!Directory.Exists(root) || !IsSafeMoodleDirectory(root, root))
+            yield break;
+
+        // Post-order traversal means child directories are considered before
+        // their parent, without recursion or following reparse points.
+        var pending = new Stack<(string Path, bool Visited)>();
+        pending.Push((root, false));
+        while (pending.Count > 0)
+        {
+            var (directory, visited) = pending.Pop();
+            if (!IsSafeMoodleDirectory(root, directory))
+                continue;
+            if (visited)
+            {
+                yield return directory;
+                continue;
+            }
+
+            pending.Push((directory, true));
+            IEnumerator<string> entries;
+            try
+            {
+                entries = Directory.EnumerateFileSystemEntries(directory, "*", SearchOption.TopDirectoryOnly)
+                    .GetEnumerator();
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or SecurityException)
+            {
+                continue;
+            }
+
+            using (entries)
+            {
+                while (true)
+                {
+                    string entry;
+                    try
+                    {
+                        if (!entries.MoveNext()) break;
+                        entry = entries.Current;
+                    }
+                    catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or SecurityException)
+                    {
+                        break;
+                    }
+
+                    if (!LocalFileSecurity.IsInside(root, entry)) continue;
+                    FileAttributes attributes;
+                    try { attributes = File.GetAttributes(entry); }
+                    catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or SecurityException)
+                    {
+                        continue;
+                    }
+
+                    if ((attributes & FileAttributes.Directory) != 0 &&
+                        (attributes & FileAttributes.ReparsePoint) == 0)
+                        pending.Push((entry, false));
                 }
             }
         }
