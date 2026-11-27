@@ -156,7 +156,7 @@ public sealed class FlashcardReviewForecastTests
         Assert.Equal(new FlashcardReviewForecastDay(new DateOnly(2026, 11, 27), 1, 1), forecast[0]);
         Assert.Equal(new FlashcardReviewForecastDay(new DateOnly(2026, 11, 28), 1, 0), forecast[1]);
         Assert.Equal(new FlashcardReviewForecastDay(new DateOnly(2026, 11, 29), 0, 0), forecast[2]);
-        Assert.Equal(2, forecast.Sum(x => x.TotalReviewCount));
+        Assert.Equal(3, forecast.Sum(x => x.TotalReviewCount));
     }
 
     [Fact]
