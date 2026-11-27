@@ -971,6 +971,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(NextExamNameDisplay));
         OnPropertyChanged(nameof(NextExamDateDisplay));
         OnPropertyChanged(nameof(NoPlannedExams));
+        Workspace.RefreshTimeBudget();
     }
 
     private void RefreshVisibleCourses()

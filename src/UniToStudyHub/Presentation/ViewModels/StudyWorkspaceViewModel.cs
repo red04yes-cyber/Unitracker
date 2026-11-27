@@ -34,6 +34,7 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
     private readonly AiStudyService _aiStudy;
     private readonly BackupService _backups;
     private readonly StudyPlannerService _planner;
+    private readonly TimeBudgetService _timeBudget;
     private readonly SyllabusTrackerService _syllabus;
     private readonly QuestionBankService _questionBank;
     private readonly ExamReadinessService _readiness;
@@ -60,6 +61,8 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
     private DateTime _plannerToInput = DateTime.Today.AddDays(13);
     private string _plannerStatus = "Imposta le tue fasce reali di disponibilità per creare un'anteprima.";
     private StudyPlanPreview? _currentPlanPreview;
+    private TimeBudgetPlan? _currentTimeBudgetPlan;
+    private string _timeBudgetStatus = "Il budget di studio non è ancora stato calcolato.";
     private SyllabusTopicData? _selectedSyllabusTopic;
     private QuestionBankItemData? _selectedQuestion;
     private string _syllabusTitleInput = string.Empty;
@@ -349,6 +352,41 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
     public string PlanPreviewSummary => CurrentPlanPreview is { } plan
         ? $"{plan.ScheduledBlockCount} blocchi · {plan.ScheduledMinutes} minuti · {plan.UnscheduledTasks.Count} task non pianificati"
         : "Nessuna anteprima disponibile.";
+
+    /// <summary>Latest read-only estimate from the configured weekly and daily study budget.</summary>
+    public TimeBudgetPlan? CurrentTimeBudgetPlan
+    {
+        get => _currentTimeBudgetPlan;
+        private set
+        {
+            if (EqualityComparer<TimeBudgetPlan?>.Default.Equals(_currentTimeBudgetPlan, value)) return;
+            _currentTimeBudgetPlan = value;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(IsTimeBudgetOverCapacity));
+            OnPropertyChanged(nameof(TimeBudgetCapacityDisplay));
+            OnPropertyChanged(nameof(TimeBudgetRequiredDisplay));
+            OnPropertyChanged(nameof(TimeBudgetUnallocatedDisplay));
+        }
+    }
+
+    public ObservableCollection<TimeBudgetAllocationRow> TimeBudgetAllocations { get; } = new();
+    public ObservableCollection<string> TimeBudgetWarnings { get; } = new();
+    public bool HasTimeBudgetAllocations => TimeBudgetAllocations.Count > 0;
+    public bool HasTimeBudgetWarnings => TimeBudgetWarnings.Count > 0;
+    public bool HasTimeBudgetUnknownEstimates => TimeBudgetUnknownEstimateCount > 0;
+    public int TimeBudgetUnknownEstimateCount => TimeBudgetAllocations.Count(x => !x.HasEstimate);
+    public int TimeBudgetAtRiskCount => TimeBudgetAllocations.Count(x => x.IsAtRisk);
+    public bool IsTimeBudgetOverCapacity => CurrentTimeBudgetPlan?.IsOverCapacity ?? false;
+    public string TimeBudgetCapacityDisplay => CurrentTimeBudgetPlan is { } budget
+        ? $"{budget.AvailableMinutes:N0} min disponibili"
+        : "—";
+    public string TimeBudgetRequiredDisplay => CurrentTimeBudgetPlan is { } budget
+        ? $"{budget.RequiredMinutes:N0} min stimati"
+        : "—";
+    public string TimeBudgetUnallocatedDisplay => CurrentTimeBudgetPlan is { } budget
+        ? $"{budget.UnallocatedMinutes:N0} min non allocati"
+        : "—";
+    public string TimeBudgetStatus { get => _timeBudgetStatus; private set => Set(ref _timeBudgetStatus, value); }
     public bool HasProgressData => _progressSnapshot is { } p && (p.FocusMinutes > 0 || p.CompletedSessions > 0 || p.CompletedTasks > 0 || p.DueFlashcards > 0 || p.OpenErrors > 0);
     public IReadOnlyList<string> ProgressPeriodOptions { get; } = new[] { "7 giorni", "30 giorni", "90 giorni" };
     public string SelectedProgressPeriod
@@ -480,6 +518,7 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
         AiStudyService aiStudy,
         BackupService backups,
         StudyPlannerService planner,
+        TimeBudgetService timeBudget,
         SyllabusTrackerService syllabus,
         QuestionBankService questionBank,
         ExamReadinessService readiness,
@@ -502,6 +541,7 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
         _aiStudy = aiStudy;
         _backups = backups;
         _planner = planner;
+        _timeBudget = timeBudget;
         _syllabus = syllabus;
         _questionBank = questionBank;
         _readiness = readiness;
@@ -553,6 +593,7 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
         if (SelectedFocusCourse is null || !_data.Courses.Contains(SelectedFocusCourse)) SelectedFocusCourse = _data.Courses.FirstOrDefault();
         if (SelectedTaskCourse is null || !_data.Courses.Contains(SelectedTaskCourse)) SelectedTaskCourse = _data.Courses.FirstOrDefault();
         LoadAcademicProfile();
+        RefreshTimeBudget();
         RefreshCollections();
         RefreshFocusSnapshot();
         RefreshProgress();
@@ -781,6 +822,7 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
         {
             _academicProfile.Update(_data, update);
             await _store.SaveAsync(_data);
+            RefreshTimeBudget();
             WorkspaceStatus = "Profilo universitario salvato.";
         }
         catch (Exception ex)
@@ -1497,6 +1539,58 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
     {
         await _store.SaveAsync(_data);
         RefreshProgress();
+    }
+
+    /// <summary>
+    /// Recalculates the read-only budget after profile or exam data changes.
+    /// The estimate never creates tasks or calendar events.
+    /// </summary>
+    public void RefreshTimeBudget()
+    {
+        var plan = _timeBudget.Calculate(_data);
+        CurrentTimeBudgetPlan = plan;
+
+        TimeBudgetAllocations.Clear();
+        foreach (var allocation in plan.Allocations)
+        {
+            var hasEstimate = allocation.EstimatedStudyMinutes > 0;
+            TimeBudgetAllocations.Add(new TimeBudgetAllocationRow(
+                allocation.CourseId,
+                allocation.CourseName,
+                allocation.Deadline,
+                allocation.EstimatedStudyMinutes,
+                allocation.AllocatedMinutes,
+                allocation.WeeksAvailable,
+                hasEstimate,
+                allocation.IsAtRisk,
+                hasEstimate
+                    ? $"Allocazione prevista: {allocation.AllocatedMinutes:N0} min su {allocation.EstimatedStudyMinutes:N0} min stimati." +
+                      (allocation.IsAtRisk
+                          ? $" Deficit: {Math.Max(0, allocation.EstimatedStudyMinutes - allocation.AllocatedMinutes):N0} min."
+                          : string.Empty)
+                    : "Stima non configurata: la copertura dell'esame non è valutabile."));
+        }
+
+        TimeBudgetWarnings.Clear();
+        foreach (var warning in plan.Warnings)
+            TimeBudgetWarnings.Add(warning);
+
+        OnPropertyChanged(nameof(HasTimeBudgetAllocations));
+        OnPropertyChanged(nameof(HasTimeBudgetWarnings));
+        OnPropertyChanged(nameof(TimeBudgetUnknownEstimateCount));
+        OnPropertyChanged(nameof(HasTimeBudgetUnknownEstimates));
+        OnPropertyChanged(nameof(TimeBudgetAtRiskCount));
+
+        var unknownEstimates = TimeBudgetUnknownEstimateCount;
+        TimeBudgetStatus = plan.Allocations.Count == 0
+            ? plan.Warnings.FirstOrDefault() ?? "Nessun esame futuro con data pianificata."
+            : plan.IsOverCapacity && unknownEstimates > 0
+                ? $"Il carico noto supera il budget; {unknownEstimates} esami non hanno una stima."
+                : plan.IsOverCapacity
+                    ? "Il carico stimato supera il budget disponibile."
+                    : unknownEstimates > 0
+                        ? $"Budget parziale: {unknownEstimates} esami senza stima."
+                        : "Nessun superamento rilevato dal calcolo corrente.";
     }
 
     private void RefreshCollections()
