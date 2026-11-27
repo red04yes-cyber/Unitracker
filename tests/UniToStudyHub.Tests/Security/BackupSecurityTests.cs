@@ -217,6 +217,149 @@ public sealed class BackupSecurityTests
     }
 
     [Fact]
+    public async Task BoundedBackupReadersRejectOversizedFilesAndRemovePartialCopies()
+    {
+        var folder = Path.Combine(Path.GetTempPath(), "UnitrackerTests", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(folder);
+        var source = Path.Combine(folder, "source.bin");
+        var destination = Path.Combine(folder, "copy.bin");
+        await File.WriteAllBytesAsync(source, Enumerable.Range(0, 32).Select(value => (byte)value).ToArray());
+
+        await Assert.ThrowsAsync<InvalidDataException>(() =>
+            BackupService.ReadFileBoundedAsync(source, 16, CancellationToken.None));
+        await Assert.ThrowsAsync<InvalidDataException>(() =>
+            BackupService.CopyFileBoundedAsync(source, destination, 16, CancellationToken.None));
+
+        Assert.False(File.Exists(destination));
+        Directory.Delete(folder, recursive: true);
+    }
+
+    [Fact]
+    public async Task BoundedBackupReadersPreserveFilesWithinTheLimit()
+    {
+        var folder = Path.Combine(Path.GetTempPath(), "UnitrackerTests", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(folder);
+        var source = Path.Combine(folder, "source.bin");
+        var destination = Path.Combine(folder, "copy.bin");
+        var expected = Enumerable.Range(0, 32).Select(value => (byte)value).ToArray();
+        await File.WriteAllBytesAsync(source, expected);
+
+        var read = await BackupService.ReadFileBoundedAsync(source, expected.Length, CancellationToken.None);
+        await BackupService.CopyFileBoundedAsync(source, destination, expected.Length, CancellationToken.None);
+
+        Assert.Equal(expected, read);
+        Assert.Equal(expected, await File.ReadAllBytesAsync(destination));
+        CryptographicOperations.ZeroMemory(read);
+        Directory.Delete(folder, recursive: true);
+    }
+
+    [Fact]
+    public async Task OversizedManifestIsRejectedBeforeVerificationOrRestore()
+    {
+        var fixture = await CreateAsync();
+        await using var database = fixture.Database;
+        var store = new SqliteStudyDataStore(database.Factory);
+        await store.SaveAsync(Data("Analisi"));
+        var backup = await fixture.Service.CreateBackupAsync(Password);
+        await File.WriteAllBytesAsync(BackupService.ManifestPath(backup.FilePath),
+            new byte[BackupService.MaximumManifestBytes + 1]);
+
+        await Assert.ThrowsAsync<InvalidDataException>(() =>
+            fixture.Service.ReadManifestAsync(backup.FilePath));
+        Assert.False(await fixture.Service.VerifyBackupAsync(backup.FilePath, Password));
+        await Assert.ThrowsAsync<InvalidDataException>(() =>
+            fixture.Service.RestoreAsync(backup.FilePath, Password));
+        Assert.Equal("Analisi", (await store.LoadAsync()).Courses.Single().Name);
+    }
+
+    [Fact]
+    public async Task LegacyRestoreRejectsManifestChecksumMismatchBeforeReplacingDatabase()
+    {
+        var fixture = await CreateAsync();
+        await using var database = fixture.Database;
+        var store = new SqliteStudyDataStore(database.Factory);
+        await store.SaveAsync(Data("Analisi"));
+        var encrypted = await fixture.Service.CreateBackupAsync(Password);
+        var container = await File.ReadAllBytesAsync(encrypted.FilePath);
+        var payload = BackupCrypto.Decrypt(container, Password, null);
+        CryptographicOperations.ZeroMemory(container);
+
+        var legacy = Path.Combine(fixture.Backups, "unitracker-20260102-000000-000-checksum.db");
+        try
+        {
+            await File.WriteAllBytesAsync(legacy, payload);
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(payload);
+        }
+
+        var manifest = new BackupManifest(BackupService.LegacyFormatVersion, DateTimeOffset.UtcNow,
+            new string('0', 64), new FileInfo(legacy).Length, "none", "none", null,
+            new FileInfo(legacy).Length);
+        await File.WriteAllTextAsync(BackupService.ManifestPath(legacy), JsonSerializer.Serialize(manifest));
+
+        var changed = await store.LoadAsync();
+        changed.Courses[0].Name = "Modificata";
+        await store.SaveAsync(changed);
+
+        Assert.False(await fixture.Service.VerifyBackupAsync(legacy));
+        await Assert.ThrowsAsync<InvalidDataException>(() => fixture.Service.RestoreAsync(legacy));
+        Assert.Equal("Modificata", (await store.LoadAsync()).Courses.Single().Name);
+    }
+
+    [Fact]
+    public async Task LegacyRestoreRejectsManifestLengthMismatchEvenWhenChecksumMatches()
+    {
+        var fixture = await CreateAsync();
+        await using var database = fixture.Database;
+        var store = new SqliteStudyDataStore(database.Factory);
+        await store.SaveAsync(Data("Analisi"));
+        var encrypted = await fixture.Service.CreateBackupAsync(Password);
+        var container = await File.ReadAllBytesAsync(encrypted.FilePath);
+        var payload = BackupCrypto.Decrypt(container, Password, null);
+        CryptographicOperations.ZeroMemory(container);
+
+        var legacy = Path.Combine(fixture.Backups, "unitracker-20260103-000000-000-length.db");
+        string payloadHash;
+        try
+        {
+            await File.WriteAllBytesAsync(legacy, payload);
+            payloadHash = Convert.ToHexString(SHA256.HashData(payload));
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(payload);
+        }
+
+        var actualLength = new FileInfo(legacy).Length;
+        var manifest = new BackupManifest(BackupService.LegacyFormatVersion, DateTimeOffset.UtcNow,
+            payloadHash, actualLength, "none", "none", null, actualLength + 1);
+        await File.WriteAllTextAsync(BackupService.ManifestPath(legacy), JsonSerializer.Serialize(manifest));
+
+        var changed = await store.LoadAsync();
+        changed.Courses[0].Name = "Modificata";
+        await store.SaveAsync(changed);
+
+        Assert.False(await fixture.Service.VerifyBackupAsync(legacy));
+        await Assert.ThrowsAsync<InvalidDataException>(() => fixture.Service.RestoreAsync(legacy));
+        Assert.Equal("Modificata", (await store.LoadAsync()).Courses.Single().Name);
+    }
+
+    [Fact]
+    public async Task UnsupportedBackupExtensionIsRejected()
+    {
+        var fixture = await CreateAsync();
+        await using var database = fixture.Database;
+        var unsupported = Path.Combine(fixture.Backups, "unitracker-not-a-backup.bin");
+        Directory.CreateDirectory(fixture.Backups);
+        await File.WriteAllTextAsync(unsupported, "not a backup");
+
+        Assert.False(await fixture.Service.VerifyBackupAsync(unsupported));
+        await Assert.ThrowsAsync<InvalidDataException>(() => fixture.Service.RestoreAsync(unsupported));
+    }
+
+    [Fact]
     public async Task UnencryptedBackupCreationNeedsDpapiOrAPassword()
     {
         var fixture = await CreateAsync();

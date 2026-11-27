@@ -55,6 +55,9 @@ public sealed class BackupService
     public const int LegacyFormatVersion = 1;
     public const string ContainerExtension = ".utbk";
     public const long MaximumPayloadBytes = 512L * 1024 * 1024;
+    public const int MaximumManifestBytes = 16 * 1024;
+    public const long MaximumContainerBytes = MaximumPayloadBytes + 31L +
+        BackupCrypto.MaximumWrappedKeyBytes + BackupCrypto.NonceBytes + 4L + BackupCrypto.TagBytes;
 
     private readonly IDbContextFactory<StudyHubDbContext> _factory;
     private readonly string _databasePath;
@@ -97,9 +100,13 @@ public sealed class BackupService
         if (File.Exists(target)) throw new IOException("A backup with the generated name already exists.");
 
         LocalFileSecurity.EnsurePrivateDirectory(_backupDirectory);
+        if (!LocalFileSecurity.TryRestrictDirectory(_backupDirectory))
+            throw new UnauthorizedAccessException("The backup directory could not be restricted to the current user.");
         LocalFileSecurity.CleanupStaleTemporaryFiles(_backupDirectory, TimeSpan.FromHours(1),
             "*.part", "*.tmp");
         LocalFileSecurity.EnsurePrivateDirectory(_stagingDirectory);
+        if (!LocalFileSecurity.TryRestrictDirectory(_stagingDirectory))
+            throw new UnauthorizedAccessException("The backup staging directory could not be restricted to the current user.");
         LocalFileSecurity.CleanupStaleTemporaryFiles(_stagingDirectory, TimeSpan.FromHours(1), "*.db", "*.tmp");
 
         var staging = Path.Combine(_stagingDirectory, $"snapshot-{Guid.NewGuid():N}.db");
@@ -114,7 +121,8 @@ public sealed class BackupService
                 throw new InvalidDataException(
                     "The database is too large for an encrypted backup (limit 512 MB).");
 
-            payload = await File.ReadAllBytesAsync(staging, cancellationToken).ConfigureAwait(false);
+            payload = await ReadFileBoundedAsync(staging, MaximumPayloadBytes, cancellationToken)
+                .ConfigureAwait(false);
             var payloadHash = Convert.ToHexString(SHA256.HashData(payload));
             var container = BackupCrypto.Encrypt(payload, password, _keyProtector);
             var containerHash = Convert.ToHexString(SHA256.HashData(container));
@@ -154,15 +162,18 @@ public sealed class BackupService
             var extension = Path.GetExtension(path);
             if (!extension.Equals(ContainerExtension, StringComparison.OrdinalIgnoreCase) &&
                 !extension.Equals(".db", StringComparison.OrdinalIgnoreCase)) continue;
+            var fileInfo = new FileInfo(path);
+            var isEncrypted = extension.Equals(ContainerExtension, StringComparison.OrdinalIgnoreCase);
+            var maximumBytes = isEncrypted ? MaximumContainerBytes : MaximumPayloadBytes;
             var manifest = TryReadManifest(path);
-            var containerHash = ComputeSha256(path);
+            var containerHash = TryComputeSha256Bounded(path, maximumBytes);
             results.Add(new BackupInfo(
                 path,
-                manifest?.CreatedAt ?? new DateTimeOffset(File.GetLastWriteTimeUtc(path), TimeSpan.Zero),
-                new FileInfo(path).Length,
-                manifest?.Sha256 ?? containerHash,
+                manifest?.CreatedAt ?? new DateTimeOffset(fileInfo.LastWriteTimeUtc, TimeSpan.Zero),
+                fileInfo.Length,
+                manifest?.Sha256 ?? containerHash ?? string.Empty,
                 false,
-                extension.Equals(ContainerExtension, StringComparison.OrdinalIgnoreCase),
+                isEncrypted,
                 manifest?.KeyProtection ?? "none",
                 manifest?.FormatVersion ?? LegacyFormatVersion,
                 containerHash));
@@ -185,42 +196,63 @@ public sealed class BackupService
     {
         if (string.IsNullOrWhiteSpace(backupPath) || !File.Exists(backupPath)) return false;
         var extension = Path.GetExtension(backupPath);
-        if (extension.Equals(".db", StringComparison.OrdinalIgnoreCase))
-        {
-            if (!await VerifySqliteFileAsync(backupPath, cancellationToken).ConfigureAwait(false)) return false;
-            var legacyManifest = await ReadManifestAsync(backupPath, cancellationToken).ConfigureAwait(false);
-            if (legacyManifest is null || string.IsNullOrWhiteSpace(legacyManifest.Sha256)) return true;
-            return string.Equals(legacyManifest.Sha256, ComputeSha256(backupPath),
-                StringComparison.OrdinalIgnoreCase);
-        }
-        if (!extension.Equals(ContainerExtension, StringComparison.OrdinalIgnoreCase)) return false;
+        var isLegacy = extension.Equals(".db", StringComparison.OrdinalIgnoreCase);
+        var isContainer = extension.Equals(ContainerExtension, StringComparison.OrdinalIgnoreCase);
+        if (!isLegacy && !isContainer) return false;
 
-        string? plaintextPath = null;
+        var maximumBytes = isContainer ? MaximumContainerBytes : MaximumPayloadBytes;
+        if (!IsFileSizeAllowed(backupPath, maximumBytes)) return false;
+
+        string? temporaryPath = null;
         byte[] plaintext = Array.Empty<byte>();
         try
         {
             var manifest = await ReadManifestAsync(backupPath, cancellationToken).ConfigureAwait(false);
-            if (manifest is not null)
-            {
-                if (manifest.FormatVersion > CurrentFormatVersion) return false;
-                if (!string.IsNullOrWhiteSpace(manifest.CiphertextSha256) &&
-                    !string.Equals(manifest.CiphertextSha256, ComputeSha256(backupPath),
-                        StringComparison.OrdinalIgnoreCase)) return false;
-            }
+            if (manifest is not null && manifest.FormatVersion > CurrentFormatVersion) return false;
 
             LocalFileSecurity.EnsurePrivateDirectory(_verificationDirectory);
-            plaintext = await DecryptContainerAsync(backupPath, password, cancellationToken).ConfigureAwait(false);
+            if (!LocalFileSecurity.TryRestrictDirectory(_verificationDirectory))
+                throw new UnauthorizedAccessException("The backup verification directory could not be restricted to the current user.");
+            if (isLegacy)
+            {
+                temporaryPath = Path.Combine(_verificationDirectory, $"verify-legacy-{Guid.NewGuid():N}.db");
+                await CopyFileBoundedAsync(backupPath, temporaryPath, MaximumPayloadBytes, cancellationToken)
+                    .ConfigureAwait(false);
+                if (!LocalFileSecurity.TryRestrictFile(temporaryPath))
+                    throw new UnauthorizedAccessException("The temporary backup copy could not be restricted to the current user.");
+                if (!await VerifySqliteFileAsync(temporaryPath, cancellationToken).ConfigureAwait(false))
+                    return false;
+
+                var payloadLength = new FileInfo(temporaryPath).Length;
+                if (manifest?.PayloadLength is { } expectedLength && expectedLength != payloadLength)
+                    return false;
+                if (!string.IsNullOrWhiteSpace(manifest?.Sha256) &&
+                    !string.Equals(manifest.Sha256,
+                        ComputeSha256Bounded(temporaryPath, MaximumPayloadBytes),
+                        StringComparison.OrdinalIgnoreCase))
+                    return false;
+                return true;
+            }
+
+            if (manifest is not null && !string.IsNullOrWhiteSpace(manifest.CiphertextSha256) &&
+                !string.Equals(manifest.CiphertextSha256,
+                    ComputeSha256Bounded(backupPath, MaximumContainerBytes),
+                    StringComparison.OrdinalIgnoreCase))
+                return false;
+
+            plaintext = await DecryptContainerAsync(backupPath, password, cancellationToken)
+                .ConfigureAwait(false);
             if (manifest is not null && !string.IsNullOrWhiteSpace(manifest.Sha256) &&
                 !string.Equals(manifest.Sha256, Convert.ToHexString(SHA256.HashData(plaintext)),
                     StringComparison.OrdinalIgnoreCase)) return false;
+            if (manifest?.PayloadLength is { } containerPayloadLength &&
+                containerPayloadLength != plaintext.LongLength) return false;
 
-            plaintextPath = Path.Combine(_verificationDirectory, $"verify-{Guid.NewGuid():N}.db");
-            await File.WriteAllBytesAsync(plaintextPath, plaintext, cancellationToken).ConfigureAwait(false);
-            LocalFileSecurity.TryRestrictFile(plaintextPath);
-            var valid = await VerifySqliteFileAsync(plaintextPath, cancellationToken).ConfigureAwait(false);
-            if (manifest?.PayloadLength is { } expectedLength && expectedLength != plaintext.LongLength)
-                valid = false;
-            return valid;
+            temporaryPath = Path.Combine(_verificationDirectory, $"verify-{Guid.NewGuid():N}.db");
+            await File.WriteAllBytesAsync(temporaryPath, plaintext, cancellationToken).ConfigureAwait(false);
+            if (!LocalFileSecurity.TryRestrictFile(temporaryPath))
+                throw new UnauthorizedAccessException("The decrypted backup copy could not be restricted to the current user.");
+            return await VerifySqliteFileAsync(temporaryPath, cancellationToken).ConfigureAwait(false);
         }
         catch (Exception ex) when (ex is InvalidDataException or IOException or UnauthorizedAccessException
                                        or CryptographicException or ArgumentException)
@@ -231,7 +263,7 @@ public sealed class BackupService
         finally
         {
             CryptographicOperations.ZeroMemory(plaintext);
-            LocalFileSecurity.ScrubAndDelete(plaintextPath);
+            LocalFileSecurity.ScrubAndDelete(temporaryPath);
         }
     }
 
@@ -252,13 +284,24 @@ public sealed class BackupService
         if (!File.Exists(backupPath))
             throw new FileNotFoundException("The selected backup does not exist.", backupPath);
 
+        var extension = Path.GetExtension(backupPath);
+        var isContainer = extension.Equals(ContainerExtension, StringComparison.OrdinalIgnoreCase);
+        var isLegacy = extension.Equals(".db", StringComparison.OrdinalIgnoreCase);
+        if (!isContainer && !isLegacy)
+            throw new InvalidDataException("The selected file is not a supported UniTracker backup.");
+
+        var maximumBytes = isContainer ? MaximumContainerBytes : MaximumPayloadBytes;
+        if (!IsFileSizeAllowed(backupPath, maximumBytes))
+            throw new InvalidDataException("The selected backup is empty or exceeds the supported size limit.");
+
         var manifest = await ReadManifestAsync(backupPath, cancellationToken).ConfigureAwait(false);
         if (manifest is not null && manifest.FormatVersion > CurrentFormatVersion)
             throw new InvalidDataException("The selected backup was created by a newer backup format.");
 
-        var isContainer = Path.GetExtension(backupPath).Equals(ContainerExtension, StringComparison.OrdinalIgnoreCase);
         if (isContainer && manifest is not null && !string.IsNullOrWhiteSpace(manifest.CiphertextSha256) &&
-            !string.Equals(manifest.CiphertextSha256, ComputeSha256(backupPath), StringComparison.OrdinalIgnoreCase))
+            !string.Equals(manifest.CiphertextSha256,
+                ComputeSha256Bounded(backupPath, MaximumContainerBytes),
+                StringComparison.OrdinalIgnoreCase))
             throw new InvalidDataException("The selected backup does not match its checksum manifest.");
 
         var temporary = _databasePath + ".restore-" + Guid.NewGuid().ToString("N") + ".tmp";
@@ -267,21 +310,40 @@ public sealed class BackupService
         {
             if (isContainer)
             {
-                plaintext = await DecryptContainerAsync(backupPath, password, cancellationToken).ConfigureAwait(false);
+                plaintext = await DecryptContainerAsync(backupPath, password, cancellationToken)
+                    .ConfigureAwait(false);
                 if (manifest is not null && !string.IsNullOrWhiteSpace(manifest.Sha256) &&
                     !string.Equals(manifest.Sha256, Convert.ToHexString(SHA256.HashData(plaintext)),
                         StringComparison.OrdinalIgnoreCase))
                     throw new InvalidDataException("The selected backup does not match its checksum manifest.");
+                if (manifest?.PayloadLength is { } containerPayloadLength &&
+                    containerPayloadLength != plaintext.LongLength)
+                    throw new InvalidDataException("The selected backup does not match its manifest length.");
                 await File.WriteAllBytesAsync(temporary, plaintext, cancellationToken).ConfigureAwait(false);
+                if (!LocalFileSecurity.TryRestrictFile(temporary))
+                    throw new UnauthorizedAccessException("The decrypted restore candidate could not be restricted to the current user.");
             }
             else
             {
-                File.Copy(backupPath, temporary, overwrite: true);
+                await CopyFileBoundedAsync(backupPath, temporary, MaximumPayloadBytes, cancellationToken)
+                    .ConfigureAwait(false);
+                if (!LocalFileSecurity.TryRestrictFile(temporary))
+                    throw new UnauthorizedAccessException("The legacy restore candidate could not be restricted to the current user.");
+                var payloadLength = new FileInfo(temporary).Length;
+                if (manifest?.PayloadLength is { } expectedLength && expectedLength != payloadLength)
+                    throw new InvalidDataException("The selected legacy backup does not match its manifest length.");
+                if (!string.IsNullOrWhiteSpace(manifest?.Sha256) &&
+                    !string.Equals(manifest.Sha256,
+                        ComputeSha256Bounded(temporary, MaximumPayloadBytes),
+                        StringComparison.OrdinalIgnoreCase))
+                    throw new InvalidDataException("The selected legacy backup does not match its checksum manifest.");
             }
+
             // Older v1 backups contain a plaintext SQLite file. Convert the
             // temporary restore candidate before it can replace the live DB.
             StudyHubDatabase.EnsureEncryptedDatabase(temporary);
-            LocalFileSecurity.TryRestrictFile(temporary);
+            if (!LocalFileSecurity.TryRestrictFile(temporary))
+                throw new UnauthorizedAccessException("The restore candidate could not be restricted to the current user.");
 
             if (!await VerifySqliteFileAsync(temporary, cancellationToken).ConfigureAwait(false))
                 throw new InvalidDataException("The selected backup failed SQLite integrity verification.");
@@ -358,18 +420,25 @@ public sealed class BackupService
     {
         var path = ManifestPath(backupPath);
         if (!File.Exists(path)) return null;
+        var bytes = await ReadFileBoundedAsync(path, MaximumManifestBytes, cancellationToken)
+            .ConfigureAwait(false);
         try
         {
-            await using var stream = File.OpenRead(path);
-            var manifest = await JsonSerializer.DeserializeAsync<BackupManifest>(stream,
-                cancellationToken: cancellationToken).ConfigureAwait(false);
-            // ConfigureAwait(false) keeps the synchronous ListBackups() path safe
-            // when it is called from the WPF UI thread.
+            BackupManifest? manifest;
+            try
+            {
+                manifest = JsonSerializer.Deserialize<BackupManifest>(bytes);
+            }
+            catch (Exception ex) when (ex is JsonException or NotSupportedException or ArgumentException)
+            {
+                throw new InvalidDataException("The backup manifest is not valid JSON.", ex);
+            }
+
             return manifest is null || manifest.FormatVersion <= 0 ? null : manifest;
         }
-        catch (Exception ex) when (ex is JsonException or NotSupportedException or IOException)
+        finally
         {
-            throw new InvalidDataException("The backup manifest is not valid JSON.", ex);
+            CryptographicOperations.ZeroMemory(bytes);
         }
     }
 
@@ -390,7 +459,8 @@ public sealed class BackupService
         string? password,
         CancellationToken cancellationToken)
     {
-        var bytes = await File.ReadAllBytesAsync(backupPath, cancellationToken).ConfigureAwait(false);
+        var bytes = await ReadFileBoundedAsync(backupPath, MaximumContainerBytes, cancellationToken)
+            .ConfigureAwait(false);
         try
         {
             if (!BackupCrypto.LooksLikeContainer(bytes))
@@ -428,6 +498,8 @@ public sealed class BackupService
             snapshot.Parameters.Add(new Microsoft.Data.Sqlite.SqliteParameter("$target", target));
             await snapshot.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
 
+            if (!LocalFileSecurity.TryRestrictFile(target))
+                throw new UnauthorizedAccessException("The database snapshot could not be restricted to the current user.");
             if (!await VerifySqliteFileAsync(target, cancellationToken).ConfigureAwait(false))
                 throw new InvalidDataException("Lo snapshot SQLite non ha superato il controllo di integrità.");
 
@@ -454,7 +526,7 @@ public sealed class BackupService
 
     private static async Task<bool> VerifySqliteFileAsync(string path, CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(path) || !File.Exists(path)) return false;
+        if (!IsFileSizeAllowed(path, MaximumPayloadBytes)) return false;
         try
         {
             var isPlaintext = IsPlaintextSqliteFile(path);
@@ -490,9 +562,151 @@ public sealed class BackupService
             JsonSerializer.Serialize(manifest, new JsonSerializerOptions { WriteIndented = true }),
             cancellationToken);
 
-    private static string ComputeSha256(string path)
+    private static bool IsFileSizeAllowed(string path, long maximumBytes)
     {
-        using var stream = File.OpenRead(path);
-        return Convert.ToHexString(SHA256.HashData(stream));
+        if (maximumBytes <= 0) return false;
+        try
+        {
+            var info = new FileInfo(path);
+            return info.Exists && info.Length > 0 && info.Length <= maximumBytes;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException)
+        {
+            return false;
+        }
+    }
+
+    internal static async Task<byte[]> ReadFileBoundedAsync(
+        string path,
+        long maximumBytes,
+        CancellationToken cancellationToken)
+    {
+        if (maximumBytes <= 0) throw new ArgumentOutOfRangeException(nameof(maximumBytes));
+        await using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read,
+            81_920, FileOptions.Asynchronous | FileOptions.SequentialScan);
+        var length = stream.Length;
+        if (length <= 0 || length > maximumBytes || length > int.MaxValue)
+            throw new InvalidDataException("The file is empty or exceeds the supported size limit.");
+
+        var bytes = new byte[(int)length];
+        try
+        {
+            var offset = 0;
+            while (offset < bytes.Length)
+            {
+                var read = await stream.ReadAsync(bytes.AsMemory(offset), cancellationToken).ConfigureAwait(false);
+                if (read == 0)
+                    throw new InvalidDataException("The file changed or ended before the expected length.");
+                offset += read;
+            }
+
+            var extra = new byte[1];
+            try
+            {
+                if (await stream.ReadAsync(extra.AsMemory(), cancellationToken).ConfigureAwait(false) != 0)
+                    throw new InvalidDataException("The file grew beyond its validated size.");
+                return bytes;
+            }
+            finally
+            {
+                CryptographicOperations.ZeroMemory(extra);
+            }
+        }
+        catch
+        {
+            CryptographicOperations.ZeroMemory(bytes);
+            throw;
+        }
+    }
+
+    internal static async Task CopyFileBoundedAsync(
+        string sourcePath,
+        string destinationPath,
+        long maximumBytes,
+        CancellationToken cancellationToken)
+    {
+        if (maximumBytes <= 0) throw new ArgumentOutOfRangeException(nameof(maximumBytes));
+        var destinationCreated = false;
+        var buffer = Array.Empty<byte>();
+        try
+        {
+            await using var source = new FileStream(sourcePath, FileMode.Open, FileAccess.Read, FileShare.Read,
+                81_920, FileOptions.Asynchronous | FileOptions.SequentialScan);
+            var expectedLength = source.Length;
+            if (expectedLength <= 0 || expectedLength > maximumBytes)
+                throw new InvalidDataException("The file is empty or exceeds the supported size limit.");
+
+            await using var destination = new FileStream(destinationPath, FileMode.CreateNew, FileAccess.Write,
+                FileShare.None, 81_920, FileOptions.Asynchronous | FileOptions.SequentialScan);
+            destinationCreated = true;
+            buffer = new byte[81_920];
+            long total = 0;
+            int read;
+            while ((read = await source.ReadAsync(buffer.AsMemory(), cancellationToken).ConfigureAwait(false)) > 0)
+            {
+                total += read;
+                if (total > maximumBytes)
+                    throw new InvalidDataException("The file grew beyond its validated size.");
+                await destination.WriteAsync(buffer.AsMemory(0, read), cancellationToken).ConfigureAwait(false);
+            }
+
+            if (total != expectedLength)
+                throw new InvalidDataException("The file changed or ended before the expected length.");
+            await destination.FlushAsync(cancellationToken).ConfigureAwait(false);
+        }
+        catch
+        {
+            if (destinationCreated) LocalFileSecurity.ScrubAndDelete(destinationPath);
+            throw;
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(buffer);
+        }
+    }
+
+    private static string ComputeSha256Bounded(string path, long maximumBytes)
+    {
+        if (maximumBytes <= 0) throw new ArgumentOutOfRangeException(nameof(maximumBytes));
+        using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read,
+            81_920, FileOptions.SequentialScan);
+        var expectedLength = stream.Length;
+        if (expectedLength <= 0 || expectedLength > maximumBytes)
+            throw new InvalidDataException("The file is empty or exceeds the supported size limit.");
+
+        using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
+        var buffer = new byte[81_920];
+        try
+        {
+            long total = 0;
+            int read;
+            while ((read = stream.Read(buffer, 0, buffer.Length)) > 0)
+            {
+                total += read;
+                if (total > maximumBytes)
+                    throw new InvalidDataException("The file grew beyond its validated size.");
+                hash.AppendData(buffer, 0, read);
+            }
+
+            if (total != expectedLength)
+                throw new InvalidDataException("The file changed or ended before the expected length.");
+            return Convert.ToHexString(hash.GetHashAndReset());
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(buffer);
+        }
+    }
+
+    private static string? TryComputeSha256Bounded(string path, long maximumBytes)
+    {
+        try
+        {
+            return ComputeSha256Bounded(path, maximumBytes);
+        }
+        catch (Exception ex) when (ex is InvalidDataException or IOException or UnauthorizedAccessException)
+        {
+            return null;
+        }
     }
 }
