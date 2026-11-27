@@ -14,12 +14,18 @@ public sealed record IcsParseResult(
 /// Parses the reliable subset of RFC 5545 used by university calendars:
 /// VEVENT, DTSTART/DTEND, all-day values, TZID/Z, RRULE
 /// DAILY/WEEKLY/MONTHLY/YEARLY with INTERVAL/COUNT/UNTIL/BYDAY and EXDATE.
-/// Recurrences are materialized inside an explicit window; VTIMEZONE rules,
-/// BYSETPOS, RDATE and floating-time DST edge cases are deliberately reported
-/// as limitations rather than guessed.
+/// Named TZID recurrences preserve local wall time across daylight-saving
+/// transitions; ambiguous times use the first occurrence and nonexistent local
+/// times use the offset before the gap. VTIMEZONE rules, BYSETPOS, RDATE and
+/// floating-time DST edge cases remain unsupported.
 /// </summary>
 public sealed class IcsCalendarParser
 {
+    public const int MaximumContentCharacters = 10 * 1024 * 1024;
+    public const int MaximumEvents = 1000;
+    public const int MaximumEventLines = 10_000;
+    private const int MaximumRecurrenceIterations = 20_000;
+
     internal static (DateTimeOffset From, DateTimeOffset To) ResolveWindow(
         DateTimeOffset? windowStart,
         DateTimeOffset? windowEnd)
@@ -33,11 +39,15 @@ public sealed class IcsCalendarParser
         string content,
         DateTimeOffset? windowStart = null,
         DateTimeOffset? windowEnd = null,
-        int maxEvents = 1000)
+        int maxEvents = MaximumEvents)
     {
+        ArgumentNullException.ThrowIfNull(content);
+        if (content.Length > MaximumContentCharacters)
+            throw new InvalidDataException("Il contenuto ICS supera il limite consentito di 10 MB.");
+        if (maxEvents is < 1 or > MaximumEvents)
+            throw new ArgumentOutOfRangeException(nameof(maxEvents), $"Il numero massimo di eventi deve essere compreso tra 1 e {MaximumEvents}.");
         if (string.IsNullOrWhiteSpace(content))
             return new IcsParseResult(Array.Empty<CalendarEvent>(), new[] { "Il file ICS è vuoto." });
-        if (maxEvents < 1) throw new ArgumentOutOfRangeException(nameof(maxEvents));
 
         var (from, to) = ResolveWindow(windowStart, windowEnd);
         if (to <= from) throw new ArgumentOutOfRangeException(nameof(windowEnd));
@@ -47,17 +57,19 @@ public sealed class IcsCalendarParser
         var lines = Unfold(content);
         var block = new List<string>();
         var inEvent = false;
+        var discardingOversizedEvent = false;
         foreach (var line in lines)
         {
             if (line.Equals("BEGIN:VEVENT", StringComparison.OrdinalIgnoreCase))
             {
                 block.Clear();
                 inEvent = true;
+                discardingOversizedEvent = false;
                 continue;
             }
             if (line.Equals("END:VEVENT", StringComparison.OrdinalIgnoreCase))
             {
-                if (inEvent)
+                if (inEvent && !discardingOversizedEvent)
                 {
                     try
                     {
@@ -73,14 +85,30 @@ public sealed class IcsCalendarParser
                     }
                 }
                 inEvent = false;
+                discardingOversizedEvent = false;
                 block.Clear();
+                if (events.Count >= maxEvents)
+                {
+                    warnings.Add($"Importazione limitata a {maxEvents} occorrenze.");
+                    break;
+                }
                 continue;
             }
-            if (inEvent) block.Add(line);
+            if (inEvent && !discardingOversizedEvent)
+            {
+                if (block.Count >= MaximumEventLines)
+                {
+                    block.Clear();
+                    discardingOversizedEvent = true;
+                    warnings.Add($"Evento ICS ignorato: supera il limite di {MaximumEventLines} righe.");
+                }
+                else
+                {
+                    block.Add(line);
+                }
+            }
         }
 
-        if (events.Count >= maxEvents)
-            warnings.Add($"Importazione limitata a {maxEvents} occorrenze.");
         return new IcsParseResult(events, warnings);
     }
 
@@ -125,7 +153,15 @@ public sealed class IcsCalendarParser
         var exdates = ParseExDates(props, warnings);
         var rule = Get(props, "RRULE");
         var recurrenceRule = rule ?? string.Empty;
-        var occurrences = Expand(start, end, allDay, rule, exdates, from, to, remaining, warnings);
+        var recurrenceZone = allDay
+            ? null
+            : ResolveTimeZone(startProperty.Parameters.GetValueOrDefault("TZID"));
+        if (recurrenceZone?.IsInvalidTime(start.DateTime) == true)
+        {
+            warnings.Add(
+                $"DTSTART interpretato usando l'offset precedente al salto in {recurrenceZone.Id}: {start.DateTime:yyyyMMdd'T'HHmmss}.");
+        }
+        var occurrences = Expand(start, end, allDay, rule, exdates, from, to, remaining, warnings, recurrenceZone);
         var index = 0;
         foreach (var (occurrenceStart, occurrenceEnd) in occurrences)
         {
@@ -168,12 +204,13 @@ public sealed class IcsCalendarParser
         DateTimeOffset from,
         DateTimeOffset to,
         int max,
-        List<string> warnings)
+        List<string> warnings,
+        TimeZoneInfo? recurrenceZone)
     {
         var duration = end - start;
         if (string.IsNullOrWhiteSpace(rule))
         {
-            if (start < to && end > from && !exdates.Contains(DateOnly.FromDateTime(start.LocalDateTime)))
+            if (start < to && end > from && !exdates.Contains(DateOnly.FromDateTime(start.DateTime)))
                 yield return (start, end);
             yield break;
         }
@@ -207,51 +244,94 @@ public sealed class IcsCalendarParser
             ? ParseByDays(byDayText)
             : Array.Empty<DayOfWeek>();
         var emitted = 0;
-        var skipped = 0;
+        var generatedCount = 0;
         var cursor = start;
+        var localCursor = DateTime.SpecifyKind(start.DateTime, DateTimeKind.Unspecified);
         var guard = 0;
-        while (guard++ < 20000 && emitted < max)
+        while (guard++ < MaximumRecurrenceIterations && emitted < max)
         {
-            if (count is int maxCount && skipped >= maxCount) yield break;
-            if (until is not null && cursor > until.Value) yield break;
-            if (cursor >= to) yield break;
+            if (count is int maxCount && generatedCount >= maxCount) yield break;
+
+            // RRULE instances with TZID are local wall-clock values. Resolve the
+            // zone offset for each date instead of carrying DTSTART's offset
+            // through a daylight-saving transition.
+            var occurrenceDateTime = recurrenceZone is null ? cursor.DateTime : localCursor;
+            var occurrenceStart = cursor;
+            var invalidLocalTime = recurrenceZone?.IsInvalidTime(localCursor) == true;
+            if (recurrenceZone is not null)
+            {
+                var offset = invalidLocalTime
+                    ? recurrenceZone.BaseUtcOffset
+                    : GetZoneOffset(recurrenceZone, localCursor);
+                occurrenceStart = new DateTimeOffset(localCursor, offset);
+            }
+
+            if (until is not null && occurrenceStart > until.Value) yield break;
+            if (occurrenceStart >= to) yield break;
+
             var include = frequency.ToUpperInvariant() switch
             {
                 "DAILY" => true,
-                "WEEKLY" => byDays.Count == 0 || byDays.Contains(cursor.LocalDateTime.DayOfWeek),
+                "WEEKLY" => byDays.Count == 0 || byDays.Contains(occurrenceDateTime.DayOfWeek),
                 "MONTHLY" => true,
                 "YEARLY" => true,
                 _ => false
             };
             if (frequency.Equals("WEEKLY", StringComparison.OrdinalIgnoreCase) && byDays.Count > 0)
             {
-                var weekStart = CalendarService.StartOfWeek(start.LocalDateTime.Date);
-                var cursorWeek = CalendarService.StartOfWeek(cursor.LocalDateTime.Date);
+                var weekStart = CalendarService.StartOfWeek(start.DateTime.Date);
+                var cursorWeek = CalendarService.StartOfWeek(occurrenceDateTime.Date);
                 var weeks = (cursorWeek - weekStart).Days / 7;
                 include &= weeks % interval == 0;
             }
             if (include)
             {
-                skipped++;
-                if (!exdates.Contains(DateOnly.FromDateTime(cursor.LocalDateTime)) && cursor + duration > from)
+                var occurrenceEnd = occurrenceStart + duration;
+                if (invalidLocalTime && occurrenceEnd > from)
+                {
+                    warnings.Add(
+                        $"Ricorrenza interpretata usando l'offset precedente al salto in {recurrenceZone!.Id}: {localCursor:yyyyMMdd'T'HHmmss}.");
+                }
+
+                // RFC 5545 section 3.3.5 (including verified Erratum 4271)
+                // interprets a nonexistent local time with the offset before
+                // the gap. It remains a generated recurrence instance.
+                generatedCount++;
+                if (!exdates.Contains(DateOnly.FromDateTime(occurrenceDateTime)) && occurrenceEnd > from)
                 {
                     emitted++;
-                    yield return (cursor, cursor + duration);
+                    yield return (occurrenceStart, occurrenceEnd);
                 }
             }
 
-            cursor = frequency.ToUpperInvariant() switch
+            if (recurrenceZone is null)
             {
-                "DAILY" => cursor.AddDays(interval),
-                "WEEKLY" when byDays.Count > 0 => cursor.AddDays(1),
-                "WEEKLY" => cursor.AddDays(7 * interval),
-                "MONTHLY" => cursor.AddMonths(interval),
-                "YEARLY" => cursor.AddYears(interval),
-                _ => cursor.AddDays(1)
-            };
-            if (!frequency.Equals("WEEKLY", StringComparison.OrdinalIgnoreCase) && byDays.Count > 0) { /* BYDAY only weekly */ }
+                cursor = frequency.ToUpperInvariant() switch
+                {
+                    "DAILY" => cursor.AddDays(interval),
+                    "WEEKLY" when byDays.Count > 0 => cursor.AddDays(1),
+                    "WEEKLY" => cursor.AddDays(7 * interval),
+                    "MONTHLY" => cursor.AddMonths(interval),
+                    "YEARLY" => cursor.AddYears(interval),
+                    _ => cursor.AddDays(1)
+                };
+            }
+            else
+            {
+                localCursor = frequency.ToUpperInvariant() switch
+                {
+                    "DAILY" => localCursor.AddDays(interval),
+                    "WEEKLY" when byDays.Count > 0 => localCursor.AddDays(1),
+                    "WEEKLY" => localCursor.AddDays(7 * interval),
+                    "MONTHLY" => localCursor.AddMonths(interval),
+                    "YEARLY" => localCursor.AddYears(interval),
+                    _ => localCursor.AddDays(1)
+                };
+            }
         }
-        if (guard >= 20000) warnings.Add("Ricorrenza interrotta dopo 20000 iterazioni.");
+
+        if (guard >= MaximumRecurrenceIterations)
+            warnings.Add($"Ricorrenza interrotta dopo {MaximumRecurrenceIterations} iterazioni.");
     }
 
     private static HashSet<DateOnly> ParseExDates(
@@ -267,7 +347,7 @@ public sealed class IcsCalendarParser
                 try
                 {
                     var parsed = ParseDateValue(raw.Trim(), property.Parameters.GetValueOrDefault("TZID"), raw.Length == 8);
-                    result.Add(DateOnly.FromDateTime(parsed.LocalDateTime));
+                    result.Add(DateOnly.FromDateTime(parsed.DateTime));
                 }
                 catch (FormatException) { warnings.Add($"EXDATE non valido ignorato: {raw}"); }
             }
@@ -305,20 +385,86 @@ public sealed class IcsCalendarParser
         }
 
         var utc = value.EndsWith('Z');
+        if (utc && !string.IsNullOrWhiteSpace(tzid))
+            throw new FormatException("Un valore UTC ICS non può specificare anche TZID.");
         var text = utc ? value[..^1] : value;
         var parsed = DateTime.ParseExact(text, "yyyyMMdd'T'HHmmss", CultureInfo.InvariantCulture);
         if (utc) return new DateTimeOffset(parsed, TimeSpan.Zero);
-        if (!string.IsNullOrWhiteSpace(tzid))
-        {
-            try
-            {
-                var zone = TimeZoneInfo.FindSystemTimeZoneById(tzid);
-                return new DateTimeOffset(parsed, zone.GetUtcOffset(parsed));
-            }
-            catch (TimeZoneNotFoundException) { throw new FormatException($"Fuso orario ICS sconosciuto: {tzid}."); }
-            catch (InvalidTimeZoneException) { throw new FormatException($"Fuso orario ICS non valido: {tzid}."); }
-        }
+
+        var zone = ResolveTimeZone(tzid);
+        if (zone is not null)
+            return new DateTimeOffset(parsed, GetZoneOffset(zone, parsed));
         return new DateTimeOffset(parsed, TimeZoneInfo.Local.GetUtcOffset(parsed));
+    }
+
+    private static TimeZoneInfo? ResolveTimeZone(string? tzid)
+    {
+        if (string.IsNullOrWhiteSpace(tzid)) return null;
+        try
+        {
+            return TimeZoneInfo.FindSystemTimeZoneById(tzid);
+        }
+        catch (TimeZoneNotFoundException)
+        {
+            throw new FormatException($"Fuso orario ICS sconosciuto: {tzid}.");
+        }
+        catch (InvalidTimeZoneException)
+        {
+            throw new FormatException($"Fuso orario ICS non valido: {tzid}.");
+        }
+    }
+
+    private static TimeSpan GetZoneOffset(TimeZoneInfo zone, DateTime localDateTime)
+    {
+        var local = DateTime.SpecifyKind(localDateTime, DateTimeKind.Unspecified);
+        if (zone.IsInvalidTime(local))
+            return GetOffsetBeforeGap(zone, local);
+        // RFC 5545 resolves an ambiguous local time to its first occurrence,
+        // which is the numerically larger UTC offset.
+        if (zone.IsAmbiguousTime(local))
+            return zone.GetAmbiguousTimeOffsets(local).Max();
+        return zone.GetUtcOffset(local);
+    }
+
+    private static TimeSpan GetOffsetBeforeGap(TimeZoneInfo zone, DateTime invalidLocalTime)
+    {
+        // TimeZoneInfo has no direct transition lookup API. Find a valid local
+        // instant before the gap with exponentially increasing probes, then
+        // binary-search the last valid tick. This also handles non-hour gaps
+        // such as historical date-line changes without assuming a 60-minute DST shift.
+        var invalidTicks = invalidLocalTime.Ticks;
+        var searchTicks = TimeSpan.TicksPerMinute;
+        long validTicks = -1;
+
+        for (var attempt = 0; attempt < 14; attempt++)
+        {
+            var candidateTicks = Math.Max(DateTime.MinValue.Ticks, invalidTicks - searchTicks);
+            var candidate = new DateTime(candidateTicks, DateTimeKind.Unspecified);
+            if (!zone.IsInvalidTime(candidate))
+            {
+                validTicks = candidateTicks;
+                break;
+            }
+
+            searchTicks *= 2;
+        }
+
+        if (validTicks < 0)
+            throw new FormatException($"Impossibile determinare l'offset precedente al salto in {zone.Id}.");
+
+        var low = validTicks;
+        var high = invalidTicks;
+        while (high - low > 1)
+        {
+            var middle = low + ((high - low) / 2);
+            var candidate = new DateTime(middle, DateTimeKind.Unspecified);
+            if (zone.IsInvalidTime(candidate))
+                high = middle;
+            else
+                low = middle;
+        }
+
+        return zone.GetUtcOffset(new DateTime(low, DateTimeKind.Unspecified));
     }
 
     private static IcsProperty? ParseProperty(string line)
@@ -348,18 +494,25 @@ public sealed class IcsCalendarParser
         return -1;
     }
 
-    private static List<string> Unfold(string content)
+    private static IEnumerable<string> Unfold(string content)
     {
-        var normalized = content.Replace("\r\n", "\n").Replace('\r', '\n');
-        var result = new List<string>();
-        foreach (var raw in normalized.Split('\n'))
+        // Stream logical lines so a bounded input does not also require a second
+        // full-size normalized string, split array and list of every physical line.
+        using var reader = new StringReader(content);
+        StringBuilder? current = null;
+        string? raw;
+        while ((raw = reader.ReadLine()) is not null)
         {
-            if (raw.Length > 0 && (raw[0] == ' ' || raw[0] == '\t') && result.Count > 0)
-                result[^1] += raw[1..];
-            else if (!string.IsNullOrWhiteSpace(raw))
-                result.Add(raw);
+            if (raw.Length > 0 && (raw[0] == ' ' || raw[0] == '\t') && current is not null)
+            {
+                current.Append(raw.AsSpan(1));
+                continue;
+            }
+            if (string.IsNullOrWhiteSpace(raw)) continue;
+            if (current is not null) yield return current.ToString();
+            current = new StringBuilder(raw);
         }
-        return result;
+        if (current is not null) yield return current.ToString();
     }
 
     private static string? Get(IReadOnlyDictionary<string, List<IcsProperty>> props, string name) =>
@@ -419,6 +572,7 @@ public sealed record IcsImportResult(
 public sealed class IcsImportService
 {
     public const long MaximumFileBytes = 10 * 1024 * 1024;
+    private const int ReadBufferBytes = 81920;
 
     public async Task<IcsImportResult> ImportFileAsync(
         string path,
@@ -430,11 +584,47 @@ public sealed class IcsImportService
         ArgumentNullException.ThrowIfNull(data);
         if (string.IsNullOrWhiteSpace(path) || !File.Exists(path))
             throw new FileNotFoundException("File ICS non trovato.", path);
-        var info = new FileInfo(path);
-        if (info.Length == 0) throw new InvalidDataException("Il file ICS è vuoto.");
-        if (info.Length > MaximumFileBytes) throw new InvalidDataException("Il file ICS supera il limite di 10 MB.");
-        var content = await File.ReadAllTextAsync(path, cancellationToken);
+        var content = await ReadBoundedTextAsync(path, cancellationToken).ConfigureAwait(false);
+        cancellationToken.ThrowIfCancellationRequested();
         return ImportText(content, data, windowStart, windowEnd);
+    }
+
+    private static async Task<string> ReadBoundedTextAsync(string path, CancellationToken cancellationToken)
+    {
+        // Enforce the byte limit while reading the opened file. FileShare.Read
+        // also prevents new write/delete handles while this read is in progress on Windows.
+        await using var input = new FileStream(
+            path,
+            FileMode.Open,
+            FileAccess.Read,
+            FileShare.Read,
+            ReadBufferBytes,
+            FileOptions.Asynchronous | FileOptions.SequentialScan);
+        using var output = new MemoryStream();
+        var buffer = new byte[ReadBufferBytes];
+        while (true)
+        {
+            var remaining = (int)Math.Min(buffer.Length, MaximumFileBytes - output.Length + 1);
+            var read = await input.ReadAsync(buffer.AsMemory(0, remaining), cancellationToken).ConfigureAwait(false);
+            if (read == 0) break;
+            if (output.Length + read > MaximumFileBytes)
+                throw new InvalidDataException("Il file ICS supera il limite di 10 MB.");
+            output.Write(buffer, 0, read);
+        }
+
+        if (output.Length == 0)
+            throw new InvalidDataException("Il file ICS è vuoto.");
+
+        try
+        {
+            var content = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: true)
+                .GetString(output.GetBuffer(), 0, checked((int)output.Length));
+            return content.StartsWith('\uFEFF') ? content[1..] : content;
+        }
+        catch (DecoderFallbackException ex)
+        {
+            throw new InvalidDataException("Il file ICS non è codificato in UTF-8 valido.", ex);
+        }
     }
 
     public IcsImportResult ImportText(
@@ -445,8 +635,8 @@ public sealed class IcsImportService
     {
         ArgumentNullException.ThrowIfNull(data);
         if (content is null) throw new ArgumentNullException(nameof(content));
-        if (content.Length > MaximumFileBytes)
-            throw new InvalidDataException("Il contenuto ICS supera il limite di 10 MB.");
+        if (content.Length > IcsCalendarParser.MaximumContentCharacters)
+            throw new InvalidDataException("Il contenuto ICS supera il limite consentito di 10 MB.");
         var (windowFrom, windowTo) = IcsCalendarParser.ResolveWindow(windowStart, windowEnd);
         var parsed = new IcsCalendarParser().Parse(content, windowFrom, windowTo);
         var warnings = parsed.Warnings.ToList();

@@ -14,6 +14,9 @@ public sealed class ExportAndImportSafetyTests
     private static readonly StudyExportRequest Request =
         new(new DateOnly(2026, 11, 4), new DateOnly(2026, 11, 4), "UTC");
 
+    private static string TemporaryIcsPath() =>
+        Path.Combine(Path.GetTempPath(), "UnitrackerIcsTests", Guid.NewGuid().ToString("N") + ".ics");
+
     private static StudyData HostileData()
     {
         var data = new StudyData
@@ -216,6 +219,205 @@ public sealed class ExportAndImportSafetyTests
         var oversized = new string('A', (int)IcsImportService.MaximumFileBytes + 1);
         Assert.Throws<InvalidDataException>(() =>
             new IcsImportService().ImportText(oversized, new StudyData()));
+    }
+
+    [Fact]
+    public void IcsParserEnforcesInputLimitWhenUsedDirectly()
+    {
+        var oversized = new string(' ', IcsCalendarParser.MaximumContentCharacters + 1);
+
+        Assert.Throws<InvalidDataException>(() => new IcsCalendarParser().Parse(oversized));
+    }
+
+    [Fact]
+    public void IcsParserRejectsEventLimitAboveHardMaximum()
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            new IcsCalendarParser().Parse(
+                "BEGIN:VCALENDAR",
+                maxEvents: IcsCalendarParser.MaximumEvents + 1));
+    }
+
+    [Fact]
+    public void IcsParserStopsAfterTheRequestedOccurrenceLimit()
+    {
+        const string ics = """
+BEGIN:VCALENDAR
+BEGIN:VEVENT
+UID:first
+SUMMARY:Prima lezione
+DTSTART:20261104T090000Z
+END:VEVENT
+BEGIN:VEVENT
+UID:second
+SUMMARY:Seconda lezione
+DTSTART:20261104T100000Z
+END:VEVENT
+END:VCALENDAR
+""";
+        var result = new IcsCalendarParser().Parse(
+            ics,
+            new DateTimeOffset(2026, 11, 1, 0, 0, 0, TimeSpan.Zero),
+            new DateTimeOffset(2026, 11, 10, 0, 0, 0, TimeSpan.Zero),
+            maxEvents: 1);
+
+        Assert.Single(result.Events);
+        Assert.Equal("Prima lezione", result.Events[0].Title);
+        Assert.Contains(result.Warnings, warning =>
+            warning.Contains("limitata a 1", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void IcsParserSkipsOversizedEventAndContinuesWithFollowingEvents()
+    {
+        var lines = new List<string>
+        {
+            "BEGIN:VCALENDAR",
+            "BEGIN:VEVENT",
+            "UID:oversized",
+            "SUMMARY:Evento troppo grande",
+            "DTSTART:20261104T080000Z"
+        };
+        lines.AddRange(Enumerable.Repeat("X-EXTRA:1", IcsCalendarParser.MaximumEventLines));
+        lines.AddRange(new[]
+        {
+            "END:VEVENT",
+            "BEGIN:VEVENT",
+            "UID:valid",
+            "SUMMARY:Evento valido",
+            "DTSTART:20261104T090000Z",
+            "END:VEVENT",
+            "END:VCALENDAR"
+        });
+
+        var result = new IcsCalendarParser().Parse(
+            string.Join("\n", lines),
+            new DateTimeOffset(2026, 11, 1, 0, 0, 0, TimeSpan.Zero),
+            new DateTimeOffset(2026, 11, 10, 0, 0, 0, TimeSpan.Zero));
+
+        var imported = Assert.Single(result.Events);
+        Assert.Equal("Evento valido", imported.Title);
+        Assert.Contains(result.Warnings, warning =>
+            warning.Contains("10000 righe", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task IcsFileImportRejectsFilesLargerThanTheByteLimit()
+    {
+        var path = TemporaryIcsPath();
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        try
+        {
+            await using (var stream = new FileStream(path, FileMode.CreateNew, FileAccess.Write, FileShare.None))
+                stream.SetLength(IcsImportService.MaximumFileBytes + 1);
+
+            await Assert.ThrowsAsync<InvalidDataException>(() =>
+                new IcsImportService().ImportFileAsync(path, new StudyData()));
+        }
+        finally
+        {
+            if (File.Exists(path)) File.Delete(path);
+        }
+    }
+
+    [Fact]
+    public async Task IcsFileImportRejectsInvalidUtf8()
+    {
+        var path = TemporaryIcsPath();
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        try
+        {
+            await File.WriteAllBytesAsync(path, new byte[] { 0xFF, 0xFE, 0x00 });
+
+            await Assert.ThrowsAsync<InvalidDataException>(() =>
+                new IcsImportService().ImportFileAsync(path, new StudyData()));
+        }
+        finally
+        {
+            if (File.Exists(path)) File.Delete(path);
+        }
+    }
+
+    [Fact]
+    public async Task IcsFileImportAcceptsAnOptionalUtf8Bom()
+    {
+        var path = TemporaryIcsPath();
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        const string ics = """
+BEGIN:VCALENDAR
+BEGIN:VEVENT
+UID:utf8-bom
+SUMMARY:Lezione importata
+DTSTART:20261104T090000Z
+END:VEVENT
+END:VCALENDAR
+""";
+        try
+        {
+            var bytes = Encoding.UTF8.GetPreamble()
+                .Concat(Encoding.UTF8.GetBytes(ics))
+                .ToArray();
+            await File.WriteAllBytesAsync(path, bytes);
+
+            var result = await new IcsImportService().ImportFileAsync(path, new StudyData());
+
+            Assert.Equal(1, result.Added);
+            Assert.Empty(result.Warnings);
+        }
+        finally
+        {
+            if (File.Exists(path)) File.Delete(path);
+        }
+    }
+
+    [Fact]
+    public async Task IcsFileImportRejectsEmptyFiles()
+    {
+        var path = TemporaryIcsPath();
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        try
+        {
+            await File.WriteAllBytesAsync(path, Array.Empty<byte>());
+
+            await Assert.ThrowsAsync<InvalidDataException>(() =>
+                new IcsImportService().ImportFileAsync(path, new StudyData()));
+        }
+        finally
+        {
+            if (File.Exists(path)) File.Delete(path);
+        }
+    }
+
+    [Fact]
+    public async Task IcsFileImportHonorsCancellation()
+    {
+        var path = TemporaryIcsPath();
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        const string ics = """
+BEGIN:VCALENDAR
+BEGIN:VEVENT
+UID:cancellable
+SUMMARY:Lezione
+DTSTART:20261104T090000Z
+END:VEVENT
+END:VCALENDAR
+""";
+        try
+        {
+            await File.WriteAllTextAsync(path, ics);
+            using var cancellation = new CancellationTokenSource();
+            cancellation.Cancel();
+
+            await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+                new IcsImportService().ImportFileAsync(
+                    path,
+                    new StudyData(),
+                    cancellationToken: cancellation.Token));
+        }
+        finally
+        {
+            if (File.Exists(path)) File.Delete(path);
+        }
     }
 
     [Fact]
