@@ -1,4 +1,5 @@
 using System.Text;
+using UniToStudyHub.Infrastructure.Data;
 using UniToStudyHub.Security;
 using Xunit;
 
@@ -125,6 +126,171 @@ public sealed class SecretAndFileSecurityTests
             Assert.Empty(Directory.GetFiles(directory, "*.tmp"));
         }
         finally { Directory.Delete(directory, recursive: true); }
+    }
+
+    [Fact]
+    public void PrivateDirectoryHardeningRejectsDirectorySymbolicLinks()
+    {
+        var root = NewDirectory();
+        var outside = NewDirectory();
+        var link = Path.Combine(root, "linked-directory");
+        var linkCreated = false;
+        try
+        {
+            try
+            {
+                Directory.CreateSymbolicLink(link, outside);
+                linkCreated = true;
+            }
+            catch (Exception ex) when (ex is UnauthorizedAccessException or IOException or NotSupportedException)
+            {
+                return; // The current runner does not permit creating symbolic links.
+            }
+
+            Assert.False(LocalFileSecurity.TryRestrictDirectory(link));
+            Assert.Throws<IOException>(() => LocalFileSecurity.EnsurePrivateDirectory(link));
+        }
+        finally
+        {
+            if (linkCreated) Directory.Delete(link);
+            Directory.Delete(root, recursive: true);
+            Directory.Delete(outside, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void DatabaseOperationsRejectASymbolicLinkBeforeTouchingItsTarget()
+    {
+        var root = NewDirectory();
+        var outside = NewDirectory();
+        var target = Path.Combine(outside, "source.db");
+        var link = Path.Combine(root, "unitracker.db");
+        var linkCreated = false;
+        try
+        {
+            File.WriteAllText(target, "not a database");
+            try
+            {
+                File.CreateSymbolicLink(link, target);
+                linkCreated = true;
+            }
+            catch (Exception ex) when (ex is UnauthorizedAccessException or IOException or NotSupportedException)
+            {
+                return;
+            }
+
+            Assert.Throws<IOException>(() => StudyHubDatabase.EnsureEncryptedDatabase(link));
+            Assert.Throws<IOException>(() => StudyHubDatabase.CreateEncryptedConnectionString(link));
+            Assert.Equal("not a database", File.ReadAllText(target));
+        }
+        finally
+        {
+            if (linkCreated) File.Delete(link);
+            Directory.Delete(root, recursive: true);
+            Directory.Delete(outside, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void FileHardeningRejectsFileSymbolicLinksWithoutChangingTheirTargets()
+    {
+        var root = NewDirectory();
+        var outside = NewDirectory();
+        var target = Path.Combine(outside, "private.txt");
+        var link = Path.Combine(root, "linked.txt");
+        var linkCreated = false;
+        try
+        {
+            File.WriteAllText(target, "keep this content");
+            try
+            {
+                File.CreateSymbolicLink(link, target);
+                linkCreated = true;
+            }
+            catch (Exception ex) when (ex is UnauthorizedAccessException or IOException or NotSupportedException)
+            {
+                return;
+            }
+
+            Assert.False(LocalFileSecurity.TryRestrictFile(link));
+            Assert.Equal("keep this content", File.ReadAllText(target));
+        }
+        finally
+        {
+            if (linkCreated) File.Delete(link);
+            Directory.Delete(root, recursive: true);
+            Directory.Delete(outside, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void AtomicWriteRefusesASymbolicLinkDestinationWithoutChangingItsTarget()
+    {
+        var root = NewDirectory();
+        var outside = NewDirectory();
+        var target = Path.Combine(outside, "private.txt");
+        var link = Path.Combine(root, "linked.txt");
+        var linkCreated = false;
+        try
+        {
+            File.WriteAllText(target, "original content");
+            try
+            {
+                File.CreateSymbolicLink(link, target);
+                linkCreated = true;
+            }
+            catch (Exception ex) when (ex is UnauthorizedAccessException or IOException or NotSupportedException)
+            {
+                return;
+            }
+
+            Assert.Throws<IOException>(() =>
+                LocalFileSecurity.WriteAllBytesAtomically(link, Encoding.UTF8.GetBytes("replacement")));
+
+            Assert.True(File.Exists(link));
+            Assert.Equal("original content", File.ReadAllText(target));
+            Assert.Empty(Directory.GetFiles(root, "*.tmp"));
+        }
+        finally
+        {
+            if (linkCreated) File.Delete(link);
+            Directory.Delete(root, recursive: true);
+            Directory.Delete(outside, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task AsyncAtomicWriteRefusesASymbolicLinkParentDirectory()
+    {
+        var root = NewDirectory();
+        var outside = NewDirectory();
+        var link = Path.Combine(root, "linked-directory");
+        var destination = Path.Combine(link, "escaped.txt");
+        var linkCreated = false;
+        try
+        {
+            try
+            {
+                Directory.CreateSymbolicLink(link, outside);
+                linkCreated = true;
+            }
+            catch (Exception ex) when (ex is UnauthorizedAccessException or IOException or NotSupportedException)
+            {
+                return;
+            }
+
+            await Assert.ThrowsAsync<IOException>(() =>
+                LocalFileSecurity.WriteAllBytesAtomicallyAsync(destination, Encoding.UTF8.GetBytes("must not escape")));
+
+            Assert.False(File.Exists(Path.Combine(outside, "escaped.txt")));
+            Assert.Empty(Directory.GetFiles(outside));
+        }
+        finally
+        {
+            if (linkCreated) Directory.Delete(link);
+            Directory.Delete(root, recursive: true);
+            Directory.Delete(outside, recursive: true);
+        }
     }
 
     [Fact]
