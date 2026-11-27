@@ -239,7 +239,7 @@ public sealed class SprintATests
         var json = Encoding.UTF8.GetString(service.Export(data, request, StudyExportFormat.Json, Start.AddHours(1))
             .Files.Single().Content);
         using var document = JsonDocument.Parse(json);
-        Assert.Equal("1.0", document.RootElement.GetProperty("schemaVersion").GetString());
+        Assert.Equal("1.1", document.RootElement.GetProperty("schemaVersion").GetString());
         Assert.Equal("Lettura", document.RootElement.GetProperty("activities")[0].GetProperty("title").GetString());
         Assert.Equal(1800, document.RootElement.GetProperty("summary").GetProperty("recordedSeconds").GetInt32());
     }

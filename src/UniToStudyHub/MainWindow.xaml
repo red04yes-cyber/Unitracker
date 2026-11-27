@@ -1381,7 +1381,49 @@
                 </ItemsControl>
                 </ScrollViewer>
                 <Button Content="Esporta report XLSX (periodo selezionato)" Click="ExportProgress_Click" HorizontalAlignment="Left" Margin="0,14,0,0"/>
-                <TextBlock Text="{Binding Workspace.ExportStatus}" FontSize="10" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,7,0,0"/>
+                <Border Style="{StaticResource CardBorderStyle}" Margin="0,14,0,0" Padding="14">
+                    <StackPanel>
+                        <TextBlock Text="Esportazione completa dei dati di studio" Style="{StaticResource SectionTitleStyle}"/>
+                        <TextBlock Text="Scegli intervallo, formato e materia. Note, note private e risultati sono esclusi per impostazione predefinita. L'export è una copia dei dati, non un backup ripristinabile."
+                                   FontSize="10" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,5,0,12"/>
+                        <WrapPanel Margin="0,0,0,8">
+                            <StackPanel Margin="0,0,12,8">
+                                <TextBlock Text="DAL" Style="{StaticResource KpiLabelStyle}" Margin="0,0,0,4"/>
+                                <DatePicker SelectedDate="{Binding Workspace.StudyExportFromDate, UpdateSourceTrigger=PropertyChanged}" Width="150" ToolTip="Data iniziale inclusiva"/>
+                            </StackPanel>
+                            <StackPanel Margin="0,0,12,8">
+                                <TextBlock Text="AL" Style="{StaticResource KpiLabelStyle}" Margin="0,0,0,4"/>
+                                <DatePicker SelectedDate="{Binding Workspace.StudyExportToDate, UpdateSourceTrigger=PropertyChanged}" Width="150" ToolTip="Data finale inclusiva"/>
+                            </StackPanel>
+                            <StackPanel Margin="0,0,12,8">
+                                <TextBlock Text="FORMATO" Style="{StaticResource KpiLabelStyle}" Margin="0,0,0,4"/>
+                                <ComboBox ItemsSource="{Binding Workspace.StudyExportFormatOptions}"
+                                          SelectedValue="{Binding Workspace.SelectedStudyExportFormat}"
+                                          SelectedValuePath="Format" DisplayMemberPath="Label" Width="150"/>
+                            </StackPanel>
+                            <StackPanel Margin="0,0,12,8">
+                                <TextBlock Text="MATERIA (FACOLTATIVA)" Style="{StaticResource KpiLabelStyle}" Margin="0,0,0,4"/>
+                                <ComboBox ItemsSource="{Binding Workspace.Courses}"
+                                          SelectedItem="{Binding Workspace.SelectedStudyExportCourse}"
+                                          DisplayMemberPath="Name" Width="220"
+                                          ToolTip="Se non selezioni una materia, l'esportazione include tutte le materie."/>
+                            </StackPanel>
+                        </WrapPanel>
+                        <WrapPanel Margin="0,0,0,8">
+                            <CheckBox Content="Includi testo e note" IsChecked="{Binding Workspace.StudyExportIncludeNotes}"
+                                      Margin="0,0,14,6" ToolTip="Include descrizioni, note e testo dei contenuti selezionati."/>
+                            <CheckBox Content="Includi note private" IsChecked="{Binding Workspace.StudyExportIncludePrivateNotes}"
+                                      IsEnabled="{Binding Workspace.StudyExportIncludeNotes}" Margin="0,0,14,6"
+                                      ToolTip="Include anche le note contrassegnate private."/>
+                            <CheckBox Content="Includi voti e risultati" IsChecked="{Binding Workspace.StudyExportIncludeResults}"
+                                      Margin="0,0,14,6" ToolTip="Include voti, esiti e risposte corrette."/>
+                        </WrapPanel>
+                        <TextBlock Text="{Binding Workspace.StudyExportRangeStatus}" FontSize="10" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,0,0,8"/>
+                        <Button Content="Esporta dati di studio…" Click="ExportStudyData_Click"
+                                IsEnabled="{Binding Workspace.CanExportStudyData}" HorizontalAlignment="Left"/>
+                        <TextBlock Text="{Binding Workspace.ExportStatus}" FontSize="10" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,7,0,0"/>
+                    </StackPanel>
+                </Border>
             </StackPanel>
         </Border>
     </StackPanel>

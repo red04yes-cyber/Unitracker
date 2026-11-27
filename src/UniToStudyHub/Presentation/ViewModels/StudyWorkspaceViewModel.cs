@@ -71,6 +71,13 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
     private string _questionStatus = "Le risposte aperte richiedono revisione manuale.";
     private string _readinessStatus = "Seleziona una materia per leggere la preparazione.";
     private string _exportStatus = string.Empty;
+    private DateTime? _studyExportFromDate = DateTime.Today.AddDays(-6);
+    private DateTime? _studyExportToDate = DateTime.Today;
+    private Course? _selectedStudyExportCourse;
+    private StudyExportFormat _selectedStudyExportFormat = StudyExportFormat.Xlsx;
+    private bool _studyExportIncludeNotes;
+    private bool _studyExportIncludePrivateNotes;
+    private bool _studyExportIncludeResults;
     private readonly List<QuestionBankItemData> _simulationQuestions = new();
     private int _simulationIndex;
     private int _simulationCorrect;
@@ -198,6 +205,74 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
     public string QuestionStatus { get => _questionStatus; private set => Set(ref _questionStatus, value); }
     public string ReadinessStatus { get => _readinessStatus; private set => Set(ref _readinessStatus, value); }
     public string ExportStatus { get => _exportStatus; private set => Set(ref _exportStatus, value); }
+    public IReadOnlyList<StudyExportFormatOption> StudyExportFormatOptions { get; } = new[]
+    {
+        new StudyExportFormatOption("Excel (.xlsx)", StudyExportFormat.Xlsx),
+        new StudyExportFormatOption("JSON (.json)", StudyExportFormat.Json),
+        new StudyExportFormatOption("CSV (ZIP)", StudyExportFormat.Csv)
+    };
+    public DateTime? StudyExportFromDate
+    {
+        get => _studyExportFromDate;
+        set { Set(ref _studyExportFromDate, value); OnPropertyChanged(nameof(CanExportStudyData)); OnPropertyChanged(nameof(StudyExportRangeStatus)); }
+    }
+    public DateTime? StudyExportToDate
+    {
+        get => _studyExportToDate;
+        set { Set(ref _studyExportToDate, value); OnPropertyChanged(nameof(CanExportStudyData)); OnPropertyChanged(nameof(StudyExportRangeStatus)); }
+    }
+    public Course? SelectedStudyExportCourse { get => _selectedStudyExportCourse; set => Set(ref _selectedStudyExportCourse, value); }
+    public StudyExportFormat SelectedStudyExportFormat
+    {
+        get => _selectedStudyExportFormat;
+        set { Set(ref _selectedStudyExportFormat, value); OnPropertyChanged(nameof(CanExportStudyData)); }
+    }
+    public bool StudyExportIncludeNotes
+    {
+        get => _studyExportIncludeNotes;
+        set
+        {
+            Set(ref _studyExportIncludeNotes, value);
+            if (!value && _studyExportIncludePrivateNotes)
+            {
+                _studyExportIncludePrivateNotes = false;
+                OnPropertyChanged(nameof(StudyExportIncludePrivateNotes));
+            }
+        }
+    }
+    public bool StudyExportIncludePrivateNotes
+    {
+        get => _studyExportIncludePrivateNotes;
+        set
+        {
+            if (value && !_studyExportIncludeNotes)
+            {
+                _studyExportIncludeNotes = true;
+                OnPropertyChanged(nameof(StudyExportIncludeNotes));
+            }
+            Set(ref _studyExportIncludePrivateNotes, value);
+        }
+    }
+    public bool StudyExportIncludeResults { get => _studyExportIncludeResults; set => Set(ref _studyExportIncludeResults, value); }
+    public bool CanExportStudyData =>
+        StudyExportFromDate is not null &&
+        StudyExportToDate is not null &&
+        StudyExportToDate.Value.Date >= StudyExportFromDate.Value.Date &&
+        (StudyExportToDate.Value.Date - StudyExportFromDate.Value.Date).TotalDays <= 3660 &&
+        StudyExportFormatOptions.Any(option => option.Format == SelectedStudyExportFormat);
+    public string StudyExportRangeStatus
+    {
+        get
+        {
+            if (StudyExportFromDate is null || StudyExportToDate is null)
+                return "Seleziona entrambe le date.";
+            if (StudyExportToDate.Value.Date < StudyExportFromDate.Value.Date)
+                return "La data finale non può precedere quella iniziale.";
+            if ((StudyExportToDate.Value.Date - StudyExportFromDate.Value.Date).TotalDays > 3660)
+                return "L'intervallo massimo è di 10 anni.";
+            return "Intervallo inclusivo nel fuso orario locale.";
+        }
+    }
     public string SimulationStatus { get => _simulationStatus; private set => Set(ref _simulationStatus, value); }
     public bool IsSimulationActive { get => _simulationActive; private set { Set(ref _simulationActive, value); OnPropertyChanged(nameof(SimulationQuestionDisplay)); SubmitSimulationAnswerCommand?.NotifyCanExecuteChanged(); } }
     public string SimulationQuestionDisplay => IsSimulationActive && _simulationIndex < _simulationQuestions.Count
@@ -1621,6 +1696,43 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
         }
     }
 
+
+    public async Task ExportStudyDataAsync(
+        string filePath,
+        StudyExportFormat format,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(filePath))
+            throw new ArgumentException("Seleziona un percorso di destinazione.", nameof(filePath));
+        if (!CanExportStudyData)
+            throw new InvalidOperationException(StudyExportRangeStatus);
+
+        try
+        {
+            var selectedCourseId = SelectedStudyExportCourse?.Id;
+            var courseFilter = SelectedStudyExportCourse is null
+                ? null
+                : new[] { selectedCourseId ?? string.Empty };
+            var request = new StudyExportRequest(
+                DateOnly.FromDateTime(StudyExportFromDate!.Value.Date),
+                DateOnly.FromDateTime(StudyExportToDate!.Value.Date),
+                TimeZoneInfo.Local.Id,
+                CourseIds: courseFilter,
+                IncludeNotes: StudyExportIncludeNotes,
+                IncludePrivateNotes: StudyExportIncludeNotes && StudyExportIncludePrivateNotes,
+                IncludeResult: StudyExportIncludeResults);
+
+            var bundle = _exports.ExportStudyData(_data, request, format);
+            await StudyExportFileWriter.WriteAsync(filePath, bundle, cancellationToken);
+            ExportStatus = $"Esportazione completa creata: {Path.GetFileName(filePath)}";
+        }
+        catch (Exception ex)
+        {
+            ExportStatus = $"Esportazione non riuscita: {ex.Message}";
+            throw;
+        }
+    }
+
     private void ReloadBackups()
     {
         BackupItems.Clear();
@@ -1666,5 +1778,7 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
     private void OnPropertyChanged([CallerMemberName] string? propertyName = null) =>
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
 }
+
+public sealed record StudyExportFormatOption(string Label, StudyExportFormat Format);
 
 public sealed record DailyProgressRow(string DayLabel, int FocusMinutes, int FocusPercent);
