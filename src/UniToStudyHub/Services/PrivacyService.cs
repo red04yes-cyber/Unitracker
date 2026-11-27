@@ -419,41 +419,55 @@ public sealed class PrivacyService
             if (!IsSafeMoodleDirectory(root, directory))
                 continue;
 
-            string[] entries;
+            IEnumerator<string> entries;
             try
             {
                 entries = Directory.EnumerateFileSystemEntries(directory, "*", SearchOption.TopDirectoryOnly)
-                    .ToArray();
+                    .GetEnumerator();
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or SecurityException)
             {
                 continue;
             }
 
-            foreach (var entry in entries)
+            using (entries)
             {
-                if (!LocalFileSecurity.IsInside(root, entry))
-                    continue;
-
-                FileAttributes attributes;
-                try { attributes = File.GetAttributes(entry); }
-                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or SecurityException)
+                while (true)
                 {
-                    continue;
-                }
+                    string entry;
+                    try
+                    {
+                        if (!entries.MoveNext()) break;
+                        entry = entries.Current;
+                    }
+                    catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or SecurityException)
+                    {
+                        break;
+                    }
 
-                // Never descend into or operate on symbolic links, junctions,
-                // mount points, or other filesystem reparse entries.
-                if ((attributes & FileAttributes.ReparsePoint) != 0)
-                    continue;
+                    if (!LocalFileSecurity.IsInside(root, entry))
+                        continue;
 
-                if ((attributes & FileAttributes.Directory) != 0)
-                {
-                    pending.Push(entry);
-                }
-                else if ((attributes & FileAttributes.Device) == 0 && IsSafeMoodleFile(root, entry))
-                {
-                    yield return entry;
+                    FileAttributes attributes;
+                    try { attributes = File.GetAttributes(entry); }
+                    catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or SecurityException)
+                    {
+                        continue;
+                    }
+
+                    // Never descend into or operate on symbolic links, junctions,
+                    // mount points, or other filesystem reparse entries.
+                    if ((attributes & FileAttributes.ReparsePoint) != 0)
+                        continue;
+
+                    if ((attributes & FileAttributes.Directory) != 0)
+                    {
+                        pending.Push(entry);
+                    }
+                    else if ((attributes & FileAttributes.Device) == 0 && IsSafeMoodleFile(root, entry))
+                    {
+                        yield return entry;
+                    }
                 }
             }
         }
