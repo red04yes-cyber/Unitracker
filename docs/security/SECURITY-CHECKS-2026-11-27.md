@@ -25,7 +25,7 @@ La verifica CI sulla base:
 | 11 | Risposta API non limitata | `MaximumApiResponseBytes = 8 MiB` in Moodle client | Superato |
 | 12 | Timeout rete | Timeout Moodle 45 secondi e cancellazione propagata | Superato |
 | 13 | Download file e token | Download stream limitato a 250 MiB; il trasporto del token sull'endpoint file necessita ancora della remediation proposta | Problema rilevato — [PR #105](https://github.com/red04yes-cyber/Unitracker/pull/105) |
-| 14 | Contenimento filesystem e reparse point | Download con `LocalFileSecurity.IsInside`; la scansione privacy ora non segue root/child link e non elimina directory vuote | Corretto in questa PR; test aggiunti |
+| 14 | Contenimento filesystem e reparse point | Download con `LocalFileSecurity.IsInside`; la scansione privacy non segue root/child link e rimuove solo directory vuote con controlli non ricorsivi | Corretto in questa PR; test aggiunti |
 | 15 | Import PDF da file | Limite file 25 MiB e limiti testo/pagina in `PdfServices.cs` | Superato |
 | 16 | Adapter PDF da stream | L'adapter di default usa `CopyToAsync` senza bound prima del parser | Problema rilevato — [PR #110](https://github.com/red04yes-cyber/Unitracker/pull/110) |
 | 17 | ICS parser input testuale | `ImportText` rifiuta oltre 10 MiB | Superato |
@@ -51,7 +51,7 @@ La correzione:
 - attraversa directory in modo iterativo e streamma le entry, verificando il root e ogni segmento con `IsInside`;
 - ignora file, directory e altri reparse point;
 - ri-verifica il file immediatamente prima dello scrub;
-- rimuove solo file regolari; lascia le directory vuote per evitare un'operazione ricorsiva non necessaria.
+- rimuove solo file regolari e directory vuote validate, con `Directory.Delete` non ricorsivo e traversal post-order.
 
 Test aggiunti per root link, child directory link e file link: verificano che l'inventario non conti contenuti esterni e che il reset non modifichi file o directory fuori dal percorso gestito.
 
