@@ -2,7 +2,7 @@
 
 ## Perimetro e metodo
 
-Review mirata del codice su `main` (base `98e6ca1ec5ee84759497763a19a823f8f4957560), dei workflow, dei test di sicurezza e delle PR aperte che propongono hardening. I controlli sono source review e verifica dei workflow, non un penetration test.
+Review mirata del codice su `main` (base `98e6ca1ec5ee84759497763a19a823f8f4957560`), dei workflow, dei test di sicurezza e delle PR aperte che propongono hardening. I controlli sono source review e verifica dei workflow, non un penetration test.
 
 La verifica CI sulla base:
 - [Build Windows desktop app — run 45902744147](https://github.com/red04yes-cyber/Unitracker/actions/runs/45902744147): completata con successo.
@@ -48,7 +48,7 @@ La verifica CI sulla base:
 `PrivacyService.CountMoodleFiles` e `DeleteMoodleFiles` enumeravano ricorsivamente il percorso gestito senza rifiutare un root reparse point. La cancellazione dei file controllava poi `IsInside`, ma la pulizia delle directory vuote non applicava lo stesso confine: poteva agire su directory raggiunte tramite link. L'inventario poteva inoltre contare contenuti esterni.
 
 La correzione:
-- attraversa directory in modo iterativo, verificando il root e ogni segmento con `IsInside`;
+- attraversa directory in modo iterativo e streamma le entry, verificando il root e ogni segmento con `IsInside`;
 - ignora file, directory e altri reparse point;
 - ri-verifica il file immediatamente prima dello scrub;
 - rimuove solo file regolari; lascia le directory vuote per evitare un'operazione ricorsiva non necessaria.
