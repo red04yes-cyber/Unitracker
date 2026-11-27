@@ -85,6 +85,22 @@ public sealed class FlashcardReviewForecastTests
     }
 
     [Fact]
+    public void UpdatePreservesOptionalMetadataWhenItIsOmitted()
+    {
+        var data = Data();
+        var card = AddCard(data, "card", "analisi", DateTimeOffset.UtcNow);
+        card.SyllabusTopicId = "topic-1";
+        card.Source = "imported";
+        var service = new FlashcardService();
+
+        service.Update(data, card.Id, "Question updated", "Answer updated");
+
+        Assert.Equal("analisi", card.CourseId);
+        Assert.Equal("topic-1", card.SyllabusTopicId);
+        Assert.Equal("imported", card.Source);
+    }
+
+    [Fact]
     public void UpdateRejectsBlankTextAndUnknownCourseWithoutMutation()
     {
         var data = Data();
