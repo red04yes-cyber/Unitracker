@@ -358,7 +358,9 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
         {
             if (_weeklyReviewSnapshot is not { } review) return "Settimana non disponibile";
             var culture = CultureInfo.GetCultureInfo("it-IT");
-            return $"Settimana dal {review.WeekStart.ToString("dd/MM", culture)} al {review.WeekStart.AddDays(6).ToString("dd/MM", culture)}";
+            var start = review.WeekStart.ToString("dd/MM", culture);
+            var end = review.WeekStart.AddDays(6).ToString("dd/MM", culture);
+            return $"Settimana dal {start} al {end}";
         }
     }
     public string PlannerAvailabilityInput { get => _plannerAvailabilityInput; set => Set(ref _plannerAvailabilityInput, value); }
@@ -497,7 +499,7 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
         FlashcardService flashcards,
         ProgressService progress,
         WeeklyReviewService weeklyReviewService,
-        PdfImportService pdfImport, 
+        PdfImportService pdfImport,
         PdfIntelligenceService pdfIntelligence,
         AiStudyService aiStudy,
         BackupService backups,
