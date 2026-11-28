@@ -74,9 +74,9 @@ public sealed class WeeklyReviewServiceTests
         var after = WeekStart.AddDays(7);
         var now = LocalAt(sunday, 23, 45);
 
-        AddActivity(ledger, data, before, now);
-        AddActivity(ledger, data, sunday, now);
-        AddActivity(ledger, data, after, now);
+        AddActivity(ledger, data, before);
+        AddActivity(ledger, data, sunday);
+        AddActivity(ledger, data, after);
 
         var review = new WeeklyReviewService().Create(data, WeekStart, now);
 
@@ -92,13 +92,15 @@ public sealed class WeeklyReviewServiceTests
         {
             Id = "inside",
             Title = "Esercizi della settimana",
-            EstimatedMinutes = 45
+            EstimatedMinutes = 45,
+            CreatedAt = LocalAt(WeekStart, 8)
         });
         var completedOutside = tasks.Add(data, new StudyTaskData
         {
             Id = "outside",
             Title = "Esercizi della settimana precedente",
-            EstimatedMinutes = 30
+            EstimatedMinutes = 30,
+            CreatedAt = LocalAt(WeekStart.AddDays(-7), 8)
         });
         tasks.Complete(data, completedInside.Id, LocalAt(WeekStart.AddDays(2), 17));
         tasks.Complete(data, completedOutside.Id, LocalAt(WeekStart.AddDays(-1), 17));
@@ -146,9 +148,9 @@ public sealed class WeeklyReviewServiceTests
         AddError(errors, data, "limiti-1", "Limiti", now);
         AddError(errors, data, "limiti-2", "Limiti", now);
         var resolved = AddError(errors, data, "limiti-resolved", "Limiti", now);
-        errors.Review(data, resolved.Id, recalled: true, now.AddDays(1));
-        errors.Review(data, resolved.Id, recalled: true, now.AddDays(2));
-        errors.Review(data, resolved.Id, recalled: true, now.AddDays(3));
+        errors.Review(data, resolved.Id, recalled: true, now: now.AddDays(1));
+        errors.Review(data, resolved.Id, recalled: true, now: now.AddDays(2));
+        errors.Review(data, resolved.Id, recalled: true, now: now.AddDays(3));
 
         var review = new WeeklyReviewService().Create(data, WeekStart, now.AddDays(4));
 
@@ -184,7 +186,12 @@ public sealed class WeeklyReviewServiceTests
     {
         var data = new StudyData();
         var now = LocalAt(WeekStart.AddDays(2), 12);
-        var task = new StudyTaskService().Add(data, new StudyTaskData { Id = "task", Title = "Task" });
+        var task = new StudyTaskService().Add(data, new StudyTaskData
+        {
+            Id = "task",
+            Title = "Task",
+            CreatedAt = now.AddDays(-1)
+        });
         new StudyTaskService().Complete(data, task.Id, now);
         var activity = new ActivityLedgerService().AddManual(data, new StudyActivityData
         {
@@ -192,6 +199,7 @@ public sealed class WeeklyReviewServiceTests
             Title = "Studio",
             StartedAt = now.AddMinutes(-30),
             EndedAt = now,
+            CreatedAt = now.AddMinutes(-30),
             EffectiveSeconds = 1800,
             TimeZoneId = TimeZoneInfo.Local.Id
         }, now);
@@ -226,7 +234,7 @@ public sealed class WeeklyReviewServiceTests
             new WeeklyReviewService().Create(new StudyData(), DateOnly.MaxValue, LocalAt(WeekStart, 12)));
     }
 
-    private static void AddActivity(ActivityLedgerService ledger, StudyData data, DateOnly day, DateTimeOffset now)
+    private static void AddActivity(ActivityLedgerService ledger, StudyData data, DateOnly day)
     {
         var start = LocalAt(day, 23);
         ledger.AddManual(data, new StudyActivityData
@@ -234,9 +242,10 @@ public sealed class WeeklyReviewServiceTests
             Title = $"Studio {day:yyyy-MM-dd}",
             StartedAt = start,
             EndedAt = start.AddMinutes(15),
+            CreatedAt = start,
             EffectiveSeconds = 15 * 60,
             TimeZoneId = TimeZoneInfo.Local.Id
-        }, now);
+        }, start.AddMinutes(20));
     }
 
     private static ErrorJournalEntryData AddError(
@@ -249,6 +258,7 @@ public sealed class WeeklyReviewServiceTests
         {
             Id = id,
             Topic = topic,
+            CreatedAt = now.AddDays(-1),
             Question = $"Domanda {id}",
             CorrectAnswer = "Risposta corretta",
             ErrorType = "Concetto"
