@@ -165,7 +165,7 @@ con avvisi quando i dati mancano. Mostrare sempre periodo, formula e “dati ins
 
 ### Binding del riepilogo settimanale
 
-Dopo `StudyWorkspaceViewModel.Initialize` e a ogni aggiornamento dei progressi:
+Dopo `StudyWorkspaceViewModel.Initialize` e dopo ogni salvataggio dei dati di studio:
 
 - `CurrentWeeklyReview` espone il risultato read-only di `WeeklyReviewService.Create`;
 - `HasWeeklyReviewData` distingue un periodo senza dati da un riepilogo con attività reali;
