@@ -49,7 +49,8 @@ Esiti ammessi: **superato**, **non applicabile**, **non verificabile**,
 - **Superati:** 14
 - **Non applicabili:** 16
 - **Problemi rilevati:** 0
-- **Non verificabili in questa fase:** scansione Gitleaks e NuGet audit sul nuovo head; saranno verificati dal workflow Security scan della PR.
-- **Test/build locali:** non eseguiti; l'ambiente non dispone del .NET SDK.
+- **Non verificabili:** 0. Gitleaks (history + working tree), pinning immutabile delle Actions e NuGet audit bloccante sono stati eseguiti con esito positivo dal workflow [Security scan](https://github.com/red04yes-cyber/Unitracker/actions/runs/46121704826).
+- **Test/build locali:** non eseguiti perché l'ambiente non dispone del .NET SDK; la verifica delegata alla CI è invece completata.
+- **CI Windows:** [Build Windows desktop app](https://github.com/red04yes-cyber/Unitracker/actions/runs/46121704836) superato sul commit `98671eaab15b46a5eb7db7a7f5de6d55ba8fd07d`: 359 test passati, 0 falliti, 0 skipped; restore/build Release, publish win-x64 self-contained, WPF startup smoke test, ZIP portatile e SHA-256 superati.
 - **Rischio residuo privacy:** `WeeklyReview.ErrorPatterns.Evidence` può contenere testo di domande inserite dallo studente. È esposto solo al binding locale già previsto dal servizio; la UI non deve inserirlo in log o export senza scelta esplicita.
 - **Ambito escluso:** nessuna modifica AI, nessuna dipendenza, rete, persistenza, migrazione o UI visuale.
