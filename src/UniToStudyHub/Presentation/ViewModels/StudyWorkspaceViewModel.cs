@@ -581,6 +581,7 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
         RefreshCollections();
         RefreshFocusSnapshot();
         RefreshProgress();
+        RefreshWeeklyReview();
         ReloadBackups();
         OnPropertyChanged(nameof(Courses));
         OnPropertyChanged(nameof(PdfDocuments));
@@ -1522,6 +1523,7 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
     {
         await _store.SaveAsync(_data);
         RefreshProgress();
+        RefreshWeeklyReview();
     }
 
     private void RefreshCollections()
@@ -1571,6 +1573,16 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
         SelectedTaskProgress = _activityLedger.GetTaskProgress(_data, SelectedTask.Id);
     }
 
+    private void RefreshWeeklyReview()
+    {
+        var today = DateOnly.FromDateTime(DateTime.Today);
+        var monday = today.AddDays(-(((int)today.DayOfWeek + 6) % 7));
+        _weeklyReviewSnapshot = _weeklyReviewService.Create(_data, monday);
+        OnPropertyChanged(nameof(CurrentWeeklyReview));
+        OnPropertyChanged(nameof(HasWeeklyReviewData));
+        OnPropertyChanged(nameof(WeeklyReviewPeriodDisplay));
+    }
+
     private void RefreshProgress()
     {
         var today = DateOnly.FromDateTime(DateTime.Today);
@@ -1578,7 +1590,6 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
         _progressSnapshot = _progress.Calculate(_data, from, today);
         var monday = today.AddDays(-(((int)today.DayOfWeek + 6) % 7));
         _weeklyProgressSnapshot = _progress.Calculate(_data, monday, today);
-        _weeklyReviewSnapshot = _weeklyReviewService.Create(_data, monday);
         CourseProgressRows.Clear();
         var maxFocusMinutes = _progressSnapshot.Courses.Count == 0 ? 0 : _progressSnapshot.Courses.Max(x => x.FocusMinutes);
         foreach (var course in _progressSnapshot.Courses)
@@ -1622,9 +1633,6 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(ActiveStudyDaysDisplay));
         OnPropertyChanged(nameof(AverageSessionDisplay));
         OnPropertyChanged(nameof(BestFocusDayDisplay));
-        OnPropertyChanged(nameof(CurrentWeeklyReview));
-        OnPropertyChanged(nameof(HasWeeklyReviewData));
-        OnPropertyChanged(nameof(WeeklyReviewPeriodDisplay));
     }
 
     public async Task ExportProgressAsync(string filePath, CancellationToken cancellationToken = default)
