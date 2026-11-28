@@ -40,7 +40,9 @@ public sealed class CompositionRootTests
             var questions = provider.GetRequiredService<QuestionBankService>();
             var readiness = provider.GetRequiredService<ExamReadinessService>();
             var timeBudget = provider.GetRequiredService<TimeBudgetService>();
+            var weeklyReview = provider.GetRequiredService<WeeklyReviewService>();
             var backup = provider.GetRequiredService<BackupService>();
+            var workspace = provider.GetRequiredService<StudyWorkspaceViewModel>();
             var viewModel = provider.GetRequiredService<MainViewModel>();
 
             Assert.Same(store, provider.GetRequiredService<IStudyDataStore>());
@@ -53,10 +55,18 @@ public sealed class CompositionRootTests
             Assert.Same(questions, provider.GetRequiredService<QuestionBankService>());
             Assert.Same(readiness, provider.GetRequiredService<ExamReadinessService>());
             Assert.Same(timeBudget, provider.GetRequiredService<TimeBudgetService>());
+            Assert.Same(weeklyReview, provider.GetRequiredService<WeeklyReviewService>());
             Assert.Same(backup, provider.GetRequiredService<BackupService>());
+            Assert.Same(workspace, viewModel.Workspace);
             Assert.Same(viewModel, provider.GetRequiredService<MainViewModel>());
 
             await viewModel.InitializeAsync();
+            var today = DateOnly.FromDateTime(DateTime.Today);
+            var monday = today.AddDays(-(((int)today.DayOfWeek + 6) % 7));
+            Assert.NotNull(workspace.CurrentWeeklyReview);
+            Assert.Equal(monday, workspace.CurrentWeeklyReview!.WeekStart);
+            Assert.False(workspace.HasWeeklyReviewData);
+            Assert.StartsWith("Settimana dal ", workspace.WeeklyReviewPeriodDisplay, StringComparison.Ordinal);
             Assert.Equal("—", viewModel.AverageDisplay);
             Assert.Equal("CFU completati: 0", viewModel.CreditsDisplay);
             Assert.Equal("Voto di partenza: —", viewModel.BaseGradeDisplay);

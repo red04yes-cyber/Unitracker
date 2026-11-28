@@ -163,6 +163,20 @@ task, flashcard e revisioni. `ErrorPatternService.Detect(data)` richiede un camp
 lo stesso argomento/tipo. `WeeklyReviewService.Create(data, weekStart, now)` restituisce osservazioni e azioni
 con avvisi quando i dati mancano. Mostrare sempre periodo, formula e “dati insufficienti” invece di numeri demo.
 
+### Binding del riepilogo settimanale
+
+Dopo `StudyWorkspaceViewModel.Initialize` e dopo ogni salvataggio dei dati di studio:
+
+- `CurrentWeeklyReview` espone il risultato read-only di `WeeklyReviewService.Create`;
+- `HasWeeklyReviewData` distingue un periodo senza dati da un riepilogo con attività reali;
+- `WeeklyReviewPeriodDisplay` espone l'intervallo lunedì–domenica;
+- `CurrentWeeklyReview.Progress` contiene le metriche della settimana;
+- `CurrentWeeklyReview.ErrorPatterns`, `Observations` e `SuggestedActions` sono contenuti descrittivi e modificabili solo dall'utente, non azioni eseguite dall'app.
+
+Il riepilogo viene ricalcolato dal solo `StudyData`: non introduce una seconda persistenza e non modifica attività, task, flashcard o diario errori. `RecordedSeconds` rappresenta l'unione degli intervalli del ledger; `FocusMinutes` è la metrica delle sessioni e resta separata. Non sommare le due metriche.
+
+Trasparenza del periodo: task completati e attività registrate sono filtrati sulla settimana selezionata; `DueFlashcards` e `OpenErrors` rappresentano invece il backlog corrente al momento del calcolo, mentre `ErrorPatterns` considera gli errori ancora irrisolti presenti nell'intero archivio. Non presentarli come elementi creati necessariamente in quella settimana. Le osservazioni e le azioni proposte sono regole descrittive locali, senza chiamate a modelli o servizi remoti.
+
 ### Backup manifest
 
 `BackupService.CreateBackupAsync` crea anche `<backup>.manifest.json`; `ReadManifestAsync` restituisce

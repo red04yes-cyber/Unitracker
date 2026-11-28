@@ -29,6 +29,7 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
     private readonly EnergyService _energy;
     private readonly FlashcardService _flashcards;
     private readonly ProgressService _progress;
+    private readonly WeeklyReviewService _weeklyReviewService;
     private readonly PdfImportService _pdfImport;
     private readonly PdfIntelligenceService _pdfIntelligence;
     private readonly AiStudyService _aiStudy;
@@ -119,6 +120,7 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
     private string _maxDailyStudyMinutesInput = "240";
     private ProgressSnapshot? _progressSnapshot;
     private ProgressSnapshot? _weeklyProgressSnapshot;
+    private WeeklyReview? _weeklyReviewSnapshot;
     private string _selectedProgressPeriod = "7 giorni";
 
     public event PropertyChangedEventHandler? PropertyChanged;
@@ -340,6 +342,27 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
         }
     }
     public ProgressSnapshot? CurrentProgress => _progressSnapshot;
+    public WeeklyReview? CurrentWeeklyReview => _weeklyReviewSnapshot;
+    public bool HasWeeklyReviewData => _weeklyReviewSnapshot is { } review &&
+        (review.Progress.RecordedSeconds > 0 ||
+         review.Progress.FocusMinutes > 0 ||
+         review.Progress.CompletedSessions > 0 ||
+         review.Progress.CompletedTasks > 0 ||
+         review.Progress.DueFlashcards > 0 ||
+         review.Progress.OpenErrors > 0 ||
+         review.Progress.CompletedPomodoroCycles > 0 ||
+         review.ErrorPatterns.Count > 0);
+    public string WeeklyReviewPeriodDisplay
+    {
+        get
+        {
+            if (_weeklyReviewSnapshot is not { } review) return "Settimana non disponibile";
+            var culture = CultureInfo.GetCultureInfo("it-IT");
+            var start = review.WeekStart.ToString("dd/MM", culture);
+            var end = review.WeekStart.AddDays(6).ToString("dd/MM", culture);
+            return $"Settimana dal {start} al {end}";
+        }
+    }
     public string PlannerAvailabilityInput { get => _plannerAvailabilityInput; set => Set(ref _plannerAvailabilityInput, value); }
     public DateTime PlannerFromInput { get => _plannerFromInput; set => Set(ref _plannerFromInput, value.Date); }
     public DateTime PlannerToInput { get => _plannerToInput; set => Set(ref _plannerToInput, value.Date); }
@@ -475,6 +498,7 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
         EnergyService energy,
         FlashcardService flashcards,
         ProgressService progress,
+        WeeklyReviewService weeklyReviewService,
         PdfImportService pdfImport,
         PdfIntelligenceService pdfIntelligence,
         AiStudyService aiStudy,
@@ -497,6 +521,7 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
         _energy = energy;
         _flashcards = flashcards;
         _progress = progress;
+        _weeklyReviewService = weeklyReviewService;
         _pdfImport = pdfImport;
         _pdfIntelligence = pdfIntelligence;
         _aiStudy = aiStudy;
@@ -556,6 +581,7 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
         RefreshCollections();
         RefreshFocusSnapshot();
         RefreshProgress();
+        RefreshWeeklyReview();
         ReloadBackups();
         OnPropertyChanged(nameof(Courses));
         OnPropertyChanged(nameof(PdfDocuments));
@@ -1497,6 +1523,7 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
     {
         await _store.SaveAsync(_data);
         RefreshProgress();
+        RefreshWeeklyReview();
     }
 
     private void RefreshCollections()
@@ -1544,6 +1571,16 @@ public sealed class StudyWorkspaceViewModel : INotifyPropertyChanged
         }
 
         SelectedTaskProgress = _activityLedger.GetTaskProgress(_data, SelectedTask.Id);
+    }
+
+    private void RefreshWeeklyReview()
+    {
+        var today = DateOnly.FromDateTime(DateTime.Today);
+        var monday = today.AddDays(-(((int)today.DayOfWeek + 6) % 7));
+        _weeklyReviewSnapshot = _weeklyReviewService.Create(_data, monday);
+        OnPropertyChanged(nameof(CurrentWeeklyReview));
+        OnPropertyChanged(nameof(HasWeeklyReviewData));
+        OnPropertyChanged(nameof(WeeklyReviewPeriodDisplay));
     }
 
     private void RefreshProgress()
