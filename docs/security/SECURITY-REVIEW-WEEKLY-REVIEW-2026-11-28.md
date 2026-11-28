@@ -14,7 +14,7 @@ Esiti ammessi: **superato**, **non applicabile**, **non verificabile**,
 | # | Area / rischio | Metodo ed evidenza | Esito | Correzione / test |
 |---:|---|---|---|---|
 | 1 | Scrittura accidentale su `main` | Compare `main...feat/weekly-review-workspace-binding-20261128`: il branch dedicato è ahead e non modifica il ref base | Superato | Tutte le scritture eseguite sul branch dedicato |
-| 2 | Modifiche estranee o scope creep | Compare GitHub: quattro file applicativi/test/documentazione previsti; nessun altro path | Superato | Diff limitato a binding, test e contratto |
+| 2 | Modifiche estranee o scope creep | Compare GitHub: cinque file applicativi/test/documentazione previsti; nessun altro path | Superato | Diff limitato a binding, test e contratto |
 | 3 | Segreti hardcoded nel delta | Ispezione del diff e dei nuovi fixture; nessuna credenziale o valore segreto | Superato | Nessun segreto aggiunto |
 | 4 | Modifica involontaria delle funzioni AI | Path del diff: nessun provider, prompt, credenziale AI o servizio AI | Superato | Nessun file AI modificato |
 | 5 | Chiamate HTTP/HTTPS non autorizzate | Il delta non contiene client HTTP, socket o chiamate remote | Non applicabile | Nessun codice di rete aggiunto |
