@@ -262,5 +262,5 @@ public sealed class WeeklyReviewServiceTests
             Question = $"Domanda {id}",
             CorrectAnswer = "Risposta corretta",
             ErrorType = "Concetto"
-        }, now);
+        });
 }
