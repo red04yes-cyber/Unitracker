@@ -46,8 +46,8 @@ Esiti ammessi: **superato**, **non applicabile**, **non verificabile**,
 
 ## Risultato
 
-- **Superati:** 12
-- **Non applicabili:** 18
+- **Superati:** 14
+- **Non applicabili:** 16
 - **Problemi rilevati:** 0
 - **Non verificabili in questa fase:** scansione Gitleaks e NuGet audit sul nuovo head; saranno verificati dal workflow Security scan della PR.
 - **Test/build locali:** non eseguiti; l'ambiente non dispone del .NET SDK.
